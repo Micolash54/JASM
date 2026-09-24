@@ -23,6 +23,8 @@ public final class JasmGameTests {
 
     static {
         SmokeGameTests.register();
+        LedgerGameTests.register();
+        ValidatorGameTests.register();
     }
 
     private JasmGameTests() {}
