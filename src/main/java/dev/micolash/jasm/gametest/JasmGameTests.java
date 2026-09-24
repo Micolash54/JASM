@@ -25,6 +25,11 @@ public final class JasmGameTests {
         SmokeGameTests.register();
         dev.micolash.jasm.storage.StorageGameTests.register();
         ValidatorGameTests.register();
+        DeckGameTests.register();
+        EligibilityGameTests.register();
+        DeckStorageGameTests.register();
+        DeckMenuGameTests.register();
+        DeckNetworkGameTests.register();
     }
 
     private JasmGameTests() {}

@@ -102,7 +102,7 @@ public final class WaferStore {
     }
 
     /** The store if it was opened for this server (it is at server start, unless the state check failed). */
-    static @Nullable WaferStore ifOpen(MinecraftServer server) {
+    public static @Nullable WaferStore ifOpen(MinecraftServer server) {
         WaferStore store = open;
         return store != null && store.server == server ? store : null;
     }

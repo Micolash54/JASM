@@ -1,5 +1,9 @@
 {
   "itemGroup.jasm.main": "JASM",
+  "item.jasm.starter_deck": "Starter Deck",
+  "item.jasm.basic_deck": "Basic Deck",
+  "item.jasm.advanced_deck": "Advanced Deck",
+  "item.jasm.ultimate_deck": "Ultimate Deck",
   "item.jasm.capacity_wafer_basic": "Basic Capacity Wafer",
   "item.jasm.capacity_wafer_1k": "1K Capacity Wafer",
   "item.jasm.capacity_wafer_4k": "4K Capacity Wafer",
@@ -12,5 +16,21 @@
   "message.jasm.wafer.recovered_elsewhere": "This wafer was restored elsewhere and dissolved",
   "message.jasm.wafer.unknown": "This wafer doesn't match this world's records. It is locked and left untouched",
   "message.jasm.wafer.unreadable": "This wafer's records can't be read right now (a mod may be missing). It is locked, and its contents are kept",
-  "message.jasm.wafer.stale": "This wafer is older than its records say. It is locked until the newer copy turns up or it is restored"
+  "message.jasm.wafer.stale": "This wafer is older than its records say. It is locked until the newer copy turns up or it is restored",
+  "tooltip.jasm.deck.wafers": "Wafers: %s / %s",
+  "tooltip.jasm.deck.energy": "Charge: %s / %s FE",
+  "message.jasm.wafer.refused.empty": "Nothing to store",
+  "message.jasm.wafer.refused.container": "Wafers can't store items that hold other items",
+  "message.jasm.wafer.refused.rejected": "Wafers can't store this item",
+  "message.jasm.wafer.refused.unsaveable": "This item's data can't be saved, so wafers can't store it",
+  "message.jasm.wafer.refused.too_large": "This item carries too much data to store on a wafer",
+  "message.jasm.deck.no_power": "Not enough charge in the Deck",
+  "screen.jasm.deck.search": "Search",
+  "screen.jasm.deck.no_power": "No power",
+  "screen.jasm.deck.stored": "Stored: %s",
+  "screen.jasm.deck.usage": "%s / %s items",
+  "screen.jasm.deck.missing": "%s items from missing mods",
+  "screen.jasm.deck.wafer_used": "%s / %s items",
+  "screen.jasm.deck.linked": "Protected by an Archive",
+  "screen.jasm.deck.not_linked": "Not protected"
 }

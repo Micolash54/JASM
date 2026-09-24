@@ -5,6 +5,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.gametest.JasmGameTests;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmTabs;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
@@ -22,6 +23,7 @@ public final class Jasm {
         JasmComponents.COMPONENTS.register(modBus);
         JasmItems.ITEMS.register(modBus);
         JasmTabs.TABS.register(modBus);
+        JasmMenus.MENUS.register(modBus);
         JasmGameTests.FUNCTIONS.register(modBus);
         modBus.addListener(JasmGameTests::onRegisterTests);
         container.registerConfig(ModConfig.Type.SERVER, JasmConfig.SPEC);
