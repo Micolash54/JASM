@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Item-count ledger of one wafer. Keys must implement equals/hashCode over item and all components. */
+/** Item counts of one wafer. Keys must implement equals/hashCode over item and all components. */
 public final class WaferContents<K> {
     private final Map<K, Long> counts = new LinkedHashMap<>();
     private long total;

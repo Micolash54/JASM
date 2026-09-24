@@ -1,8 +1,8 @@
 package dev.micolash.jasm.wafer;
 
 import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.ledger.JasmLedger;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.storage.WaferStore;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -48,7 +48,7 @@ public class WaferItem extends Item {
         if (Math.floorMod(level.getGameTime() + identity.id().hashCode(), interval) != 0) {
             return;
         }
-        WaferValidator.validate(JasmLedger.get(level.getServer()), stack, WaferValidator.Mode.PASSIVE, player);
+        WaferValidator.validate(WaferStore.get(level.getServer()), stack, WaferValidator.Mode.PASSIVE, player);
     }
 
     @Override
@@ -60,8 +60,11 @@ public class WaferItem extends Item {
         if (identity == null) {
             builder.accept(Component.translatable("tooltip.jasm.wafer.blank").withStyle(ChatFormatting.DARK_GRAY));
         } else {
-            String id = flag.isAdvanced() ? identity.id().toString() : identity.id().toString().substring(0, 8);
-            builder.accept(Component.translatable("tooltip.jasm.wafer.id", id).withStyle(ChatFormatting.DARK_GRAY));
+            builder.accept(Component.translatable("tooltip.jasm.wafer.serial", String.format("%,d", identity.serial()))
+                    .withStyle(ChatFormatting.DARK_GRAY));
+            if (flag.isAdvanced()) {
+                builder.accept(Component.literal(identity.id().toString()).withStyle(ChatFormatting.DARK_GRAY));
+            }
         }
     }
 }

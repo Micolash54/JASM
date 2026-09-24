@@ -1,4 +1,4 @@
-package dev.micolash.jasm.ledger;
+package dev.micolash.jasm.storage;
 
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
@@ -9,10 +9,13 @@ import com.mojang.serialization.ListBuilder;
 import dev.micolash.jasm.Jasm;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * A list codec that never drops data: elements that fail to decode (for example because their mod was removed)
- * are kept verbatim and written back unchanged on the next save.
+ * are kept verbatim and written back unchanged on the next save. An element that fails to encode is written as a
+ * placeholder instead, so one broken element can never stop the whole file from saving.
  */
 public final class LenientListCodec<E> implements Codec<LenientListCodec.Lenient<E>> {
     /** Decoded elements plus undecodable raw elements. */
@@ -22,12 +25,30 @@ public final class LenientListCodec<E> implements Codec<LenientListCodec.Lenient
         }
     }
 
+    /** Writes the stand-in for an element that could not be encoded. It must not decode as a normal element. */
+    public interface Placeholder<E> {
+        <T> T encode(E value, String error, DynamicOps<T> ops);
+    }
+
     private final Codec<E> elementCodec;
     private final String what;
+    private final Placeholder<E> placeholder;
 
-    public LenientListCodec(Codec<E> elementCodec, String what) {
+    public LenientListCodec(Codec<E> elementCodec, String what, Placeholder<E> placeholder) {
         this.elementCodec = elementCodec;
         this.what = what;
+        this.placeholder = placeholder;
+    }
+
+    public LenientListCodec(Codec<E> elementCodec, String what) {
+        this(elementCodec, what, new Placeholder<>() {
+            @Override
+            public <T> T encode(E value, String error, DynamicOps<T> ops) {
+                return ops.createMap(Map.of(
+                        ops.createString("unsaveable"), ops.createString(String.valueOf(value)),
+                        ops.createString("error"), ops.createString(error)));
+            }
+        });
     }
 
     @Override
@@ -50,7 +71,15 @@ public final class LenientListCodec<E> implements Codec<LenientListCodec.Lenient
     public <T> DataResult<T> encode(Lenient<E> input, DynamicOps<T> ops, T prefix) {
         ListBuilder<T> list = ops.listBuilder();
         for (E value : input.values()) {
-            list.add(elementCodec.encodeStart(ops, value));
+            DataResult<T> encoded = elementCodec.encodeStart(ops, value);
+            Optional<T> result = encoded.result();
+            if (result.isPresent()) {
+                list.add(result.get());
+            } else {
+                String error = encoded.error().map(e -> e.message()).orElse("?");
+                Jasm.LOGGER.error("Could not save {} {}: {}. Saved a placeholder instead", what, value, error);
+                list.add(placeholder.encode(value, error, ops));
+            }
         }
         for (Dynamic<?> raw : input.raw()) {
             list.add(raw.convert(ops).getValue());

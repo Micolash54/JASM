@@ -1,4 +1,4 @@
-package dev.micolash.jasm.ledger;
+package dev.micolash.jasm.storage;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -8,7 +8,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
 /** Minecraft codecs for pure {@code core} types (core itself stays free of Minecraft imports). */
-public final class LedgerCodecs {
+public final class StorageCodecs {
     public static final Codec<Stamp> STAMP = RecordCodecBuilder.create(i -> i.group(
                     Codec.LONG.fieldOf("epoch").forGetter(Stamp::epoch),
                     Codec.LONG.fieldOf("counter").forGetter(Stamp::counter))
@@ -19,5 +19,5 @@ public final class LedgerCodecs {
             ByteBufCodecs.VAR_LONG, Stamp::counter,
             Stamp::new);
 
-    private LedgerCodecs() {}
+    private StorageCodecs() {}
 }

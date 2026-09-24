@@ -7,7 +7,10 @@
   "item.jasm.capacity_wafer_64k": "64K Capacity Wafer",
   "tooltip.jasm.wafer.capacity": "Capacity: %s items",
   "tooltip.jasm.wafer.blank": "Blank",
-  "tooltip.jasm.wafer.id": "Wafer %s",
+  "tooltip.jasm.wafer.serial": "Wafer #%s",
   "message.jasm.wafer.duplicate_blanked": "A copied wafer was wiped blank",
-  "message.jasm.wafer.recovered_elsewhere": "This wafer was restored elsewhere and dissolved"
+  "message.jasm.wafer.recovered_elsewhere": "This wafer was restored elsewhere and dissolved",
+  "message.jasm.wafer.unknown": "This wafer doesn't match this world's records. It is locked and left untouched",
+  "message.jasm.wafer.unreadable": "This wafer's records can't be read right now (a mod may be missing). It is locked, and its contents are kept",
+  "message.jasm.wafer.stale": "This wafer is older than its records say. It is locked until the newer copy turns up or it is restored"
 }

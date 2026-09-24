@@ -23,13 +23,13 @@ public final class JasmGameTests {
 
     static {
         SmokeGameTests.register();
-        LedgerGameTests.register();
+        dev.micolash.jasm.storage.StorageGameTests.register();
         ValidatorGameTests.register();
     }
 
     private JasmGameTests() {}
 
-    static void add(String name, Consumer<GameTestHelper> test) {
+    public static void add(String name, Consumer<GameTestHelper> test) {
         FUNCTIONS.register(name, () -> test);
         NAMES.add(name);
     }

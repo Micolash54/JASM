@@ -24,7 +24,7 @@ class OnceCheckTest {
     @Test
     void failureIsRememberedAndRethrownWithoutRerunning() {
         AtomicInteger calls = new AtomicInteger();
-        IllegalStateException corrupt = new IllegalStateException("corrupt ledger");
+        IllegalStateException corrupt = new IllegalStateException("corrupt state");
         OnceCheck<Object> check = new OnceCheck<>(key -> {
             calls.incrementAndGet();
             throw corrupt;

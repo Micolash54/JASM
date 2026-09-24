@@ -1,4 +1,4 @@
-package dev.micolash.jasm.ledger;
+package dev.micolash.jasm.storage;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
-/** Authoritative state of one Archive. Placement and trust logic arrive with the Archive milestone. */
+/** Stored state of one Archive. Placement and trust rules come with the Archive block. */
 public final class ArchiveRecord {
     /** Where the Archive block currently stands. Absent while carried as an item. */
     public record Placement(ResourceKey<Level> dimension, BlockPos pos) {
@@ -95,7 +95,7 @@ public final class ArchiveRecord {
         return owner.equals(player) || trusted.containsKey(player);
     }
 
-    // --- package-private mutators, called only by JasmLedger ---
+    // --- package-private mutators, called only by JasmState ---
 
     void setPlacement(@Nullable Placement placement) {
         this.placement = placement;
