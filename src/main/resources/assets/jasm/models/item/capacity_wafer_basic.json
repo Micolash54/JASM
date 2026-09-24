@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "jasm:item/capacity_wafer_basic"
+  }
+}

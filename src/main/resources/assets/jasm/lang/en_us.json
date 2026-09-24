@@ -1,0 +1,13 @@
+{
+  "itemGroup.jasm.main": "JASM",
+  "item.jasm.capacity_wafer_basic": "Basic Capacity Wafer",
+  "item.jasm.capacity_wafer_1k": "1K Capacity Wafer",
+  "item.jasm.capacity_wafer_4k": "4K Capacity Wafer",
+  "item.jasm.capacity_wafer_16k": "16K Capacity Wafer",
+  "item.jasm.capacity_wafer_64k": "64K Capacity Wafer",
+  "tooltip.jasm.wafer.capacity": "Capacity: %s items",
+  "tooltip.jasm.wafer.blank": "Blank",
+  "tooltip.jasm.wafer.id": "Wafer %s",
+  "message.jasm.wafer.duplicate_blanked": "A copied wafer was wiped blank",
+  "message.jasm.wafer.recovered_elsewhere": "This wafer was restored elsewhere and dissolved"
+}
