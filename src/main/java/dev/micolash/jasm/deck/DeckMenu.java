@@ -17,12 +17,18 @@ import net.minecraft.world.item.ItemStack;
 /**
  * The Deck's menu: its wafer slots, then the player's inventory (27 slots) and hotbar (9). The Deck itself stays
  * locked in its slot while open, and the menu closes if that exact Deck leaves the slot.
+ *
+ * <p>The wafer slots sit in a side panel on the left, up to {@link #SIDE_ROWS} per column; the main panel (grid and
+ * inventory) starts at {@link #mainX()}.
  */
 public class DeckMenu extends AbstractContainerMenu {
-    public static final int WAFER_ROW_Y = 18;
     private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
-    /** Where the inventory starts when the wafer slots fit in two rows; each further row pushes it down 18. */
     public static final int INVENTORY_Y = 150;
+    /** Most wafer slots in one column of the side panel. */
+    public static final int SIDE_ROWS = 8;
+    /** Padding inside the side panel, and the gap between it and the main panel. */
+    public static final int SIDE_PAD = 7;
+    public static final int SIDE_GAP = 2;
 
     private final Player player;
     private final int deckSlot;
@@ -30,6 +36,8 @@ public class DeckMenu extends AbstractContainerMenu {
     private final DeckWaferContainer wafers;
     private final int waferSlots;
     private final int inventoryY;
+    private final int sideColumns;
+    private final int sideRows;
     /** Client side only: what the server has told this screen. */
     private final DeckView view = new DeckView();
 
@@ -41,19 +49,23 @@ public class DeckMenu extends AbstractContainerMenu {
         this.deck = inventory.getItem(deckSlot);
         this.wafers = new DeckWaferContainer(deck, player);
         this.waferSlots = wafers.getContainerSize();
-        this.inventoryY = INVENTORY_Y + Math.max(0, (waferSlots + 8) / 9 - 2) * 18;
+        this.inventoryY = INVENTORY_Y;
+        this.sideColumns = Math.max(1, (waferSlots + SIDE_ROWS - 1) / SIDE_ROWS);
+        this.sideRows = Math.max(1, (waferSlots + sideColumns - 1) / sideColumns);
 
+        // Wafers fill the side panel column by column, top to bottom.
         for (int i = 0; i < waferSlots; i++) {
-            addSlot(new WaferSlot(wafers, i, 8 + (i % 9) * 18, WAFER_ROW_Y + (i / 9) * 18));
+            addSlot(new WaferSlot(wafers, i, SIDE_PAD + 1 + (i / sideRows) * 18, SIDE_PAD + 1 + (i % sideRows) * 18));
         }
+        int x = mainX();
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 int index = 9 + row * 9 + column;
-                addSlot(playerSlot(inventory, index, 8 + column * 18, inventoryY + row * 18));
+                addSlot(playerSlot(inventory, index, x + 8 + column * 18, inventoryY + row * 18));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(playerSlot(inventory, column, 8 + column * 18, inventoryY + 58));
+            addSlot(playerSlot(inventory, column, x + 8 + column * 18, inventoryY + 58));
         }
     }
 
@@ -74,9 +86,24 @@ public class DeckMenu extends AbstractContainerMenu {
         return deckSlot;
     }
 
-    /** Top of the player's inventory in this Deck's screen (lower for Decks with more than two rows of wafers). */
+    /** Top of the player's inventory in this Deck's screen. */
     public int inventoryY() {
         return inventoryY;
+    }
+
+    /** Width of the wafer side panel. */
+    public int sideWidth() {
+        return SIDE_PAD * 2 + sideColumns * 18;
+    }
+
+    /** Height of the wafer side panel. */
+    public int sideHeight() {
+        return SIDE_PAD * 2 + sideRows * 18;
+    }
+
+    /** Where the main panel starts, right of the side panel. */
+    public int mainX() {
+        return sideWidth() + SIDE_GAP;
     }
 
     public int waferSlots() {

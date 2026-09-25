@@ -28,16 +28,15 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Deck screen: wafer slots on top, then charge and wafer status, a searchable, scrollable grid of everything
- * on the Deck's wafers, and the player's inventory. Drawn with plain fills; proper art comes later.
+ * The Deck screen: wafer slots in a side panel on the left; in the main panel, charge and wafer status, a
+ * searchable, scrollable grid of everything on the Deck's wafers, and the player's inventory.
  */
 public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
-    private static final int WIDTH = 190;
+    /** Width of the main panel; the side panel adds to it on the left. */
+    private static final int MAIN_WIDTH = 190;
     private static final int COLUMNS = 9;
-    private static final int ROWS = 4;
-    private static final int GRID_X = 8;
+    private static final int ROWS = 6;
     private static final int CHARGE_WIDTH = 60;
-    private static final int SCROLL_X = GRID_X + COLUMNS * 18 + 3;
     private static final int SCROLL_WIDTH = 10;
     private static final int SCROLL_HEIGHT = ROWS * 18 - 2;
     private static final int HANDLE_HEIGHT = 15;
@@ -55,12 +54,21 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private String builtQuery = "";
     private List<GridEntries.Entry<ItemResource>> visible = List.of();
     private boolean draggingHandle;
-    /** Grid and status line sit just above the inventory, which is lower on Decks with a third row of wafers. */
+    /** Left edge of the main panel, and the grid and scroll bar inside it. */
+    private final int mainX;
+    private final int gridX;
+    private final int scrollX;
+    /** Grid and status line sit just above the inventory. */
     private final int gridY;
     private final int statusY;
 
     public DeckScreen(DeckMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, WIDTH, menu.inventoryY() + 58 + 18 + 6);
+        super(menu, inventory, title, menu.mainX() + MAIN_WIDTH, menu.inventoryY() + 58 + 18 + 6);
+        this.mainX = menu.mainX();
+        this.gridX = mainX + 8;
+        this.scrollX = gridX + COLUMNS * 18 + 3;
+        this.titleLabelX = mainX + 8;
+        this.inventoryLabelX = mainX + 8;
         this.inventoryLabelY = menu.inventoryY() - 10;
         this.gridY = menu.inventoryY() - 12 - ROWS * 18;
         this.statusY = gridY - 11;
@@ -69,7 +77,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     @Override
     protected void init() {
         super.init();
-        search = new EditBox(font, leftPos + 80, topPos + 4, 66, 12, Component.translatable("screen.jasm.deck.search"));
+        search = new EditBox(font, leftPos + mainX + 80, topPos + 4, 66, 12, Component.translatable("screen.jasm.deck.search"));
         search.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         search.setMaxLength(64);
         search.setResponder(text -> scrollRow = 0);
@@ -78,12 +86,12 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             sort = sort == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME;
             b.setMessage(sortLabel());
             builtVersion = -1;
-        }, leftPos + 149, topPos + 3, 20, 14));
+        }, leftPos + mainX + 149, topPos + 3, 20, 14));
         addRenderableWidget(JasmButton.icon(() -> ascending ? ARROW_UP : ARROW_DOWN, directionLabel(), b -> {
             ascending = !ascending;
             b.setMessage(directionLabel());
             builtVersion = -1;
-        }, leftPos + 170, topPos + 3, 14, 14));
+        }, leftPos + mainX + 170, topPos + 3, 14, 14));
     }
 
     private Component sortLabel() {
@@ -119,7 +127,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private GridEntries.@Nullable Entry<ItemResource> entryAt(double mouseX, double mouseY) {
-        int column = (int) Math.floor((mouseX - leftPos - GRID_X) / 18);
+        int column = (int) Math.floor((mouseX - leftPos - gridX) / 18);
         int row = (int) Math.floor((mouseY - topPos - gridY) / 18);
         if (!inGrid(mouseX, mouseY) || column < 0 || column >= COLUMNS || row < 0 || row >= ROWS) {
             return null;
@@ -129,7 +137,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private boolean inGrid(double mouseX, double mouseY) {
-        return mouseX >= leftPos + GRID_X && mouseX < leftPos + GRID_X + COLUMNS * 18 && mouseY >= topPos + gridY
+        return mouseX >= leftPos + gridX && mouseX < leftPos + gridX + COLUMNS * 18 && mouseY >= topPos + gridY
                 && mouseY < topPos + gridY + ROWS * 18;
     }
 
@@ -144,18 +152,19 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
+        JasmGui.panel(graphics, x, y, menu.sideWidth(), menu.sideHeight());
+        JasmGui.panel(graphics, x + mainX, y, MAIN_WIDTH, imageHeight);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
-        JasmGui.inset(graphics, x + GRID_X - 1, y + gridY - 1, COLUMNS * 18, ROWS * 18);
+        JasmGui.inset(graphics, x + gridX - 1, y + gridY - 1, COLUMNS * 18, ROWS * 18);
         drawScrollBar(graphics, x, y);
         drawCharge(graphics, x, y);
     }
 
     /** A track beside the grid with a handle; the handle is greyed out when everything fits without scrolling. */
     private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
-        JasmGui.scrollBar(graphics, x + SCROLL_X, y + gridY - 1, SCROLL_WIDTH, SCROLL_HEIGHT + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
+        JasmGui.scrollBar(graphics, x + scrollX, y + gridY - 1, SCROLL_WIDTH, SCROLL_HEIGHT + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
     }
 
     private int handleOffset() {
@@ -164,7 +173,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private boolean onScrollBar(double mouseX, double mouseY) {
-        return mouseX >= leftPos + SCROLL_X && mouseX < leftPos + SCROLL_X + SCROLL_WIDTH
+        return mouseX >= leftPos + scrollX && mouseX < leftPos + scrollX + SCROLL_WIDTH
                 && mouseY >= topPos + gridY - 1 && mouseY < topPos + gridY + SCROLL_HEIGHT + 1;
     }
 
@@ -198,7 +207,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                     continue;
                 }
                 GridEntries.Entry<ItemResource> entry = visible.get(index);
-                int sx = x + GRID_X + column * 18;
+                int sx = x + gridX + column * 18;
                 int sy = y + gridY + row * 18;
                 ItemStack stack = entry.key().toStack(1);
                 graphics.item(stack, sx, sy);
@@ -209,9 +218,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             }
         }
         if (!hasPower()) {
-            graphics.fill(x + GRID_X - 1, y + gridY - 1, x + GRID_X + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, JasmGui.SHADE);
+            graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, JasmGui.SHADE);
             Component text = Component.translatable("screen.jasm.deck.no_power");
-            graphics.text(font, text, x + GRID_X + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + ROWS * 9 - 4, JasmGui.BAD, true);
+            graphics.text(font, text, x + gridX + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + ROWS * 9 - 4, JasmGui.BAD, true);
         }
         int barLeft = x + imageWidth - 8 - CHARGE_WIDTH;
         if (mouseX >= barLeft && mouseX < barLeft + CHARGE_WIDTH && mouseY >= y + statusY && mouseY < y + statusY + 7) {
@@ -239,7 +248,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         }
         // Items from missing mods still take up space; the usage turns red and each wafer's tooltip says how many.
         Component status = Component.translatable("screen.jasm.deck.usage", GridEntries.abbreviate(used), GridEntries.abbreviate(capacity));
-        graphics.text(font, status, 8, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
+        graphics.text(font, status, mainX + 8, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
     }
 
     /** Wafer slot tooltips add how full the wafer is and whether an Archive protects it. */
@@ -261,6 +270,13 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     // --- input ---
+
+    /** Below the side panel is outside the screen, so items dropped there fall out as usual. */
+    @Override
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
+        boolean belowSide = mouseX < left + mainX && mouseY >= top + menu.sideHeight();
+        return belowSide || super.hasClickedOutside(mouseX, mouseY, left, top);
+    }
 
     /**
      * Grid clicks, holding items: left stores all, right stores one, shift stores all. Empty-handed: left takes a
