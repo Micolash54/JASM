@@ -6,6 +6,8 @@ import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.battery.CreativeBatteryBlock;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
+import dev.micolash.jasm.generator.CombustionGeneratorBlock;
+import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -25,6 +27,10 @@ public final class JasmBlocks {
     public static final DeferredBlock<CreativeBatteryBlock> CREATIVE_BATTERY = BLOCKS.registerBlock("creative_battery",
             CreativeBatteryBlock::new, p -> p.mapColor(MapColor.COLOR_MAGENTA).strength(1.5F).sound(SoundType.METAL));
 
+    public static final DeferredBlock<CombustionGeneratorBlock> COMBUSTION_GENERATOR = BLOCKS.registerBlock("combustion_generator",
+            CombustionGeneratorBlock::new, p -> p.mapColor(MapColor.STONE).requiresCorrectToolForDrops().strength(3.5F).sound(SoundType.METAL)
+                    .lightLevel(state -> state.getValue(CombustionGeneratorBlock.LIT) ? 13 : 0));
+
     private static final Map<ArchiveTier, DeferredBlock<ArchiveBlock>> ARCHIVES = new EnumMap<>(ArchiveTier.class);
 
     static {
@@ -39,6 +45,9 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<CreativeBatteryBlockEntity>> CREATIVE_BATTERY_ENTITY = BLOCK_ENTITIES.register(
             "creative_battery", () -> new BlockEntityType<>(CreativeBatteryBlockEntity::new, CREATIVE_BATTERY.get()));
+
+    public static final Supplier<BlockEntityType<CombustionGeneratorBlockEntity>> COMBUSTION_GENERATOR_ENTITY = BLOCK_ENTITIES.register(
+            "combustion_generator", () -> new BlockEntityType<>(CombustionGeneratorBlockEntity::new, COMBUSTION_GENERATOR.get()));
 
     public static DeferredBlock<ArchiveBlock> archive(ArchiveTier tier) {
         return ARCHIVES.get(tier);

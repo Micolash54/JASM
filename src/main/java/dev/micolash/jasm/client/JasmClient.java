@@ -17,5 +17,6 @@ public final class JasmClient {
         event.register(JasmMenus.DECK.get(), DeckScreen::new);
         event.register(JasmMenus.ARCHIVE.get(), ArchiveScreen::new);
         event.register(JasmMenus.CREATIVE_BATTERY.get(), CreativeBatteryScreen::new);
+        event.register(JasmMenus.COMBUSTION_GENERATOR.get(), CombustionGeneratorScreen::new);
     }
 }

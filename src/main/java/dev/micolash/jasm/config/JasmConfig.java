@@ -43,6 +43,20 @@ public final class JasmConfig {
             .defineInRange("chargePerTick", 100_000, 0, Integer.MAX_VALUE);
 
     static {
+        BUILDER.pop().push("generator");
+    }
+
+    public static final ModConfigSpec.IntValue GENERATOR_FE_PER_TICK = BUILDER
+            .comment("Combustion Generator FE made per tick while burning")
+            .defineInRange("fePerTick", 40, 0, 100_000);
+    public static final ModConfigSpec.IntValue GENERATOR_PUSH_PER_FACE_PER_TICK = BUILDER
+            .comment("Combustion Generator FE output limit per face per tick")
+            .defineInRange("pushPerFacePerTick", 1_000, 0, 100_000);
+    public static final ModConfigSpec.IntValue GENERATOR_CHARGE_PER_TICK = BUILDER
+            .comment("Combustion Generator charging-slot FE per tick")
+            .defineInRange("chargePerTick", 1_000, 0, 100_000);
+
+    static {
         BUILDER.pop().push("wafer");
     }
 

@@ -16,6 +16,7 @@ public final class JasmItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(Jasm.MODID);
 
     public static final DeferredItem<BlockItem> CREATIVE_BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.CREATIVE_BATTERY);
+    public static final DeferredItem<BlockItem> COMBUSTION_GENERATOR = ITEMS.registerSimpleBlockItem(JasmBlocks.COMBUSTION_GENERATOR);
 
     private static final Map<ArchiveTier, DeferredItem<BlockItem>> ARCHIVES = new EnumMap<>(ArchiveTier.class);
     private static final Map<WaferTier, DeferredItem<WaferItem>> WAFERS = new EnumMap<>(WaferTier.class);

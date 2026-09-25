@@ -3,6 +3,7 @@
     "jasm:creative_battery",
     "jasm:basic_archive",
     "jasm:advanced_archive",
-    "jasm:ultimate_archive"
+    "jasm:ultimate_archive",
+    "jasm:combustion_generator"
   ]
 }

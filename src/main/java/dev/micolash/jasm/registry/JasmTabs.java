@@ -31,6 +31,7 @@ public final class JasmTabs {
                 for (ArchiveTier tier : ArchiveTier.values()) {
                     output.accept(JasmItems.archive(tier));
                 }
+                output.accept(JasmItems.COMBUSTION_GENERATOR);
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());

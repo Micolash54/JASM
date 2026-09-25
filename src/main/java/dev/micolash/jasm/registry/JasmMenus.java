@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveMenu;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.deck.DeckMenu;
+import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
@@ -18,6 +19,8 @@ public final class JasmMenus {
     public static final Supplier<MenuType<ArchiveMenu>> ARCHIVE = MENUS.register("archive", () -> IMenuTypeExtension.create(ArchiveMenu::client));
     public static final Supplier<MenuType<CreativeBatteryMenu>> CREATIVE_BATTERY = MENUS.register("creative_battery",
             () -> new MenuType<>(CreativeBatteryMenu::new, FeatureFlags.VANILLA_SET));
+    public static final Supplier<MenuType<CombustionGeneratorMenu>> COMBUSTION_GENERATOR = MENUS.register("combustion_generator",
+            () -> new MenuType<>(CombustionGeneratorMenu::new, FeatureFlags.VANILLA_SET));
 
     private JasmMenus() {}
 }
