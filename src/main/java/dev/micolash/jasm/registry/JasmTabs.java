@@ -17,7 +17,7 @@ public final class JasmTabs {
     /** Build 1 is creative-only: every JASM item is obtained here. Each Deck is listed empty and fully charged. */
     public static final Supplier<CreativeModeTab> MAIN = TABS.register("main", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.jasm.main"))
-            .icon(() -> JasmItems.wafer(WaferTier.K1).getDefaultInstance())
+            .icon(() -> JasmItems.deck(DeckTier.ULTIMATE).getDefaultInstance())
             .displayItems((parameters, output) -> {
                 for (DeckTier tier : DeckTier.values()) {
                     output.accept(JasmItems.deck(tier));
