@@ -26,3 +26,9 @@ Thumbs.db
 
 # Local helper scripts
 tools/
+
+# Unit tests (kept locally)
+src/test/
+
+# In-game tests (kept locally)
+src/gametest/
