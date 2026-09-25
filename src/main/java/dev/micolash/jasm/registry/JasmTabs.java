@@ -1,6 +1,7 @@
 package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.function.Supplier;
@@ -26,6 +27,9 @@ public final class JasmTabs {
                 }
                 for (WaferTier tier : WaferTier.values()) {
                     output.accept(JasmItems.wafer(tier));
+                }
+                for (ArchiveTier tier : ArchiveTier.values()) {
+                    output.accept(JasmItems.archive(tier));
                 }
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })

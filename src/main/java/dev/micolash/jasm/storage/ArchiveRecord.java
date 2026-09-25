@@ -5,9 +5,11 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.archive.ArchiveTier;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
@@ -15,7 +17,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
-/** Stored state of one Archive. Placement and trust rules come with the Archive block. */
+/** Stored state of one Archive: owner, trusted players, where it stands, and which wafers are linked to it. */
 public final class ArchiveRecord {
     /** Where the Archive block currently stands. Absent while carried as an item. */
     public record Placement(ResourceKey<Level> dimension, BlockPos pos) {
@@ -38,7 +40,8 @@ public final class ArchiveRecord {
                     UUIDUtil.CODEC.fieldOf("owner").forGetter(ArchiveRecord::owner),
                     Codec.STRING.fieldOf("owner_name").forGetter(ArchiveRecord::ownerName),
                     TrustedEntry.CODEC.listOf().fieldOf("trusted").forGetter(ArchiveRecord::trustedEntries),
-                    Placement.CODEC.optionalFieldOf("placement").forGetter(r -> Optional.ofNullable(r.placement)))
+                    Placement.CODEC.optionalFieldOf("placement").forGetter(r -> Optional.ofNullable(r.placement)),
+                    Codec.LONG.listOf().optionalFieldOf("linked", List.of()).forGetter(r -> List.copyOf(r.linked)))
             .apply(i, ArchiveRecord::decode));
 
     private final UUID id;
@@ -47,6 +50,11 @@ public final class ArchiveRecord {
     private final String ownerName;
     private final Map<UUID, String> trusted = new LinkedHashMap<>();
     private @Nullable Placement placement;
+    /**
+     * Serials of wafers linked here, oldest first. The wafer record's own link is what counts: an entry whose record
+     * now points elsewhere is dropped when the list is read.
+     */
+    private final Set<Long> linked = new LinkedHashSet<>();
 
     ArchiveRecord(UUID id, ArchiveTier tier, UUID owner, String ownerName) {
         this.id = id;
@@ -56,10 +64,11 @@ public final class ArchiveRecord {
     }
 
     private static ArchiveRecord decode(UUID id, ArchiveTier tier, UUID owner, String ownerName, List<TrustedEntry> trusted,
-            Optional<Placement> placement) {
+            Optional<Placement> placement, List<Long> linked) {
         ArchiveRecord record = new ArchiveRecord(id, tier, owner, ownerName);
         trusted.forEach(t -> record.trusted.put(t.id(), t.name()));
         record.placement = placement.orElse(null);
+        record.linked.addAll(linked);
         return record;
     }
 
@@ -91,6 +100,10 @@ public final class ArchiveRecord {
         return placement;
     }
 
+    public Set<Long> linked() {
+        return Collections.unmodifiableSet(linked);
+    }
+
     public boolean isAuthorized(UUID player) {
         return owner.equals(player) || trusted.containsKey(player);
     }
@@ -107,5 +120,13 @@ public final class ArchiveRecord {
 
     void removeTrusted(UUID id) {
         trusted.remove(id);
+    }
+
+    boolean addLinked(long serial) {
+        return linked.add(serial);
+    }
+
+    boolean removeLinked(long serial) {
+        return linked.remove(serial);
     }
 }

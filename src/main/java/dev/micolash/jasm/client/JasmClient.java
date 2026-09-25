@@ -15,6 +15,7 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(JasmMenus.DECK.get(), DeckScreen::new);
+        event.register(JasmMenus.ARCHIVE.get(), ArchiveScreen::new);
         event.register(JasmMenus.CREATIVE_BATTERY.get(), CreativeBatteryScreen::new);
     }
 }

@@ -1,6 +1,7 @@
 package dev.micolash.jasm.command;
 
 import com.mojang.brigadier.arguments.LongArgumentType;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.Stamp;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -8,11 +9,16 @@ import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.JasmState;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferIdentity;
+import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -23,7 +29,10 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
-/** Operator support commands. Wafers are named by the number on their tooltip. */
+/**
+ * Operator support commands. Wafers are named by their number, which admins see in tooltips; {@code /jasm wafer held}
+ * shows the numbers of the wafer or Deck in hand.
+ */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class JasmCommands {
     private JasmCommands() {}
@@ -34,6 +43,7 @@ public final class JasmCommands {
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("storage").then(Commands.literal("stats").executes(ctx -> stats(ctx.getSource()))))
                 .then(Commands.literal("wafer")
+                        .then(Commands.literal("held").executes(ctx -> held(ctx.getSource())))
                         .then(Commands.literal("info").then(Commands.argument("number", LongArgumentType.longArg(1))
                                 .executes(ctx -> info(ctx.getSource(), LongArgumentType.getLong(ctx, "number")))))
                         .then(Commands.literal("restore").then(Commands.argument("number", LongArgumentType.longArg(1))
@@ -68,6 +78,32 @@ public final class JasmCommands {
                 r.quarantinedCount(), r.contents().size(), r.current(), r.confirmed(), r.recoveryFloor(), r.archiveId(),
                 h.createdBy().isEmpty() ? "-" : h.createdBy(), lastUsed)), false);
         return 1;
+    }
+
+    /** Details of the wafer in the main hand, or of every wafer in a Deck held there. */
+    private static int held(CommandSourceStack source) throws CommandSyntaxException {
+        ItemStack stack = source.getPlayerOrException().getMainHandItem();
+        List<Long> serials = new ArrayList<>();
+        Consumer<ItemStack> collect = wafer -> {
+            WaferIdentity identity = wafer.get(JasmComponents.WAFER_IDENTITY.get());
+            if (identity != null) {
+                serials.add(identity.serial());
+            }
+        };
+        if (stack.getItem() instanceof WaferItem) {
+            collect.accept(stack);
+        } else if (stack.getItem() instanceof WaferHolderItem holder) {
+            holder.forEachWafer(stack, collect);
+        }
+        if (serials.isEmpty()) {
+            source.sendFailure(Component.literal("Hold a used wafer, or a Deck with used wafers, in your main hand"));
+            return 0;
+        }
+        int found = 0;
+        for (long serial : serials) {
+            found += info(source, serial);
+        }
+        return found;
     }
 
     private static int restore(CommandSourceStack source, long serial, ServerPlayer player) {

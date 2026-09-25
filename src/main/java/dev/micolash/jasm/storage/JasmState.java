@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import org.jspecify.annotations.Nullable;
@@ -104,6 +105,14 @@ public final class JasmState extends SavedData {
         return record;
     }
 
+    /** Recreates a lost record under its old id, so wafers linked to it still point at it. */
+    public ArchiveRecord restoreArchive(UUID id, ArchiveTier tier, UUID owner, String ownerName) {
+        ArchiveRecord record = new ArchiveRecord(id, tier, owner, ownerName);
+        archives.put(id, record);
+        setDirty();
+        return record;
+    }
+
     public Optional<ArchiveRecord> archive(UUID id) {
         return Optional.ofNullable(archives.get(id));
     }
@@ -125,6 +134,28 @@ public final class JasmState extends SavedData {
     public void untrust(ArchiveRecord record, UUID player) {
         record.removeTrusted(player);
         setDirty();
+    }
+
+    public void addLinked(ArchiveRecord record, long serial) {
+        if (record.addLinked(serial)) {
+            setDirty();
+        }
+    }
+
+    public void removeLinked(ArchiveRecord record, long serial) {
+        if (record.removeLinked(serial)) {
+            setDirty();
+        }
+    }
+
+    /**
+     * Writes this file now instead of at the next full save. Used after link and access changes, so that the
+     * Archive's list is never older than the wafer records, which are written behind player saves.
+     */
+    public void saveNow(MinecraftServer server) {
+        if (isDirty()) {
+            server.getDataStorage().saveAndJoin();
+        }
     }
 
     public int unreadableArchiveCount() {

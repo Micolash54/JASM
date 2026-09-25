@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "modifier": {
+            "type": "minecraft:copy_components",
+            "include": [
+              "jasm:archive_identity",
+              "jasm:energy"
+            ],
+            "source": "block_entity"
+          },
+          "name": "jasm:advanced_archive"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jasm:blocks/advanced_archive"
+}

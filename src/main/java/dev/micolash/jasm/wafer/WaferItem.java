@@ -56,15 +56,8 @@ public class WaferItem extends Item {
             TooltipFlag flag) {
         builder.accept(Component.translatable("tooltip.jasm.wafer.capacity", String.format("%,d", tier.capacity()))
                 .withStyle(ChatFormatting.GRAY));
-        WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());
-        if (identity == null) {
+        if (!stack.has(JasmComponents.WAFER_IDENTITY.get())) {
             builder.accept(Component.translatable("tooltip.jasm.wafer.blank").withStyle(ChatFormatting.DARK_GRAY));
-        } else {
-            builder.accept(Component.translatable("tooltip.jasm.wafer.serial", String.format("%,d", identity.serial()))
-                    .withStyle(ChatFormatting.DARK_GRAY));
-            if (flag.isAdvanced()) {
-                builder.accept(Component.literal(identity.id().toString()).withStyle(ChatFormatting.DARK_GRAY));
-            }
         }
     }
 }

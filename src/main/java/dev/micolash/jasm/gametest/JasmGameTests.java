@@ -31,6 +31,8 @@ public final class JasmGameTests {
         DeckMenuGameTests.register();
         DeckNetworkGameTests.register();
         BatteryGameTests.register();
+        ArchiveGameTests.register();
+        ArchiveServiceGameTests.register();
     }
 
     private JasmGameTests() {}
