@@ -109,7 +109,11 @@ public class DeckMenu extends AbstractContainerMenu {
         }
         ItemStack stack = slot.getItem();
         if (index < waferSlots) {
-            moveItemStackTo(stack, waferSlots, slots.size(), true);
+            // Hotbar first, left to right, then the inventory from its top-left slot.
+            int hotbar = waferSlots + 27;
+            if (!moveItemStackTo(stack, hotbar, hotbar + 9, false)) {
+                moveItemStackTo(stack, waferSlots, hotbar, false);
+            }
             slot.setChanged();
         } else if (stack.getItem() instanceof WaferItem) {
             moveItemStackTo(stack, 0, waferSlots, false);

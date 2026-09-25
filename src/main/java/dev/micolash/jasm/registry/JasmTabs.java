@@ -27,6 +27,7 @@ public final class JasmTabs {
                 for (WaferTier tier : WaferTier.values()) {
                     output.accept(JasmItems.wafer(tier));
                 }
+                output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());
 

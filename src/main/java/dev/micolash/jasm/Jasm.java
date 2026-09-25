@@ -3,6 +3,7 @@ package dev.micolash.jasm;
 import com.mojang.logging.LogUtils;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.gametest.JasmGameTests;
+import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
@@ -21,6 +22,8 @@ public final class Jasm {
 
     public Jasm(IEventBus modBus, ModContainer container) {
         JasmComponents.COMPONENTS.register(modBus);
+        JasmBlocks.BLOCKS.register(modBus);
+        JasmBlocks.BLOCK_ENTITIES.register(modBus);
         JasmItems.ITEMS.register(modBus);
         JasmTabs.TABS.register(modBus);
         JasmMenus.MENUS.register(modBus);

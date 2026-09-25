@@ -7,11 +7,14 @@ import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.EnumMap;
 import java.util.Map;
+import net.minecraft.world.item.BlockItem;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class JasmItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(Jasm.MODID);
+
+    public static final DeferredItem<BlockItem> CREATIVE_BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.CREATIVE_BATTERY);
 
     private static final Map<WaferTier, DeferredItem<WaferItem>> WAFERS = new EnumMap<>(WaferTier.class);
     private static final Map<DeckTier, DeferredItem<DeckItem>> DECKS = new EnumMap<>(DeckTier.class);
