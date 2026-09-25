@@ -1,7 +1,6 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.SearchQuery;
 import dev.micolash.jasm.deck.DeckItem;
@@ -135,7 +134,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private boolean hasPower() {
-        return menu.view().energy() >= JasmConfig.DECK_TRANSFER_BASE_COST.getAsInt() + JasmConfig.DECK_TRANSFER_PER_ITEM_COST.getAsInt();
+        return menu.view().energy() > 0;
     }
 
     // --- drawing ---

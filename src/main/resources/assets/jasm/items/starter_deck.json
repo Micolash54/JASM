@@ -1,6 +1,54 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "jasm:item/starter_deck"
+    "type": "minecraft:range_dispatch",
+    "property": "jasm:deck_charge",
+    "entries": [
+      {
+        "threshold": 1,
+        "model": {
+          "type": "minecraft:model",
+          "model": "jasm:item/starter_deck_charge_1"
+        }
+      },
+      {
+        "threshold": 2,
+        "model": {
+          "type": "minecraft:model",
+          "model": "jasm:item/starter_deck_charge_2"
+        }
+      },
+      {
+        "threshold": 3,
+        "model": {
+          "type": "minecraft:model",
+          "model": "jasm:item/starter_deck_charge_3"
+        }
+      },
+      {
+        "threshold": 4,
+        "model": {
+          "type": "minecraft:model",
+          "model": "jasm:item/starter_deck_charge_4"
+        }
+      },
+      {
+        "threshold": 5,
+        "model": {
+          "type": "minecraft:model",
+          "model": "jasm:item/starter_deck_charge_5"
+        }
+      },
+      {
+        "threshold": 6,
+        "model": {
+          "type": "minecraft:model",
+          "model": "jasm:item/starter_deck_charge_6"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "jasm:item/starter_deck_charge_0"
+    }
   }
 }

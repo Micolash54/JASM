@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "jasm:item/elite_deck",
+    "layer1": "jasm:item/deck_charge_4"
+  }
+}

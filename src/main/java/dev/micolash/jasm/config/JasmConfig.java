@@ -10,12 +10,6 @@ public final class JasmConfig {
         BUILDER.push("deck");
     }
 
-    public static final ModConfigSpec.IntValue DECK_TRANSFER_BASE_COST = BUILDER
-            .comment("FE charged per successful Deck grid operation")
-            .defineInRange("transferBaseCost", 20, 0, 1_000_000);
-    public static final ModConfigSpec.IntValue DECK_TRANSFER_PER_ITEM_COST = BUILDER
-            .comment("FE charged per item moved by a Deck grid operation")
-            .defineInRange("transferPerItemCost", 1, 0, 1_000_000);
     public static final ModConfigSpec.IntValue DECK_MAX_OPS_PER_TICK = BUILDER
             .comment("Deck grid operations accepted per player per tick; excess requests are dropped")
             .defineInRange("maxOpsPerTick", 20, 1, 1_000);

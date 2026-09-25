@@ -6,11 +6,18 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
 
 /** Client-only setup. */
 @EventBusSubscriber(modid = Jasm.MODID, value = Dist.CLIENT)
 public final class JasmClient {
     private JasmClient() {}
+
+    /** Lets item models pick a Deck's picture by how charged it is. */
+    @SubscribeEvent
+    static void registerItemProperties(RegisterRangeSelectItemModelPropertyEvent event) {
+        event.register(Jasm.id("deck_charge"), DeckCharge.MAP_CODEC);
+    }
 
     @SubscribeEvent
     static void registerScreens(RegisterMenuScreensEvent event) {
