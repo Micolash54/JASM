@@ -45,7 +45,7 @@ public final class ArchiveRecord {
             .apply(i, ArchiveRecord::decode));
 
     private final UUID id;
-    private final ArchiveTier tier;
+    private ArchiveTier tier;
     private final UUID owner;
     private final String ownerName;
     private final Map<UUID, String> trusted = new LinkedHashMap<>();
@@ -109,6 +109,10 @@ public final class ArchiveRecord {
     }
 
     // --- package-private mutators, called only by JasmState ---
+
+    void setTier(ArchiveTier tier) {
+        this.tier = tier;
+    }
 
     void setPlacement(@Nullable Placement placement) {
         this.placement = placement;

@@ -319,6 +319,30 @@ public final class WaferStore {
         return taken;
     }
 
+    /**
+     * Moves everything {@code source} holds into {@code target}, including items from removed mods, then closes the
+     * source: it is unlinked, and its record jumps past every copy of it, so none of them can use it or be recovered
+     * from it again. Used when wafers are crafted into a bigger one; the caller checks everything fits.
+     */
+    public void absorb(WaferRecord target, WaferRecord source, @Nullable Player actor) {
+        source.moveQuarantinedTo(target);
+        target.changed(uuid(actor));
+        for (Map.Entry<ItemResource, Long> entry : List.copyOf(source.contents().entrySet())) {
+            long moved = insert(target, entry.getKey(), entry.getValue(), false, actor);
+            extract(source, entry.getKey(), moved, false, actor);
+            if (moved < entry.getValue()) {
+                Jasm.LOGGER.error("Wafer #{} had no room for {} of {} from wafer #{}; they stay on #{}", target.serial(),
+                        entry.getValue() - moved, entry.getKey(), source.serial(), source.serial());
+            }
+        }
+        UUID archiveId = source.archiveId();
+        if (archiveId != null) {
+            state.archive(archiveId).ifPresent(archive -> state.removeLinked(archive, source.serial()));
+            setLink(source, null, source.lastKnownName(), actor);
+        }
+        reissue(source, source.capacity(), actor);
+    }
+
     public void setLink(WaferRecord record, @Nullable UUID archiveId, String displayName, @Nullable Player actor) {
         record.setArchiveId(archiveId);
         record.setLastKnownName(displayName);

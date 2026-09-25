@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:gold_ingot",
+    "Y": "minecraft:diamond",
+    "R": "minecraft:redstone",
+    "W": "jasm:capacity_wafer_basic"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "WRW"
+  ],
+  "source": "jasm:capacity_wafer_basic",
+  "result": {
+    "id": "jasm:capacity_wafer_1k"
+  },
+  "merge_wafers": true
+}

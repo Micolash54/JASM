@@ -1,0 +1,18 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:diamond",
+    "Y": "minecraft:ender_pearl",
+    "R": "minecraft:redstone",
+    "P": "jasm:basic_combustion_generator"
+  },
+  "pattern": [
+    "XYX",
+    "RPR",
+    "XRX"
+  ],
+  "source": "jasm:basic_combustion_generator",
+  "result": {
+    "id": "jasm:advanced_combustion_generator"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone",
+    "F": "minecraft:furnace"
+  },
+  "pattern": [
+    "ICI",
+    "RFR",
+    "IRI"
+  ],
+  "result": {
+    "id": "jasm:basic_combustion_generator"
+  }
+}

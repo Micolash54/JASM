@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.wafer.WaferIdentity;
+import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.core.UUIDUtil;
@@ -19,6 +20,10 @@ public final class JasmComponents {
     /** Absent on blank (unformatted) wafers. */
     public static final Supplier<DataComponentType<WaferIdentity>> WAFER_IDENTITY = COMPONENTS.registerComponentType(
             "wafer_identity", b -> b.persistent(WaferIdentity.CODEC).networkSynchronized(WaferIdentity.STREAM_CODEC));
+
+    /** On a wafer crafted from smaller ones whose items haven't moved over yet (see WaferMerge). */
+    public static final Supplier<DataComponentType<WaferMerge>> WAFER_MERGE = COMPONENTS.registerComponentType(
+            "wafer_merge", b -> b.persistent(WaferMerge.CODEC).networkSynchronized(WaferMerge.STREAM_CODEC));
 
     /** The wafers inside a Deck. */
     public static final Supplier<DataComponentType<DeckWafers>> DECK_WAFERS = COMPONENTS.registerComponentType(

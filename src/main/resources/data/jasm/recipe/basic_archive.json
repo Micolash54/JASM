@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "D": "minecraft:diamond",
+    "R": "minecraft:redstone",
+    "A": "minecraft:amethyst_block"
+  },
+  "pattern": [
+    "IDI",
+    "RAR",
+    "IRI"
+  ],
+  "result": {
+    "id": "jasm:basic_archive"
+  }
+}

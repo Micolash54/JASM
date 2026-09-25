@@ -4,6 +4,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferValidator;
 import net.minecraft.core.NonNullList;
 import net.minecraft.server.level.ServerPlayer;
@@ -85,7 +86,7 @@ public final class DeckWaferContainer implements Container {
     public void setItem(int slot, ItemStack stack) {
         wafers.set(slot, stack);
         if (player instanceof ServerPlayer serverPlayer && stack.getItem() instanceof WaferItem
-                && stack.get(JasmComponents.WAFER_IDENTITY.get()) instanceof WaferIdentity) {
+                && (stack.get(JasmComponents.WAFER_IDENTITY.get()) instanceof WaferIdentity || WaferMerge.isPending(stack))) {
             WaferValidator.validate(WaferStore.get(serverPlayer.level().getServer()), stack, WaferValidator.Mode.ACTIVATE, serverPlayer);
             if (stack.isEmpty()) {
                 wafers.set(slot, ItemStack.EMPTY);

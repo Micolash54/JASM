@@ -40,15 +40,31 @@ public class WaferItem extends Item {
         if (!(owner instanceof Player player)) {
             return;
         }
+        int interval = JasmConfig.WAFER_PASSIVE_CHECK_INTERVAL.getAsInt();
+        if (WaferMerge.isPending(stack)) {
+            // Normally settled the moment it is crafted; this catches wafers made by a Crafter or another mod.
+            if (level.getGameTime() % interval == 0) {
+                WaferMerge.settle(WaferStore.get(level.getServer()), stack, player);
+            }
+            return;
+        }
         WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());
         if (identity == null) {
             return;
         }
-        int interval = JasmConfig.WAFER_PASSIVE_CHECK_INTERVAL.getAsInt();
         if (Math.floorMod(level.getGameTime() + identity.id().hashCode(), interval) != 0) {
             return;
         }
         WaferValidator.validate(WaferStore.get(level.getServer()), stack, WaferValidator.Mode.PASSIVE, player);
+    }
+
+    /** A wafer crafted from smaller ones takes over their items as soon as the player takes it. */
+    @Override
+    public void onCraftedBy(ItemStack stack, Player player) {
+        super.onCraftedBy(stack, player);
+        if (player.level() instanceof ServerLevel level && WaferMerge.isPending(stack)) {
+            WaferMerge.settle(WaferStore.get(level.getServer()), stack, player);
+        }
     }
 
     @Override
@@ -56,7 +72,9 @@ public class WaferItem extends Item {
             TooltipFlag flag) {
         builder.accept(Component.translatable("tooltip.jasm.wafer.capacity", String.format("%,d", tier.capacity()))
                 .withStyle(ChatFormatting.GRAY));
-        if (!stack.has(JasmComponents.WAFER_IDENTITY.get())) {
+        if (WaferMerge.isPending(stack)) {
+            builder.accept(Component.translatable("tooltip.jasm.wafer.combining").withStyle(ChatFormatting.DARK_GRAY));
+        } else if (!stack.has(JasmComponents.WAFER_IDENTITY.get())) {
             builder.accept(Component.translatable("tooltip.jasm.wafer.blank").withStyle(ChatFormatting.DARK_GRAY));
         }
     }

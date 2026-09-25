@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:diamond",
+    "Y": "minecraft:ender_pearl",
+    "R": "minecraft:redstone",
+    "W": "jasm:capacity_wafer_1k"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "WRW"
+  ],
+  "source": "jasm:capacity_wafer_1k",
+  "result": {
+    "id": "jasm:capacity_wafer_4k"
+  },
+  "merge_wafers": true
+}

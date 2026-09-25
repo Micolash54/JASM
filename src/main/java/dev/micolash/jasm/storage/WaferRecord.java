@@ -274,6 +274,14 @@ public final class WaferRecord {
         }
     }
 
+    /** Hands this wafer's entries from removed mods to {@code target}. */
+    void moveQuarantinedTo(WaferRecord target) {
+        target.quarantined.addAll(quarantined);
+        target.quarantinedCount += quarantinedCount;
+        quarantined.clear();
+        quarantinedCount = 0;
+    }
+
     void written() {
         dirty = false;
         changedBy.clear();

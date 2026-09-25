@@ -126,6 +126,14 @@ public final class JasmState extends SavedData {
         return archives.size();
     }
 
+    /** An Archive was crafted into a higher tier: same record, more registrations. Tiers only go up. */
+    public void upgradeTier(ArchiveRecord record, ArchiveTier tier) {
+        if (tier.ordinal() > record.tier().ordinal()) {
+            record.setTier(tier);
+            setDirty();
+        }
+    }
+
     public void setPlacement(ArchiveRecord record, ArchiveRecord.@Nullable Placement placement) {
         record.setPlacement(placement);
         setDirty();

@@ -40,6 +40,13 @@ public final class WaferValidator {
         if (!(stack.getItem() instanceof WaferItem wafer)) {
             throw new IllegalArgumentException("Not a wafer: " + stack);
         }
+        if (WaferMerge.isPending(stack) && !WaferMerge.settle(store, stack, holder)) {
+            // Crafted from wafers whose records can't be read yet: locked until they can.
+            if (mode != Mode.PASSIVE) {
+                notify(holder, "message.jasm.wafer.unreadable");
+            }
+            return Verdict.UNREADABLE;
+        }
         WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());
         if (identity == null) {
             return Verdict.UNFORMATTED;
@@ -118,6 +125,12 @@ public final class WaferValidator {
         WaferRecord record = store.create(wafer.tier().capacity(), holder);
         stack.set(JasmComponents.WAFER_IDENTITY.get(), new WaferIdentity(record.id(), record.serial(), record.current()));
         return record;
+    }
+
+    /** Gives a crafted wafer that is still waiting (see {@link WaferMerge}) its own new record. */
+    static WaferRecord formatPending(WaferStore store, ItemStack stack, @Nullable Player holder) {
+        stack.remove(JasmComponents.WAFER_MERGE.get());
+        return format(store, stack, holder);
     }
 
     /** The record of a stack that has just been validated as granting access. */

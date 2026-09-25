@@ -15,7 +15,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class JasmTabs {
     public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Jasm.MODID);
 
-    /** Build 1 is creative-only: every JASM item is obtained here. Each Deck is listed empty and fully charged. */
+    /** Every JASM item. Each Deck is listed empty and fully charged. */
     public static final Supplier<CreativeModeTab> MAIN = TABS.register("main", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.jasm.main"))
             .icon(() -> JasmItems.deck(DeckTier.ULTIMATE).getDefaultInstance())

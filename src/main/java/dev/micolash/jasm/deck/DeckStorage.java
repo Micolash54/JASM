@@ -8,6 +8,7 @@ import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferValidator;
 import dev.micolash.jasm.wafer.WaferValidator.Mode;
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ public final class DeckStorage {
         }
 
         boolean isBlank() {
-            return wafer.getItem() instanceof WaferItem && !wafer.has(JasmComponents.WAFER_IDENTITY.get());
+            return wafer.getItem() instanceof WaferItem && !wafer.has(JasmComponents.WAFER_IDENTITY.get()) && !WaferMerge.isPending(wafer);
         }
     }
 

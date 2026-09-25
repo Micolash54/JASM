@@ -1,0 +1,18 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:emerald",
+    "Y": "minecraft:blaze_rod",
+    "R": "minecraft:redstone",
+    "P": "jasm:basic_archive"
+  },
+  "pattern": [
+    "XYX",
+    "RPR",
+    "XRX"
+  ],
+  "source": "jasm:basic_archive",
+  "result": {
+    "id": "jasm:advanced_archive"
+  }
+}

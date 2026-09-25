@@ -6,6 +6,7 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
+import dev.micolash.jasm.registry.JasmRecipes;
 import dev.micolash.jasm.registry.JasmTabs;
 import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
@@ -26,6 +27,7 @@ public final class Jasm {
         JasmItems.ITEMS.register(modBus);
         JasmTabs.TABS.register(modBus);
         JasmMenus.MENUS.register(modBus);
+        JasmRecipes.SERIALIZERS.register(modBus);
         container.registerConfig(ModConfig.Type.SERVER, JasmConfig.SPEC);
     }
 

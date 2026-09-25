@@ -1,0 +1,18 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:emerald",
+    "Y": "minecraft:blaze_rod",
+    "R": "minecraft:redstone",
+    "P": "jasm:advanced_combustion_generator"
+  },
+  "pattern": [
+    "XYX",
+    "RPR",
+    "XRX"
+  ],
+  "source": "jasm:advanced_combustion_generator",
+  "result": {
+    "id": "jasm:elite_combustion_generator"
+  }
+}

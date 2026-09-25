@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "R": "minecraft:redstone",
+    "A": "minecraft:amethyst_shard"
+  },
+  "pattern": [
+    "IGI",
+    "RAR",
+    "IRI"
+  ],
+  "result": {
+    "id": "jasm:starter_deck"
+  }
+}

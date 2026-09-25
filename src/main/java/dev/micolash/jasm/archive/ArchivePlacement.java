@@ -32,6 +32,10 @@ public final class ArchivePlacement {
         boolean fresh = record == null;
         if (id != null && record == null) {
             Jasm.LOGGER.warn("Archive placed at {} carries unknown record {}; it becomes a new Archive", here, id);
+        } else if (record != null && record.tier().ordinal() < archive.tier().ordinal() && record.placement() == null) {
+            // Crafted into a higher tier while carried: same Archive, more registrations.
+            Jasm.LOGGER.info("Archive {} placed at {} was upgraded from {} to {}", id, here, record.tier(), archive.tier());
+            state.upgradeTier(record, archive.tier());
         } else if (record != null && record.tier() != archive.tier()) {
             Jasm.LOGGER.warn("Archive placed at {} carries record {} of another tier; it becomes a new Archive", here, id);
             fresh = true;

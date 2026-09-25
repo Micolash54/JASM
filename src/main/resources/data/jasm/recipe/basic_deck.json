@@ -1,0 +1,18 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:gold_ingot",
+    "Y": "minecraft:diamond",
+    "R": "minecraft:redstone",
+    "P": "jasm:starter_deck"
+  },
+  "pattern": [
+    "XYX",
+    "RPR",
+    "XRX"
+  ],
+  "source": "jasm:starter_deck",
+  "result": {
+    "id": "jasm:basic_deck"
+  }
+}

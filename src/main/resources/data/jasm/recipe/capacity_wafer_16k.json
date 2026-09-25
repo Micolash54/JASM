@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:emerald",
+    "Y": "minecraft:blaze_rod",
+    "R": "minecraft:redstone",
+    "W": "jasm:capacity_wafer_4k"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "WRW"
+  ],
+  "source": "jasm:capacity_wafer_4k",
+  "result": {
+    "id": "jasm:capacity_wafer_16k"
+  },
+  "merge_wafers": true
+}

@@ -10,6 +10,7 @@ import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferValidator;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -107,7 +108,7 @@ public final class ArchiveService {
             return Result.NO_WAFER;
         }
         WaferRecord record = null;
-        if (wafer.has(JasmComponents.WAFER_IDENTITY.get())) {
+        if (wafer.has(JasmComponents.WAFER_IDENTITY.get()) || WaferMerge.isPending(wafer)) {
             Verdict verdict = WaferValidator.validate(store, wafer, WaferValidator.Mode.PASSIVE, player);
             if (verdict != Verdict.VALID && verdict != Verdict.VALID_AHEAD) {
                 return verdict == Verdict.UNFORMATTED ? Result.NO_WAFER : Result.WAFER_LOCKED;
@@ -273,7 +274,7 @@ public final class ArchiveService {
 
     /** Unformatted, or formatted with nothing stored and no link (and not the wafer being recovered). */
     public static boolean isBlank(WaferStore store, ItemStack stack, @Nullable WaferRecord recovering) {
-        if (!(stack.getItem() instanceof WaferItem) || stack.getCount() != 1) {
+        if (!(stack.getItem() instanceof WaferItem) || stack.getCount() != 1 || WaferMerge.isPending(stack)) {
             return false;
         }
         WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());
