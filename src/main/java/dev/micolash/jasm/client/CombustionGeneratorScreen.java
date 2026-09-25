@@ -1,7 +1,6 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -49,7 +48,7 @@ public class CombustionGeneratorScreen extends AbstractContainerScreen<Combustio
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, FLAME, FLAME_SIZE, FLAME_SIZE, 0, FLAME_SIZE - height,
                     x + FLAME_X, y + FLAME_Y + FLAME_SIZE - height, FLAME_SIZE, height);
         }
-        JasmGui.bar(graphics, x + BAR_X - 1, y + BAR_Y, BAR_WIDTH + 2, 7, menu.energy() / (double) CombustionGeneratorBlockEntity.CAPACITY);
+        JasmGui.bar(graphics, x + BAR_X - 1, y + BAR_Y, BAR_WIDTH + 2, 7, menu.capacity() <= 0 ? 0 : menu.energy() / (double) menu.capacity());
     }
 
     @Override
@@ -61,7 +60,7 @@ public class CombustionGeneratorScreen extends AbstractContainerScreen<Combustio
         if (menu.output() > 0) {
             status = Component.translatable("screen.jasm.combustion_generator.burning", String.format("%,d", menu.output()));
             color = JasmGui.GOOD;
-        } else if (menu.flame() > 0 || menu.energy() >= CombustionGeneratorBlockEntity.CAPACITY) {
+        } else if (menu.flame() > 0 || (menu.capacity() > 0 && menu.energy() >= menu.capacity())) {
             status = Component.translatable("screen.jasm.combustion_generator.full");
             color = JasmGui.SUBTEXT;
         } else {
@@ -70,7 +69,7 @@ public class CombustionGeneratorScreen extends AbstractContainerScreen<Combustio
         }
         graphics.text(font, status, (imageWidth - font.width(status)) / 2, STATUS_Y, color, false);
         Component charge = Component.translatable("screen.jasm.combustion_generator.charge",
-                String.format("%,d", menu.energy()), String.format("%,d", CombustionGeneratorBlockEntity.CAPACITY));
+                String.format("%,d", menu.energy()), String.format("%,d", menu.capacity()));
         graphics.text(font, charge, (imageWidth - font.width(charge)) / 2, CHARGE_TEXT_Y, JasmGui.SUBTEXT, false);
     }
 }

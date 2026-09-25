@@ -29,10 +29,8 @@ displayName="${mod_name}" #mandatory
 # A URL for the "homepage" for this mod, displayed in the mod UI
 #displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #optional
 
-# A file name (in the root of the mod JAR) containing a logo for display
-logoFile="jasm_logo.png" #optional
-# Pixel art: keep it sharp when scaled
-logoBlur=false
+# A file name (in the root of the mod JAR) containing a banner for display in the mod list
+bannerFile="jasm_logo.png" #optional
 
 # A text field displayed in the mod UI
 #credits="" #optional

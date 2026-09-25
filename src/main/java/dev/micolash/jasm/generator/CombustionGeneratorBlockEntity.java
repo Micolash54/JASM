@@ -2,7 +2,6 @@ package dev.micolash.jasm.generator;
 
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
-import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.EnumMap;
@@ -52,16 +51,10 @@ import org.jspecify.annotations.Nullable;
 public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     public static final int FUEL_SLOT = 0;
     public static final int CHARGE_SLOT = 1;
-    public static final int CAPACITY = 100_000;
-
+    private final GeneratorTier tier;
     private NonNullList<ItemStack> items = NonNullList.withSize(2, ItemStack.EMPTY);
-    private final SimpleEnergyHandler energy = new SimpleEnergyHandler(CAPACITY, CAPACITY, CAPACITY) {
-        @Override
-        protected void onEnergyChanged(int previousAmount) {
-            setChanged();
-        }
-    };
-    private final EnergyHandler output = new LimitingEnergyHandler(energy, 0, CAPACITY);
+    private final SimpleEnergyHandler energy;
+    private final EnergyHandler output;
     private final ResourceHandler<ItemResource> slots = VanillaContainerWrapper.of(this);
     private final ResourceHandler<ItemResource> automation = new Automation();
     private final Map<Direction, BlockCapabilityCache<EnergyHandler, @Nullable Direction>> neighbours = new EnumMap<>(Direction.class);
@@ -78,6 +71,8 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
                 case CombustionGeneratorMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
                 case CombustionGeneratorMenu.DATA_FLAME -> burnTotal <= 0 ? 0 : (int) Math.ceil(burnLeft * 1000.0 / burnTotal);
                 case CombustionGeneratorMenu.DATA_OUTPUT -> lastOutput;
+                case CombustionGeneratorMenu.DATA_CAPACITY_LOW -> tier.capacity() & 0xFFFF;
+                case CombustionGeneratorMenu.DATA_CAPACITY_HIGH -> tier.capacity() >>> 16;
                 default -> 0;
             };
         }
@@ -93,13 +88,25 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
 
     public CombustionGeneratorBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.COMBUSTION_GENERATOR_ENTITY.get(), pos, state);
+        this.tier = state.getBlock() instanceof CombustionGeneratorBlock block ? block.tier() : GeneratorTier.BASIC;
+        this.energy = new SimpleEnergyHandler(tier.capacity(), tier.capacity(), tier.capacity()) {
+            @Override
+            protected void onEnergyChanged(int previousAmount) {
+                setChanged();
+            }
+        };
+        this.output = new LimitingEnergyHandler(energy, 0, tier.capacity());
+    }
+
+    public GeneratorTier tier() {
+        return tier;
     }
 
     static void serverTick(Level level, BlockPos pos, BlockState state, CombustionGeneratorBlockEntity generator) {
         ServerLevel serverLevel = (ServerLevel) level;
         generator.burn(serverLevel);
         generator.pushToNeighbours(serverLevel);
-        generator.charge(JasmConfig.GENERATOR_CHARGE_PER_TICK.getAsInt());
+        generator.charge(generator.tier.transferPerTick());
         boolean lit = generator.burnLeft > 0;
         if (state.getValue(CombustionGeneratorBlock.LIT) != lit) {
             level.setBlock(pos, state.setValue(CombustionGeneratorBlock.LIT, lit), 3);
@@ -108,9 +115,9 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
 
     /** One tick of burning. Starts the next fuel item only when the buffer has room for what it makes. */
     public void burn(ServerLevel level) {
-        int rate = JasmConfig.GENERATOR_FE_PER_TICK.getAsInt();
+        int rate = tier.fePerTick();
         lastOutput = 0;
-        if (rate <= 0 || CAPACITY - energy.getAmountAsInt() < rate) {
+        if (tier.capacity() - energy.getAmountAsInt() < rate) {
             return;
         }
         if (burnLeft <= 0) {
@@ -128,9 +135,10 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
         lastOutput = rate;
     }
 
-    /** How long a furnace would burn this item, in ticks. */
+    /** How long this item burns here, in ticks: its furnace burn time, sped up by the tier. */
     public int burnDuration(ServerLevel level, ItemStack fuel) {
-        return fuel.isEmpty() ? 0 : ResolvableInt.getFromItem(fuel, DataComponents.COOKING_FUEL, CookingFuel::burnTime, getLootContext(level, fuel), 0);
+        return fuel.isEmpty() ? 0
+                : tier.burnTicks(ResolvableInt.getFromItem(fuel, DataComponents.COOKING_FUEL, CookingFuel::burnTime, getLootContext(level, fuel), 0));
     }
 
     /** Uses up one fuel item, leaving what a furnace leaves (a lava bucket leaves its bucket). */
@@ -149,9 +157,9 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
 
     /** Up to the per-side limit into each touching block that takes FE. */
     public void pushToNeighbours(ServerLevel level) {
-        int limit = JasmConfig.GENERATOR_PUSH_PER_FACE_PER_TICK.getAsInt();
+        int limit = tier.transferPerTick();
         for (Direction side : Direction.values()) {
-            if (limit <= 0 || energy.getAmountAsInt() <= 0) {
+            if (energy.getAmountAsInt() <= 0) {
                 return;
             }
             EnergyHandler target = neighbours
@@ -240,7 +248,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new CombustionGeneratorMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition));
+        return new CombustionGeneratorMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition), getBlockState().getBlock());
     }
 
     // --- saving ---
@@ -259,7 +267,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
         super.loadAdditional(input);
         items = NonNullList.withSize(getContainerSize(), ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
-        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, CAPACITY));
+        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, tier.capacity()));
         burnLeft = Math.max(0, input.getIntOr("burn_left", 0));
         burnTotal = Math.max(burnLeft, input.getIntOr("burn_total", 0));
     }
@@ -276,7 +284,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
-        energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, CAPACITY));
+        energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, tier.capacity()));
     }
 
     @Override

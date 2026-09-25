@@ -3,6 +3,7 @@ package dev.micolash.jasm.registry;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.deck.DeckTier;
+import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
@@ -31,7 +32,9 @@ public final class JasmTabs {
                 for (ArchiveTier tier : ArchiveTier.values()) {
                     output.accept(JasmItems.archive(tier));
                 }
-                output.accept(JasmItems.COMBUSTION_GENERATOR);
+                for (GeneratorTier tier : GeneratorTier.values()) {
+                    output.accept(JasmItems.generator(tier));
+                }
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());

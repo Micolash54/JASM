@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
+import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.EnumMap;
@@ -16,11 +17,11 @@ public final class JasmItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(Jasm.MODID);
 
     public static final DeferredItem<BlockItem> CREATIVE_BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.CREATIVE_BATTERY);
-    public static final DeferredItem<BlockItem> COMBUSTION_GENERATOR = ITEMS.registerSimpleBlockItem(JasmBlocks.COMBUSTION_GENERATOR);
 
     private static final Map<ArchiveTier, DeferredItem<BlockItem>> ARCHIVES = new EnumMap<>(ArchiveTier.class);
     private static final Map<WaferTier, DeferredItem<WaferItem>> WAFERS = new EnumMap<>(WaferTier.class);
     private static final Map<DeckTier, DeferredItem<DeckItem>> DECKS = new EnumMap<>(DeckTier.class);
+    private static final Map<GeneratorTier, DeferredItem<BlockItem>> GENERATORS = new EnumMap<>(GeneratorTier.class);
 
     static {
         for (DeckTier tier : DeckTier.values()) {
@@ -32,6 +33,9 @@ public final class JasmItems {
         for (WaferTier tier : WaferTier.values()) {
             WAFERS.put(tier, ITEMS.registerItem(tier.registryName(), p -> new WaferItem(p, tier)));
         }
+        for (GeneratorTier tier : GeneratorTier.values()) {
+            GENERATORS.put(tier, ITEMS.registerSimpleBlockItem(JasmBlocks.generator(tier)));
+        }
     }
 
     public static WaferItem wafer(WaferTier tier) {
@@ -40,6 +44,10 @@ public final class JasmItems {
 
     public static BlockItem archive(ArchiveTier tier) {
         return ARCHIVES.get(tier).get();
+    }
+
+    public static BlockItem generator(GeneratorTier tier) {
+        return GENERATORS.get(tier).get();
     }
 
     public static DeckItem deck(DeckTier tier) {

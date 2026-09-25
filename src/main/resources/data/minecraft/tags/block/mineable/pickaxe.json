@@ -4,6 +4,8 @@
     "jasm:basic_archive",
     "jasm:advanced_archive",
     "jasm:ultimate_archive",
-    "jasm:combustion_generator"
+    "jasm:basic_combustion_generator",
+    "jasm:advanced_combustion_generator",
+    "jasm:elite_combustion_generator"
   ]
 }

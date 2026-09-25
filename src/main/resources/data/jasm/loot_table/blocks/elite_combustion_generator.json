@@ -13,7 +13,7 @@
             ],
             "source": "block_entity"
           },
-          "name": "jasm:combustion_generator"
+          "name": "jasm:elite_combustion_generator"
         }
       ],
       "conditions": [
@@ -23,5 +23,5 @@
       ]
     }
   ],
-  "random_sequence": "jasm:blocks/combustion_generator"
+  "random_sequence": "jasm:blocks/elite_combustion_generator"
 }

@@ -23,15 +23,22 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
-/** Burns anything a furnace burns and turns it into FE for its neighbours and the item in its charging slot. */
+/** Burns anything a furnace burns and turns it into FE for its neighbours and the item in its charging slot. One block per tier. */
 public class CombustionGeneratorBlock extends BaseEntityBlock {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     /** A fuel item is burning (or waiting, banked, for room in the buffer). */
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
 
-    public CombustionGeneratorBlock(BlockBehaviour.Properties properties) {
+    private final GeneratorTier tier;
+
+    public CombustionGeneratorBlock(BlockBehaviour.Properties properties, GeneratorTier tier) {
         super(properties);
+        this.tier = tier;
         registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(LIT, false));
+    }
+
+    public GeneratorTier tier() {
+        return tier;
     }
 
     @Override

@@ -8,6 +8,7 @@ import dev.micolash.jasm.battery.CreativeBatteryBlock;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
+import dev.micolash.jasm.generator.GeneratorTier;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -27,9 +28,15 @@ public final class JasmBlocks {
     public static final DeferredBlock<CreativeBatteryBlock> CREATIVE_BATTERY = BLOCKS.registerBlock("creative_battery",
             CreativeBatteryBlock::new, p -> p.mapColor(MapColor.COLOR_MAGENTA).strength(1.5F).sound(SoundType.METAL));
 
-    public static final DeferredBlock<CombustionGeneratorBlock> COMBUSTION_GENERATOR = BLOCKS.registerBlock("combustion_generator",
-            CombustionGeneratorBlock::new, p -> p.mapColor(MapColor.STONE).requiresCorrectToolForDrops().strength(3.5F).sound(SoundType.METAL)
-                    .lightLevel(state -> state.getValue(CombustionGeneratorBlock.LIT) ? 13 : 0));
+    private static final Map<GeneratorTier, DeferredBlock<CombustionGeneratorBlock>> GENERATORS = new EnumMap<>(GeneratorTier.class);
+
+    static {
+        for (GeneratorTier tier : GeneratorTier.values()) {
+            GENERATORS.put(tier, BLOCKS.registerBlock(tier.registryName(), p -> new CombustionGeneratorBlock(p, tier),
+                    p -> p.mapColor(MapColor.STONE).requiresCorrectToolForDrops().strength(3.5F).sound(SoundType.METAL)
+                            .lightLevel(state -> state.getValue(CombustionGeneratorBlock.LIT) ? 13 : 0)));
+        }
+    }
 
     private static final Map<ArchiveTier, DeferredBlock<ArchiveBlock>> ARCHIVES = new EnumMap<>(ArchiveTier.class);
 
@@ -47,7 +54,12 @@ public final class JasmBlocks {
             "creative_battery", () -> new BlockEntityType<>(CreativeBatteryBlockEntity::new, CREATIVE_BATTERY.get()));
 
     public static final Supplier<BlockEntityType<CombustionGeneratorBlockEntity>> COMBUSTION_GENERATOR_ENTITY = BLOCK_ENTITIES.register(
-            "combustion_generator", () -> new BlockEntityType<>(CombustionGeneratorBlockEntity::new, COMBUSTION_GENERATOR.get()));
+            "combustion_generator", () -> new BlockEntityType<>(CombustionGeneratorBlockEntity::new,
+                    GENERATORS.values().stream().map(DeferredBlock::get).collect(Collectors.toSet())));
+
+    public static DeferredBlock<CombustionGeneratorBlock> generator(GeneratorTier tier) {
+        return GENERATORS.get(tier);
+    }
 
     public static DeferredBlock<ArchiveBlock> archive(ArchiveTier tier) {
         return ARCHIVES.get(tier);

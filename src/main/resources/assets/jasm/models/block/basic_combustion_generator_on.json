@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/orientable",
   "textures": {
-    "front": "jasm:block/combustion_generator_front",
+    "front": "jasm:block/basic_combustion_generator_front_on",
     "side": "jasm:block/archive_casing",
     "top": "jasm:block/archive_casing"
   }
