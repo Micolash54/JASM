@@ -35,6 +35,8 @@ public final class DeckNetwork {
                         (payload, context) -> extract((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.Insert.TYPE, DeckPayloads.Insert.STREAM_CODEC,
                         (payload, context) -> insert((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.Configure.TYPE, DeckPayloads.Configure.STREAM_CODEC,
+                        (payload, context) -> configure((ServerPlayer) context.player(), payload))
                 .playToClient(DeckPayloads.Snapshot.TYPE, DeckPayloads.Snapshot.STREAM_CODEC, DeckNetwork::onSnapshot)
                 .playToClient(DeckPayloads.Delta.TYPE, DeckPayloads.Delta.STREAM_CODEC, DeckNetwork::onDelta)
                 .playToClient(DeckPayloads.Status.TYPE, DeckPayloads.Status.STREAM_CODEC, DeckNetwork::onStatus);
@@ -100,6 +102,19 @@ public final class DeckNetwork {
         menu.setCarried(carried);
         finish(player, menu);
         return moved;
+    }
+
+    /** Changes one wafer's routing settings. The settings clean themselves up; the slot must hold a usable wafer. */
+    public static boolean configure(ServerPlayer player, DeckPayloads.Configure payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !allow(player) || payload.slot() < 0 || payload.slot() >= menu.waferSlots()) {
+            return false;
+        }
+        WaferStore store = WaferStore.get(player.level().getServer());
+        menu.wafers().flush();
+        boolean done = DeckStorage.configure(store, menu.deck(), payload.slot(), payload.settings(), player);
+        finish(player, menu);
+        return done;
     }
 
     private static void finish(ServerPlayer player, DeckMenu menu) {

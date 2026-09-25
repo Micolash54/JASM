@@ -4,6 +4,7 @@ import dev.micolash.jasm.core.DepositRouter;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
+import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
@@ -41,6 +42,21 @@ public final class DeckStorage {
         }
 
         @Override
+        public int priority() {
+            return record == null ? 0 : record.settings().priority();
+        }
+
+        @Override
+        public boolean listed(ItemResource key) {
+            return record != null && record.settings().lists(key.getItem());
+        }
+
+        @Override
+        public boolean only() {
+            return record != null && record.settings().only();
+        }
+
+        @Override
         public long room(ItemResource key) {
             if (record != null) {
                 return record.roomFor(key);
@@ -58,8 +74,9 @@ public final class DeckStorage {
     }
 
     /** One wafer slot as shown on the Deck screen. {@code types} is 0 for Capacity Wafers. */
-    public record SlotStatus(boolean present, long used, long capacity, long fromMissingMods, boolean linked, long typesUsed, int types) {
-        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0);
+    public record SlotStatus(boolean present, long used, long capacity, long fromMissingMods, boolean linked, long typesUsed, int types,
+            WaferSettings settings) {
+        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT);
     }
 
     private DeckStorage() {}
@@ -131,6 +148,26 @@ public final class DeckStorage {
         return moved;
     }
 
+    /**
+     * Sets how the Deck routes items to the wafer in {@code slot}. A blank wafer is set up first, as on its first
+     * deposit. Returns false if there is no wafer there, or it can't be used right now.
+     */
+    public static boolean configure(WaferStore store, ItemStack deck, int slot, WaferSettings settings, ServerPlayer player) {
+        List<SlotView> views = views(store, deck, player);
+        if (slot < 0 || slot >= views.size() || !views.get(slot).usable()) {
+            return false;
+        }
+        SlotView view = views.get(slot);
+        WaferRecord record = view.record();
+        if (record == null) {
+            ItemStack blank = view.wafer();
+            record = WaferValidator.format(store, blank, player);
+            deck.set(JasmComponents.DECK_WAFERS.get(), DeckItem.wafers(deck).with(slot, blank));
+        }
+        store.setSettings(record, settings, player);
+        return true;
+    }
+
     /** Takes up to {@code amount} of {@code key} out, as stacks no larger than the item allows. */
     public static List<ItemStack> withdraw(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
         List<SlotView> views = views(store, deck, player);
@@ -188,9 +225,9 @@ public final class DeckStorage {
             }
             WaferRecord record = usableRecord(store, wafer);
             status.add(record == null
-                    ? new SlotStatus(true, 0, item.tier().capacity(), 0, false, 0, item.tier().types())
+                    ? new SlotStatus(true, 0, item.tier().capacity(), 0, false, 0, item.tier().types(), WaferSettings.DEFAULT)
                     : new SlotStatus(true, record.used(), record.capacity(), record.quarantinedCount(), record.archiveId() != null,
-                            record.typesUsed(), record.types()));
+                            record.typesUsed(), record.types(), record.settings()));
         }
         return status;
     }

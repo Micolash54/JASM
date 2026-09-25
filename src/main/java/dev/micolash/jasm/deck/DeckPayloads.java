@@ -1,6 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.storage.WaferSettings;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -94,6 +95,21 @@ public final class DeckPayloads {
     }
 
     /** Server → client: charge and the state of each wafer slot. */
+    /** The screen changed one wafer's routing settings. */
+    public record Configure(int containerId, int slot, WaferSettings settings) implements CustomPacketPayload {
+        public static final Type<Configure> TYPE = new Type<>(Jasm.id("deck_configure"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Configure> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Configure::containerId,
+                ByteBufCodecs.VAR_INT, Configure::slot,
+                WaferSettings.STREAM_CODEC, Configure::settings,
+                Configure::new);
+
+        @Override
+        public Type<Configure> type() {
+            return TYPE;
+        }
+    }
+
     public record Status(int containerId, int energy, List<DeckStorage.SlotStatus> slots) implements CustomPacketPayload {
         public static final Type<Status> TYPE = new Type<>(Jasm.id("deck_status"));
         static final StreamCodec<RegistryFriendlyByteBuf, DeckStorage.SlotStatus> SLOT = StreamCodec.composite(
@@ -104,6 +120,7 @@ public final class DeckPayloads {
                 ByteBufCodecs.BOOL, DeckStorage.SlotStatus::linked,
                 ByteBufCodecs.VAR_LONG, DeckStorage.SlotStatus::typesUsed,
                 ByteBufCodecs.VAR_INT, DeckStorage.SlotStatus::types,
+                WaferSettings.STREAM_CODEC, DeckStorage.SlotStatus::settings,
                 DeckStorage.SlotStatus::new);
         public static final StreamCodec<RegistryFriendlyByteBuf, Status> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Status::containerId,

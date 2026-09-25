@@ -362,6 +362,14 @@ public final class WaferStore {
         reissue(source, source.capacity(), actor);
     }
 
+    /** Changes how a Deck routes items to this wafer. */
+    public void setSettings(WaferRecord record, WaferSettings settings, @Nullable Player actor) {
+        if (!settings.equals(record.settings())) {
+            record.setSettings(settings);
+            used(record, actor);
+        }
+    }
+
     public void setLink(WaferRecord record, @Nullable UUID archiveId, String displayName, @Nullable Player actor) {
         record.setArchiveId(archiveId);
         record.setLastKnownName(displayName);

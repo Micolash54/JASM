@@ -37,6 +37,12 @@ public class DeckItem extends Item implements WaferHolderItem {
         return false;
     }
 
+    /** The battery and wafers change while the Deck is in use; only a different item should make the hand dip. */
+    @Override
+    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
+        return slotChanged || !ItemStack.isSameItem(oldStack, newStack);
+    }
+
     public static DeckWafers wafers(ItemStack deck) {
         return deck.getOrDefault(JasmComponents.DECK_WAFERS.get(), DeckWafers.EMPTY);
     }

@@ -65,7 +65,7 @@ public final class WaferRecord {
      * be encoded on another thread while the record keeps changing.
      */
     public record Snapshot(UUID id, long serial, int capacity, int types, int perType, Stamp stamp, Optional<Stamp> recoveryFloor,
-            Optional<UUID> archive, String lastKnownName, History history, LenientListCodec.Lenient<Entry> contents) {
+            Optional<UUID> archive, String lastKnownName, History history, WaferSettings settings, LenientListCodec.Lenient<Entry> contents) {
         public static final Codec<Snapshot> CODEC = RecordCodecBuilder.create(i -> i.group(
                         UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
                         Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
@@ -77,6 +77,7 @@ public final class WaferRecord {
                         UUIDUtil.CODEC.optionalFieldOf("archive").forGetter(Snapshot::archive),
                         Codec.STRING.optionalFieldOf("last_known_name", "").forGetter(Snapshot::lastKnownName),
                         History.CODEC.optionalFieldOf("history", History.NONE).forGetter(Snapshot::history),
+                        WaferSettings.CODEC.optionalFieldOf("settings", WaferSettings.DEFAULT).forGetter(Snapshot::settings),
                         CONTENTS_CODEC.fieldOf("contents").forGetter(Snapshot::contents))
                 .apply(i, Snapshot::new));
     }
@@ -96,6 +97,7 @@ public final class WaferRecord {
     private @Nullable UUID archiveId;
     private String lastKnownName = "";
     private History history = History.NONE;
+    private WaferSettings settings = WaferSettings.DEFAULT;
     private final WaferContents<ItemResource> contents = new WaferContents<>();
     private final List<Dynamic<?>> quarantined = new ArrayList<>();
     private long quarantinedCount;
@@ -120,6 +122,7 @@ public final class WaferRecord {
         record.archiveId = saved.archive().orElse(null);
         record.lastKnownName = saved.lastKnownName();
         record.history = saved.history();
+        record.settings = saved.settings();
         LenientListCodec.Lenient<Entry> stored = saved.contents();
         for (Entry entry : stored.values()) {
             if (!entry.item().isEmpty() && entry.count() > 0) {
@@ -140,7 +143,7 @@ public final class WaferRecord {
             entries.add(new Entry(e.getKey(), e.getValue()));
         }
         return new Snapshot(id, serial, capacity, types, perType, confirmed, Optional.ofNullable(recoveryFloor), Optional.ofNullable(archiveId),
-                lastKnownName, history, new LenientListCodec.Lenient<>(List.copyOf(entries), List.copyOf(quarantined)));
+                lastKnownName, history, settings, new LenientListCodec.Lenient<>(List.copyOf(entries), List.copyOf(quarantined)));
     }
 
     public UUID id() {
@@ -207,6 +210,11 @@ public final class WaferRecord {
 
     public History history() {
         return history;
+    }
+
+    /** Priority and filter for Deck routing. */
+    public WaferSettings settings() {
+        return settings;
     }
 
     /** Read-only view of decodable contents. */
@@ -299,6 +307,10 @@ public final class WaferRecord {
 
     void setLastKnownName(String name) {
         this.lastKnownName = name;
+    }
+
+    void setSettings(WaferSettings settings) {
+        this.settings = settings;
     }
 
     void setHistory(History history) {
