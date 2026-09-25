@@ -13,6 +13,7 @@ import dev.micolash.jasm.storage.WaferSettings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -21,6 +22,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -212,14 +214,22 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     /** Holding an item: put it in this filter slot. Empty-handed: clear the slot. The item itself is never used up. */
     private void clickFilter(int index) {
-        List<Identifier> filter = new ArrayList<>(draft.filter());
         ItemStack carried = menu.getCarried();
-        if (carried.isEmpty()) {
+        setFilter(index, carried.isEmpty() ? null : carried.getItem());
+    }
+
+    /** Puts {@code item} in filter slot {@code index}, or clears the slot when it is null. */
+    public void setFilter(int index, @Nullable Item item) {
+        if (editing < 0) {
+            return;
+        }
+        List<Identifier> filter = new ArrayList<>(draft.filter());
+        if (item == null) {
             if (index < filter.size()) {
                 filter.remove(index);
             }
         } else {
-            Identifier id = BuiltInRegistries.ITEM.getKey(carried.getItem());
+            Identifier id = BuiltInRegistries.ITEM.getKey(item);
             if (!filter.contains(id)) {
                 if (index < filter.size()) {
                     filter.set(index, id);
@@ -229,6 +239,44 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             }
         }
         send(new WaferSettings(draft.priority(), draft.only(), filter));
+    }
+
+    // --- for item list mods (JEI) ---
+
+    /** An item drawn on this screen outside the normal slots, and where it is drawn. */
+    public record ShownItem(ItemStack stack, int x, int y) {}
+
+    /** The settings window's area on screen, with its shadow, while it is open. */
+    public Optional<Rect2i> settingsWindowArea() {
+        return editing < 0 ? Optional.empty() : Optional.of(new Rect2i(windowX(), windowY(), WINDOW_WIDTH + 3, WINDOW_HEIGHT + 3));
+    }
+
+    /** The filter slots on screen while the settings window is open, in order. */
+    public List<Rect2i> filterSlotAreas() {
+        List<Rect2i> areas = new ArrayList<>();
+        if (editing >= 0) {
+            for (int i = 0; i < WaferSettings.FILTER_SLOTS; i++) {
+                areas.add(new Rect2i(windowX() + 8 + i * 18, windowY() + BODY_Y + 67, 16, 16));
+            }
+        }
+        return areas;
+    }
+
+    /** The grid item or filter item under the mouse. */
+    public Optional<ShownItem> itemAt(double mouseX, double mouseY) {
+        if (inWindow(mouseX, mouseY)) {
+            int index = filterSlotAt(mouseX, mouseY);
+            Item item = index >= 0 && index < draft.filter().size() ? filterItem(draft.filter().get(index)) : null;
+            return item == null ? Optional.empty()
+                    : Optional.of(new ShownItem(new ItemStack(item), windowX() + 8 + index * 18, windowY() + BODY_Y + 67));
+        }
+        GridEntries.Entry<ItemResource> entry = entryAt(mouseX, mouseY);
+        if (entry == null) {
+            return Optional.empty();
+        }
+        int column = (int) Math.floor((mouseX - leftPos - gridX) / 18);
+        int row = (int) Math.floor((mouseY - topPos - gridY) / 18);
+        return Optional.of(new ShownItem(entry.key().toStack(1), leftPos + gridX + column * 18, topPos + gridY + row * 18));
     }
 
     private Component sortLabel() {

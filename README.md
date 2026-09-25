@@ -11,7 +11,9 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 ## Features
 
 - **Capacity Wafers**: storage chips in five sizes, from Basic up to 64K.
+- **Type Wafers**: hold only a few kinds of items, but lots of each. Five sizes, from 4 types up to 64.
 - **Decks**: handheld readers that hold several wafers at once, with a searchable storage screen. Five tiers, from Starter to Ultimate.
+- **Wafer priorities**: choose which wafer in a Deck fills first, and which items each wafer is for.
 - **Archives**: link your wafers to one, and if a wafer is ever lost, rebuild it onto a blank. Only the owner and players they trust can use it.
 - **Combustion Generators**: burn anything a furnace burns for power, in Basic, Advanced and Elite tiers. Each has a charging slot for Decks.
 - **Creative Battery**: unlimited power for creative worlds, with a charging slot.
@@ -30,9 +32,11 @@ Every item except the Creative Battery is craftable in survival. The first tier 
 - Minecraft 26.3
 - NeoForge 26.3.0.16-beta
 
+Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed, you get all recipes, info pages and a fuel page for the generators, and the Deck's grid works with JEI's recipe keys. With [Jade](https://www.curseforge.com/minecraft/mc-mods/jade), looking at an Archive or generator shows its details.
+
 ## Installing
 
-Download the latest jar from [Releases](https://github.com/MicoNoNico/JASM/releases) and put it in your `mods` folder.
+Download the latest jar from [Releases](https://github.com/Micolash54/JASM/releases) and put it in your `mods` folder.
 
 ## License
 
