@@ -113,6 +113,11 @@ public final class JasmState extends SavedData {
         return record;
     }
 
+    /** Drops an Archive record, as if the state file had lost it. For tests only. */
+    void forgetArchive(UUID id) {
+        archives.remove(id);
+    }
+
     public Optional<ArchiveRecord> archive(UUID id) {
         return Optional.ofNullable(archives.get(id));
     }

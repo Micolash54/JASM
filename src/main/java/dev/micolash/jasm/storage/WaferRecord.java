@@ -58,17 +58,26 @@ public final class WaferRecord {
                 .apply(i, History::new));
     }
 
-    public static final Codec<WaferRecord> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    UUIDUtil.CODEC.fieldOf("id").forGetter(WaferRecord::id),
-                    Codec.LONG.fieldOf("serial").forGetter(WaferRecord::serial),
-                    Codec.INT.fieldOf("capacity").forGetter(WaferRecord::capacity),
-                    StorageCodecs.STAMP.fieldOf("stamp").forGetter(WaferRecord::confirmed),
-                    StorageCodecs.STAMP.optionalFieldOf("recovery_floor").forGetter(r -> Optional.ofNullable(r.recoveryFloor)),
-                    UUIDUtil.CODEC.optionalFieldOf("archive").forGetter(r -> Optional.ofNullable(r.archiveId)),
-                    Codec.STRING.optionalFieldOf("last_known_name", "").forGetter(WaferRecord::lastKnownName),
-                    History.CODEC.optionalFieldOf("history", History.NONE).forGetter(WaferRecord::history),
-                    CONTENTS_CODEC.fieldOf("contents").forGetter(WaferRecord::encodeContents))
-            .apply(i, WaferRecord::decode));
+    /**
+     * Everything that is written to disk, copied on the server thread. Nothing in it changes afterwards, so it can
+     * be encoded on another thread while the record keeps changing.
+     */
+    public record Snapshot(UUID id, long serial, int capacity, Stamp stamp, Optional<Stamp> recoveryFloor, Optional<UUID> archive,
+            String lastKnownName, History history, LenientListCodec.Lenient<Entry> contents) {
+        public static final Codec<Snapshot> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
+                        Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
+                        Codec.INT.fieldOf("capacity").forGetter(Snapshot::capacity),
+                        StorageCodecs.STAMP.fieldOf("stamp").forGetter(Snapshot::stamp),
+                        StorageCodecs.STAMP.optionalFieldOf("recovery_floor").forGetter(Snapshot::recoveryFloor),
+                        UUIDUtil.CODEC.optionalFieldOf("archive").forGetter(Snapshot::archive),
+                        Codec.STRING.optionalFieldOf("last_known_name", "").forGetter(Snapshot::lastKnownName),
+                        History.CODEC.optionalFieldOf("history", History.NONE).forGetter(Snapshot::history),
+                        CONTENTS_CODEC.fieldOf("contents").forGetter(Snapshot::contents))
+                .apply(i, Snapshot::new));
+    }
+
+    public static final Codec<WaferRecord> CODEC = Snapshot.CODEC.xmap(WaferRecord::decode, WaferRecord::snapshot);
 
     private final UUID id;
     private final long serial;
@@ -96,13 +105,13 @@ public final class WaferRecord {
         this.confirmed = confirmed;
     }
 
-    private static WaferRecord decode(UUID id, long serial, int capacity, Stamp stamp, Optional<Stamp> floor, Optional<UUID> archive,
-            String name, History history, LenientListCodec.Lenient<Entry> stored) {
-        WaferRecord record = new WaferRecord(id, serial, capacity, stamp, stamp);
-        record.recoveryFloor = floor.orElse(null);
-        record.archiveId = archive.orElse(null);
-        record.lastKnownName = name;
-        record.history = history;
+    private static WaferRecord decode(Snapshot saved) {
+        WaferRecord record = new WaferRecord(saved.id(), saved.serial(), saved.capacity(), saved.stamp(), saved.stamp());
+        record.recoveryFloor = saved.recoveryFloor().orElse(null);
+        record.archiveId = saved.archive().orElse(null);
+        record.lastKnownName = saved.lastKnownName();
+        record.history = saved.history();
+        LenientListCodec.Lenient<Entry> stored = saved.contents();
         for (Entry entry : stored.values()) {
             if (!entry.item().isEmpty() && entry.count() > 0) {
                 record.contents.putLoaded(entry.item(), entry.count());
@@ -115,12 +124,14 @@ public final class WaferRecord {
         return record;
     }
 
-    private LenientListCodec.Lenient<Entry> encodeContents() {
-        List<Entry> entries = new ArrayList<>();
+    /** What would be written right now, with {@code confirmed} as the stamp. */
+    public Snapshot snapshot() {
+        List<Entry> entries = new ArrayList<>(contents.view().size());
         for (Map.Entry<ItemResource, Long> e : contents.view().entrySet()) {
             entries.add(new Entry(e.getKey(), e.getValue()));
         }
-        return new LenientListCodec.Lenient<>(entries, List.copyOf(quarantined));
+        return new Snapshot(id, serial, capacity, confirmed, Optional.ofNullable(recoveryFloor), Optional.ofNullable(archiveId),
+                lastKnownName, history, new LenientListCodec.Lenient<>(List.copyOf(entries), List.copyOf(quarantined)));
     }
 
     public UUID id() {

@@ -1,5 +1,6 @@
 package dev.micolash.jasm.archive;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -11,10 +12,19 @@ import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferValidator;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.NameAndId;
+import net.minecraft.server.players.UserNameToIdResolver;
+import net.minecraft.util.StringUtil;
+import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
@@ -42,7 +52,9 @@ public final class ArchiveService {
         TOO_SMALL,
         NO_ROOM,
         PLAYER_NOT_FOUND,
-        IS_OWNER;
+        IS_OWNER,
+        /** A trust request is waiting for the player's name to be looked up; the outcome follows separately. */
+        LOOKING_UP;
 
         public String messageKey() {
             return "message.jasm.archive." + name().toLowerCase(java.util.Locale.ROOT);
@@ -51,6 +63,9 @@ public final class ArchiveService {
 
     /** One linked wafer as the Archive screen lists it. {@code readable} is false while its record can't be read. */
     public record Entry(long serial, String name, long used, int capacity, boolean readable) {}
+
+    /** Owners with a name lookup running. One at a time each, so pressing the button again can't pile up lookups. */
+    private static final Set<UUID> LOOKUPS = new HashSet<>();
 
     private ArchiveService() {}
 
@@ -190,21 +205,56 @@ public final class ArchiveService {
         return Result.OK;
     }
 
-    /** Lets an online player use this Archive. Owner only. */
-    public static Result trust(WaferStore store, ArchiveBlockEntity block, ServerPlayer player, String name) {
+    /**
+     * Lets a player use this Archive. Owner only. An online player is trusted straight away. Anyone else is looked
+     * up by name in the background (that can mean asking Mojang) and the call returns {@link Result#LOOKING_UP};
+     * the outcome then goes to {@code done} on the server thread, after every check has run again.
+     */
+    public static Result trust(WaferStore store, ArchiveBlockEntity block, ServerPlayer player, String name, UserNameToIdResolver names,
+            Consumer<Result> done) {
         ArchiveRecord archive = block.record();
         Result access = ownerOnly(archive, player);
         if (access != Result.OK) {
             return access;
         }
-        ServerPlayer target = player.level().getServer().getPlayerList().getPlayerByName(name.trim());
-        if (target == null) {
+        String wanted = name.trim();
+        MinecraftServer server = player.level().getServer();
+        ServerPlayer online = server.getPlayerList().getPlayerByName(wanted);
+        if (online != null) {
+            return trustFound(store, archive, player, new NameAndId(online.getUUID(), online.getPlainTextName()));
+        }
+        if (!StringUtil.isValidPlayerName(wanted)) {
             return Result.PLAYER_NOT_FOUND;
         }
-        if (target.getUUID().equals(archive.owner())) {
+        if (!LOOKUPS.add(player.getUUID())) {
+            return Result.LOOKING_UP;
+        }
+        UUID archiveId = archive.id();
+        CompletableFuture.supplyAsync(() -> names.get(wanted), Util.nonCriticalIoPool()).handleAsync((found, failure) -> {
+            LOOKUPS.remove(player.getUUID());
+            if (failure != null) {
+                Jasm.LOGGER.warn("Could not look up player {}", wanted, failure);
+            }
+            WaferStore open = WaferStore.ifOpen(server);
+            ArchiveRecord current = open == null ? null : open.state().archive(archiveId).orElse(null);
+            Result result = found == null || found.isEmpty() ? Result.PLAYER_NOT_FOUND
+                    : current == null ? Result.NOT_READY
+                    : trustFound(open, current, player, found.get());
+            done.accept(result);
+            return null;
+        }, server);
+        return Result.LOOKING_UP;
+    }
+
+    private static Result trustFound(WaferStore store, ArchiveRecord archive, ServerPlayer player, NameAndId target) {
+        Result access = ownerOnly(archive, player);
+        if (access != Result.OK) {
+            return access;
+        }
+        if (target.id().equals(archive.owner())) {
             return Result.IS_OWNER;
         }
-        store.state().trust(archive, target.getUUID(), target.getPlainTextName());
+        store.state().trust(archive, target.id(), target.name());
         store.state().saveNow(player.level().getServer());
         return Result.OK;
     }

@@ -139,19 +139,31 @@ public class ArchiveMenu extends AbstractContainerMenu {
             case LINK -> ArchiveService.link(store, archive, player, waferSlots.getItem(LINK_SLOT));
             case UNLINK -> ArchiveService.unlink(store, archive, player, request.serial());
             case RECOVER -> ArchiveService.recover(store, archive, player, request.serial(), waferSlots.getItem(RECOVERY_SLOT));
-            case TRUST -> ArchiveService.trust(store, archive, player, request.name());
+            case TRUST -> ArchiveService.trust(store, archive, player, request.name(), player.level().getServer().services().nameToIdCache(),
+                    later -> {
+                        // The lookup finished; only tell the player if this screen is still open.
+                        if (player.containerMenu == this) {
+                            feedback(player, request.action(), later);
+                        }
+                    });
             case UNTRUST -> ArchiveService.untrust(store, archive, player, request.player());
         };
         waferSlots.setChanged();
+        feedback(player, request.action(), result);
+        return result;
+    }
+
+    /** Shows the outcome on the screen and sends the updated list right away. */
+    private void feedback(ServerPlayer player, ArchivePayloads.Action action, ArchiveService.Result result) {
         String key = result == ArchiveService.Result.OK
-                ? "message.jasm.archive.done." + request.action().name().toLowerCase(java.util.Locale.ROOT)
+                ? "message.jasm.archive.done." + action.name().toLowerCase(java.util.Locale.ROOT)
                 : result.messageKey();
+        boolean ok = result == ArchiveService.Result.OK || result == ArchiveService.Result.LOOKING_UP;
         if (player.connection.hasChannel(ArchivePayloads.Feedback.TYPE)) {
-            PacketDistributor.sendToPlayer(player, new ArchivePayloads.Feedback(containerId, key, result == ArchiveService.Result.OK));
+            PacketDistributor.sendToPlayer(player, new ArchivePayloads.Feedback(containerId, key, ok));
         }
         sinceRefresh = REFRESH_TICKS;
         broadcastChanges();
-        return result;
     }
 
     /** Also sends the screen's list and charge: the charge a few times a second when it moves, the list when it has changed. */

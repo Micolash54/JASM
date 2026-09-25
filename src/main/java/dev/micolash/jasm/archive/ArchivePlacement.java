@@ -14,7 +14,8 @@ import org.jspecify.annotations.Nullable;
  * again keeps its owner, trust and links. When two blocks claim the same record (a copied item, or a block left
  * behind by a crash), the one the record points to keeps it and the other becomes a new, empty Archive. An
  * unloaded position is never loaded to check; when in doubt, the newcomer becomes the new Archive. Wafers are
- * never affected: at worst they need linking again.
+ * never affected: at worst they need linking again. A block whose record was lost gets it back under the same id,
+ * and its list of linked wafers is rebuilt from the wafers' own records.
  */
 public final class ArchivePlacement {
     /** Owner of an Archive placed by something other than a player: nobody can use it. */
@@ -64,7 +65,8 @@ public final class ArchivePlacement {
 
     /** First server tick after the block was loaded from disk. The store is open. */
     public static void loaded(ArchiveBlockEntity archive, ServerLevel level) {
-        JasmState state = WaferStore.get(level.getServer()).state();
+        WaferStore store = WaferStore.get(level.getServer());
+        JasmState state = store.state();
         ArchiveRecord.Placement here = here(archive, level);
         UUID id = archive.archiveId();
         UUID owner = archive.ownerId() == null ? NO_OWNER : archive.ownerId();
@@ -77,8 +79,9 @@ public final class ArchivePlacement {
         }
         ArchiveRecord record = state.archive(id).orElse(null);
         if (record == null) {
-            Jasm.LOGGER.warn("Archive at {} lost its record {}; rebuilding it from the block (its list of linked wafers starts empty)", here, id);
+            Jasm.LOGGER.warn("Archive at {} lost its record {}; rebuilding it from the block and its wafers", here, id);
             record = state.restoreArchive(id, archive.tier(), owner, archive.ownerName());
+            store.relinkAll(record);
         } else if (record.tier() != archive.tier()) {
             Jasm.LOGGER.warn("Archive at {} has record {} of another tier; it becomes a new Archive", here, id);
             record = state.createArchive(archive.tier(), owner, archive.ownerName());

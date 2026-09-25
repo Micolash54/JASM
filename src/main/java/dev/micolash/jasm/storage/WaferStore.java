@@ -19,8 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
@@ -28,6 +30,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Util;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -42,7 +45,8 @@ import org.jspecify.annotations.Nullable;
  * Every wafer's record, one per slot in region files under {@code data/jasm/wafers}. Records load on first use
  * and stay cached. A record is only written after the player files it has to agree with (see {@link StorageEvents}):
  * after every player who changed it has been saved, and with the newest stamp known to be inside a saved player file.
- * All methods run on the server thread.
+ * All methods run on the server thread. Writing copies the record there and turns the copy into NBT in the
+ * background, so a save never waits on big wafers.
  */
 public final class WaferStore {
     /** Notified after a wafer's count for one variant changes. */
@@ -75,6 +79,8 @@ public final class WaferStore {
     private final Set<Long> emptySlots = new HashSet<>();
     private final Set<Long> unreadableSlots = new HashSet<>();
     private final List<WaferChangeListener> listeners = new CopyOnWriteArrayList<>();
+    /** The newest write of each record that is still on its way to disk. A later write of the same record waits for it. */
+    private final Map<Long, CompletableFuture<Void>> pendingWrites = new HashMap<>();
     /** Set while this store saves other players' files, so their save events do not start another round. */
     private boolean savingPlayers;
 
@@ -115,6 +121,7 @@ public final class WaferStore {
         }
         open = null;
         try {
+            store.awaitWrites();
             store.storage.close();
         } catch (IOException e) {
             Jasm.LOGGER.error("Could not close JASM wafer storage", e);
@@ -174,7 +181,65 @@ public final class WaferStore {
             return Lookup.UNREADABLE;
         }
         records.put(serial, record.get());
+        relinkIfMissing(record.get());
         return new Lookup(Status.FOUND, record.get());
+    }
+
+    /**
+     * The wafer's own record decides which Archive it is linked to. If that Archive's list lost it (its record was
+     * rebuilt, or an older state file was put back), it goes back on the list.
+     */
+    private void relinkIfMissing(WaferRecord record) {
+        UUID archiveId = record.archiveId();
+        ArchiveRecord archive = archiveId == null ? null : state.archive(archiveId).orElse(null);
+        if (archive != null && !archive.linked().contains(record.serial())) {
+            Jasm.LOGGER.info("Wafer #{} is linked to Archive {}, which had lost it from its list; adding it back", record.serial(), archiveId);
+            state.addLinked(archive, record.serial());
+        }
+    }
+
+    /**
+     * Rebuilds the list of an Archive whose record was lost: every wafer whose record points at it goes back on
+     * the list. The region files are read in the background; the list is filled in and saved on the server thread.
+     */
+    public CompletableFuture<Integer> relinkAll(ArchiveRecord archive) {
+        UUID archiveId = archive.id();
+        long limit = state.nextSerial();
+        List<CompletableFuture<Void>> reads = new ArrayList<>();
+        Set<Long> onDisk = ConcurrentHashMap.newKeySet();
+        for (long serial = 1; serial < limit; serial++) {
+            if (records.containsKey(serial) || emptySlots.contains(serial) || unreadableSlots.contains(serial)) {
+                continue;
+            }
+            long slot = serial;
+            reads.add(storage.read(pos(serial)).thenAccept(tag -> {
+                if (tag.isPresent() && archiveId.equals(savedArchive(tag.get()))) {
+                    onDisk.add(slot);
+                }
+            }).exceptionally(failure -> null));
+        }
+        return CompletableFuture.allOf(reads.toArray(CompletableFuture[]::new)).thenApplyAsync(ignored -> {
+            int found = 0;
+            for (long serial = 1; serial < limit; serial++) {
+                WaferRecord record = records.get(serial);
+                if (record == null && onDisk.contains(serial)) {
+                    record = load(serial).record();
+                }
+                if (record != null && archiveId.equals(record.archiveId())) {
+                    state.addLinked(archive, serial);
+                    found++;
+                }
+            }
+            state.saveNow(server);
+            Jasm.LOGGER.info("Archive {} got its list back: {} linked wafers found", archiveId, found);
+            return found;
+        }, server);
+    }
+
+    /** The Archive a saved slot is linked to, read straight from the NBT without decoding the record. */
+    private static @Nullable UUID savedArchive(CompoundTag slot) {
+        Tag archive = slot.getCompound("record").map(record -> record.get("archive")).orElse(null);
+        return archive == null ? null : UUIDUtil.CODEC.parse(NbtOps.INSTANCE, archive).result().orElse(null);
     }
 
     /** Serials only go up. A slot that holds anything, or cannot be read, is skipped and never overwritten. */
@@ -369,24 +434,47 @@ public final class WaferStore {
         }
     }
 
+    /**
+     * Copies the record now and writes the copy in the background. Writes of the same record reach the region file
+     * in the order they were made. If one fails, the last saved copy stays on disk and the record is written again
+     * at the next save.
+     */
     private CompletableFuture<Void> write(WaferRecord record) {
-        DataResult<Tag> encoded = WaferRecord.CODEC.encodeStart(ops(), record);
-        Optional<Tag> result = encoded.result();
-        if (result.isEmpty()) {
-            Jasm.LOGGER.error("Could not save wafer record #{} ({}); the last saved copy stays on disk", record.serial(),
-                    encoded.error().map(e -> e.message()).orElse("?"));
-            return CompletableFuture.completedFuture(null);
-        }
-        CompoundTag slot = new CompoundTag();
-        slot.put("record", result.get());
-        NbtUtils.addCurrentDataVersion(slot);
+        long serial = record.serial();
+        WaferRecord.Snapshot snapshot = record.snapshot();
         record.written();
-        return storage.write(pos(record.serial()), slot).whenComplete((ok, failure) -> {
+        RegistryOps<Tag> ops = ops();
+        CompletableFuture<Void> previous = pendingWrites.getOrDefault(serial, CompletableFuture.completedFuture(null));
+        CompletableFuture<Void> next = previous
+                .handle((ok, failure) -> snapshot)
+                .thenApplyAsync(copy -> encode(copy, ops), Util.backgroundExecutor())
+                .thenCompose(slot -> storage.write(pos(serial), slot));
+        pendingWrites.put(serial, next);
+        next.whenComplete((ok, failure) -> server.execute(() -> {
+            pendingWrites.remove(serial, next);
             if (failure != null) {
-                Jasm.LOGGER.error("Could not write wafer record #{}; it will be written again at the next save", record.serial(), failure);
-                server.execute(() -> record.changed(null));
+                Jasm.LOGGER.error("Could not save wafer record #{}; the last saved copy stays on disk and it will be written again at the next save",
+                        serial, failure);
+                record.changed(null);
             }
-        });
+        }));
+        return next;
+    }
+
+    /** Runs in the background: nothing here may touch the record or the world. */
+    private static CompoundTag encode(WaferRecord.Snapshot snapshot, RegistryOps<Tag> ops) {
+        Tag encoded = WaferRecord.Snapshot.CODEC.encodeStart(ops, snapshot).getOrThrow(IllegalStateException::new);
+        CompoundTag slot = new CompoundTag();
+        slot.put("record", encoded);
+        NbtUtils.addCurrentDataVersion(slot);
+        return slot;
+    }
+
+    /** Blocks until every write started so far is in the region files. Failures are already logged. */
+    private void awaitWrites() {
+        CompletableFuture.allOf(pendingWrites.values().stream()
+                .map(write -> write.handle((ok, failure) -> null))
+                .toArray(CompletableFuture[]::new)).join();
     }
 
     // --- tests ---
@@ -401,13 +489,15 @@ public final class WaferStore {
 
     /** Waits until every queued write has reached the region files. For tests only. */
     void flush() {
+        awaitWrites();
         storage.synchronize(true).join();
     }
 
     /** Drops a saved record from memory so its next use reads it from disk, as after a restart. For tests only. */
     boolean unload(long serial) {
         WaferRecord record = records.get(serial);
-        if (record == null || record.isDirty()) {
+        CompletableFuture<Void> pending = pendingWrites.get(serial);
+        if (record == null || record.isDirty() || (pending != null && !pending.isDone())) {
             return false;
         }
         records.remove(serial);
