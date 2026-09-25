@@ -8,20 +8,28 @@ import zlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "src" / "main" / "resources" / "assets" / "jasm" / "textures"
 
-# name -> (folder, RGB). Wafer tiers get a hue ramp; Decks and Archives get their own ramps.
+# Tier colours (Catppuccin Mocha): brown, green, blue, purple, gold, lowest tier first.
+BROWN = (201, 163, 141)
+GREEN = (166, 227, 161)
+BLUE = (137, 180, 250)
+PURPLE = (203, 166, 247)
+GOLD = (249, 226, 175)
+
+# name -> (folder, RGB)
 TEXTURES = {
-    "capacity_wafer_basic": ("item", (150, 150, 150)),
-    "capacity_wafer_1k": ("item", (80, 170, 90)),
-    "capacity_wafer_4k": ("item", (70, 130, 200)),
-    "capacity_wafer_16k": ("item", (160, 90, 200)),
-    "capacity_wafer_64k": ("item", (220, 170, 60)),
-    "starter_deck": ("item", (120, 100, 80)),
-    "basic_deck": ("item", (90, 150, 110)),
-    "advanced_deck": ("item", (80, 110, 180)),
-    "ultimate_deck": ("item", (190, 150, 60)),
-    "basic_archive": ("block", (90, 120, 140)),
-    "advanced_archive": ("block", (70, 90, 160)),
-    "ultimate_archive": ("block", (150, 120, 60)),
+    "capacity_wafer_basic": ("item", BROWN),
+    "capacity_wafer_1k": ("item", GREEN),
+    "capacity_wafer_4k": ("item", BLUE),
+    "capacity_wafer_16k": ("item", PURPLE),
+    "capacity_wafer_64k": ("item", GOLD),
+    "starter_deck": ("item", BROWN),
+    "basic_deck": ("item", GREEN),
+    "advanced_deck": ("item", BLUE),
+    "elite_deck": ("item", PURPLE),
+    "ultimate_deck": ("item", GOLD),
+    "basic_archive": ("block", BLUE),
+    "advanced_archive": ("block", PURPLE),
+    "ultimate_archive": ("block", GOLD),
     "creative_battery": ("block", (200, 60, 160)),
 }
 

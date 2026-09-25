@@ -5,7 +5,8 @@ public enum DeckTier {
     STARTER("starter_deck", 1, 20_000),
     BASIC("basic_deck", 3, 50_000),
     ADVANCED("advanced_deck", 6, 100_000),
-    ULTIMATE("ultimate_deck", 12, 250_000);
+    ELITE("elite_deck", 12, 250_000),
+    ULTIMATE("ultimate_deck", 24, 500_000);
 
     private final String registryName;
     private final int slots;

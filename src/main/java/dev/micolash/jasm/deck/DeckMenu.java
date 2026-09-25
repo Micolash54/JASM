@@ -18,6 +18,7 @@ import net.minecraft.world.item.ItemStack;
  */
 public class DeckMenu extends AbstractContainerMenu {
     public static final int WAFER_ROW_Y = 18;
+    /** Where the inventory starts when the wafer slots fit in two rows; each further row pushes it down 18. */
     public static final int INVENTORY_Y = 150;
 
     private final Player player;
@@ -25,6 +26,7 @@ public class DeckMenu extends AbstractContainerMenu {
     private final ItemStack deck;
     private final DeckWaferContainer wafers;
     private final int waferSlots;
+    private final int inventoryY;
     /** Client side only: what the server has told this screen. */
     private final DeckView view = new DeckView();
 
@@ -36,6 +38,7 @@ public class DeckMenu extends AbstractContainerMenu {
         this.deck = inventory.getItem(deckSlot);
         this.wafers = new DeckWaferContainer(deck, player);
         this.waferSlots = wafers.getContainerSize();
+        this.inventoryY = INVENTORY_Y + Math.max(0, (waferSlots + 8) / 9 - 2) * 18;
 
         for (int i = 0; i < waferSlots; i++) {
             addSlot(new WaferSlot(wafers, i, 8 + (i % 9) * 18, WAFER_ROW_Y + (i / 9) * 18));
@@ -43,11 +46,11 @@ public class DeckMenu extends AbstractContainerMenu {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 int index = 9 + row * 9 + column;
-                addSlot(playerSlot(inventory, index, 8 + column * 18, INVENTORY_Y + row * 18));
+                addSlot(playerSlot(inventory, index, 8 + column * 18, inventoryY + row * 18));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(playerSlot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+            addSlot(playerSlot(inventory, column, 8 + column * 18, inventoryY + 58));
         }
     }
 
@@ -66,6 +69,11 @@ public class DeckMenu extends AbstractContainerMenu {
 
     public int deckSlot() {
         return deckSlot;
+    }
+
+    /** Top of the player's inventory in this Deck's screen (lower for Decks with more than two rows of wafers). */
+    public int inventoryY() {
+        return inventoryY;
     }
 
     public int waferSlots() {

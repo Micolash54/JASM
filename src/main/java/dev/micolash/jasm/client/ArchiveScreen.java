@@ -27,7 +27,10 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     private static final int HEIGHT = ArchiveMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int LIST_X = 8;
     private static final int LIST_Y = 32;
-    private static final int LIST_WIDTH = WIDTH - 16;
+    private static final int SCROLL_WIDTH = 8;
+    private static final int HANDLE_HEIGHT = 15;
+    private static final int LIST_WIDTH = WIDTH - 16 - SCROLL_WIDTH - 2;
+    private static final int SCROLL_X = LIST_X + LIST_WIDTH + 2;
     private static final int ROW_HEIGHT = 12;
     private static final int ROWS = 6;
     private static final int ENERGY_WIDTH = 60;
@@ -51,6 +54,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     private boolean accessView;
     private long selected = -1;
     private int scroll;
+    private boolean draggingHandle;
     private Button toggle;
     private Button link;
     private Button unlink;
@@ -71,6 +75,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         toggle = addRenderableWidget(Button.builder(Component.empty(), b -> {
             accessView = !accessView;
             scroll = 0;
+            draggingHandle = false;
         }).bounds(x + WIDTH - 8 - 46, y + 17, 46, 13).build());
         link = addRenderableWidget(Button.builder(Component.translatable("screen.jasm.archive.link"),
                 b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.LINK)))
@@ -88,7 +93,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         trust = addRenderableWidget(Button.builder(Component.translatable("screen.jasm.archive.trust"), b -> {
             send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.TRUST, 0, noPlayer(), name.getValue()));
             name.setValue("");
-        }).bounds(x + WIDTH - 8 - 54, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT - 1, 54, 13).build());
+        }).bounds(x + LIST_X + LIST_WIDTH - 54, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT - 1, 54, 13).build());
         updateWidgets();
     }
 
@@ -156,10 +161,44 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         graphics.fill(x + LIST_X - 1, y + LIST_Y - 1, x + LIST_X + LIST_WIDTH + 1, y + LIST_Y + ROWS * ROW_HEIGHT + 1, PANEL_DARK);
         graphics.fill(x + LIST_X, y + LIST_Y, x + LIST_X + LIST_WIDTH, y + LIST_Y + ROWS * ROW_HEIGHT, LIST);
 
+        drawScrollBar(graphics, x, y);
+
         int filled = (int) Math.round(ENERGY_WIDTH * Math.min(1.0, menu.view().energy() / (double) menu.tier().energyBuffer()));
         int bx = x + imageWidth - 8 - ENERGY_WIDTH;
         graphics.fill(bx - 1, y + 6, bx + ENERGY_WIDTH + 1, y + 13, PANEL_DARK);
         graphics.fill(bx, y + 7, bx + filled, y + 12, CHARGE);
+    }
+
+    /** A track beside the list with a draggable handle, greyed out when everything fits. */
+    private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
+        int left = x + SCROLL_X;
+        int top = y + LIST_Y;
+        graphics.fill(left, top - 1, left + SCROLL_WIDTH, top + trackHeight() + 1, PANEL_DARK);
+        boolean active = maxScroll() > 0;
+        int handleTop = top + handleOffset();
+        graphics.fill(left + 1, handleTop, left + SCROLL_WIDTH - 1, handleTop + HANDLE_HEIGHT, active ? 0xFFE0E0E0 : 0xFF9A9A9A);
+        graphics.fill(left + 1, handleTop + HANDLE_HEIGHT - 1, left + SCROLL_WIDTH - 1, handleTop + HANDLE_HEIGHT, active ? 0xFF7A7A7A : 0xFF6A6A6A);
+    }
+
+    private int trackHeight() {
+        return visibleRows() * ROW_HEIGHT;
+    }
+
+    private int handleOffset() {
+        int max = maxScroll();
+        return max == 0 ? 0 : Math.round((trackHeight() - HANDLE_HEIGHT) * (scroll / (float) max));
+    }
+
+    private boolean onScrollBar(double mouseX, double mouseY) {
+        double rx = mouseX - leftPos - SCROLL_X;
+        double ry = mouseY - topPos - LIST_Y;
+        return rx >= 0 && rx < SCROLL_WIDTH && ry >= 0 && ry < trackHeight();
+    }
+
+    private void scrollToMouse(double mouseY) {
+        double offset = mouseY - topPos - LIST_Y - HANDLE_HEIGHT / 2.0;
+        double fraction = Math.clamp(offset / (trackHeight() - HANDLE_HEIGHT), 0.0, 1.0);
+        scroll = (int) Math.round(fraction * maxScroll());
     }
 
     @Override
@@ -250,6 +289,11 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (onScrollBar(event.x(), event.y()) && maxScroll() > 0) {
+            draggingHandle = true;
+            scrollToMouse(event.y());
+            return true;
+        }
         int row = rowAt(event.x(), event.y());
         if (row >= 0) {
             if (accessView) {
@@ -269,10 +313,29 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (draggingHandle) {
+            scrollToMouse(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (draggingHandle) {
+            draggingHandle = false;
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    /** The wheel scrolls over the list or its scroll bar. */
+    @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         double rx = x - leftPos - LIST_X;
         double ry = y - topPos - LIST_Y;
-        if (rx >= 0 && rx < LIST_WIDTH && ry >= 0 && ry < ROWS * ROW_HEIGHT) {
+        if (rx >= 0 && rx < SCROLL_X + SCROLL_WIDTH - LIST_X && ry >= 0 && ry < ROWS * ROW_HEIGHT) {
             scroll = Math.max(0, Math.min(maxScroll(), scroll - (int) Math.signum(scrollY)));
             return true;
         }

@@ -34,12 +34,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private static final int WIDTH = 190;
-    private static final int HEIGHT = DeckMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int COLUMNS = 9;
     private static final int ROWS = 4;
     private static final int GRID_X = 8;
-    private static final int GRID_Y = DeckMenu.INVENTORY_Y - 12 - ROWS * 18;
-    private static final int STATUS_Y = GRID_Y - 11;
     private static final int CHARGE_WIDTH = 60;
     private static final int SCROLL_X = GRID_X + COLUMNS * 18 + 3;
     private static final int SCROLL_WIDTH = 10;
@@ -61,10 +58,15 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private String builtQuery = "";
     private List<GridEntries.Entry<ItemResource>> visible = List.of();
     private boolean draggingHandle;
+    /** Grid and status line sit just above the inventory, which is lower on Decks with a third row of wafers. */
+    private final int gridY;
+    private final int statusY;
 
     public DeckScreen(DeckMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, WIDTH, HEIGHT);
-        this.inventoryLabelY = DeckMenu.INVENTORY_Y - 10;
+        super(menu, inventory, title, WIDTH, menu.inventoryY() + 58 + 18 + 6);
+        this.inventoryLabelY = menu.inventoryY() - 10;
+        this.gridY = menu.inventoryY() - 12 - ROWS * 18;
+        this.statusY = gridY - 11;
     }
 
     @Override
@@ -121,7 +123,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     private GridEntries.@Nullable Entry<ItemResource> entryAt(double mouseX, double mouseY) {
         int column = (int) Math.floor((mouseX - leftPos - GRID_X) / 18);
-        int row = (int) Math.floor((mouseY - topPos - GRID_Y) / 18);
+        int row = (int) Math.floor((mouseY - topPos - gridY) / 18);
         if (!inGrid(mouseX, mouseY) || column < 0 || column >= COLUMNS || row < 0 || row >= ROWS) {
             return null;
         }
@@ -130,8 +132,8 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private boolean inGrid(double mouseX, double mouseY) {
-        return mouseX >= leftPos + GRID_X && mouseX < leftPos + GRID_X + COLUMNS * 18 && mouseY >= topPos + GRID_Y
-                && mouseY < topPos + GRID_Y + ROWS * 18;
+        return mouseX >= leftPos + GRID_X && mouseX < leftPos + GRID_X + COLUMNS * 18 && mouseY >= topPos + gridY
+                && mouseY < topPos + gridY + ROWS * 18;
     }
 
     private boolean hasPower() {
@@ -151,7 +153,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         for (Slot slot : menu.slots) {
             graphics.fill(x + slot.x - 1, y + slot.y - 1, x + slot.x + 17, y + slot.y + 17, SLOT);
         }
-        graphics.fill(x + GRID_X - 1, y + GRID_Y - 1, x + GRID_X + COLUMNS * 18 - 1, y + GRID_Y + ROWS * 18 - 1, SLOT);
+        graphics.fill(x + GRID_X - 1, y + gridY - 1, x + GRID_X + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, SLOT);
         drawScrollBar(graphics, x, y);
         drawCharge(graphics, x, y);
     }
@@ -159,7 +161,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     /** A track beside the grid with a handle; the handle is greyed out when everything fits without scrolling. */
     private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
         int left = x + SCROLL_X;
-        int top = y + GRID_Y - 1;
+        int top = y + gridY - 1;
         graphics.fill(left, top, left + SCROLL_WIDTH, top + SCROLL_HEIGHT + 2, PANEL_DARK);
         int handleTop = top + 1 + handleOffset();
         boolean active = maxScroll() > 0;
@@ -174,13 +176,13 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     private boolean onScrollBar(double mouseX, double mouseY) {
         return mouseX >= leftPos + SCROLL_X && mouseX < leftPos + SCROLL_X + SCROLL_WIDTH
-                && mouseY >= topPos + GRID_Y - 1 && mouseY < topPos + GRID_Y + SCROLL_HEIGHT + 1;
+                && mouseY >= topPos + gridY - 1 && mouseY < topPos + gridY + SCROLL_HEIGHT + 1;
     }
 
     /** Scrolls so the handle's middle sits under the mouse. */
     private void scrollToMouse(double mouseY) {
         float travel = SCROLL_HEIGHT - HANDLE_HEIGHT;
-        float along = (float) (mouseY - (topPos + GRID_Y) - HANDLE_HEIGHT / 2.0) / travel;
+        float along = (float) (mouseY - (topPos + gridY) - HANDLE_HEIGHT / 2.0) / travel;
         scrollRow = Math.max(0, Math.min(maxScroll(), Math.round(along * maxScroll())));
     }
 
@@ -191,8 +193,8 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private void drawCharge(GuiGraphicsExtractor graphics, int x, int y) {
         int filled = (int) Math.round(CHARGE_WIDTH * Math.min(1.0, menu.view().energy() / (double) tier().battery()));
         int bx = x + imageWidth - 8 - CHARGE_WIDTH;
-        graphics.fill(bx - 1, y + STATUS_Y, bx + CHARGE_WIDTH + 1, y + STATUS_Y + 7, PANEL_DARK);
-        graphics.fill(bx, y + STATUS_Y + 1, bx + filled, y + STATUS_Y + 6, CHARGE);
+        graphics.fill(bx - 1, y + statusY, bx + CHARGE_WIDTH + 1, y + statusY + 7, PANEL_DARK);
+        graphics.fill(bx, y + statusY + 1, bx + filled, y + statusY + 6, CHARGE);
     }
 
     @Override
@@ -210,7 +212,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 }
                 GridEntries.Entry<ItemResource> entry = visible.get(index);
                 int sx = x + GRID_X + column * 18;
-                int sy = y + GRID_Y + row * 18;
+                int sy = y + gridY + row * 18;
                 ItemStack stack = entry.key().toStack(1);
                 graphics.item(stack, sx, sy);
                 graphics.itemDecorations(font, stack, sx, sy, GridEntries.abbreviate(entry.count()));
@@ -220,12 +222,12 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             }
         }
         if (!hasPower()) {
-            graphics.fill(x + GRID_X - 1, y + GRID_Y - 1, x + GRID_X + COLUMNS * 18 - 1, y + GRID_Y + ROWS * 18 - 1, 0xA0000000);
+            graphics.fill(x + GRID_X - 1, y + gridY - 1, x + GRID_X + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, 0xA0000000);
             Component text = Component.translatable("screen.jasm.deck.no_power");
-            graphics.text(font, text, x + GRID_X + (COLUMNS * 18 - font.width(text)) / 2, y + GRID_Y + ROWS * 9 - 4, 0xFFFF5555, true);
+            graphics.text(font, text, x + GRID_X + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + ROWS * 9 - 4, 0xFFFF5555, true);
         }
         int barLeft = x + imageWidth - 8 - CHARGE_WIDTH;
-        if (mouseX >= barLeft && mouseX < barLeft + CHARGE_WIDTH && mouseY >= y + STATUS_Y && mouseY < y + STATUS_Y + 7) {
+        if (mouseX >= barLeft && mouseX < barLeft + CHARGE_WIDTH && mouseY >= y + statusY && mouseY < y + statusY + 7) {
             graphics.setTooltipForNextFrame(font, Component.translatable("tooltip.jasm.deck.energy",
                     String.format("%,d", menu.view().energy()), String.format("%,d", tier().battery())), mouseX, mouseY);
         }
@@ -250,7 +252,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         }
         // Items from missing mods still take up space; the usage turns red and each wafer's tooltip says how many.
         Component status = Component.translatable("screen.jasm.deck.usage", GridEntries.abbreviate(used), GridEntries.abbreviate(capacity));
-        graphics.text(font, status, 8, STATUS_Y, missing > 0 ? 0xFFAA0000 : TEXT, false);
+        graphics.text(font, status, 8, statusY, missing > 0 ? 0xFFAA0000 : TEXT, false);
     }
 
     /** Wafer slot tooltips add how full the wafer is and whether an Archive protects it. */
