@@ -11,7 +11,8 @@ public final class DepositRouter {
 
         long count(K key);
 
-        long free();
+        /** How many of {@code key} still fit. */
+        long room(K key);
     }
 
     public record Allocation(int slot, long amount) {}
@@ -33,7 +34,7 @@ public final class DepositRouter {
                     continue;
                 }
                 visited[i] = true;
-                long take = Math.min(remaining, slot.free());
+                long take = Math.min(remaining, slot.room(key));
                 if (take > 0) {
                     plan.add(new Allocation(i, take));
                     remaining -= take;

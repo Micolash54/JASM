@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:gold_ingot",
+    "Y": "minecraft:diamond",
+    "R": "minecraft:redstone",
+    "W": "jasm:type_wafer_4"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "XWX"
+  ],
+  "source": "jasm:type_wafer_4",
+  "result": {
+    "id": "jasm:type_wafer_8"
+  },
+  "merge_wafers": true
+}

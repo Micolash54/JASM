@@ -7,7 +7,9 @@ import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferMerge;
+import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.wafer.WaferValidator;
 import dev.micolash.jasm.wafer.WaferValidator.Mode;
 import java.util.ArrayList;
@@ -39,11 +41,15 @@ public final class DeckStorage {
         }
 
         @Override
-        public long free() {
+        public long room(ItemResource key) {
             if (record != null) {
-                return record.free();
+                return record.roomFor(key);
             }
-            return isBlank() ? ((WaferItem) wafer.getItem()).tier().capacity() : 0;
+            if (!isBlank()) {
+                return 0;
+            }
+            WaferTier tier = ((WaferItem) wafer.getItem()).tier();
+            return tier.isTyped() ? Math.min(tier.capacity(), TypeRules.room(key, 0, 0, tier.types(), tier.perType())) : tier.capacity();
         }
 
         boolean isBlank() {
@@ -51,9 +57,9 @@ public final class DeckStorage {
         }
     }
 
-    /** One wafer slot as shown on the Deck screen. */
-    public record SlotStatus(boolean present, long used, long capacity, long fromMissingMods, boolean linked) {
-        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false);
+    /** One wafer slot as shown on the Deck screen. {@code types} is 0 for Capacity Wafers. */
+    public record SlotStatus(boolean present, long used, long capacity, long fromMissingMods, boolean linked, long typesUsed, int types) {
+        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0);
     }
 
     private DeckStorage() {}
@@ -182,8 +188,9 @@ public final class DeckStorage {
             }
             WaferRecord record = usableRecord(store, wafer);
             status.add(record == null
-                    ? new SlotStatus(true, 0, item.tier().capacity(), 0, false)
-                    : new SlotStatus(true, record.used(), record.capacity(), record.quarantinedCount(), record.archiveId() != null));
+                    ? new SlotStatus(true, 0, item.tier().capacity(), 0, false, 0, item.tier().types())
+                    : new SlotStatus(true, record.used(), record.capacity(), record.quarantinedCount(), record.archiveId() != null,
+                            record.typesUsed(), record.types()));
         }
         return status;
     }
@@ -228,7 +235,7 @@ public final class DeckStorage {
             return null;
         }
         WaferRecord record = WaferValidator.record(store, wafer).orElse(null);
-        if (record == null || record.capacity() != item.tier().capacity()
+        if (record == null || record.capacity() != item.tier().capacity() || record.types() != item.tier().types()
                 || !record.current().equals(wafer.get(JasmComponents.WAFER_IDENTITY.get()).stamp())) {
             return null;
         }

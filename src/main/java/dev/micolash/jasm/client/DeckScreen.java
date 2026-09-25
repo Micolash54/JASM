@@ -241,14 +241,26 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         long used = 0;
         long capacity = 0;
         long missing = 0;
+        long typesUsed = 0;
+        long types = 0;
         for (DeckStorage.SlotStatus slot : menu.view().slots()) {
             used += slot.used();
             capacity += slot.capacity();
             missing += slot.fromMissingMods();
+            typesUsed += slot.typesUsed();
+            types += slot.types();
         }
         // Items from missing mods still take up space; the usage turns red and each wafer's tooltip says how many.
         Component status = Component.translatable("screen.jasm.deck.usage", GridEntries.abbreviate(used), GridEntries.abbreviate(capacity));
         graphics.text(font, status, mainX + 8, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
+        if (types > 0) {
+            // Type Wafers: types used, right-aligned before the charge bar, when there is room for both.
+            Component typeStatus = Component.translatable("screen.jasm.deck.types", typesUsed, types);
+            int right = mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH - 5;
+            if (mainX + 8 + font.width(status) + 6 + font.width(typeStatus) <= right) {
+                graphics.text(font, typeStatus, right - font.width(typeStatus), statusY, typesUsed >= types ? JasmGui.BAD : JasmGui.SUBTEXT, false);
+            }
+        }
     }
 
     /** Wafer slot tooltips add how full the wafer is and whether an Archive protects it. */
@@ -259,6 +271,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             DeckStorage.SlotStatus status = menu.view().slots().get(hoveredSlot.index);
             lines.add(Component.translatable("screen.jasm.deck.wafer_used", String.format("%,d", status.used()), String.format("%,d", status.capacity()))
                     .withStyle(ChatFormatting.GRAY));
+            if (status.types() > 0) {
+                lines.add(Component.translatable("screen.jasm.deck.wafer_types", status.typesUsed(), status.types()).withStyle(ChatFormatting.GRAY));
+            }
             if (status.fromMissingMods() > 0) {
                 lines.add(Component.translatable("screen.jasm.deck.missing", String.format("%,d", status.fromMissingMods()))
                         .withStyle(ChatFormatting.RED));

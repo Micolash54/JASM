@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:emerald",
+    "Y": "minecraft:blaze_rod",
+    "R": "minecraft:redstone",
+    "W": "jasm:type_wafer_16"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "XWX"
+  ],
+  "source": "jasm:type_wafer_16",
+  "result": {
+    "id": "jasm:type_wafer_32"
+  },
+  "merge_wafers": true
+}

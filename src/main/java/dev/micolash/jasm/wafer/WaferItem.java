@@ -70,7 +70,9 @@ public class WaferItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder,
             TooltipFlag flag) {
-        builder.accept(Component.translatable("tooltip.jasm.wafer.capacity", String.format("%,d", tier.capacity()))
+        builder.accept((tier.isTyped()
+                ? Component.translatable("tooltip.jasm.wafer.types", tier.types(), String.format("%,d", tier.perType()))
+                : Component.translatable("tooltip.jasm.wafer.capacity", String.format("%,d", tier.capacity())))
                 .withStyle(ChatFormatting.GRAY));
         if (WaferMerge.isPending(stack)) {
             builder.accept(Component.translatable("tooltip.jasm.wafer.combining").withStyle(ChatFormatting.DARK_GRAY));

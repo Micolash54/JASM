@@ -102,6 +102,8 @@ public final class DeckPayloads {
                 ByteBufCodecs.VAR_LONG, DeckStorage.SlotStatus::capacity,
                 ByteBufCodecs.VAR_LONG, DeckStorage.SlotStatus::fromMissingMods,
                 ByteBufCodecs.BOOL, DeckStorage.SlotStatus::linked,
+                ByteBufCodecs.VAR_LONG, DeckStorage.SlotStatus::typesUsed,
+                ByteBufCodecs.VAR_INT, DeckStorage.SlotStatus::types,
                 DeckStorage.SlotStatus::new);
         public static final StreamCodec<RegistryFriendlyByteBuf, Status> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Status::containerId,

@@ -10,7 +10,9 @@ import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferMerge;
+import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.wafer.WaferValidator;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -54,6 +56,8 @@ public final class ArchiveService {
         NO_ROOM,
         PLAYER_NOT_FOUND,
         IS_OWNER,
+        /** Recovery needs the same kind of wafer: Capacity onto Capacity, Type onto Type. */
+        WRONG_KIND,
         /** A trust request is waiting for the player's name to be looked up; the outcome follows separately. */
         LOOKING_UP;
 
@@ -185,7 +189,10 @@ public final class ArchiveService {
             return Result.NOT_BLANK;
         }
         WaferItem blankItem = (WaferItem) blank.getItem();
-        if (blankItem.tier().capacity() < record.used()) {
+        if (blankItem.tier().isTyped() != record.isTyped()) {
+            return Result.WRONG_KIND;
+        }
+        if (!fits(record, blankItem.tier())) {
             return Result.TOO_SMALL;
         }
         int cost = JasmConfig.ARCHIVE_RECOVERY_COST.getAsInt();
@@ -200,7 +207,7 @@ public final class ArchiveService {
         blank.shrink(1);
         ItemStack replacement = new ItemStack(blankItem);
         replacement.set(JasmComponents.WAFER_IDENTITY.get(),
-                new WaferIdentity(record.id(), record.serial(), store.reissue(record, blankItem.tier().capacity(), player)));
+                new WaferIdentity(record.id(), record.serial(), store.reissue(record, blankItem.tier(), player)));
         player.getInventory().setItem(freeSlot, replacement);
         spend(block.energy(), cost);
         return Result.OK;
@@ -270,6 +277,20 @@ public final class ArchiveService {
         store.state().untrust(archive, target);
         store.state().saveNow(player.level().getServer());
         return Result.OK;
+    }
+
+    /** Whether a wafer's contents fit a wafer of {@code tier}: the total, and on Type Wafers the types and the biggest type. */
+    private static boolean fits(WaferRecord record, WaferTier tier) {
+        if (tier.capacity() < record.used()) {
+            return false;
+        }
+        if (!tier.isTyped()) {
+            return true;
+        }
+        long biggest = record.contents().entrySet().stream()
+                .filter(e -> !TypeRules.isSingle(e.getKey()))
+                .mapToLong(java.util.Map.Entry::getValue).max().orElse(0);
+        return record.typesUsed() <= tier.types() && biggest <= tier.perType();
     }
 
     /** Unformatted, or formatted with nothing stored and no link (and not the wafer being recovered). */

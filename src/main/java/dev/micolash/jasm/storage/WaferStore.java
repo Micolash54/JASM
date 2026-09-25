@@ -9,6 +9,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.WaferTier;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -256,7 +257,14 @@ public final class WaferStore {
 
     // --- stamps ---
 
-    /** Creates the record for a freshly formatted wafer. */
+    /** Creates the record for a freshly formatted wafer of this tier. */
+    public WaferRecord create(WaferTier tier, @Nullable Player actor) {
+        WaferRecord record = create(tier.capacity(), actor);
+        record.setLimits(tier);
+        return record;
+    }
+
+    /** Creates the record for a freshly formatted Capacity Wafer. */
     public WaferRecord create(int capacity, @Nullable Player actor) {
         long serial = allocateSerial();
         WaferRecord record = new WaferRecord(UUID.randomUUID(), serial, capacity, state.mint(), NOTHING_SAVED);
@@ -289,6 +297,13 @@ public final class WaferStore {
         record.markNewestSeen();
     }
 
+    /** Recovery onto a wafer of this tier: as {@link #reissue(WaferRecord, int, Player)}, taking the new wafer's limits. */
+    public Stamp reissue(WaferRecord record, WaferTier tier, @Nullable Player actor) {
+        Stamp stamp = reissue(record, tier.capacity(), actor);
+        record.setLimits(tier);
+        return stamp;
+    }
+
     /** Recovery or restore: every older instance becomes a recovered original. Returns the new instance's stamp. */
     public Stamp reissue(WaferRecord record, int newCapacity, @Nullable Player actor) {
         Stamp stamp = state.mint();
@@ -301,9 +316,13 @@ public final class WaferStore {
 
     // --- contents ---
 
-    /** Stores up to {@code amount}; returns the accepted amount. A null actor means no player was involved. */
+    /**
+     * Stores up to {@code amount}; returns the accepted amount. Type Wafers also keep to their type limits. A null
+     * actor means no player was involved.
+     */
     public long insert(WaferRecord record, ItemResource key, long amount, boolean simulate, @Nullable Player actor) {
-        long accepted = record.mutableContents().insert(key, amount, record.contentCapacity(), simulate);
+        long fits = record.isTyped() ? Math.min(amount, record.roomFor(key)) : amount;
+        long accepted = record.mutableContents().insert(key, fits, record.contentCapacity(), simulate);
         if (!simulate && accepted > 0) {
             contentsChanged(record, key, actor);
         }

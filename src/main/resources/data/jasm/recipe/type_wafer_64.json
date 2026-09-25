@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:blaze_rod",
+    "Y": "minecraft:netherite_ingot",
+    "R": "minecraft:redstone",
+    "W": "jasm:type_wafer_32"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "XWX"
+  ],
+  "source": "jasm:type_wafer_32",
+  "result": {
+    "id": "jasm:type_wafer_64"
+  },
+  "merge_wafers": true
+}

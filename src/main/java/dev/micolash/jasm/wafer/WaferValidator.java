@@ -62,6 +62,10 @@ public final class WaferValidator {
         }
         WaferRecord record = lookup.record();
         Verdict verdict = StampPolicy.judge(identity.stamp(), wafer.tier().capacity(), record == null ? null : record.view());
+        if (record != null && record.types() != wafer.tier().types() && verdict != Verdict.ORPHAN) {
+            // Same total but a different kind of wafer (an 8 Type Wafer and a 64K hold as much): never the same wafer.
+            verdict = Verdict.TAMPERED;
+        }
         // Locked wafers are reported when someone tries to use them, not on every background check.
         boolean report = mode != Mode.PASSIVE;
         switch (verdict) {
@@ -122,7 +126,7 @@ public final class WaferValidator {
         if (!(stack.getItem() instanceof WaferItem wafer) || stack.has(JasmComponents.WAFER_IDENTITY.get())) {
             throw new IllegalArgumentException("Can only format a blank wafer: " + stack);
         }
-        WaferRecord record = store.create(wafer.tier().capacity(), holder);
+        WaferRecord record = store.create(wafer.tier(), holder);
         stack.set(JasmComponents.WAFER_IDENTITY.get(), new WaferIdentity(record.id(), record.serial(), record.current()));
         return record;
     }

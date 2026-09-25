@@ -14,6 +14,18 @@ The three wafers are used up. The new wafer holds all of their items and starts 
 | ![16K Capacity Wafer](images/recipes/capacity_wafer_16k.png) | **16K Capacity Wafer** | 2 × Emerald, 1 × Blaze Rod, 3 × Redstone, 3 × 4K Capacity Wafer |
 | ![64K Capacity Wafer](images/recipes/capacity_wafer_64k.png) | **64K Capacity Wafer** | 2 × Blaze Rod, 1 × Netherite Ingot, 3 × Redstone, 3 × 16K Capacity Wafer |
 
+## Type Wafers
+
+Hold a few types, each in bulk. The two wafers are used up; the new wafer holds all of their items and starts unlinked.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![4 Type Wafer](images/recipes/type_wafer_4.png) | **4 Type Wafer** | 4 × Iron Ingot, 1 × Amethyst Shard, 3 × Redstone, 1 × Barrel |
+| ![8 Type Wafer](images/recipes/type_wafer_8.png) | **8 Type Wafer** | 4 × Gold Ingot, 1 × Diamond, 2 × Redstone, 2 × 4 Type Wafer |
+| ![16 Type Wafer](images/recipes/type_wafer_16.png) | **16 Type Wafer** | 4 × Diamond, 1 × Ender Pearl, 2 × Redstone, 2 × 8 Type Wafer |
+| ![32 Type Wafer](images/recipes/type_wafer_32.png) | **32 Type Wafer** | 4 × Emerald, 1 × Blaze Rod, 2 × Redstone, 2 × 16 Type Wafer |
+| ![64 Type Wafer](images/recipes/type_wafer_64.png) | **64 Type Wafer** | 4 × Blaze Rod, 1 × Netherite Ingot, 2 × Redstone, 2 × 32 Type Wafer |
+
 ## Decks
 
 The old Deck is used up. The new one keeps its wafers and its charge.

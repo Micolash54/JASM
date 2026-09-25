@@ -7,6 +7,8 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.core.Stamp;
 import dev.micolash.jasm.core.StampPolicy;
 import dev.micolash.jasm.core.WaferContents;
+import dev.micolash.jasm.wafer.TypeRules;
+import dev.micolash.jasm.wafer.WaferTier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -62,12 +64,14 @@ public final class WaferRecord {
      * Everything that is written to disk, copied on the server thread. Nothing in it changes afterwards, so it can
      * be encoded on another thread while the record keeps changing.
      */
-    public record Snapshot(UUID id, long serial, int capacity, Stamp stamp, Optional<Stamp> recoveryFloor, Optional<UUID> archive,
-            String lastKnownName, History history, LenientListCodec.Lenient<Entry> contents) {
+    public record Snapshot(UUID id, long serial, int capacity, int types, int perType, Stamp stamp, Optional<Stamp> recoveryFloor,
+            Optional<UUID> archive, String lastKnownName, History history, LenientListCodec.Lenient<Entry> contents) {
         public static final Codec<Snapshot> CODEC = RecordCodecBuilder.create(i -> i.group(
                         UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
                         Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
                         Codec.INT.fieldOf("capacity").forGetter(Snapshot::capacity),
+                        Codec.INT.optionalFieldOf("types", 0).forGetter(Snapshot::types),
+                        Codec.INT.optionalFieldOf("per_type", 0).forGetter(Snapshot::perType),
                         StorageCodecs.STAMP.fieldOf("stamp").forGetter(Snapshot::stamp),
                         StorageCodecs.STAMP.optionalFieldOf("recovery_floor").forGetter(Snapshot::recoveryFloor),
                         UUIDUtil.CODEC.optionalFieldOf("archive").forGetter(Snapshot::archive),
@@ -82,6 +86,9 @@ public final class WaferRecord {
     private final UUID id;
     private final long serial;
     private int capacity;
+    /** Type Wafers only: most types, and most items of one type. 0 on Capacity Wafers. */
+    private int types;
+    private int perType;
     private Stamp current;
     private Stamp confirmed;
     private boolean newestSeen;
@@ -107,6 +114,8 @@ public final class WaferRecord {
 
     private static WaferRecord decode(Snapshot saved) {
         WaferRecord record = new WaferRecord(saved.id(), saved.serial(), saved.capacity(), saved.stamp(), saved.stamp());
+        record.types = saved.types();
+        record.perType = saved.perType();
         record.recoveryFloor = saved.recoveryFloor().orElse(null);
         record.archiveId = saved.archive().orElse(null);
         record.lastKnownName = saved.lastKnownName();
@@ -130,7 +139,7 @@ public final class WaferRecord {
         for (Map.Entry<ItemResource, Long> e : contents.view().entrySet()) {
             entries.add(new Entry(e.getKey(), e.getValue()));
         }
-        return new Snapshot(id, serial, capacity, confirmed, Optional.ofNullable(recoveryFloor), Optional.ofNullable(archiveId),
+        return new Snapshot(id, serial, capacity, types, perType, confirmed, Optional.ofNullable(recoveryFloor), Optional.ofNullable(archiveId),
                 lastKnownName, history, new LenientListCodec.Lenient<>(List.copyOf(entries), List.copyOf(quarantined)));
     }
 
@@ -144,6 +153,30 @@ public final class WaferRecord {
 
     public int capacity() {
         return capacity;
+    }
+
+    /** Most types this wafer takes, or 0 for any number (Capacity Wafers). */
+    public int types() {
+        return types;
+    }
+
+    public int perType() {
+        return perType;
+    }
+
+    public boolean isTyped() {
+        return types > 0;
+    }
+
+    /** Types in use; always 0 on Capacity Wafers, which don't count them. */
+    public long typesUsed() {
+        return isTyped() ? TypeRules.typesUsed(contents.view(), quarantined.size()) : 0;
+    }
+
+    /** How many of {@code item} still fit: free space, and on Type Wafers the type limits too. */
+    public long roomFor(ItemResource item) {
+        long free = Math.max(0, contentCapacity() - contents.total());
+        return isTyped() ? Math.min(free, TypeRules.room(item, contents.count(item), typesUsed(), types, perType)) : free;
     }
 
     /** The newest stamp handed out. */
@@ -252,6 +285,12 @@ public final class WaferRecord {
 
     void setCapacity(int capacity) {
         this.capacity = capacity;
+    }
+
+    void setLimits(WaferTier tier) {
+        this.capacity = tier.capacity();
+        this.types = tier.types();
+        this.perType = tier.perType();
     }
 
     void setArchiveId(@Nullable UUID archiveId) {

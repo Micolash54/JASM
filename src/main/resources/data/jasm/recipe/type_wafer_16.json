@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:diamond",
+    "Y": "minecraft:ender_pearl",
+    "R": "minecraft:redstone",
+    "W": "jasm:type_wafer_8"
+  },
+  "pattern": [
+    "XYX",
+    "RWR",
+    "XWX"
+  ],
+  "source": "jasm:type_wafer_8",
+  "result": {
+    "id": "jasm:type_wafer_16"
+  },
+  "merge_wafers": true
+}
