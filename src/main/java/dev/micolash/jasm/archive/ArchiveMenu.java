@@ -1,5 +1,6 @@
 package dev.micolash.jasm.archive;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
@@ -7,6 +8,7 @@ import dev.micolash.jasm.wafer.WaferItem;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -25,6 +27,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class ArchiveMenu extends AbstractContainerMenu {
     public static final int LINK_SLOT = 0;
+    private static final Identifier EMPTY_LINK = Jasm.id("container/empty_link");
+    private static final Identifier EMPTY_BLANK = Jasm.id("container/empty_blank");
     public static final int RECOVERY_SLOT = 1;
     public static final int ROW_Y = 122;
     public static final int LINK_X = 8;
@@ -227,6 +231,12 @@ public class ArchiveMenu extends AbstractContainerMenu {
     private static final class WaferSlot extends Slot {
         WaferSlot(Container container, int index, int x, int y) {
             super(container, index, x, y);
+        }
+
+        /** Shows a faint linked wafer or blank wafer while empty, so each slot says what it is for. */
+        @Override
+        public Identifier getNoItemIcon() {
+            return getContainerSlot() == LINK_SLOT ? EMPTY_LINK : EMPTY_BLANK;
         }
 
         @Override

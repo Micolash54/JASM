@@ -1,7 +1,9 @@
 package dev.micolash.jasm.battery;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -18,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 /** The Creative Battery's menu: the charging slot, then the player's inventory (27 slots) and hotbar (9). */
 public class CreativeBatteryMenu extends AbstractContainerMenu {
     public static final int SLOT_X = 80;
+    private static final Identifier EMPTY_BOLT = Jasm.id("container/empty_bolt");
     public static final int SLOT_Y = 26;
     public static final int INVENTORY_Y = 84;
 
@@ -113,6 +116,12 @@ public class CreativeBatteryMenu extends AbstractContainerMenu {
     private static final class ChargingSlot extends Slot {
         ChargingSlot(Container container, int x, int y) {
             super(container, 0, x, y);
+        }
+
+        /** Shows a faint lightning bolt while empty. */
+        @Override
+        public Identifier getNoItemIcon() {
+            return EMPTY_BOLT;
         }
 
         @Override

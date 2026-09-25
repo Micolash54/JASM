@@ -38,18 +38,6 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     /** How long an action's message stays on screen, in ticks. */
     private static final int FEEDBACK_TICKS = 80;
 
-    private static final int PANEL = 0xFFC6C6C6;
-    private static final int PANEL_DARK = 0xFF555555;
-    private static final int SLOT = 0xFF8B8B8B;
-    private static final int LIST = 0xFF373737;
-    private static final int SELECTED = 0xFF5A5A8C;
-    private static final int HOVER = 0x30FFFFFF;
-    private static final int TEXT = 0xFF404040;
-    private static final int LIST_TEXT = 0xFFE0E0E0;
-    private static final int WARN = 0xFFFF6060;
-    private static final int DONE_TEXT = 0xFF2E7D32;
-    private static final int REFUSED_TEXT = 0xFFAA0000;
-    private static final int CHARGE = 0xFF3FA34D;
 
     private boolean accessView;
     private long selected = -1;
@@ -72,28 +60,28 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         super.init();
         int x = leftPos;
         int y = topPos;
-        toggle = addRenderableWidget(Button.builder(Component.empty(), b -> {
+        toggle = addRenderableWidget(JasmButton.text(Component.empty(), b -> {
             accessView = !accessView;
             scroll = 0;
             draggingHandle = false;
-        }).bounds(x + WIDTH - 8 - 46, y + 17, 46, 13).build());
-        link = addRenderableWidget(Button.builder(Component.translatable("screen.jasm.archive.link"),
-                b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.LINK)))
-                .bounds(x + ArchiveMenu.LINK_X + 20, y + ArchiveMenu.ROW_Y - 1, 34, 18).build());
-        unlink = addRenderableWidget(Button.builder(Component.translatable("screen.jasm.archive.unlink"),
-                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.UNLINK, selected, noPlayer(), "")))
-                .bounds(x + ArchiveMenu.LINK_X + 56, y + ArchiveMenu.ROW_Y - 1, 44, 18).build());
-        recover = addRenderableWidget(Button.builder(Component.translatable("screen.jasm.archive.recover"),
-                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected, noPlayer(), "")))
-                .bounds(x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18).build());
+        }, x + WIDTH - 8 - 46, y + 17, 46, 13));
+        link = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.link"),
+                b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.LINK)),
+                x + ArchiveMenu.LINK_X + 20, y + ArchiveMenu.ROW_Y - 1, 34, 18));
+        unlink = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.unlink"),
+                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.UNLINK, selected, noPlayer(), "")),
+                x + ArchiveMenu.LINK_X + 56, y + ArchiveMenu.ROW_Y - 1, 44, 18));
+        recover = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.recover"),
+                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected, noPlayer(), "")),
+                x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
         name = addRenderableWidget(new EditBox(font, x + LIST_X + 2, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT, LIST_WIDTH - 60, 11,
                 Component.translatable("screen.jasm.archive.player_name")));
         name.setHint(Component.translatable("screen.jasm.archive.player_name").withStyle(ChatFormatting.DARK_GRAY));
         name.setMaxLength(16);
-        trust = addRenderableWidget(Button.builder(Component.translatable("screen.jasm.archive.trust"), b -> {
+        trust = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.trust"), b -> {
             send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.TRUST, 0, noPlayer(), name.getValue()));
             name.setValue("");
-        }).bounds(x + LIST_X + LIST_WIDTH - 54, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT - 1, 54, 13).build());
+        }, x + LIST_X + LIST_WIDTH - 54, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT - 1, 54, 13));
         updateWidgets();
     }
 
@@ -152,32 +140,21 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        graphics.fill(x, y, x + imageWidth, y + imageHeight, PANEL);
-        graphics.fill(x, y, x + imageWidth, y + 1, 0xFFFFFFFF);
-        graphics.fill(x, y + imageHeight - 1, x + imageWidth, y + imageHeight, PANEL_DARK);
+        JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
         for (Slot slot : menu.slots) {
-            graphics.fill(x + slot.x - 1, y + slot.y - 1, x + slot.x + 17, y + slot.y + 17, SLOT);
+            JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
-        graphics.fill(x + LIST_X - 1, y + LIST_Y - 1, x + LIST_X + LIST_WIDTH + 1, y + LIST_Y + ROWS * ROW_HEIGHT + 1, PANEL_DARK);
-        graphics.fill(x + LIST_X, y + LIST_Y, x + LIST_X + LIST_WIDTH, y + LIST_Y + ROWS * ROW_HEIGHT, LIST);
+        JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_WIDTH + 2, ROWS * ROW_HEIGHT + 2);
 
         drawScrollBar(graphics, x, y);
 
-        int filled = (int) Math.round(ENERGY_WIDTH * Math.min(1.0, menu.view().energy() / (double) menu.tier().energyBuffer()));
         int bx = x + imageWidth - 8 - ENERGY_WIDTH;
-        graphics.fill(bx - 1, y + 6, bx + ENERGY_WIDTH + 1, y + 13, PANEL_DARK);
-        graphics.fill(bx, y + 7, bx + filled, y + 12, CHARGE);
+        JasmGui.bar(graphics, bx - 1, y + 6, ENERGY_WIDTH + 2, 7, menu.view().energy() / (double) menu.tier().energyBuffer());
     }
 
     /** A track beside the list with a draggable handle, greyed out when everything fits. */
     private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
-        int left = x + SCROLL_X;
-        int top = y + LIST_Y;
-        graphics.fill(left, top - 1, left + SCROLL_WIDTH, top + trackHeight() + 1, PANEL_DARK);
-        boolean active = maxScroll() > 0;
-        int handleTop = top + handleOffset();
-        graphics.fill(left + 1, handleTop, left + SCROLL_WIDTH - 1, handleTop + HANDLE_HEIGHT, active ? 0xFFE0E0E0 : 0xFF9A9A9A);
-        graphics.fill(left + 1, handleTop + HANDLE_HEIGHT - 1, left + SCROLL_WIDTH - 1, handleTop + HANDLE_HEIGHT, active ? 0xFF7A7A7A : 0xFF6A6A6A);
+        JasmGui.scrollBar(graphics, x + SCROLL_X, y + LIST_Y - 1, SCROLL_WIDTH, trackHeight() + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
     }
 
     private int trackHeight() {
@@ -210,36 +187,36 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         if (accessView) {
             List<ArchivePayloads.Trusted> trusted = menu.view().trusted();
             if (trusted.isEmpty()) {
-                graphics.text(font, Component.translatable("screen.jasm.archive.nobody_trusted"), x + 3, y + 2, 0xFF9A9A9A, false);
+                graphics.text(font, Component.translatable("screen.jasm.archive.nobody_trusted"), x + 3, y + 2, JasmGui.MUTED, false);
             }
             Component remove = Component.translatable("screen.jasm.archive.remove");
             for (int row = 0; row < visibleRows() && scroll + row < trusted.size(); row++) {
                 int ry = y + row * ROW_HEIGHT;
                 if (scroll + row == hovered) {
-                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, HOVER);
+                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
                 }
-                graphics.text(font, trusted.get(scroll + row).name(), x + 3, ry + 2, LIST_TEXT, false);
-                graphics.text(font, remove, x + LIST_WIDTH - 3 - font.width(remove), ry + 2, WARN, false);
+                graphics.text(font, trusted.get(scroll + row).name(), x + 3, ry + 2, JasmGui.TEXT, false);
+                graphics.text(font, remove, x + LIST_WIDTH - 3 - font.width(remove), ry + 2, JasmGui.BAD, false);
             }
         } else {
             List<ArchiveService.Entry> entries = menu.view().entries();
             if (entries.isEmpty()) {
-                graphics.text(font, Component.translatable("screen.jasm.archive.none"), x + 3, y + 2, 0xFF9A9A9A, false);
+                graphics.text(font, Component.translatable("screen.jasm.archive.none"), x + 3, y + 2, JasmGui.MUTED, false);
             }
             for (int row = 0; row < ROWS && scroll + row < entries.size(); row++) {
                 ArchiveService.Entry entry = entries.get(scroll + row);
                 int ry = y + row * ROW_HEIGHT;
                 if (entry.serial() == selected) {
-                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, SELECTED);
+                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.SELECTED);
                 } else if (scroll + row == hovered) {
-                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, HOVER);
+                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
                 }
                 String amount = entry.readable() ? GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) : "";
                 int amountWidth = font.width(amount);
                 String number = WaferNumbers.visibleTo(minecraft.player) ? "#" + entry.serial() + " " : "";
                 String label = number + (entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString());
-                graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2, entry.readable() ? LIST_TEXT : WARN, false);
-                graphics.text(font, amount, x + LIST_WIDTH - 3 - amountWidth, ry + 2, LIST_TEXT, false);
+                graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2, entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
+                graphics.text(font, amount, x + LIST_WIDTH - 3 - amountWidth, ry + 2, JasmGui.TEXT, false);
             }
         }
         if (mouseX >= leftPos + imageWidth - 8 - ENERGY_WIDTH && mouseX < leftPos + imageWidth - 8 && mouseY >= topPos + 6 && mouseY < topPos + 13) {
@@ -257,20 +234,20 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
-        graphics.text(font, title, titleLabelX, titleLabelY, TEXT, false);
-        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, TEXT, false);
+        graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
+        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         ArchivePayloads.State view = menu.view();
         Component header = accessView
                 ? Component.translatable("screen.jasm.archive.owner", view.ownerName())
                 : Component.translatable("screen.jasm.archive.linked", view.entries().size(), menu.tier().registrations());
-        graphics.text(font, header, LIST_X, 20, TEXT, false);
+        graphics.text(font, header, LIST_X, 20, JasmGui.SUBTEXT, false);
 
         ArchivePayloads.Feedback feedback = menu.feedback();
         if (feedback != null && minecraft.level != null && minecraft.level.getGameTime() - menu.feedbackTime() < FEEDBACK_TICKS) {
             String message = font.plainSubstrByWidth(Component.translatable(feedback.messageKey()).getString(), LIST_WIDTH);
-            graphics.text(font, message, LIST_X, FEEDBACK_Y, feedback.ok() ? DONE_TEXT : REFUSED_TEXT, false);
+            graphics.text(font, message, LIST_X, FEEDBACK_Y, feedback.ok() ? JasmGui.GOOD : JasmGui.BAD, false);
         } else if (menu.view().energy() == 0) {
-            graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, REFUSED_TEXT, false);
+            graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
         }
     }
 

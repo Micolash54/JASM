@@ -1,5 +1,6 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.SearchQuery;
@@ -15,7 +16,6 @@ import java.util.Map;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
@@ -43,12 +43,10 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private static final int SCROLL_HEIGHT = ROWS * 18 - 2;
     private static final int HANDLE_HEIGHT = 15;
 
-    private static final int PANEL = 0xFFC6C6C6;
-    private static final int PANEL_DARK = 0xFF555555;
-    private static final int SLOT = 0xFF8B8B8B;
-    private static final int SLOT_HOVER = 0x80FFFFFF;
-    private static final int TEXT = 0xFF404040;
-    private static final int CHARGE = 0xFF3FA34D;
+    private static final JasmButton.Icon SORT_NAME = new JasmButton.Icon(Jasm.id("icon/sort_name"), 7, 5);
+    private static final JasmButton.Icon SORT_AMOUNT = new JasmButton.Icon(Jasm.id("icon/sort_amount"), 7, 5);
+    private static final JasmButton.Icon ARROW_UP = new JasmButton.Icon(Jasm.id("icon/arrow_up"), 5, 3);
+    private static final JasmButton.Icon ARROW_DOWN = new JasmButton.Icon(Jasm.id("icon/arrow_down"), 5, 3);
 
     private EditBox search;
     private GridEntries.Sort sort = GridEntries.Sort.NAME;
@@ -77,24 +75,24 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         search.setMaxLength(64);
         search.setResponder(text -> scrollRow = 0);
         addRenderableWidget(search);
-        addRenderableWidget(Button.builder(sortLabel(), b -> {
+        addRenderableWidget(JasmButton.icon(() -> sort == GridEntries.Sort.NAME ? SORT_NAME : SORT_AMOUNT, sortLabel(), b -> {
             sort = sort == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME;
             b.setMessage(sortLabel());
             builtVersion = -1;
-        }).bounds(leftPos + 149, topPos + 3, 20, 14).build());
-        addRenderableWidget(Button.builder(directionLabel(), b -> {
+        }, leftPos + 149, topPos + 3, 20, 14));
+        addRenderableWidget(JasmButton.icon(() -> ascending ? ARROW_UP : ARROW_DOWN, directionLabel(), b -> {
             ascending = !ascending;
             b.setMessage(directionLabel());
             builtVersion = -1;
-        }).bounds(leftPos + 170, topPos + 3, 14, 14).build());
+        }, leftPos + 170, topPos + 3, 14, 14));
     }
 
     private Component sortLabel() {
-        return Component.literal(sort == GridEntries.Sort.NAME ? "Az" : "#");
+        return Component.translatable(sort == GridEntries.Sort.NAME ? "screen.jasm.deck.sort_name" : "screen.jasm.deck.sort_amount");
     }
 
     private Component directionLabel() {
-        return Component.literal(ascending ? "▲" : "▼");
+        return Component.translatable(ascending ? "screen.jasm.deck.ascending" : "screen.jasm.deck.descending");
     }
 
     // --- grid contents ---
@@ -147,26 +145,18 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        graphics.fill(x, y, x + imageWidth, y + imageHeight, PANEL);
-        graphics.fill(x, y, x + imageWidth, y + 1, 0xFFFFFFFF);
-        graphics.fill(x, y + imageHeight - 1, x + imageWidth, y + imageHeight, PANEL_DARK);
+        JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
         for (Slot slot : menu.slots) {
-            graphics.fill(x + slot.x - 1, y + slot.y - 1, x + slot.x + 17, y + slot.y + 17, SLOT);
+            JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
-        graphics.fill(x + GRID_X - 1, y + gridY - 1, x + GRID_X + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, SLOT);
+        JasmGui.inset(graphics, x + GRID_X - 1, y + gridY - 1, COLUMNS * 18, ROWS * 18);
         drawScrollBar(graphics, x, y);
         drawCharge(graphics, x, y);
     }
 
     /** A track beside the grid with a handle; the handle is greyed out when everything fits without scrolling. */
     private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
-        int left = x + SCROLL_X;
-        int top = y + gridY - 1;
-        graphics.fill(left, top, left + SCROLL_WIDTH, top + SCROLL_HEIGHT + 2, PANEL_DARK);
-        int handleTop = top + 1 + handleOffset();
-        boolean active = maxScroll() > 0;
-        graphics.fill(left + 1, handleTop, left + SCROLL_WIDTH - 1, handleTop + HANDLE_HEIGHT, active ? 0xFFE0E0E0 : 0xFF9A9A9A);
-        graphics.fill(left + 1, handleTop + HANDLE_HEIGHT - 1, left + SCROLL_WIDTH - 1, handleTop + HANDLE_HEIGHT, active ? 0xFF7A7A7A : 0xFF6A6A6A);
+        JasmGui.scrollBar(graphics, x + SCROLL_X, y + gridY - 1, SCROLL_WIDTH, SCROLL_HEIGHT + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
     }
 
     private int handleOffset() {
@@ -191,10 +181,8 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private void drawCharge(GuiGraphicsExtractor graphics, int x, int y) {
-        int filled = (int) Math.round(CHARGE_WIDTH * Math.min(1.0, menu.view().energy() / (double) tier().battery()));
         int bx = x + imageWidth - 8 - CHARGE_WIDTH;
-        graphics.fill(bx - 1, y + statusY, bx + CHARGE_WIDTH + 1, y + statusY + 7, PANEL_DARK);
-        graphics.fill(bx, y + statusY + 1, bx + filled, y + statusY + 6, CHARGE);
+        JasmGui.bar(graphics, bx - 1, y + statusY, CHARGE_WIDTH + 2, 7, menu.view().energy() / (double) tier().battery());
     }
 
     @Override
@@ -217,14 +205,14 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 graphics.item(stack, sx, sy);
                 graphics.itemDecorations(font, stack, sx, sy, GridEntries.abbreviate(entry.count()));
                 if (entry == hovered) {
-                    graphics.fill(sx, sy, sx + 16, sy + 16, SLOT_HOVER);
+                    graphics.fill(sx, sy, sx + 16, sy + 16, JasmGui.HOVER);
                 }
             }
         }
         if (!hasPower()) {
-            graphics.fill(x + GRID_X - 1, y + gridY - 1, x + GRID_X + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, 0xA0000000);
+            graphics.fill(x + GRID_X - 1, y + gridY - 1, x + GRID_X + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, JasmGui.SHADE);
             Component text = Component.translatable("screen.jasm.deck.no_power");
-            graphics.text(font, text, x + GRID_X + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + ROWS * 9 - 4, 0xFFFF5555, true);
+            graphics.text(font, text, x + GRID_X + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + ROWS * 9 - 4, JasmGui.BAD, true);
         }
         int barLeft = x + imageWidth - 8 - CHARGE_WIDTH;
         if (mouseX >= barLeft && mouseX < barLeft + CHARGE_WIDTH && mouseY >= y + statusY && mouseY < y + statusY + 7) {
@@ -240,8 +228,8 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
-        graphics.text(font, title, titleLabelX, titleLabelY, TEXT, false);
-        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, TEXT, false);
+        graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
+        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         long used = 0;
         long capacity = 0;
         long missing = 0;
@@ -252,7 +240,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         }
         // Items from missing mods still take up space; the usage turns red and each wafer's tooltip says how many.
         Component status = Component.translatable("screen.jasm.deck.usage", GridEntries.abbreviate(used), GridEntries.abbreviate(capacity));
-        graphics.text(font, status, 8, statusY, missing > 0 ? 0xFFAA0000 : TEXT, false);
+        graphics.text(font, status, 8, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
     }
 
     /** Wafer slot tooltips add how full the wafer is and whether an Archive protects it. */

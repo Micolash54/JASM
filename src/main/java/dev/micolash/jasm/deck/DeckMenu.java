@@ -1,9 +1,11 @@
 package dev.micolash.jasm.deck;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferItem;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -18,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
  */
 public class DeckMenu extends AbstractContainerMenu {
     public static final int WAFER_ROW_Y = 18;
+    private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
     /** Where the inventory starts when the wafer slots fit in two rows; each further row pushes it down 18. */
     public static final int INVENTORY_Y = 150;
 
@@ -156,6 +159,12 @@ public class DeckMenu extends AbstractContainerMenu {
     private static final class WaferSlot extends Slot {
         WaferSlot(DeckWaferContainer container, int index, int x, int y) {
             super(container, index, x, y);
+        }
+
+        /** Shows a faint wafer while empty. */
+        @Override
+        public Identifier getNoItemIcon() {
+            return EMPTY_WAFER;
         }
 
         @Override

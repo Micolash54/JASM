@@ -77,5 +77,9 @@
   "screen.jasm.archive.link_hint": "Link slot",
   "screen.jasm.archive.recover_hint": "Blank wafer to recover onto",
   "screen.jasm.archive.drain": "Usage %s FE/t",
-  "screen.jasm.archive.no_power": "No power: can't link or recover"
+  "screen.jasm.archive.no_power": "No power: can't link or recover",
+  "screen.jasm.deck.sort_name": "Sort by name",
+  "screen.jasm.deck.sort_amount": "Sort by amount",
+  "screen.jasm.deck.ascending": "Ascending",
+  "screen.jasm.deck.descending": "Descending"
 }
