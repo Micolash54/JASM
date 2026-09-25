@@ -1,6 +1,8 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/orientable",
   "textures": {
-    "all": "jasm:block/advanced_archive"
+    "front": "jasm:block/advanced_archive_front",
+    "side": "jasm:block/archive_casing",
+    "top": "jasm:block/archive_casing"
   }
 }

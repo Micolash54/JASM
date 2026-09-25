@@ -1,5 +1,19 @@
 {
   "variants": {
-    "": { "model": "jasm:block/ultimate_archive" }
+    "facing=north": {
+      "model": "jasm:block/ultimate_archive"
+    },
+    "facing=east": {
+      "model": "jasm:block/ultimate_archive",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/ultimate_archive",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/ultimate_archive",
+      "y": 270
+    }
   }
 }

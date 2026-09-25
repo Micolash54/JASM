@@ -1,5 +1,19 @@
 {
   "variants": {
-    "": { "model": "jasm:block/basic_archive" }
+    "facing=north": {
+      "model": "jasm:block/basic_archive"
+    },
+    "facing=east": {
+      "model": "jasm:block/basic_archive",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/basic_archive",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/basic_archive",
+      "y": 270
+    }
   }
 }

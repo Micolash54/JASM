@@ -8,6 +8,7 @@ runs/
 logs/
 references/
 docs/
+art/
 
 # IDE
 .idea/
@@ -22,3 +23,6 @@ docs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local helper scripts
+tools/
