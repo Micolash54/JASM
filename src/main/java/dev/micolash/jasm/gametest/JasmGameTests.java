@@ -33,6 +33,7 @@ public final class JasmGameTests {
         BatteryGameTests.register();
         ArchiveGameTests.register();
         ArchiveServiceGameTests.register();
+        IntegrityGameTests.register();
     }
 
     private JasmGameTests() {}

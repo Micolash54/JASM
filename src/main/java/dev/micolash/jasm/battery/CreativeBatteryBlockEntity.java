@@ -52,7 +52,8 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
         battery.charge(JasmConfig.BATTERY_CHARGE_PER_TICK.getAsInt());
     }
 
-    private void pushToNeighbours(ServerLevel level) {
+    /** One tick of output: up to the per-side limit into each touching block that takes FE. */
+    public void pushToNeighbours(ServerLevel level) {
         int amount = JasmConfig.BATTERY_PUSH_PER_FACE_PER_TICK.getAsInt();
         if (amount <= 0) {
             return;

@@ -46,6 +46,7 @@ public final class StorageGameTests {
         JasmGameTests.add("storage_logout_saves_only_co_users", StorageGameTests::logoutSavesOnlyCoUsers);
         JasmGameTests.add("storage_stamp_saved_only_while_held", StorageGameTests::stampSavedOnlyWhileHeld);
         JasmGameTests.add("storage_stale_copy_locked_until_newest_seen", StorageGameTests::staleCopyLockedUntilNewestSeen);
+        JasmGameTests.add("storage_full_64k_wafers_of_different_items_survive_reload", StorageGameTests::fullWafersSurviveReload);
     }
 
     private static WaferStore store(GameTestHelper helper) {
@@ -179,6 +180,49 @@ public final class StorageGameTests {
         helper.assertTrue(reloaded.id().equals(record.id()) && reloaded.count(ItemResource.of(Items.EMERALD)) == 40, "same wafer, same contents");
         helper.assertFalse(reloaded.newestSeen(), "a reloaded record has not seen its newest copy yet");
         helper.succeed();
+    }
+
+    /** How many completely full 64K wafers the size test writes. */
+    static int fullWaferCount = 1;
+
+    /**
+     * The biggest records there can be: full 64K wafers where every item is different. They are far larger than a
+     * region file slot holds, so this checks they save and load whole, and logs how long saving takes.
+     */
+    private static void fullWafersSurviveReload(GameTestHelper helper) {
+        WaferStore store = store(helper);
+        int capacity = WaferTier.K64.capacity();
+        List<WaferRecord> records = new java.util.ArrayList<>();
+        for (int w = 0; w < fullWaferCount; w++) {
+            WaferRecord record = store.create(capacity, null);
+            for (int i = 0; i < capacity; i++) {
+                store.insert(record, page(w, i), 1, false, null);
+            }
+            helper.assertTrue(record.free() == 0, "wafer " + w + " is full");
+            records.add(record);
+        }
+        long start = System.nanoTime();
+        store.writeAllDirty();
+        long encoded = System.nanoTime();
+        store.flush();
+        long written = System.nanoTime();
+        dev.micolash.jasm.Jasm.LOGGER.info("Saved {} full 64K wafers: {} ms on the server thread, {} ms until on disk",
+                records.size(), (encoded - start) / 1_000_000, (written - start) / 1_000_000);
+
+        for (int w = 0; w < records.size(); w++) {
+            WaferRecord record = records.get(w);
+            helper.assertTrue(store.unload(record.serial()), "wafer " + w + " was saved");
+            WaferRecord reloaded = store.bySerial(record.serial()).orElseThrow();
+            helper.assertTrue(reloaded.contents().size() == capacity && reloaded.used() == capacity, "wafer " + w + " came back whole");
+            helper.assertTrue(reloaded.count(page(w, capacity - 1)) == 1 && reloaded.count(page(w, 0)) == 1, "with its own items");
+        }
+        helper.succeed();
+    }
+
+    private static ItemResource page(int wafer, int index) {
+        ItemStack stack = new ItemStack(Items.PAPER);
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Page " + wafer + "-" + index));
+        return ItemResource.of(stack);
     }
 
     /** After a crash the serial counter can be behind; used slots must be skipped, never overwritten. */
