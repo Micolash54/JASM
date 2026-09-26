@@ -46,4 +46,4 @@ Download the latest jar from [Releases](https://github.com/Micolash54/JASM/relea
 
 JASM is licensed under [CC BY-NC-SA 4.0](LICENSE): you may share it and make your own versions, as long as you credit it, don't make money from it, and release your version under the same license.
 
-**Modpacks** may include JASM without asking, as long as the pack is free to download. Packs that earn rewards from the platform they're on (CurseForge rewards, Modrinth payouts) are fine; packs that are sold or behind a paywall are not.
+**Modpacks**: as an additional permission on top of the license, you may include JASM, unchanged, in modpacks that are free to download, including packs that earn rewards from the platform they're published on (such as CurseForge rewards or Modrinth payouts). Packs that are sold, or kept behind a paywall, are not covered by this permission.
