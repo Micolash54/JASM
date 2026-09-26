@@ -1,6 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
@@ -40,7 +41,7 @@ import org.jspecify.annotations.Nullable;
  * <p>The wafer slots sit in a side panel on the left, up to {@link #SIDE_ROWS} per column; the main panel (grid and
  * inventory) starts at {@link #mainX()}; a Crafting Deck's grid sits in a panel on the right at {@link #craftX()}.
  */
-public class DeckMenu extends AbstractContainerMenu {
+public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
     public static final int INVENTORY_Y = 150;
     /** Width of the main panel. */
@@ -55,6 +56,7 @@ public class DeckMenu extends AbstractContainerMenu {
     public static final int CRAFT_RESULT_Y = SIDE_PAD + 1 + 3 * 18 + 14;
     public static final int CRAFT_HEIGHT = CRAFT_RESULT_Y + 16 + SIDE_PAD + 1;
 
+    private final Notices.Shown notices = new Notices.Shown();
     private final Player player;
     private final int deckSlot;
     private final ItemStack deck;
@@ -564,5 +566,11 @@ public class DeckMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             return false;
         }
+    }
+
+    /** Client side: the last message for this screen. */
+    @Override
+    public Notices.Shown notices() {
+        return notices;
     }
 }

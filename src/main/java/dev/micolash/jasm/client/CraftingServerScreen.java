@@ -84,6 +84,12 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
         collect.active = phase == CraftingJob.Phase.RETURNING;
         back.visible = menu.opensFromDeck();
         super.extractContents(graphics, mouseX, mouseY, a);
+        // The last message (collected, cancelling...) over the bottom of the job panel for a few seconds.
+        Component notice = menu.notices().current(minecraft.level.getGameTime());
+        if (notice != null) {
+            graphics.nextStratum();
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + PANEL_X + 1, topPos + PANEL_Y + PANEL_H - 1, PANEL_W - 2);
+        }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);

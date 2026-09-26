@@ -1,6 +1,7 @@
 package dev.micolash.jasm.wafer;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.Stamp;
 import dev.micolash.jasm.core.StampPolicy;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
@@ -149,9 +150,7 @@ public final class WaferValidator {
     }
 
     private static void notify(@Nullable Player holder, String key) {
-        if (holder != null) {
-            holder.sendOverlayMessage(Component.translatable(key));
-        }
+        Notices.bad(holder, Component.translatable(key));
     }
 
     private static String holderName(@Nullable Player holder) {

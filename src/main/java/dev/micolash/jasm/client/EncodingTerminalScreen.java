@@ -148,7 +148,11 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     private void drawMessage(GuiGraphicsExtractor graphics) {
         Component text = null;
         int color = JasmGui.BAD;
-        if (messageTicks > 0 && !menu.message().isEmpty()) {
+        Component notice = menu.notices().current(minecraft.level.getGameTime());
+        if (notice != null) {
+            text = notice;
+            color = menu.notices().ok() ? JasmGui.GOOD : JasmGui.BAD;
+        } else if (messageTicks > 0 && !menu.message().isEmpty()) {
             text = Component.translatable(menu.message());
             color = menu.message().equals("message.jasm.terminal.encoded") ? JasmGui.GOOD : JasmGui.BAD;
         } else if (!menu.running()) {

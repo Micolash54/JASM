@@ -1,6 +1,7 @@
 package dev.micolash.jasm.network;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,9 +22,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Finds crafting networks and keeps them until something changes. A network is worked out the first time anything
- * asks about one of its blocks, by walking from block to block. Placing or removing a cable or a machine, or a chunk
- * loading or unloading, throws every network of that level away; each is worked out again when next asked, keeping
- * the power its cables held.
+ * asks about one of its blocks, by walking from block to block. Placing or removing a cable, a machine or an Archive,
+ * or a chunk loading or unloading, throws every network of that level away; each is worked out again when next
+ * asked, keeping the power its cables held.
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class Networks {
@@ -114,8 +115,12 @@ public final class Networks {
     }
 
     private boolean isMember(BlockPos pos) {
-        return level.isLoaded(pos) && (level.getBlockState(pos).getBlock() instanceof DataCableBlock
-                || level.getBlockEntity(pos) instanceof MachineBlockEntity);
+        return level.isLoaded(pos) && (level.getBlockState(pos).getBlock() instanceof DataCableBlock || isBlock(pos));
+    }
+
+    /** A block of the network that isn't a cable: a crafting block, or an Archive (which only takes part in access). */
+    private boolean isBlock(BlockPos pos) {
+        return level.getBlockEntity(pos) instanceof MachineBlockEntity || level.getBlockEntity(pos) instanceof ArchiveBlockEntity;
     }
 
     /** Whether data passes between two touching blocks. */
@@ -127,7 +132,7 @@ public final class Networks {
             DyeColor b = ((DataCableBlock) to.getBlock()).color();
             return DataCableBlock.compatible(a, b);
         }
-        return toCable || level.getBlockEntity(toPos) instanceof MachineBlockEntity;
+        return toCable || isBlock(toPos);
     }
 
     @SubscribeEvent

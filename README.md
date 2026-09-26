@@ -14,7 +14,7 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Type Wafers**: hold only a few kinds of items, but lots of each. Five sizes, from 4 types up to 64.
 - **Decks**: handheld readers that hold several wafers at once, with a searchable storage screen. Five tiers, from Starter to Ultimate.
 - **Wafer priorities**: choose which wafer in a Deck fills first, and which items each wafer is for.
-- **Archives**: link your wafers to one, and if a wafer is ever lost, rebuild it onto a blank. Only the owner and players they trust can use it.
+- **Archives**: link your wafers to one, and if a wafer is ever lost, rebuild it onto a blank. Only the owner can use it, and the players an Encoding Terminal of theirs on the same network trusts.
 - **Combustion Generators**: burn anything a furnace burns for power, in Basic, Advanced and Elite tiers. Each has a charging slot for Decks.
 - **Crafting Decks**: Advanced, Elite and Ultimate Decks with a 3×3 crafting grid that takes ingredients straight from the wafers and refills itself.
 - **Autocrafting**: write recipes onto Recipe Cards at an Encoding Terminal, keep them in Recipe Racks, and let Crafting Servers do the work. Ask for anything from your Crafting Deck, and the ingredients it needs are crafted first. Processors decide how many crafts run at once, Storage Modules how big a job fits. A job list on the Deck shows every job and opens its server from anywhere.

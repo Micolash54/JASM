@@ -1,5 +1,6 @@
 package dev.micolash.jasm.deck;
 
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.DepositRouter;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -135,7 +136,7 @@ public final class DeckStorage {
         WaferEligibility.Result eligible = WaferEligibility.check(source, player.level().registryAccess());
         if (!eligible.accepted()) {
             if (tell) {
-                player.sendOverlayMessage(Component.translatable(eligible.messageKey()));
+                Notices.bad(player, Component.translatable(eligible.messageKey()));
             }
             return 0;
         }
@@ -357,7 +358,7 @@ public final class DeckStorage {
             return true;
         }
         if (tell) {
-            player.sendOverlayMessage(Component.translatable("message.jasm.deck.no_power"));
+            Notices.bad(player, Component.translatable("message.jasm.deck.no_power"));
         }
         return false;
     }

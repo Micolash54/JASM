@@ -1,5 +1,6 @@
 package dev.micolash.jasm.archive;
 
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,8 +28,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recovery hardware. Anyone can break it, but only its owner and the players they trust can use it, wherever it
- * is placed. Explosions and pistons can't move it.
+ * Recovery hardware. Anyone can break it, but only its owner can use it, and the players an Encoding Terminal of
+ * theirs on the same network trusts. Cables join it to a network like the crafting blocks. Explosions and pistons
+ * can't move it.
  */
 public class ArchiveBlock extends BaseEntityBlock {
     /** The side with the drive bays, turned toward whoever placed it. */
@@ -80,6 +82,20 @@ public class ArchiveBlock extends BaseEntityBlock {
         if (level instanceof ServerLevel serverLevel && level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive) {
             ArchivePlacement.placed(archive, serverLevel, by instanceof Player player ? player : null);
         }
+    }
+
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        super.onPlace(state, level, pos, oldState, movedByPiston);
+        if (level instanceof ServerLevel serverLevel && !oldState.is(this)) {
+            Networks.invalidate(serverLevel);
+        }
+    }
+
+    @Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+        Networks.invalidate(level);
     }
 
     @Override

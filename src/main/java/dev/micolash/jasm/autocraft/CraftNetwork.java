@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.deck.DeckMenu;
@@ -108,16 +109,16 @@ public final class CraftNetwork {
         menu.wafers().flush();
         String problem = Jobs.start(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
         menu.wafers().reload();
-        player.sendOverlayMessage(problem == null
+        Notices.tell(player, problem == null
                 ? Component.translatable("message.jasm.craft.started", clamp(payload.amount()), payload.target().toStack(1).getHoverName())
-                : Component.translatable(problem));
+                : Component.translatable(problem), problem == null);
         SENT.remove(menu);
     }
 
     public static void cancel(ServerPlayer player, CraftPayloads.Cancel payload) {
         DeckMenu menu = craftingMenu(player, payload.containerId());
         if (menu != null && Jobs.cancel(player, menu.deck(), payload.server())) {
-            player.sendOverlayMessage(Component.translatable("message.jasm.craft.cancelling"));
+            Notices.good(player, Component.translatable("message.jasm.craft.cancelling"));
             SENT.remove(menu);
         }
     }
@@ -180,7 +181,7 @@ public final class CraftNetwork {
                 rules.add(new CraftRule(UUID.randomUUID(), rule.item(), rule.timed(), rule.threshold(), rule.seconds(), rule.amount(), rule.enabled(),
                         rule.toPlayer()));
             } else {
-                player.sendOverlayMessage(Component.translatable("message.jasm.rule.full", Rules.limit(deck)));
+                Notices.bad(player, Component.translatable("message.jasm.rule.full", Rules.limit(deck)));
                 return false;
             }
         }

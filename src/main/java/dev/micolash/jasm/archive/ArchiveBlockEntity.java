@@ -2,6 +2,7 @@ package dev.micolash.jasm.archive;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
@@ -142,12 +143,12 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         return container;
     }
 
-    /** Opens the screen for the owner and trusted players; everyone else is told whose Archive it is. */
+    /** Opens the screen for the owner and players trusted on its network; everyone else is told whose Archive it is. */
     public void open(ServerPlayer player) {
         ArchiveRecord record = record();
         if (record == null) {
             player.sendOverlayMessage(Component.translatable("message.jasm.archive.not_ready"));
-        } else if (!record.isAuthorized(player.getUUID())) {
+        } else if (!MachineAccess.canUse(this, player)) {
             player.sendOverlayMessage(Component.translatable("message.jasm.archive.no_access", record.ownerName()));
         } else {
             player.openMenu(this, buf -> buf.writeBlockPos(worldPosition));

@@ -139,16 +139,6 @@ public final class JasmState extends SavedData {
         setDirty();
     }
 
-    public void trust(ArchiveRecord record, UUID player, String name) {
-        record.putTrusted(player, name);
-        setDirty();
-    }
-
-    public void untrust(ArchiveRecord record, UUID player) {
-        record.removeTrusted(player);
-        setDirty();
-    }
-
     public void addLinked(ArchiveRecord record, long serial) {
         if (record.addLinked(serial)) {
             setDirty();

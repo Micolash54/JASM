@@ -1,9 +1,13 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import java.util.List;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
 
 /**
  * The look shared by every JASM screen: Catppuccin Mocha colours with Minecraft-style bevels. Panels, slots, wells,
@@ -19,6 +23,7 @@ public final class JasmGui {
     public static final int SELECTED = 0xFF45475A;
     public static final int HOVER = 0x30FFFFFF;
     public static final int SHADE = 0xB011111B;
+    private static final int NOTICE = 0xE811111B;
 
     private static final Identifier PANEL = Jasm.id("panel");
     private static final Identifier SLOT = Jasm.id("slot");
@@ -49,6 +54,22 @@ public final class JasmGui {
         int filled = (int) Math.round((width - 2) * Math.clamp(fraction, 0.0, 1.0));
         if (filled > 0) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BAR_FILL, x + 1, y + 1, filled, height - 2);
+        }
+    }
+
+    /**
+     * A short message laid over the bottom of a list or grid, {@code x} to {@code x + width} and ending at
+     * {@code bottom}: a dark strip with up to three centred lines, green when something worked and red when not.
+     */
+    public static void notice(GuiGraphicsExtractor graphics, Font font, Component message, boolean ok, int x, int bottom, int width) {
+        List<FormattedCharSequence> lines = font.split(message, width - 8);
+        int count = Math.min(3, lines.size());
+        int top = bottom - count * 9 - 5;
+        int color = ok ? GOOD : BAD;
+        graphics.fill(x, top, x + width, bottom, NOTICE);
+        graphics.fill(x, top, x + width, top + 1, color);
+        for (int i = 0; i < count; i++) {
+            graphics.text(font, lines.get(i), x + (width - font.width(lines.get(i))) / 2, top + 3 + i * 9, color, false);
         }
     }
 

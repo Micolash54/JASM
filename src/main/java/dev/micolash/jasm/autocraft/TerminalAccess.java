@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.network.TrustList;
 import java.util.HashSet;
 import java.util.Set;
@@ -43,7 +44,7 @@ public final class TerminalAccess {
             return;
         }
         if (!StringUtil.isValidPlayerName(wanted) || !LOOKUPS.add(player.getUUID())) {
-            player.sendOverlayMessage(Component.translatable("message.jasm.archive.player_not_found"));
+            Notices.bad(player, Component.translatable("message.jasm.archive.player_not_found"));
             return;
         }
         CompletableFuture.supplyAsync(() -> server.services().nameToIdCache().get(wanted), Util.nonCriticalIoPool()).handleAsync((found, failure) -> {
@@ -52,7 +53,7 @@ public final class TerminalAccess {
                 Jasm.LOGGER.warn("Could not look up player {}", wanted, failure);
             }
             if (found == null || found.isEmpty()) {
-                player.sendOverlayMessage(Component.translatable("message.jasm.archive.player_not_found"));
+                Notices.bad(player, Component.translatable("message.jasm.archive.player_not_found"));
             } else if (!terminal.isRemoved()) {
                 add(player, menu, terminal, found.get());
             }
@@ -62,15 +63,15 @@ public final class TerminalAccess {
 
     private static void add(ServerPlayer player, EncodingTerminalMenu menu, EncodingTerminalBlockEntity terminal, NameAndId target) {
         if (target.id().equals(terminal.owner())) {
-            player.sendOverlayMessage(Component.translatable("message.jasm.archive.is_owner"));
+            Notices.bad(player, Component.translatable("message.jasm.archive.is_owner"));
             return;
         }
         if (terminal.trust().isFull() && !terminal.trust().contains(target.id())) {
-            player.sendOverlayMessage(Component.translatable("message.jasm.terminal.trust_full", TrustList.MAX));
+            Notices.bad(player, Component.translatable("message.jasm.terminal.trust_full", TrustList.MAX));
             return;
         }
         terminal.setTrust(terminal.trust().with(target.id(), target.name()));
-        player.sendOverlayMessage(Component.translatable("message.jasm.terminal.trusted", target.name()));
+        Notices.good(player, Component.translatable("message.jasm.terminal.trusted", target.name()));
         if (player.containerMenu == menu) {
             send(player, menu, terminal);
         }

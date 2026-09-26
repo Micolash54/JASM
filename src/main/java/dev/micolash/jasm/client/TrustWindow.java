@@ -108,6 +108,12 @@ final class TrustWindow {
                 remove.extractRenderState(graphics, mouseX, mouseY, a);
             }
         }
+        // Who was trusted, or why not, over the bottom of the list for a few seconds.
+        Component notice = menu.notices().current(net.minecraft.client.Minecraft.getInstance().level.getGameTime());
+        if (notice != null) {
+            graphics.nextStratum();
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), x + 7, y + LIST_Y + ROWS * 10, WIDTH - 14);
+        }
         name.setPosition(x + 8, y + HEIGHT - 22);
         trust.setPosition(x + WIDTH - 52, y + HEIGHT - 23);
         trust.active = !name.getValue().isBlank() && !menu.trust().isFull();

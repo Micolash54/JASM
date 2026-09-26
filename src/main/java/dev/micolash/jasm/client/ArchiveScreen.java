@@ -9,9 +9,7 @@ import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -19,8 +17,8 @@ import net.minecraft.world.inventory.Slot;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * The Archive screen. The Wafers view lists linked wafers (pick one to unlink or recover it) above the link and
- * recovery slots; the owner's Access view lists trusted players with a box to add one. Drawn with plain fills.
+ * The Archive screen: the linked wafers (pick one to unlink or recover it) above the link and recovery slots. Drawn
+ * with plain fills. Who else may use it is set at an Encoding Terminal on its network.
  */
 public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     private static final int WIDTH = 200;
@@ -35,20 +33,13 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     private static final int ROWS = 6;
     private static final int ENERGY_WIDTH = 60;
     private static final int FEEDBACK_Y = LIST_Y + ROWS * ROW_HEIGHT + 4;
-    /** How long an action's message stays on screen, in ticks. */
-    private static final int FEEDBACK_TICKS = 80;
 
-
-    private boolean accessView;
     private long selected = -1;
     private int scroll;
     private boolean draggingHandle;
-    private Button toggle;
     private Button link;
     private Button unlink;
     private Button recover;
-    private Button trust;
-    private EditBox name;
 
     public ArchiveScreen(ArchiveMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -60,33 +51,16 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         super.init();
         int x = leftPos;
         int y = topPos;
-        toggle = addRenderableWidget(JasmButton.text(Component.empty(), b -> {
-            accessView = !accessView;
-            scroll = 0;
-            draggingHandle = false;
-        }, x + WIDTH - 8 - 46, y + 17, 46, 13));
         link = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.link"),
                 b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.LINK)),
                 x + ArchiveMenu.LINK_X + 20, y + ArchiveMenu.ROW_Y - 1, 34, 18));
         unlink = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.unlink"),
-                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.UNLINK, selected, noPlayer(), "")),
+                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.UNLINK, selected)),
                 x + ArchiveMenu.LINK_X + 56, y + ArchiveMenu.ROW_Y - 1, 44, 18));
         recover = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.recover"),
-                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected, noPlayer(), "")),
+                b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected)),
                 x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
-        name = addRenderableWidget(new EditBox(font, x + LIST_X + 2, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT, LIST_WIDTH - 60, 11,
-                Component.translatable("screen.jasm.archive.player_name")));
-        name.setHint(Component.translatable("screen.jasm.archive.player_name").withStyle(ChatFormatting.DARK_GRAY));
-        name.setMaxLength(16);
-        trust = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.trust"), b -> {
-            send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.TRUST, 0, noPlayer(), name.getValue()));
-            name.setValue("");
-        }, x + LIST_X + LIST_WIDTH - 54, y + LIST_Y + (ROWS - 1) * ROW_HEIGHT - 1, 54, 13));
         updateWidgets();
-    }
-
-    private static java.util.UUID noPlayer() {
-        return new java.util.UUID(0L, 0L);
     }
 
     private void send(ArchivePayloads.Request request) {
@@ -100,37 +74,16 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     }
 
     private void updateWidgets() {
-        ArchivePayloads.State view = menu.view();
-        if (!view.owner()) {
-            accessView = false;
-        }
-        if (view.entries().stream().noneMatch(e -> e.serial() == selected)) {
+        if (menu.view().entries().stream().noneMatch(e -> e.serial() == selected)) {
             selected = -1;
         }
-        toggle.visible = view.owner();
-        toggle.setMessage(Component.translatable(accessView ? "screen.jasm.archive.wafers" : "screen.jasm.archive.access"));
-        link.visible = unlink.visible = recover.visible = !accessView;
         link.active = !menu.waferSlots().getItem(ArchiveMenu.LINK_SLOT).isEmpty();
         unlink.active = selected >= 0;
         recover.active = selected >= 0 && !menu.waferSlots().getItem(ArchiveMenu.RECOVERY_SLOT).isEmpty();
-        name.visible = trust.visible = accessView;
-        trust.active = !name.getValue().isBlank();
-        if (!accessView) {
-            name.setFocused(false);
-        }
-    }
-
-    private int rowCount() {
-        return accessView ? menu.view().trusted().size() : menu.view().entries().size();
-    }
-
-    /** Rows available for the list; the Access view gives its last row to the name box. */
-    private int visibleRows() {
-        return accessView ? ROWS - 1 : ROWS;
     }
 
     private int maxScroll() {
-        return Math.max(0, rowCount() - visibleRows());
+        return Math.max(0, menu.view().entries().size() - ROWS);
     }
 
     // --- drawing ---
@@ -158,7 +111,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     }
 
     private int trackHeight() {
-        return visibleRows() * ROW_HEIGHT;
+        return ROWS * ROW_HEIGHT;
     }
 
     private int handleOffset() {
@@ -184,40 +137,30 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         int x = leftPos + LIST_X;
         int y = topPos + LIST_Y;
         int hovered = rowAt(mouseX, mouseY);
-        if (accessView) {
-            List<ArchivePayloads.Trusted> trusted = menu.view().trusted();
-            if (trusted.isEmpty()) {
-                graphics.text(font, Component.translatable("screen.jasm.archive.nobody_trusted"), x + 3, y + 2, JasmGui.MUTED, false);
+        List<ArchiveService.Entry> entries = menu.view().entries();
+        if (entries.isEmpty()) {
+            graphics.text(font, Component.translatable("screen.jasm.archive.none"), x + 3, y + 2, JasmGui.MUTED, false);
+        }
+        for (int row = 0; row < ROWS && scroll + row < entries.size(); row++) {
+            ArchiveService.Entry entry = entries.get(scroll + row);
+            int ry = y + row * ROW_HEIGHT;
+            if (entry.serial() == selected) {
+                graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.SELECTED);
+            } else if (scroll + row == hovered) {
+                graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
             }
-            Component remove = Component.translatable("screen.jasm.archive.remove");
-            for (int row = 0; row < visibleRows() && scroll + row < trusted.size(); row++) {
-                int ry = y + row * ROW_HEIGHT;
-                if (scroll + row == hovered) {
-                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
-                }
-                graphics.text(font, trusted.get(scroll + row).name(), x + 3, ry + 2, JasmGui.TEXT, false);
-                graphics.text(font, remove, x + LIST_WIDTH - 3 - font.width(remove), ry + 2, JasmGui.BAD, false);
-            }
-        } else {
-            List<ArchiveService.Entry> entries = menu.view().entries();
-            if (entries.isEmpty()) {
-                graphics.text(font, Component.translatable("screen.jasm.archive.none"), x + 3, y + 2, JasmGui.MUTED, false);
-            }
-            for (int row = 0; row < ROWS && scroll + row < entries.size(); row++) {
-                ArchiveService.Entry entry = entries.get(scroll + row);
-                int ry = y + row * ROW_HEIGHT;
-                if (entry.serial() == selected) {
-                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.SELECTED);
-                } else if (scroll + row == hovered) {
-                    graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
-                }
-                String amount = entry.readable() ? GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) : "";
-                int amountWidth = font.width(amount);
-                String number = WaferNumbers.visibleTo(minecraft.player) ? "#" + entry.serial() + " " : "";
-                String label = number + (entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString());
-                graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2, entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
-                graphics.text(font, amount, x + LIST_WIDTH - 3 - amountWidth, ry + 2, JasmGui.TEXT, false);
-            }
+            String amount = entry.readable() ? GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) : "";
+            int amountWidth = font.width(amount);
+            String number = WaferNumbers.visibleTo(minecraft.player) ? "#" + entry.serial() + " " : "";
+            String label = number + (entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString());
+            graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2, entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
+            graphics.text(font, amount, x + LIST_WIDTH - 3 - amountWidth, ry + 2, JasmGui.TEXT, false);
+        }
+        // The last message lies over the bottom of the list for a few seconds.
+        Component notice = menu.notices().current(minecraft.level.getGameTime());
+        if (notice != null) {
+            graphics.nextStratum();
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), x, y + ROWS * ROW_HEIGHT, LIST_WIDTH);
         }
         if (mouseX >= leftPos + imageWidth - 8 - ENERGY_WIDTH && mouseX < leftPos + imageWidth - 8 && mouseY >= topPos + 6 && mouseY < topPos + 13) {
             graphics.setTooltipForNextFrame(font, List.of(
@@ -236,17 +179,9 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
-        ArchivePayloads.State view = menu.view();
-        Component header = accessView
-                ? Component.translatable("screen.jasm.archive.owner", view.ownerName())
-                : Component.translatable("screen.jasm.archive.linked", view.entries().size(), menu.tier().registrations());
+        Component header = Component.translatable("screen.jasm.archive.linked", menu.view().entries().size(), menu.tier().registrations());
         graphics.text(font, header, LIST_X, 20, JasmGui.SUBTEXT, false);
-
-        ArchivePayloads.Feedback feedback = menu.feedback();
-        if (feedback != null && minecraft.level != null && minecraft.level.getGameTime() - menu.feedbackTime() < FEEDBACK_TICKS) {
-            String message = font.plainSubstrByWidth(Component.translatable(feedback.messageKey()).getString(), LIST_WIDTH);
-            graphics.text(font, message, LIST_X, FEEDBACK_Y, feedback.ok() ? JasmGui.GOOD : JasmGui.BAD, false);
-        } else if (menu.view().energy() == 0) {
+        if (menu.view().energy() == 0) {
             graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
         }
     }
@@ -257,11 +192,11 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     private int rowAt(double mouseX, double mouseY) {
         double rx = mouseX - leftPos - LIST_X;
         double ry = mouseY - topPos - LIST_Y;
-        if (rx < 0 || rx >= LIST_WIDTH || ry < 0 || ry >= visibleRows() * ROW_HEIGHT) {
+        if (rx < 0 || rx >= LIST_WIDTH || ry < 0 || ry >= ROWS * ROW_HEIGHT) {
             return -1;
         }
         int row = scroll + (int) (ry / ROW_HEIGHT);
-        return row < rowCount() ? row : -1;
+        return row < menu.view().entries().size() ? row : -1;
     }
 
     @Override
@@ -273,16 +208,8 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         }
         int row = rowAt(event.x(), event.y());
         if (row >= 0) {
-            if (accessView) {
-                ArchivePayloads.Trusted player = menu.view().trusted().get(row);
-                Component remove = Component.translatable("screen.jasm.archive.remove");
-                if (event.x() >= leftPos + LIST_X + LIST_WIDTH - 3 - font.width(remove)) {
-                    send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.UNTRUST, 0, player.id(), ""));
-                }
-            } else {
-                long serial = menu.view().entries().get(row).serial();
-                selected = selected == serial ? -1 : serial;
-            }
+            long serial = menu.view().entries().get(row).serial();
+            selected = selected == serial ? -1 : serial;
             updateWidgets();
             return true;
         }
@@ -317,20 +244,5 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
             return true;
         }
         return super.mouseScrolled(x, y, scrollX, scrollY);
-    }
-
-    /** While typing a name, keys go to the box (so "e" does not close the screen); Enter trusts the player. */
-    @Override
-    public boolean keyPressed(KeyEvent event) {
-        if (name.isFocused() && name.visible && !event.isEscape()) {
-            if (event.isConfirmation() && trust.active) {
-                trust.onPress(event);
-                return true;
-            }
-            name.keyPressed(event);
-            updateWidgets();
-            return true;
-        }
-        return super.keyPressed(event);
     }
 }

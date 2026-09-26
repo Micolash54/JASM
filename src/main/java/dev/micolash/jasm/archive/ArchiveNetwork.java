@@ -18,8 +18,7 @@ public final class ArchiveNetwork {
         event.registrar("1")
                 .playToServer(ArchivePayloads.Request.TYPE, ArchivePayloads.Request.STREAM_CODEC,
                         (payload, context) -> request((ServerPlayer) context.player(), payload))
-                .playToClient(ArchivePayloads.State.TYPE, ArchivePayloads.State.STREAM_CODEC, ArchiveNetwork::onState)
-                .playToClient(ArchivePayloads.Feedback.TYPE, ArchivePayloads.Feedback.STREAM_CODEC, ArchiveNetwork::onFeedback);
+                .playToClient(ArchivePayloads.State.TYPE, ArchivePayloads.State.STREAM_CODEC, ArchiveNetwork::onState);
     }
 
     /** Returns null when the request was ignored (wrong or stale screen, or no longer allowed to use it). */
@@ -28,12 +27,6 @@ public final class ArchiveNetwork {
             return menu.handle(player, request);
         }
         return null;
-    }
-
-    private static void onFeedback(ArchivePayloads.Feedback feedback, IPayloadContext context) {
-        if (context.player().containerMenu instanceof ArchiveMenu menu && menu.containerId == feedback.containerId()) {
-            menu.setFeedback(feedback);
-        }
     }
 
     private static void onState(ArchivePayloads.State state, IPayloadContext context) {

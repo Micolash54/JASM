@@ -592,6 +592,12 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         int mouseY = overWindow ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
         drawGrid(graphics, mouseX, mouseY);
+        // The last message lies over the bottom of the grid for a few seconds, under any open window.
+        Component notice = menu.notices().current(minecraft.level.getGameTime());
+        if (notice != null) {
+            graphics.nextStratum();
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + gridX - 1, topPos + gridY + ROWS * 18 - 1, COLUMNS * 18);
+        }
         if (editing >= 0) {
             graphics.nextStratum();
             drawSettings(graphics, realMouseX, realMouseY, a);
@@ -831,6 +837,23 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (ruleWindow.contains(event.x(), event.y())) {
             return ruleWindow.mouseClicked(event, doubleClick);
         }
+        // The settings window takes every click that lands on it, before the grid or tabs underneath
+        // (whichever tab is open), so nothing there is touched.
+        if (inWindow(event.x(), event.y())) {
+            for (Placed placed : settingsButtons) {
+                if (placed.button().mouseClicked(event, doubleClick)) {
+                    return true;
+                }
+            }
+            int filter = filterSlotAt(event.x(), event.y());
+            if (filter >= 0) {
+                clickFilter(filter);
+            } else if (!right && event.y() < windowY() + TITLE_HEIGHT) {
+                grabX = (int) event.x() - windowX();
+                grabY = (int) event.y() - windowY();
+            }
+            return true;
+        }
         // The rule window stays open while items are picked up from the inventory for its slot.
         if (tab == Tab.RULES && inGrid(event.x(), event.y())) {
             int row = ruleRowAt(event.x(), event.y());
@@ -856,22 +879,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             if (tab == Tab.CRAFT) {
                 return true;
             }
-        }
-        // The settings window takes every click that lands on it, so nothing underneath is touched.
-        if (inWindow(event.x(), event.y())) {
-            for (Placed placed : settingsButtons) {
-                if (placed.button().mouseClicked(event, doubleClick)) {
-                    return true;
-                }
-            }
-            int filter = filterSlotAt(event.x(), event.y());
-            if (filter >= 0) {
-                clickFilter(filter);
-            } else if (!right && event.y() < windowY() + TITLE_HEIGHT) {
-                grabX = (int) event.x() - windowX();
-                grabY = (int) event.y() - windowY();
-            }
-            return true;
         }
         // Right-clicking a wafer (with nothing on the cursor) opens its settings, or switches them to that wafer; the
         // same wafer again closes them.

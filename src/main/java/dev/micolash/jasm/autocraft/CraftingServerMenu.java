@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.UUID;
@@ -30,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  * <p>A Crafting Deck's job list can open it from afar ({@link #remote}); it then stays open while the player carries
  * that Deck, and has a button back to it.
  */
-public class CraftingServerMenu extends AbstractContainerMenu {
+public class CraftingServerMenu extends AbstractContainerMenu implements Notices.Board {
     /** The side panel holds the parts: Processors in the left column, Storage Modules in the right. */
     public static final int SIDE_WIDTH = 50;
     public static final int SIDE_HEIGHT = 86;
@@ -67,6 +68,7 @@ public class CraftingServerMenu extends AbstractContainerMenu {
     private static final Identifier EMPTY_PROCESSOR = Jasm.id("container/empty_processor");
     private static final Identifier EMPTY_MODULE = Jasm.id("container/empty_module");
 
+    private final Notices.Shown notices = new Notices.Shown();
     private final ContainerData data;
     private final ContainerLevelAccess access;
     private final @Nullable CraftingServerBlockEntity server;
@@ -211,14 +213,14 @@ public class CraftingServerMenu extends AbstractContainerMenu {
         }
         if (id == BUTTON_CANCEL) {
             if (Jobs.cancel(serverPlayer, server)) {
-                serverPlayer.sendOverlayMessage(Component.translatable("message.jasm.craft.cancelling"));
+                Notices.good(serverPlayer, Component.translatable("message.jasm.craft.cancelling"));
             }
             return true;
         }
         if (id == BUTTON_COLLECT) {
             long moved = Jobs.collect(serverPlayer, server);
-            serverPlayer.sendOverlayMessage(moved > 0 ? Component.translatable("message.jasm.craft.collected", String.format("%,d", moved))
-                    : Component.translatable("message.jasm.craft.nothing_to_collect"));
+            Notices.tell(serverPlayer, moved > 0 ? Component.translatable("message.jasm.craft.collected", String.format("%,d", moved))
+                    : Component.translatable("message.jasm.craft.nothing_to_collect"), moved > 0);
             return true;
         }
         if (id == BUTTON_BACK && carriesDeck(serverPlayer)) {
@@ -289,5 +291,11 @@ public class CraftingServerMenu extends AbstractContainerMenu {
         public Identifier getNoItemIcon() {
             return icon;
         }
+    }
+
+    /** Client side: the last message for this screen. */
+    @Override
+    public Notices.Shown notices() {
+        return notices;
     }
 }

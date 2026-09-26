@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -26,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * The Encoding Terminal's menu: card in and out, the pairing slot, the 3×3 ghost grid and what it makes, then the
  * player's inventory (27) and hotbar (9). Ghost slots copy what is clicked into them and never take the item.
  */
-public class EncodingTerminalMenu extends AbstractContainerMenu {
+public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board {
     public static final int GRID_X = 30;
     public static final int GRID_Y = 18;
     public static final int PREVIEW_X = 124;
@@ -65,6 +66,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu {
     private static final Identifier EMPTY_CARD = Jasm.id("container/empty_card");
     private static final Identifier EMPTY_DECK = Jasm.id("container/empty_deck");
 
+    private final Notices.Shown notices = new Notices.Shown();
     private final Container container;
     private final Container ghost;
     private final ContainerData data;
@@ -323,5 +325,11 @@ public class EncodingTerminalMenu extends AbstractContainerMenu {
         public boolean isFake() {
             return true;
         }
+    }
+
+    /** Client side: the last message for this screen. */
+    @Override
+    public Notices.Shown notices() {
+        return notices;
     }
 }

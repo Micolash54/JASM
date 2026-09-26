@@ -79,6 +79,8 @@ public class DataCableBlock extends PipeBlock {
         super.onPlace(state, level, pos, oldState, movedByPiston);
         if (level instanceof ServerLevel serverLevel && !oldState.is(this)) {
             Networks.invalidate(serverLevel);
+            // Tells blocks next to it (a generator, say) that power can go in here now.
+            serverLevel.invalidateCapabilities(pos);
         }
     }
 
@@ -86,5 +88,6 @@ public class DataCableBlock extends PipeBlock {
     protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
         super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
         Networks.invalidate(level);
+        level.invalidateCapabilities(pos);
     }
 }

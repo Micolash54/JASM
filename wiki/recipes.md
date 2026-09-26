@@ -79,7 +79,7 @@ They go in a Crafting Server. Each Processor tier is made from four of the one b
 
 ## Archives
 
-The old Archive is used up. The new one keeps its links, owner, trusted players and charge.
+The old Archive is used up. The new one keeps its links, owner and charge.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |

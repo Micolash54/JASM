@@ -16,8 +16,9 @@ import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One crafting network: every Data Cable and machine joined face to face. The cables hold a little power between
- * them; each tick the network hands it on to its machines, then to anything else touching a cable that takes FE.
+ * One crafting network: every Data Cable, machine and Archive joined face to face. The cables hold a little power
+ * between them; each tick the network hands it on to its machines, then to anything else touching a cable that takes
+ * FE (an Archive among them).
  */
 public final class CableNetwork {
     private final ServerLevel level;
@@ -38,8 +39,9 @@ public final class CableNetwork {
         for (BlockPos cable : cables) {
             for (Direction side : Direction.values()) {
                 BlockPos next = cable.relative(side);
-                // Cables of another colour are another network: power doesn't leak across.
-                if (!cables.contains(next) && !machines.contains(next) && !(level.getBlockState(next).getBlock() instanceof DataCableBlock)) {
+                // Cables of another colour are another network: power doesn't leak across. Machines get theirs above.
+                boolean machine = machines.contains(next) && level.getBlockEntity(next) instanceof MachineBlockEntity;
+                if (!cables.contains(next) && !machine && !(level.getBlockState(next).getBlock() instanceof DataCableBlock)) {
                     outlets.add(BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, next, side.getOpposite()));
                 }
             }
@@ -50,7 +52,7 @@ public final class CableNetwork {
         return cables;
     }
 
-    /** Positions of the machines on this network. */
+    /** Positions of the blocks on this network that aren't cables: machines and Archives. */
     public Set<BlockPos> machines() {
         return machines;
     }

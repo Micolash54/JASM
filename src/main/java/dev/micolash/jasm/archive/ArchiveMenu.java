@@ -1,13 +1,15 @@
 package dev.micolash.jasm.archive;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferItem;
-import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -26,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * two wafer slots are the player's own at this Archive (see {@link ArchiveBlockEntity#slotsOf}); whatever is in them
  * goes back to the player on close, and stays in the Archive if the player logs out with the screen open.
  */
-public class ArchiveMenu extends AbstractContainerMenu {
+public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board {
     public static final int LINK_SLOT = 0;
     private static final Identifier EMPTY_LINK = Jasm.id("container/empty_link");
     private static final Identifier EMPTY_BLANK = Jasm.id("container/empty_blank");
@@ -40,6 +42,7 @@ public class ArchiveMenu extends AbstractContainerMenu {
     /** How often, in ticks, a changed charge is sent on its own. */
     private static final int ENERGY_TICKS = 5;
 
+    private final Notices.Shown notices = new Notices.Shown();
     private final Player player;
     private final ArchiveTier tier;
     private final ContainerLevelAccess access;
@@ -49,9 +52,6 @@ public class ArchiveMenu extends AbstractContainerMenu {
     private int sinceRefresh = REFRESH_TICKS;
     /** Client side only: what the server has told this screen. */
     private ArchivePayloads.State view = ArchivePayloads.State.EMPTY;
-    /** Client side only: the last action's outcome and when it arrived (game time). */
-    private ArchivePayloads.@Nullable Feedback feedback;
-    private long feedbackTime;
 
     /** Server side. */
     public ArchiveMenu(int containerId, Inventory inventory, ArchiveBlockEntity archive) {
@@ -100,19 +100,6 @@ public class ArchiveMenu extends AbstractContainerMenu {
         this.view = view;
     }
 
-    public ArchivePayloads.@Nullable Feedback feedback() {
-        return feedback;
-    }
-
-    public long feedbackTime() {
-        return feedbackTime;
-    }
-
-    public void setFeedback(ArchivePayloads.Feedback feedback) {
-        this.feedback = feedback;
-        this.feedbackTime = player.level().getGameTime();
-    }
-
     /** Closes if the block is gone, the player walked away, or the player lost access. */
     @Override
     public boolean stillValid(Player player) {
@@ -122,8 +109,7 @@ public class ArchiveMenu extends AbstractContainerMenu {
         if (archive.isRemoved() || !stillValid(access, player, archive.getBlockState().getBlock())) {
             return false;
         }
-        ArchiveRecord record = archive.record();
-        return record != null && record.isAuthorized(player.getUUID());
+        return MachineAccess.canUse(archive, player);
     }
 
     /** Runs a button press from the screen. Everything is checked again here; the screen is not trusted. */
@@ -136,14 +122,6 @@ public class ArchiveMenu extends AbstractContainerMenu {
             case LINK -> ArchiveService.link(store, archive, player, waferSlots.getItem(LINK_SLOT));
             case UNLINK -> ArchiveService.unlink(store, archive, player, request.serial());
             case RECOVER -> ArchiveService.recover(store, archive, player, request.serial(), waferSlots.getItem(RECOVERY_SLOT));
-            case TRUST -> ArchiveService.trust(store, archive, player, request.name(), player.level().getServer().services().nameToIdCache(),
-                    later -> {
-                        // The lookup finished; only tell the player if this screen is still open.
-                        if (player.containerMenu == this) {
-                            feedback(player, request.action(), later);
-                        }
-                    });
-            case UNTRUST -> ArchiveService.untrust(store, archive, player, request.player());
         };
         waferSlots.setChanged();
         feedback(player, request.action(), result);
@@ -155,10 +133,7 @@ public class ArchiveMenu extends AbstractContainerMenu {
         String key = result == ArchiveService.Result.OK
                 ? "message.jasm.archive.done." + action.name().toLowerCase(java.util.Locale.ROOT)
                 : result.messageKey();
-        boolean ok = result == ArchiveService.Result.OK || result == ArchiveService.Result.LOOKING_UP;
-        if (player.connection.hasChannel(ArchivePayloads.Feedback.TYPE)) {
-            PacketDistributor.sendToPlayer(player, new ArchivePayloads.Feedback(containerId, key, ok));
-        }
+        Notices.tell(player, Component.translatable(key), result == ArchiveService.Result.OK);
         sinceRefresh = REFRESH_TICKS;
         broadcastChanges();
     }
@@ -191,15 +166,12 @@ public class ArchiveMenu extends AbstractContainerMenu {
         if (record == null) {
             return withEnergy(ArchivePayloads.State.EMPTY, archive.energy().getAmountAsInt());
         }
-        List<ArchivePayloads.Trusted> trusted = record.trusted().entrySet().stream()
-                .map(e -> new ArchivePayloads.Trusted(e.getKey(), e.getValue())).toList();
         return new ArchivePayloads.State(containerId, archive.energy().getAmountAsInt(), record.tier().registrations(),
-                record.owner().equals(player.getUUID()), record.ownerName(), ArchiveService.entries(store, record), trusted);
+                ArchiveService.entries(store, record));
     }
 
     private ArchivePayloads.State withEnergy(ArchivePayloads.State state, int energy) {
-        return new ArchivePayloads.State(containerId, energy, state.registrations(), state.owner(), state.ownerName(), state.entries(),
-                state.trusted());
+        return new ArchivePayloads.State(containerId, energy, state.registrations(), state.entries());
     }
 
     /**
@@ -259,5 +231,11 @@ public class ArchiveMenu extends AbstractContainerMenu {
         public int getMaxStackSize() {
             return 1;
         }
+    }
+
+    /** Client side: the last message for this screen. */
+    @Override
+    public Notices.Shown notices() {
+        return notices;
     }
 }
