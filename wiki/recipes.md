@@ -8,7 +8,7 @@ The three wafers are used up. The new wafer holds all of their items and starts 
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
-| ![Basic Capacity Wafer](images/recipes/capacity_wafer_basic.png) | **Basic Capacity Wafer** | 4 × Copper Ingot, 4 × Redstone, 1 × Amethyst Shard |
+| ![Basic Capacity Wafer](images/recipes/capacity_wafer_basic.png) | **Basic Capacity Wafer** | 4 × Copper Ingot, 3 × Redstone, 1 × Amethyst Shard, 1 × Chest |
 | ![1K Capacity Wafer](images/recipes/capacity_wafer_1k.png) | **1K Capacity Wafer** | 2 × Gold Ingot, 1 × Diamond, 3 × Redstone, 3 × Basic Capacity Wafer |
 | ![4K Capacity Wafer](images/recipes/capacity_wafer_4k.png) | **4K Capacity Wafer** | 2 × Diamond, 1 × Ender Pearl, 3 × Redstone, 3 × 1K Capacity Wafer |
 | ![16K Capacity Wafer](images/recipes/capacity_wafer_16k.png) | **16K Capacity Wafer** | 2 × Emerald, 1 × Blaze Rod, 3 × Redstone, 3 × 4K Capacity Wafer |
@@ -20,7 +20,7 @@ Hold a few types, each in bulk. The two wafers are used up; the new wafer holds 
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
-| ![4 Type Wafer](images/recipes/type_wafer_4.png) | **4 Type Wafer** | 4 × Iron Ingot, 1 × Amethyst Shard, 3 × Redstone, 1 × Barrel |
+| ![4 Type Wafer](images/recipes/type_wafer_4.png) | **4 Type Wafer** | 4 × Iron Ingot, 3 × Redstone, 1 × Amethyst Shard, 1 × Barrel |
 | ![8 Type Wafer](images/recipes/type_wafer_8.png) | **8 Type Wafer** | 4 × Gold Ingot, 1 × Diamond, 2 × Redstone, 2 × 4 Type Wafer |
 | ![16 Type Wafer](images/recipes/type_wafer_16.png) | **16 Type Wafer** | 4 × Diamond, 1 × Ender Pearl, 2 × Redstone, 2 × 8 Type Wafer |
 | ![32 Type Wafer](images/recipes/type_wafer_32.png) | **32 Type Wafer** | 4 × Emerald, 1 × Blaze Rod, 2 × Redstone, 2 × 16 Type Wafer |
@@ -44,10 +44,10 @@ A Deck with a crafting grid. Made from a Deck of the same tier, or upgraded from
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
-| ![Advanced Crafting Deck](images/recipes/advanced_crafting_deck.png) | **Advanced Crafting Deck** | 4 × Redstone, 4 × Crafting Table, 1 × Advanced Deck |
-| ![Elite Crafting Deck](images/recipes/elite_crafting_deck_from_deck.png) | **Elite Crafting Deck** | 4 × Redstone, 4 × Crafting Table, 1 × Elite Deck |
+| ![Advanced Crafting Deck](images/recipes/advanced_crafting_deck.png) | **Advanced Crafting Deck** | 4 × Redstone, 1 × Crafting Table, 1 × Fletching Table, 1 × Advanced Deck, 1 × Smithing Table, 1 × Cartography Table |
+| ![Elite Crafting Deck](images/recipes/elite_crafting_deck_from_deck.png) | **Elite Crafting Deck** | 4 × Redstone, 1 × Crafting Table, 1 × Fletching Table, 1 × Elite Deck, 1 × Smithing Table, 1 × Cartography Table |
 | ![Elite Crafting Deck](images/recipes/elite_crafting_deck.png) | **Elite Crafting Deck** | 4 × Emerald, 1 × Blaze Rod, 3 × Redstone, 1 × Advanced Crafting Deck |
-| ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck_from_deck.png) | **Ultimate Crafting Deck** | 4 × Redstone, 4 × Crafting Table, 1 × Ultimate Deck |
+| ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck_from_deck.png) | **Ultimate Crafting Deck** | 4 × Redstone, 1 × Crafting Table, 1 × Fletching Table, 1 × Ultimate Deck, 1 × Smithing Table, 1 × Cartography Table |
 | ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck.png) | **Ultimate Crafting Deck** | 4 × Blaze Rod, 1 × Netherite Ingot, 3 × Redstone, 1 × Elite Crafting Deck |
 
 ## Autocrafting

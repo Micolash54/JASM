@@ -2,14 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "I": "minecraft:iron_ingot",
-    "A": "minecraft:amethyst_shard",
     "R": "minecraft:redstone",
+    "A": "minecraft:amethyst_shard",
     "B": "minecraft:barrel"
   },
   "pattern": [
-    "IAI",
-    "RBR",
-    "IRI"
+    "IRI",
+    "RAR",
+    "IBI"
   ],
   "result": {
     "id": "jasm:type_wafer_4"

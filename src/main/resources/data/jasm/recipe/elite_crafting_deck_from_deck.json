@@ -3,12 +3,15 @@
   "key": {
     "R": "minecraft:redstone",
     "T": "minecraft:crafting_table",
-    "P": "jasm:elite_deck"
+    "F": "minecraft:fletching_table",
+    "P": "jasm:elite_deck",
+    "S": "minecraft:smithing_table",
+    "C": "minecraft:cartography_table"
   },
   "pattern": [
     "RTR",
-    "TPT",
-    "RTR"
+    "FPS",
+    "RCR"
   ],
   "source": "jasm:elite_deck",
   "result": {

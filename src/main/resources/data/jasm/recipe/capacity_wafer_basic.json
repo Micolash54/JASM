@@ -3,12 +3,13 @@
   "key": {
     "C": "minecraft:copper_ingot",
     "R": "minecraft:redstone",
-    "A": "minecraft:amethyst_shard"
+    "A": "minecraft:amethyst_shard",
+    "H": "minecraft:chest"
   },
   "pattern": [
     "CRC",
     "RAR",
-    "CRC"
+    "CHC"
   ],
   "result": {
     "id": "jasm:capacity_wafer_basic"
