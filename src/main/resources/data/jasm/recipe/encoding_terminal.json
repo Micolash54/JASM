@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass_pane",
+    "R": "minecraft:redstone",
+    "C": "minecraft:crafting_table",
+    "A": "minecraft:amethyst_shard"
+  },
+  "pattern": [
+    "IGI",
+    "RCR",
+    "IAI"
+  ],
+  "result": {
+    "id": "jasm:encoding_terminal"
+  }
+}

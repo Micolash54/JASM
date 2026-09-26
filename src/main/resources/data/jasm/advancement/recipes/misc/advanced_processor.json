@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:advanced_processor"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_redstone": {
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:redstone"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_basic_processor": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:basic_processor"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_redstone",
+      "has_basic_processor"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:advanced_processor"
+    ]
+  }
+}

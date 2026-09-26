@@ -73,6 +73,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
                 case CombustionGeneratorMenu.DATA_OUTPUT -> lastOutput;
                 case CombustionGeneratorMenu.DATA_CAPACITY_LOW -> tier.capacity() & 0xFFFF;
                 case CombustionGeneratorMenu.DATA_CAPACITY_HIGH -> tier.capacity() >>> 16;
+                case CombustionGeneratorMenu.DATA_POTENTIAL -> tier.fePerTick();
                 default -> 0;
             };
         }

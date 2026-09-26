@@ -16,6 +16,7 @@ import dev.micolash.jasm.wafer.WaferValidator.Mode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.network.chat.Component;
@@ -119,16 +120,30 @@ public final class DeckStorage {
      * stored. Returns the amount stored. If the charge cannot pay for the whole move, nothing moves.
      */
     public static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player) {
+        return deposit(store, deck, source, player, true);
+    }
+
+    /** As {@link #deposit}, but says nothing when an item is refused or the charge is empty (the crafting grid). */
+    public static long depositQuietly(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player) {
+        return deposit(store, deck, source, player, false);
+    }
+
+    private static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, boolean tell) {
+        if (source.isEmpty()) {
+            return 0;
+        }
         WaferEligibility.Result eligible = WaferEligibility.check(source, player.level().registryAccess());
         if (!eligible.accepted()) {
-            player.sendOverlayMessage(Component.translatable(eligible.messageKey()));
+            if (tell) {
+                player.sendOverlayMessage(Component.translatable(eligible.messageKey()));
+            }
             return 0;
         }
         List<SlotView> views = views(store, deck, player);
         ItemResource key = ItemResource.of(source);
         List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, source.getCount());
         long planned = plan.stream().mapToLong(DepositRouter.Allocation::amount).sum();
-        if (planned == 0 || !canAfford(deck, player)) {
+        if (planned == 0 || !canAfford(deck, player, tell)) {
             return 0;
         }
         DeckWafers wafers = DeckItem.wafers(deck);
@@ -168,12 +183,70 @@ public final class DeckStorage {
         return true;
     }
 
+    /**
+     * Stores up to {@code amount} of {@code key} on the Deck's wafers, straight from somewhere else in the store (a
+     * crafting job), without needing the Deck's charge. Returns how many were stored; items wafers refuse store none.
+     */
+    public static long depositAmount(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
+            return 0;
+        }
+        List<SlotView> views = views(store, deck, player);
+        List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, amount);
+        DeckWafers wafers = DeckItem.wafers(deck);
+        long moved = 0;
+        for (DepositRouter.Allocation allocation : plan) {
+            SlotView view = views.get(allocation.slot());
+            WaferRecord record = view.record();
+            if (record == null) {
+                ItemStack blank = view.wafer();
+                record = WaferValidator.format(store, blank, player);
+                wafers = wafers.with(allocation.slot(), blank);
+            }
+            moved += store.insert(record, key, allocation.amount(), false, player);
+        }
+        deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
+        return moved;
+    }
+
+    /** How many of {@code key}, up to {@code amount}, the Deck's wafers would take. Changes nothing. */
+    public static long room(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
+            return 0;
+        }
+        return DepositRouter.planDeposit(views(store, deck, player), key, amount).stream().mapToLong(DepositRouter.Allocation::amount).sum();
+    }
+
+    /** Everything on the Deck's usable wafers, added up. Assumes {@link #checkAll} ran this tick. */
+    public static Map<ItemResource, Long> contents(WaferStore store, ItemStack deck) {
+        Map<ItemResource, Long> total = new java.util.LinkedHashMap<>();
+        for (WaferRecord record : records(store, deck)) {
+            if (record != null) {
+                record.contents().forEach((key, count) -> total.merge(key, count, Long::sum));
+            }
+        }
+        return total;
+    }
+
     /** Takes up to {@code amount} of {@code key} out, as stacks no larger than the item allows. */
     public static List<ItemStack> withdraw(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        return withdraw(store, deck, key, amount, player, true);
+    }
+
+    /** As {@link #withdraw}, but says nothing when the charge is empty (refilling the crafting grid). */
+    public static List<ItemStack> withdrawQuietly(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        return withdraw(store, deck, key, amount, player, false);
+    }
+
+    private static List<ItemStack> withdraw(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
+            boolean tell) {
+        if (amount <= 0 || key.isEmpty()) {
+            return List.of();
+        }
         List<SlotView> views = views(store, deck, player);
         List<DepositRouter.Allocation> plan = DepositRouter.planWithdraw(views, key, amount);
         long planned = plan.stream().mapToLong(DepositRouter.Allocation::amount).sum();
-        if (planned == 0 || !canAfford(deck, player)) {
+        if (planned == 0 || !canAfford(deck, player, tell)) {
             return List.of();
         }
         long taken = 0;
@@ -279,11 +352,13 @@ public final class DeckStorage {
         return record;
     }
 
-    private static boolean canAfford(ItemStack deck, ServerPlayer player) {
+    private static boolean canAfford(ItemStack deck, ServerPlayer player, boolean tell) {
         if (hasPower(deck)) {
             return true;
         }
-        player.sendOverlayMessage(Component.translatable("message.jasm.deck.no_power"));
+        if (tell) {
+            player.sendOverlayMessage(Component.translatable("message.jasm.deck.no_power"));
+        }
         return false;
     }
 }

@@ -25,5 +25,8 @@ public final class JasmClient {
         event.register(JasmMenus.ARCHIVE.get(), ArchiveScreen::new);
         event.register(JasmMenus.CREATIVE_BATTERY.get(), CreativeBatteryScreen::new);
         event.register(JasmMenus.COMBUSTION_GENERATOR.get(), CombustionGeneratorScreen::new);
+        event.register(JasmMenus.ENCODING_TERMINAL.get(), EncodingTerminalScreen::new);
+        event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
+        event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
     }
 }

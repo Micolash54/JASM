@@ -38,6 +38,45 @@ The old Deck is used up. The new one keeps its wafers and its charge.
 | ![Elite Deck](images/recipes/elite_deck.png) | **Elite Deck** | 4 × Emerald, 1 × Blaze Rod, 3 × Redstone, 1 × Advanced Deck |
 | ![Ultimate Deck](images/recipes/ultimate_deck.png) | **Ultimate Deck** | 4 × Blaze Rod, 1 × Netherite Ingot, 3 × Redstone, 1 × Elite Deck |
 
+## Crafting Decks
+
+A Deck with a crafting grid. Made from a Deck of the same tier, or upgraded from the Crafting Deck below; it keeps its wafers, charge and whatever is in its grid.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Advanced Crafting Deck](images/recipes/advanced_crafting_deck.png) | **Advanced Crafting Deck** | 4 × Redstone, 4 × Crafting Table, 1 × Advanced Deck |
+| ![Elite Crafting Deck](images/recipes/elite_crafting_deck_from_deck.png) | **Elite Crafting Deck** | 4 × Redstone, 4 × Crafting Table, 1 × Elite Deck |
+| ![Elite Crafting Deck](images/recipes/elite_crafting_deck.png) | **Elite Crafting Deck** | 4 × Emerald, 1 × Blaze Rod, 3 × Redstone, 1 × Advanced Crafting Deck |
+| ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck_from_deck.png) | **Ultimate Crafting Deck** | 4 × Redstone, 4 × Crafting Table, 1 × Ultimate Deck |
+| ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck.png) | **Ultimate Crafting Deck** | 4 × Blaze Rod, 1 × Netherite Ingot, 3 × Redstone, 1 × Elite Crafting Deck |
+
+## Autocrafting
+
+Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold them for the network; Crafting Servers run the jobs. Data Cables join it all and carry power. Eight cables around any dye give eight cables of that colour.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Empty Recipe Card](images/recipes/recipe_card.png) | **Empty Recipe Card** | 4 × Paper, 1 × Redstone, 1 × Amethyst Shard |
+| ![Encoding Terminal](images/recipes/encoding_terminal.png) | **Encoding Terminal** | 4 × Iron Ingot, 1 × Glass Pane, 2 × Redstone, 1 × Crafting Table, 1 × Amethyst Shard |
+| ![Recipe Rack](images/recipes/recipe_rack.png) | **Recipe Rack** | 4 × Iron Ingot, 2 × Empty Recipe Card, 2 × Redstone, 1 × Bookshelf |
+| ![Crafting Server](images/recipes/crafting_server.png) | **Crafting Server** | 4 × Iron Ingot, 1 × Diamond, 2 × Crafting Table, 1 × Basic Processor, 1 × Redstone Block |
+| ![Data Cable](images/recipes/data_cable.png) | **Data Cable** | 6 × Iron Nugget, 2 × Redstone, 1 × Amethyst Shard |
+| ![Red Data Cable](images/recipes/red_data_cable.png) | **Red Data Cable** | 8 × Data Cable (any colour), 1 × Red Dye |
+
+## Processors and Storage Modules
+
+They go in a Crafting Server. Each Processor tier is made from four of the one below.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Basic Processor](images/recipes/basic_processor.png) | **Basic Processor** | 4 × Redstone, 4 × Gold Ingot, 1 × Quartz |
+| ![Advanced Processor](images/recipes/advanced_processor.png) | **Advanced Processor** | 4 × Basic Processor, 4 × Redstone, 1 × Diamond |
+| ![Elite Processor](images/recipes/elite_processor.png) | **Elite Processor** | 4 × Advanced Processor, 4 × Redstone, 1 × Emerald |
+| ![1k Storage Module](images/recipes/storage_module_1k.png) | **1k Storage Module** | 4 × Copper Ingot, 4 × Redstone, 1 × Quartz |
+| ![4k Storage Module](images/recipes/storage_module_4k.png) | **4k Storage Module** | 2 × Gold Ingot, 1 × Diamond, 3 × Redstone, 3 × 1k Storage Module |
+| ![16k Storage Module](images/recipes/storage_module_16k.png) | **16k Storage Module** | 2 × Diamond, 1 × Ender Pearl, 3 × Redstone, 3 × 4k Storage Module |
+| ![64k Storage Module](images/recipes/storage_module_64k.png) | **64k Storage Module** | 2 × Emerald, 1 × Blaze Rod, 3 × Redstone, 3 × 16k Storage Module |
+
 ## Archives
 
 The old Archive is used up. The new one keeps its links, owner, trusted players and charge.

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:light_gray_data_cable"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_data_cable": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:data_cable"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_data_cable"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:light_gray_data_cable"
+    ]
+  }
+}

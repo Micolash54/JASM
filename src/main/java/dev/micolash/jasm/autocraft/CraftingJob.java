@@ -1,0 +1,228 @@
+package dev.micolash.jasm.autocraft;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * One job on a Crafting Server: what was asked for, the crafts still to run, the crafts running right now, and where
+ * its items are (a hidden record in the wafer store). The items never sit anywhere else: a running craft only takes
+ * its ingredients and adds its result when it finishes, in one step.
+ */
+public final class CraftingJob {
+    public enum Phase implements StringRepresentable {
+        /** Crafting. */
+        CRAFTING,
+        /** Asked to stop: no new crafts; the running ones finish. */
+        CANCELLING,
+        /** Done or stopped: everything left goes back to the requester. */
+        RETURNING;
+
+        public static final Codec<Phase> CODEC = StringRepresentable.fromEnum(Phase::values);
+
+        @Override
+        public String getSerializedName() {
+            return name().toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
+    /** One card and how many crafts of it are left. */
+    public static final class Step {
+        static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        RecipeCard.CODEC.fieldOf("card").forGetter(s -> s.card),
+                        Codec.LONG.fieldOf("left").forGetter(s -> s.left),
+                        Codec.LONG.fieldOf("total").forGetter(s -> s.total))
+                .apply(i, Step::new));
+
+        final RecipeCard card;
+        long left;
+        final long total;
+
+        Step(RecipeCard card, long left, long total) {
+            this.card = card;
+            this.left = left;
+            this.total = total;
+        }
+
+        public RecipeCard card() {
+            return card;
+        }
+
+        public long left() {
+            return left;
+        }
+
+        public long total() {
+            return total;
+        }
+    }
+
+    /** A craft in progress: which step, how long to go, and the ingredients set aside for it (one per slot). */
+    public static final class Running {
+        static final Codec<Running> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        Codec.INT.fieldOf("step").forGetter(r -> r.step),
+                        Codec.INT.fieldOf("ticks").forGetter(r -> r.ticks),
+                        ItemResource.OPTIONAL_CODEC.listOf().fieldOf("inputs").forGetter(r -> r.inputs))
+                .apply(i, Running::new));
+
+        final int step;
+        int ticks;
+        /** Nine entries; empty where the slot stays empty. */
+        final List<ItemResource> inputs;
+
+        Running(int step, int ticks, List<ItemResource> inputs) {
+            this.step = step;
+            this.ticks = ticks;
+            this.inputs = List.copyOf(inputs);
+        }
+    }
+
+    public static final Codec<CraftingJob> CODEC = RecordCodecBuilder.create(i -> i.group(
+                    UUIDUtil.CODEC.fieldOf("id").forGetter(j -> j.id),
+                    Codec.LONG.fieldOf("serial").forGetter(j -> j.serial),
+                    UUIDUtil.CODEC.fieldOf("record").forGetter(j -> j.recordId),
+                    UUIDUtil.CODEC.fieldOf("requester").forGetter(j -> j.requester),
+                    Codec.STRING.optionalFieldOf("requester_name", "").forGetter(j -> j.requesterName),
+                    UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(j -> Optional.ofNullable(j.deck)),
+                    ItemStackTemplate.CODEC.optionalFieldOf("target").forGetter(j -> Optional.ofNullable(j.target)),
+                    Codec.LONG.optionalFieldOf("amount", 0L).forGetter(j -> j.amount),
+                    Step.CODEC.listOf().optionalFieldOf("steps", List.of()).forGetter(j -> j.steps),
+                    Running.CODEC.listOf().optionalFieldOf("running", List.of()).forGetter(j -> j.running),
+                    Phase.CODEC.optionalFieldOf("phase", Phase.CRAFTING).forGetter(j -> j.phase),
+                    Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer))
+            .apply(i, CraftingJob::new));
+
+    final UUID id;
+    final long serial;
+    final UUID recordId;
+    final UUID requester;
+    final String requesterName;
+    final UUID deck;
+    /** What the job makes, one of it; {@link #amount} says how many. */
+    final ItemStackTemplate target;
+    final long amount;
+    final List<Step> steps;
+    final List<Running> running;
+    /** The results go into the requester's inventory rather than onto the Deck. */
+    final boolean toPlayer;
+    Phase phase;
+    /** Why nothing is happening right now, for screens; not saved. */
+    String pause = "";
+    /** Ticks in a row with nothing running and nothing able to start; not saved. */
+    int stuck;
+    /** Each step's card with its live recipe, looked up once; not saved. */
+    private final Map<Integer, Optional<CardRecipes.Resolved>> resolved = new HashMap<>();
+    /** Which items each step's slots were found to accept; not saved. */
+    private final Map<SlotKey, Boolean> accepted = new HashMap<>();
+
+    private record SlotKey(int step, int slot, ItemResource key) {}
+
+    private CraftingJob(UUID id, long serial, UUID recordId, UUID requester, String requesterName, Optional<UUID> deck,
+            Optional<ItemStackTemplate> target, long amount, List<Step> steps, List<Running> running, Phase phase, boolean toPlayer) {
+        this.id = id;
+        this.serial = serial;
+        this.recordId = recordId;
+        this.requester = requester;
+        this.requesterName = requesterName;
+        this.deck = deck.orElse(null);
+        this.target = target.orElse(null);
+        this.amount = amount;
+        this.steps = new ArrayList<>(steps);
+        this.running = new ArrayList<>(running);
+        this.phase = phase;
+        this.toPlayer = toPlayer;
+    }
+
+    static CraftingJob start(UUID id, long serial, UUID recordId, UUID requester, String requesterName, UUID deck, ItemStackTemplate target,
+            long amount, List<Step> steps, boolean toPlayer) {
+        return new CraftingJob(id, serial, recordId, requester, requesterName, Optional.of(deck), Optional.of(target), amount, steps,
+                List.of(), Phase.CRAFTING, toPlayer);
+    }
+
+    /** A job found in the list of running jobs but missing from its server (after a crash): it only returns its items. */
+    static CraftingJob adopted(AutocraftState.Job entry) {
+        return new CraftingJob(entry.id(), entry.serial(), entry.recordId(), entry.requester(), entry.requesterName(), entry.deck(),
+                Optional.empty(), 0, List.of(), List.of(), Phase.RETURNING, false);
+    }
+
+    /** Step {@code index}'s card with its recipe, or null if the recipe is gone. */
+    CardRecipes.@Nullable Resolved resolved(ServerLevel level, int index) {
+        return resolved.computeIfAbsent(index, i -> Optional.ofNullable(CardRecipes.resolve(level, steps.get(i).card))).orElse(null);
+    }
+
+    /** Whether {@code key} may go in {@code slot} of step {@code step}'s card; remembered for the rest of the job. */
+    boolean accepts(ServerLevel level, int step, CardRecipes.Resolved card, int slot, ItemResource key) {
+        return accepted.computeIfAbsent(new SlotKey(step, slot, key), k -> card.accepts(level, slot, key));
+    }
+
+    static Step step(RecipeCard card, long crafts) {
+        return new Step(card, crafts, crafts);
+    }
+
+    public UUID id() {
+        return id;
+    }
+
+    public boolean toPlayer() {
+        return toPlayer;
+    }
+
+    public UUID requester() {
+        return requester;
+    }
+
+    public String requesterName() {
+        return requesterName;
+    }
+
+    public UUID deck() {
+        return deck;
+    }
+
+    public Phase phase() {
+        return phase;
+    }
+
+    public ItemStackTemplate target() {
+        return target;
+    }
+
+    public long amount() {
+        return amount;
+    }
+
+    public List<Step> steps() {
+        return steps;
+    }
+
+    public int runningCount() {
+        return running.size();
+    }
+
+    public String pause() {
+        return pause;
+    }
+
+    /** How far along, from 0 to 1, by crafts finished. */
+    public float progress() {
+        long total = 0;
+        long left = 0;
+        for (Step step : steps) {
+            total += step.total;
+            left += step.left;
+        }
+        left += running.size();
+        return total == 0 ? 1F : Math.clamp(1F - left / (float) total, 0F, 1F);
+    }
+}

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:basic_deck"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_starter_deck": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:starter_deck"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_starter_deck"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:basic_deck"
+    ]
+  }
+}

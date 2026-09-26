@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:elite_crafting_deck_from_deck"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_elite_deck": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:elite_deck"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_elite_deck"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:elite_crafting_deck_from_deck"
+    ]
+  }
+}

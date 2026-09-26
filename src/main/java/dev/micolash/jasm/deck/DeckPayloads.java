@@ -16,7 +16,7 @@ public final class DeckPayloads {
 
     /** One kind of item and how many the open Deck holds. */
     public record Entry(ItemResource key, long count) {
-        static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
+        public static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
                 ItemResource.STREAM_CODEC, Entry::key,
                 ByteBufCodecs.VAR_LONG, Entry::count,
                 Entry::new);
@@ -94,7 +94,40 @@ public final class DeckPayloads {
         }
     }
 
-    /** Server → client: charge and the state of each wafer slot. */
+    /** Client → server: put the Crafting Deck's grid back on its wafers. */
+    public record ClearGrid(int containerId) implements CustomPacketPayload {
+        public static final Type<ClearGrid> TYPE = new Type<>(Jasm.id("deck_clear_grid"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ClearGrid> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, ClearGrid::containerId,
+                ClearGrid::new);
+
+        @Override
+        public Type<ClearGrid> type() {
+            return TYPE;
+        }
+    }
+
+    /** Most items one grid slot may list as allowed. */
+    public static final int MAX_OPTIONS = 256;
+
+    /**
+     * Client → server: fill the Crafting Deck's grid for a recipe. For each of the 9 slots, the items it may hold;
+     * {@code max} fills as many sets as fit.
+     */
+    public record FillGrid(int containerId, List<List<ItemResource>> slots, boolean max) implements CustomPacketPayload {
+        public static final Type<FillGrid> TYPE = new Type<>(Jasm.id("deck_fill_grid"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FillGrid> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, FillGrid::containerId,
+                ItemResource.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_OPTIONS)).apply(ByteBufCodecs.list(9)), FillGrid::slots,
+                ByteBufCodecs.BOOL, FillGrid::max,
+                FillGrid::new);
+
+        @Override
+        public Type<FillGrid> type() {
+            return TYPE;
+        }
+    }
+
     /** The screen changed one wafer's routing settings. */
     public record Configure(int containerId, int slot, WaferSettings settings) implements CustomPacketPayload {
         public static final Type<Configure> TYPE = new Type<>(Jasm.id("deck_configure"));
@@ -110,6 +143,7 @@ public final class DeckPayloads {
         }
     }
 
+    /** Server → client: charge and the state of each wafer slot. */
     public record Status(int containerId, int energy, List<DeckStorage.SlotStatus> slots) implements CustomPacketPayload {
         public static final Type<Status> TYPE = new Type<>(Jasm.id("deck_status"));
         static final StreamCodec<RegistryFriendlyByteBuf, DeckStorage.SlotStatus> SLOT = StreamCodec.composite(

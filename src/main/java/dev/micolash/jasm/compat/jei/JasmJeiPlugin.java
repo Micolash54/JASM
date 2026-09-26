@@ -2,7 +2,11 @@ package dev.micolash.jasm.compat.jei;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveTier;
+import dev.micolash.jasm.autocraft.MemoryTier;
+import dev.micolash.jasm.autocraft.ProcessorTier;
+import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.client.DeckScreen;
+import dev.micolash.jasm.client.EncodingTerminalScreen;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.registry.JasmItems;
@@ -24,6 +28,7 @@ import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.IRecipeTransferRegistration;
 import mezz.jei.api.runtime.IClickableIngredient;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.renderer.Rect2i;
@@ -31,10 +36,12 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
  * JEI support. JASM's recipes show up on their own; this adds info pages, a page of what each fuel makes in the
- * Combustion Generators, and lets JEI see the Deck's grid, its wafer settings window and the filter slots in it.
+ * Combustion Generators, and lets JEI see the Deck's grid, its wafer settings window and the filter slots in it. JEI's
+ * "+" fills a Crafting Deck's crafting grid.
  */
 @JeiPlugin
 public class JasmJeiPlugin implements IModPlugin {
@@ -53,6 +60,19 @@ public class JasmJeiPlugin implements IModPlugin {
         for (GeneratorTier tier : GeneratorTier.values()) {
             registration.addCraftingStation(GeneratorFuelCategory.TYPE, JasmItems.generator(tier));
         }
+        for (ItemLike deck : craftingDecks()) {
+            registration.addCraftingStation(RecipeTypes.CRAFTING, deck);
+        }
+    }
+
+    private static List<ItemLike> craftingDecks() {
+        return Arrays.stream(DeckTier.values()).filter(DeckTier::hasCraftingDeck).<ItemLike>map(JasmItems::craftingDeck).toList();
+    }
+
+    @Override
+    public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
+        registration.addRecipeTransferHandler(new DeckTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
+        registration.addRecipeTransferHandler(new TerminalTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
     }
 
     @Override
@@ -60,6 +80,14 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "capacity_wafer", 3, Arrays.stream(WaferTier.values()).filter(tier -> !tier.isTyped()).map(JasmItems::wafer).toList());
         info(registration, "type_wafer", 3, Arrays.stream(WaferTier.values()).filter(WaferTier::isTyped).map(JasmItems::wafer).toList());
         info(registration, "deck", 3, Arrays.stream(DeckTier.values()).map(JasmItems::deck).toList());
+        info(registration, "crafting_deck", 3, craftingDecks());
+        info(registration, "recipe_card", 2, List.of(JasmItems.RECIPE_CARD.get(), JasmItems.FILLED_RECIPE_CARD.get()));
+        info(registration, "encoding_terminal", 2, List.of(JasmItems.ENCODING_TERMINAL.get()));
+        info(registration, "recipe_rack", 2, List.of(JasmItems.RECIPE_RACK.get()));
+        info(registration, "data_cable", 2, JasmItems.cables());
+        info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));
+        info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
+        info(registration, "storage_module", 1, Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
         info(registration, "archive", 2, Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
         info(registration, "combustion_generator", 2, Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
@@ -88,6 +116,36 @@ public class JasmJeiPlugin implements IModPlugin {
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
+        registration.addGhostIngredientHandler(EncodingTerminalScreen.class, new IGhostIngredientHandler<>() {
+            /** Items dragged out of JEI can be dropped onto the terminal's ghost grid. */
+            @Override
+            public <I> List<Target<I>> getTargetsTyped(EncodingTerminalScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+                Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK);
+                if (stack.isEmpty() || stack.get().isEmpty()) {
+                    return List.of();
+                }
+                List<Target<I>> targets = new ArrayList<>();
+                for (int i = 0; i < 9; i++) {
+                    int slot = i;
+                    Rect2i area = screen.ghostSlotArea(i);
+                    targets.add(new Target<>() {
+                        @Override
+                        public Rect2i getArea() {
+                            return area;
+                        }
+
+                        @Override
+                        public void accept(I dropped) {
+                            ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(screen.getMenu().containerId, slot, List.of(stack.get().copyWithCount(1))));
+                        }
+                    });
+                }
+                return targets;
+            }
+
+            @Override
+            public void onComplete() {}
+        });
         registration.addGuiContainerHandler(DeckScreen.class, new IGuiContainerHandler<>() {
             /** Keeps JEI's item list from covering the settings window where it sticks out past the Deck. */
             @Override
@@ -103,7 +161,7 @@ public class JasmJeiPlugin implements IModPlugin {
             }
         });
         registration.addGhostIngredientHandler(DeckScreen.class, new IGhostIngredientHandler<>() {
-            /** Items dragged out of JEI can be dropped into the open settings window's filter slots. */
+            /** Items dragged out of JEI can be dropped into the open settings window's filter slots, or a rule's item slot. */
             @Override
             public <I> List<Target<I>> getTargetsTyped(DeckScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
                 Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK);
@@ -111,6 +169,17 @@ public class JasmJeiPlugin implements IModPlugin {
                     return List.of();
                 }
                 List<Target<I>> targets = new ArrayList<>();
+                screen.ruleSlotArea().ifPresent(area -> targets.add(new Target<>() {
+                    @Override
+                    public Rect2i getArea() {
+                        return area;
+                    }
+
+                    @Override
+                    public void accept(I dropped) {
+                        screen.setRuleItem(stack.get());
+                    }
+                }));
                 List<Rect2i> areas = screen.filterSlotAreas();
                 for (int i = 0; i < areas.size(); i++) {
                     int index = i;

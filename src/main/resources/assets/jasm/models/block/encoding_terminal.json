@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "jasm:block/encoding_terminal_front",
+    "side": "jasm:block/network_casing",
+    "top": "jasm:block/network_casing"
+  }
+}

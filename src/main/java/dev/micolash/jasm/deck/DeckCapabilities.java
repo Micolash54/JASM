@@ -16,10 +16,10 @@ public final class DeckCapabilities {
 
     @SubscribeEvent
     static void register(RegisterCapabilitiesEvent event) {
-        for (DeckTier tier : DeckTier.values()) {
+        for (DeckItem deck : JasmItems.allDecks()) {
+            int battery = deck.tier().battery();
             event.registerItem(Capabilities.Energy.ITEM,
-                    (stack, access) -> new ItemAccessEnergyHandler(access, JasmComponents.ENERGY.get(), tier.battery(), tier.battery(), 0),
-                    JasmItems.deck(tier));
+                    (stack, access) -> new ItemAccessEnergyHandler(access, JasmComponents.ENERGY.get(), battery, battery, 0), deck);
         }
     }
 }

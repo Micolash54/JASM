@@ -55,19 +55,9 @@ public class CombustionGeneratorScreen extends AbstractContainerScreen<Combustio
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
-        Component status;
-        int color;
-        if (menu.output() > 0) {
-            status = Component.translatable("screen.jasm.combustion_generator.burning", String.format("%,d", menu.output()));
-            color = JasmGui.GOOD;
-        } else if (menu.flame() > 0 || (menu.capacity() > 0 && menu.energy() >= menu.capacity())) {
-            status = Component.translatable("screen.jasm.combustion_generator.full");
-            color = JasmGui.SUBTEXT;
-        } else {
-            status = Component.translatable("screen.jasm.combustion_generator.no_fuel");
-            color = JasmGui.MUTED;
-        }
-        graphics.text(font, status, (imageWidth - font.width(status)) / 2, STATUS_Y, color, false);
+        // What it makes while burning; fixed, so it doesn't flicker as the buffer fills and empties. The flame shows burning.
+        Component status = Component.translatable("screen.jasm.combustion_generator.potential", String.format("%,d", menu.potential()));
+        graphics.text(font, status, (imageWidth - font.width(status)) / 2, STATUS_Y, JasmGui.SUBTEXT, false);
         Component charge = Component.translatable("screen.jasm.combustion_generator.charge",
                 String.format("%,d", menu.energy()), String.format("%,d", menu.capacity()));
         graphics.text(font, charge, (imageWidth - font.width(charge)) / 2, CHARGE_TEXT_Y, JasmGui.SUBTEXT, false);

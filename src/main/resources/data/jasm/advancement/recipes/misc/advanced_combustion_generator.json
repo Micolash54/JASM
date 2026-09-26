@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:advanced_combustion_generator"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_basic_combustion_generator": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:basic_combustion_generator"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_basic_combustion_generator"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:advanced_combustion_generator"
+    ]
+  }
+}

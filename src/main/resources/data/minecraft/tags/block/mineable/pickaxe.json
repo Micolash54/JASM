@@ -6,6 +6,26 @@
     "jasm:ultimate_archive",
     "jasm:basic_combustion_generator",
     "jasm:advanced_combustion_generator",
-    "jasm:elite_combustion_generator"
+    "jasm:elite_combustion_generator",
+    "jasm:encoding_terminal",
+    "jasm:recipe_rack",
+    "jasm:data_cable",
+    "jasm:white_data_cable",
+    "jasm:orange_data_cable",
+    "jasm:magenta_data_cable",
+    "jasm:light_blue_data_cable",
+    "jasm:yellow_data_cable",
+    "jasm:lime_data_cable",
+    "jasm:pink_data_cable",
+    "jasm:gray_data_cable",
+    "jasm:light_gray_data_cable",
+    "jasm:cyan_data_cable",
+    "jasm:purple_data_cable",
+    "jasm:blue_data_cable",
+    "jasm:brown_data_cable",
+    "jasm:green_data_cable",
+    "jasm:red_data_cable",
+    "jasm:black_data_cable",
+    "jasm:crafting_server"
   ]
 }

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/encoding_terminal"
+    },
+    "facing=east": {
+      "model": "jasm:block/encoding_terminal",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/encoding_terminal",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/encoding_terminal",
+      "y": 270
+    }
+  }
+}

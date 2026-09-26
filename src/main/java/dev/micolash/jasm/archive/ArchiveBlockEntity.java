@@ -1,9 +1,13 @@
 package dev.micolash.jasm.archive;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
@@ -12,10 +16,13 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Containers;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -25,8 +32,9 @@ import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A placed Archive: which Archive record it is, a copy of its owner (to rebuild a lost record), and its FE buffer.
- * Links, trust and placement live in the record, so they follow the Archive when it is mined and placed again.
+ * A placed Archive: which Archive record it is, a copy of its owner (to rebuild a lost record), its FE buffer, and
+ * each player's two wafer slots. Links, trust and placement live in the record, so they follow the Archive when it
+ * is mined and placed again.
  */
 public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
     private final ArchiveTier tier;
@@ -36,6 +44,11 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
     private String ownerName = "";
     /** Whether this block has been checked against its record since it was placed or loaded. */
     private boolean placementChecked;
+    /**
+     * Each player's link and recovery slots. They are saved with the block, so a wafer left in them after a crash
+     * or a logout is still there the next time that player opens this Archive. Nobody else sees them.
+     */
+    private final Map<UUID, SimpleContainer> slots = new HashMap<>();
 
     public ArchiveBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.ARCHIVE_ENTITY.get(), pos, state);
@@ -109,6 +122,26 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         placementChecked = true;
     }
 
+    /** {@code player}'s two wafer slots at this Archive. */
+    public SimpleContainer slotsOf(UUID player) {
+        return slots.computeIfAbsent(player, id -> newSlots());
+    }
+
+    private SimpleContainer newSlots() {
+        SimpleContainer container = new SimpleContainer(2) {
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
+
+            @Override
+            public void setChanged() {
+                ArchiveBlockEntity.this.setChanged();
+            }
+        };
+        return container;
+    }
+
     /** Opens the screen for the owner and trusted players; everyone else is told whose Archive it is. */
     public void open(ServerPlayer player) {
         ArchiveRecord record = record();
@@ -121,10 +154,15 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         }
     }
 
+    /** Whatever is left in anyone's slots drops on the ground. An open screen then has nothing left to hand back. */
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         if (level instanceof ServerLevel serverLevel) {
             ArchivePlacement.removed(this, serverLevel);
+            for (SimpleContainer container : slots.values()) {
+                Containers.dropContents(level, pos, container);
+                container.clearContent();
+            }
         }
     }
 
@@ -135,6 +173,12 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         output.storeNullable("owner", UUIDUtil.CODEC, ownerId);
         output.putString("owner_name", ownerName);
         output.putInt("energy", energy.getAmountAsInt());
+        ValueOutput.TypedOutputList<SavedSlots> saved = output.list("slots", SavedSlots.CODEC);
+        slots.forEach((player, container) -> {
+            if (!container.isEmpty()) {
+                saved.add(new SavedSlots(player, container.getItem(0), container.getItem(1)));
+            }
+        });
     }
 
     @Override
@@ -144,6 +188,12 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         ownerId = input.read("owner", UUIDUtil.CODEC).orElse(null);
         ownerName = input.getStringOr("owner_name", "");
         energy.set(Math.clamp(input.getIntOr("energy", 0), 0, tier.energyBuffer()));
+        slots.clear();
+        for (SavedSlots saved : input.listOrEmpty("slots", SavedSlots.CODEC)) {
+            SimpleContainer container = slotsOf(saved.player());
+            container.setItem(0, saved.link());
+            container.setItem(1, saved.recovery());
+        }
     }
 
     /** The mined item carries the identity and the charge. */
@@ -169,6 +219,14 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
     public void removeComponentsFromTag(ValueOutput output) {
         output.discard("archive");
         output.discard("energy");
+    }
+
+    private record SavedSlots(UUID player, ItemStack link, ItemStack recovery) {
+        static final Codec<SavedSlots> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        UUIDUtil.CODEC.fieldOf("player").forGetter(SavedSlots::player),
+                        ItemStack.OPTIONAL_CODEC.optionalFieldOf("link", ItemStack.EMPTY).forGetter(SavedSlots::link),
+                        ItemStack.OPTIONAL_CODEC.optionalFieldOf("recovery", ItemStack.EMPTY).forGetter(SavedSlots::recovery))
+                .apply(i, SavedSlots::new));
     }
 
     @Override

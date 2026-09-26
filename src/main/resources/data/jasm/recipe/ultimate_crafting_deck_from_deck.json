@@ -1,0 +1,17 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "R": "minecraft:redstone",
+    "T": "minecraft:crafting_table",
+    "P": "jasm:ultimate_deck"
+  },
+  "pattern": [
+    "RTR",
+    "TPT",
+    "RTR"
+  ],
+  "source": "jasm:ultimate_deck",
+  "result": {
+    "id": "jasm:ultimate_crafting_deck"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "group": "jasm:data_cable_dye",
+  "key": {
+    "C": "#jasm:data_cables",
+    "D": "minecraft:white_dye"
+  },
+  "pattern": [
+    "CCC",
+    "CDC",
+    "CCC"
+  ],
+  "result": {
+    "id": "jasm:white_data_cable",
+    "count": 8
+  }
+}

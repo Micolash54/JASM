@@ -16,6 +16,10 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Wafer priorities**: choose which wafer in a Deck fills first, and which items each wafer is for.
 - **Archives**: link your wafers to one, and if a wafer is ever lost, rebuild it onto a blank. Only the owner and players they trust can use it.
 - **Combustion Generators**: burn anything a furnace burns for power, in Basic, Advanced and Elite tiers. Each has a charging slot for Decks.
+- **Crafting Decks**: Advanced, Elite and Ultimate Decks with a 3×3 crafting grid that takes ingredients straight from the wafers and refills itself.
+- **Autocrafting**: write recipes onto Recipe Cards at an Encoding Terminal, keep them in Recipe Racks, and let Crafting Servers do the work. Ask for anything from your Crafting Deck, and the ingredients it needs are crafted first. Processors decide how many crafts run at once, Storage Modules how big a job fits.
+- **Crafting rules**: "when I have fewer than 16 torches, craft 32" or "every minute, craft 8 bread", set on the Crafting Deck, with the results sent to the Deck or straight into your inventory.
+- **Data Cables**: join the crafting blocks and carry power between them. Dye them to keep networks apart.
 - **Creative Battery**: unlimited power for creative worlds, with a charging slot.
 - **Safe by design**: copied wafers stop working, a crash never duplicates items, and items from removed mods are kept until the mod comes back.
 
@@ -32,7 +36,7 @@ Every item except the Creative Battery is craftable in survival. The first tier 
 - Minecraft 26.3
 - NeoForge 26.3.0.16-beta
 
-Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed, you get all recipes, info pages and a fuel page for the generators, and the Deck's grid works with JEI's recipe keys. With [Jade](https://www.curseforge.com/minecraft/mc-mods/jade), looking at an Archive or generator shows its details.
+Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed, you get all recipes, info pages and a fuel page for the generators, the Deck's grid works with JEI's recipe keys, and JEI's "+" fills the Crafting Deck's grid and the Encoding Terminal. With [Jade](https://www.curseforge.com/minecraft/mc-mods/jade), looking at an Archive, generator or crafting block shows its details.
 
 ## Installing
 

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "A": "jasm:advanced_processor",
+    "R": "minecraft:redstone",
+    "E": "minecraft:emerald"
+  },
+  "pattern": [
+    "ARA",
+    "RER",
+    "ARA"
+  ],
+  "result": {
+    "id": "jasm:elite_processor"
+  }
+}

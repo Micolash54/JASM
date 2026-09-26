@@ -23,7 +23,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Archive's menu: a link slot and a recovery slot, then the player's inventory (27 slots) and hotbar (9). The
- * two wafer slots belong to the menu, not the block, so whatever is in them goes back to the player on close.
+ * two wafer slots are the player's own at this Archive (see {@link ArchiveBlockEntity#slotsOf}); whatever is in them
+ * goes back to the player on close, and stays in the Archive if the player logs out with the screen open.
  */
 public class ArchiveMenu extends AbstractContainerMenu {
     public static final int LINK_SLOT = 0;
@@ -43,12 +44,7 @@ public class ArchiveMenu extends AbstractContainerMenu {
     private final ArchiveTier tier;
     private final ContainerLevelAccess access;
     private final @Nullable ArchiveBlockEntity archive;
-    private final SimpleContainer waferSlots = new SimpleContainer(2) {
-        @Override
-        public int getMaxStackSize() {
-            return 1;
-        }
-    };
+    private final Container waferSlots;
     private ArchivePayloads.State lastSent = ArchivePayloads.State.EMPTY;
     private int sinceRefresh = REFRESH_TICKS;
     /** Client side only: what the server has told this screen. */
@@ -75,6 +71,7 @@ public class ArchiveMenu extends AbstractContainerMenu {
         this.tier = tier;
         this.access = access;
         this.archive = archive;
+        this.waferSlots = archive != null ? archive.slotsOf(player.getUUID()) : new SimpleContainer(2);
         addSlot(new WaferSlot(waferSlots, LINK_SLOT, LINK_X, ROW_Y));
         addSlot(new WaferSlot(waferSlots, RECOVERY_SLOT, RECOVERY_X, ROW_Y));
         for (int row = 0; row < 3; row++) {
@@ -235,8 +232,10 @@ public class ArchiveMenu extends AbstractContainerMenu {
     @Override
     public void removed(Player player) {
         super.removed(player);
-        if (archive != null) {
+        // Logging out: the wafers wait in the Archive rather than dropping where the player stood.
+        if (archive != null && !(player instanceof ServerPlayer serverPlayer && serverPlayer.hasDisconnected())) {
             clearContainer(player, waferSlots);
+            waferSlots.setChanged();
         }
     }
 

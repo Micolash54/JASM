@@ -1,0 +1,18 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:emerald",
+    "Y": "minecraft:blaze_rod",
+    "R": "minecraft:redstone",
+    "P": "jasm:advanced_crafting_deck"
+  },
+  "pattern": [
+    "XYX",
+    "RPR",
+    "XRX"
+  ],
+  "source": "jasm:advanced_crafting_deck",
+  "result": {
+    "id": "jasm:elite_crafting_deck"
+  }
+}

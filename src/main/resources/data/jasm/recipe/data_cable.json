@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_nugget",
+    "R": "minecraft:redstone",
+    "A": "minecraft:amethyst_shard"
+  },
+  "pattern": [
+    "III",
+    "RAR",
+    "III"
+  ],
+  "result": {
+    "id": "jasm:data_cable",
+    "count": 8
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "jasm:item/advanced_crafting_deck",
+    "layer1": "jasm:item/crafting_deck_charge_4"
+  }
+}

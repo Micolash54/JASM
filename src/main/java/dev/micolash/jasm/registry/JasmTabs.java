@@ -2,6 +2,9 @@ package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveTier;
+import dev.micolash.jasm.autocraft.MemoryTier;
+import dev.micolash.jasm.autocraft.ProcessorTier;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.wafer.WaferTier;
@@ -20,10 +23,10 @@ public final class JasmTabs {
             .title(Component.translatable("itemGroup.jasm.main"))
             .icon(() -> JasmItems.deck(DeckTier.ULTIMATE).getDefaultInstance())
             .displayItems((parameters, output) -> {
-                for (DeckTier tier : DeckTier.values()) {
-                    output.accept(JasmItems.deck(tier));
-                    ItemStack charged = new ItemStack(JasmItems.deck(tier));
-                    charged.set(JasmComponents.ENERGY.get(), tier.battery());
+                for (DeckItem deck : JasmItems.allDecks()) {
+                    output.accept(deck);
+                    ItemStack charged = new ItemStack(deck);
+                    charged.set(JasmComponents.ENERGY.get(), deck.tier().battery());
                     output.accept(charged);
                 }
                 for (WaferTier tier : WaferTier.values()) {
@@ -35,6 +38,17 @@ public final class JasmTabs {
                 for (GeneratorTier tier : GeneratorTier.values()) {
                     output.accept(JasmItems.generator(tier));
                 }
+                output.accept(JasmItems.ENCODING_TERMINAL);
+                output.accept(JasmItems.RECIPE_RACK);
+                output.accept(JasmItems.CRAFTING_SERVER);
+                for (ProcessorTier tier : ProcessorTier.values()) {
+                    output.accept(JasmItems.processor(tier));
+                }
+                for (MemoryTier tier : MemoryTier.values()) {
+                    output.accept(JasmItems.module(tier));
+                }
+                output.accept(JasmItems.RECIPE_CARD);
+                JasmItems.cables().forEach(output::accept);
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());

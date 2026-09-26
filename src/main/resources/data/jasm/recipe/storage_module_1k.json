@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone",
+    "Q": "minecraft:quartz"
+  },
+  "pattern": [
+    "CRC",
+    "RQR",
+    "CRC"
+  ],
+  "result": {
+    "id": "jasm:storage_module_1k"
+  }
+}

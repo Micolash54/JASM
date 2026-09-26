@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/crafting_server"
+    },
+    "facing=east": {
+      "model": "jasm:block/crafting_server",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/crafting_server",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/crafting_server",
+      "y": 270
+    }
+  }
+}

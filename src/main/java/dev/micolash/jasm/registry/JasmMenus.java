@@ -2,6 +2,9 @@ package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveMenu;
+import dev.micolash.jasm.autocraft.CraftingServerMenu;
+import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
+import dev.micolash.jasm.autocraft.RecipeRackMenu;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
@@ -21,6 +24,15 @@ public final class JasmMenus {
             () -> new MenuType<>(CreativeBatteryMenu::new, FeatureFlags.VANILLA_SET));
     public static final Supplier<MenuType<CombustionGeneratorMenu>> COMBUSTION_GENERATOR = MENUS.register("combustion_generator",
             () -> new MenuType<>(CombustionGeneratorMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<EncodingTerminalMenu>> ENCODING_TERMINAL = MENUS.register("encoding_terminal",
+            () -> new MenuType<>(EncodingTerminalMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<RecipeRackMenu>> RECIPE_RACK = MENUS.register("recipe_rack",
+            () -> new MenuType<>(RecipeRackMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<CraftingServerMenu>> CRAFTING_SERVER = MENUS.register("crafting_server",
+            () -> new MenuType<>(CraftingServerMenu::new, FeatureFlags.VANILLA_SET));
 
     private JasmMenus() {}
 }

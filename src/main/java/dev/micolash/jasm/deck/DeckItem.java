@@ -18,17 +18,30 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
 
-/** The handheld reader. Carries wafers and a battery; right-click opens it. */
+/**
+ * The handheld reader. Carries wafers and a battery; right-click opens it. A Crafting Deck also has a 3×3 crafting
+ * grid fed by its wafers.
+ */
 public class DeckItem extends Item implements WaferHolderItem {
     private final DeckTier tier;
+    private final boolean crafting;
 
-    public DeckItem(Item.Properties properties, DeckTier tier) {
+    public DeckItem(Item.Properties properties, DeckTier tier, boolean crafting) {
         super(properties.stacksTo(1));
         this.tier = tier;
+        this.crafting = crafting;
     }
 
     public DeckTier tier() {
         return tier;
+    }
+
+    public boolean isCrafting() {
+        return crafting;
+    }
+
+    public static boolean isCrafting(ItemStack stack) {
+        return stack.getItem() instanceof DeckItem deck && deck.crafting;
     }
 
     /** Decks must never nest inside bundles, shulker boxes, or other container items. */
@@ -55,13 +68,20 @@ public class DeckItem extends Item implements WaferHolderItem {
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         if (player instanceof ServerPlayer serverPlayer) {
-            int slot = hand == InteractionHand.MAIN_HAND ? player.getInventory().getSelectedSlot() : Inventory.SLOT_OFFHAND;
-            ItemStack deck = player.getInventory().getItem(slot);
-            DeckStorage.activate(WaferStore.get(serverPlayer.level().getServer()), deck, serverPlayer);
-            serverPlayer.openMenu(new SimpleMenuProvider((id, inventory, p) -> new DeckMenu(id, inventory, slot), deck.getHoverName()),
-                    buf -> buf.writeVarInt(slot));
+            open(serverPlayer, hand == InteractionHand.MAIN_HAND ? player.getInventory().getSelectedSlot() : Inventory.SLOT_OFFHAND);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /** Opens the Deck in this inventory slot. */
+    public static void open(ServerPlayer player, int slot) {
+        ItemStack deck = player.getInventory().getItem(slot);
+        if (!(deck.getItem() instanceof DeckItem)) {
+            return;
+        }
+        DeckStorage.activate(WaferStore.get(player.level().getServer()), deck, player);
+        player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new DeckMenu(id, inventory, slot), deck.getHoverName()),
+                buf -> buf.writeVarInt(slot));
     }
 
     @Override

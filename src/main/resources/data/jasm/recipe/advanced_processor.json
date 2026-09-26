@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "B": "jasm:basic_processor",
+    "R": "minecraft:redstone",
+    "D": "minecraft:diamond"
+  },
+  "pattern": [
+    "BRB",
+    "RDR",
+    "BRB"
+  ],
+  "result": {
+    "id": "jasm:advanced_processor"
+  }
+}

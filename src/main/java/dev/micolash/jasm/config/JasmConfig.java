@@ -48,6 +48,47 @@ public final class JasmConfig {
             .defineInRange("maxItemDataBytes", 32_768, 1_024, 1_048_576);
 
     static {
+        BUILDER.pop().push("autocrafting");
+    }
+
+    public static final ModConfigSpec.IntValue TERMINAL_DRAIN = BUILDER
+            .comment("FE the Encoding Terminal uses each tick")
+            .defineInRange("terminalDrain", 5, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue RACK_DRAIN = BUILDER
+            .comment("FE a Recipe Rack uses each tick")
+            .defineInRange("rackDrain", 2, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue SERVER_DRAIN = BUILDER
+            .comment("FE a Crafting Server uses each tick on its own, busy or idle")
+            .defineInRange("serverDrain", 20, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_BASIC = BUILDER
+            .comment("FE each Basic Processor adds to its server's use per tick")
+            .defineInRange("basicProcessorDrain", 10, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_ADVANCED = BUILDER
+            .comment("FE each Advanced Processor adds to its server's use per tick")
+            .defineInRange("advancedProcessorDrain", 30, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_ELITE = BUILDER
+            .comment("FE each Elite Processor adds to its server's use per tick")
+            .defineInRange("eliteProcessorDrain", 80, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue CRAFT_TICKS = BUILDER
+            .comment("Ticks one craft takes on a Crafting Server, on every Processor tier")
+            .defineInRange("craftTicks", 10, 1, 1_200);
+    public static final ModConfigSpec.IntValue MAX_REQUEST = BUILDER
+            .comment("Most items one crafting request may ask for")
+            .defineInRange("maxRequest", 100_000, 1, 10_000_000);
+    public static final ModConfigSpec.IntValue RULE_MIN_SECONDS = BUILDER
+            .comment("Shortest timer a Crafting Deck rule may use, in seconds")
+            .defineInRange("ruleMinSeconds", 10, 1, 86_400);
+    public static final ModConfigSpec.IntValue RULE_RETRY_SECONDS = BUILDER
+            .comment("Seconds a rule that couldn't start waits before trying again")
+            .defineInRange("ruleRetrySeconds", 5, 1, 3_600);
+    public static final ModConfigSpec.IntValue CABLE_RATE = BUILDER
+            .comment("FE a Data Cable network moves into or out of each block it touches, per tick")
+            .defineInRange("cableRate", 1_000, 1, Integer.MAX_VALUE);
+    public static final ModConfigSpec.IntValue CABLE_BUFFER = BUILDER
+            .comment("FE each Data Cable holds while passing it on")
+            .defineInRange("cableBuffer", 1_000, 1, 1_000_000);
+
+    static {
         BUILDER.pop();
     }
 

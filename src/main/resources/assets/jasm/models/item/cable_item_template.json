@@ -1,0 +1,76 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "#cable"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        5,
+        2
+      ],
+      "to": [
+        11,
+        11,
+        14
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            5,
+            2,
+            11,
+            14
+          ],
+          "texture": "#cable"
+        },
+        "east": {
+          "uv": [
+            5,
+            2,
+            11,
+            14
+          ],
+          "texture": "#cable"
+        },
+        "south": {
+          "uv": [
+            5,
+            2,
+            11,
+            14
+          ],
+          "texture": "#cable"
+        },
+        "west": {
+          "uv": [
+            5,
+            2,
+            11,
+            14
+          ],
+          "texture": "#cable"
+        },
+        "up": {
+          "uv": [
+            5,
+            2,
+            11,
+            14
+          ],
+          "texture": "#cable"
+        },
+        "down": {
+          "uv": [
+            5,
+            2,
+            11,
+            14
+          ],
+          "texture": "#cable"
+        }
+      }
+    }
+  ]
+}

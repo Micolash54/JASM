@@ -37,6 +37,10 @@ public final class DeckNetwork {
                         (payload, context) -> insert((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.Configure.TYPE, DeckPayloads.Configure.STREAM_CODEC,
                         (payload, context) -> configure((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.ClearGrid.TYPE, DeckPayloads.ClearGrid.STREAM_CODEC,
+                        (payload, context) -> clearGrid((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.FillGrid.TYPE, DeckPayloads.FillGrid.STREAM_CODEC,
+                        (payload, context) -> fillGrid((ServerPlayer) context.player(), payload))
                 .playToClient(DeckPayloads.Snapshot.TYPE, DeckPayloads.Snapshot.STREAM_CODEC, DeckNetwork::onSnapshot)
                 .playToClient(DeckPayloads.Delta.TYPE, DeckPayloads.Delta.STREAM_CODEC, DeckNetwork::onDelta)
                 .playToClient(DeckPayloads.Status.TYPE, DeckPayloads.Status.STREAM_CODEC, DeckNetwork::onStatus);
@@ -115,6 +119,28 @@ public final class DeckNetwork {
         boolean done = DeckStorage.configure(store, menu.deck(), payload.slot(), payload.settings(), player);
         finish(player, menu);
         return done;
+    }
+
+    /** Puts a Crafting Deck's grid back on its wafers. */
+    public static boolean clearGrid(ServerPlayer player, DeckPayloads.ClearGrid payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !menu.isCrafting() || !allow(player)) {
+            return false;
+        }
+        menu.returnGrid(player);
+        finish(player, menu);
+        return true;
+    }
+
+    /** Fills a Crafting Deck's grid for a recipe, from its wafers and the player's inventory. */
+    public static boolean fillGrid(ServerPlayer player, DeckPayloads.FillGrid payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !menu.isCrafting() || !allow(player)) {
+            return false;
+        }
+        menu.fillGrid(player, payload.slots(), payload.max());
+        finish(player, menu);
+        return true;
     }
 
     private static void finish(ServerPlayer player, DeckMenu menu) {

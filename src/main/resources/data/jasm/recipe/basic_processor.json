@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "R": "minecraft:redstone",
+    "G": "minecraft:gold_ingot",
+    "Q": "minecraft:quartz"
+  },
+  "pattern": [
+    "RGR",
+    "GQG",
+    "RGR"
+  ],
+  "result": {
+    "id": "jasm:basic_processor"
+  }
+}

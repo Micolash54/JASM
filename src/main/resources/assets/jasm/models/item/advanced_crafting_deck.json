@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "jasm:item/advanced_crafting_deck"
+  }
+}

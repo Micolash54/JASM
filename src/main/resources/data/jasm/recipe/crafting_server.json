@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "D": "minecraft:diamond",
+    "C": "minecraft:crafting_table",
+    "P": "jasm:basic_processor",
+    "R": "minecraft:redstone_block"
+  },
+  "pattern": [
+    "IDI",
+    "CPC",
+    "IRI"
+  ],
+  "result": {
+    "id": "jasm:crafting_server"
+  }
+}

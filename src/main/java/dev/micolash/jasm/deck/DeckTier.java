@@ -2,14 +2,14 @@ package dev.micolash.jasm.deck;
 
 /**
  * Deck tiers: how many wafers they carry, how much charge their battery holds (FE), and how much it uses each tick
- * while its screen is open. A full battery lasts about 17 / 21 / 21 / 35 / 52 minutes of open screen.
+ * while its screen is open. A full battery lasts about 17 / 42 / 42 / 69 / 104 minutes of open screen.
  */
 public enum DeckTier {
     STARTER("starter_deck", 1, 20_000, 1),
-    BASIC("basic_deck", 3, 50_000, 2),
-    ADVANCED("advanced_deck", 6, 100_000, 4),
-    ELITE("elite_deck", 12, 250_000, 6),
-    ULTIMATE("ultimate_deck", 24, 500_000, 8);
+    BASIC("basic_deck", 3, 50_000, 1),
+    ADVANCED("advanced_deck", 6, 100_000, 2),
+    ELITE("elite_deck", 12, 250_000, 3),
+    ULTIMATE("ultimate_deck", 24, 500_000, 4);
 
     private final String registryName;
     private final int slots;
@@ -38,5 +38,14 @@ public enum DeckTier {
 
     public int battery() {
         return battery;
+    }
+
+    /** Only Advanced and up come as a Crafting Deck too. */
+    public boolean hasCraftingDeck() {
+        return ordinal() >= ADVANCED.ordinal();
+    }
+
+    public String craftingRegistryName() {
+        return registryName.replace("_deck", "_crafting_deck");
     }
 }

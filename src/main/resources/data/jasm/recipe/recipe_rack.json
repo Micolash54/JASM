@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "C": "jasm:recipe_card",
+    "R": "minecraft:redstone",
+    "B": "minecraft:bookshelf"
+  },
+  "pattern": [
+    "ICI",
+    "RBR",
+    "ICI"
+  ],
+  "result": {
+    "id": "jasm:recipe_rack"
+  }
+}

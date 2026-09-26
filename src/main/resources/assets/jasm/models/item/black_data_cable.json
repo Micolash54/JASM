@@ -1,0 +1,6 @@
+{
+  "parent": "jasm:item/cable_item_template",
+  "textures": {
+    "cable": "jasm:block/black_data_cable"
+  }
+}

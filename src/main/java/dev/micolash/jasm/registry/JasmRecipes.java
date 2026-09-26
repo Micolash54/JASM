@@ -1,6 +1,7 @@
 package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.WipeCardRecipe;
 import dev.micolash.jasm.crafting.UpgradeRecipe;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
@@ -12,6 +13,9 @@ public final class JasmRecipes {
 
     /** Tier upgrades that keep the lower tier's contents. */
     public static final Supplier<RecipeSerializer<UpgradeRecipe>> UPGRADE = SERIALIZERS.register("upgrade", () -> UpgradeRecipe.SERIALIZER);
+
+    /** A Filled Recipe Card alone in the grid gives an Empty one back. */
+    public static final Supplier<RecipeSerializer<WipeCardRecipe>> WIPE_CARD = SERIALIZERS.register("wipe_card", () -> WipeCardRecipe.SERIALIZER);
 
     private JasmRecipes() {}
 }
