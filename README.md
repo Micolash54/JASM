@@ -17,7 +17,7 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Archives**: link your wafers to one, and if a wafer is ever lost, rebuild it onto a blank. Only the owner and players they trust can use it.
 - **Combustion Generators**: burn anything a furnace burns for power, in Basic, Advanced and Elite tiers. Each has a charging slot for Decks.
 - **Crafting Decks**: Advanced, Elite and Ultimate Decks with a 3×3 crafting grid that takes ingredients straight from the wafers and refills itself.
-- **Autocrafting**: write recipes onto Recipe Cards at an Encoding Terminal, keep them in Recipe Racks, and let Crafting Servers do the work. Ask for anything from your Crafting Deck, and the ingredients it needs are crafted first. Processors decide how many crafts run at once, Storage Modules how big a job fits.
+- **Autocrafting**: write recipes onto Recipe Cards at an Encoding Terminal, keep them in Recipe Racks, and let Crafting Servers do the work. Ask for anything from your Crafting Deck, and the ingredients it needs are crafted first. Processors decide how many crafts run at once, Storage Modules how big a job fits. A job list on the Deck shows every job and opens its server from anywhere.
 - **Crafting rules**: "when I have fewer than 16 torches, craft 32" or "every minute, craft 8 bread", set on the Crafting Deck, with the results sent to the Deck or straight into your inventory.
 - **Data Cables**: join the crafting blocks and carry power between them. Dye them to keep networks apart.
 - **Creative Battery**: unlimited power for creative worlds, with a charging slot.
