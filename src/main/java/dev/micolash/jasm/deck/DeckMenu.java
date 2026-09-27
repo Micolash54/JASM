@@ -43,6 +43,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
+    /** Top of the inventory with the smallest grid; a taller grid on the client moves it down. */
     public static final int INVENTORY_Y = 150;
     /** Width of the main panel. */
     public static final int MAIN_WIDTH = 190;
@@ -62,7 +63,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private final ItemStack deck;
     private final DeckWaferContainer wafers;
     private final int waferSlots;
-    private final int inventoryY;
+    private int inventoryY;
     private final int sideColumns;
     private final int sideRows;
     private final @Nullable DeckGridContainer grid;
@@ -141,6 +142,22 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /** Top of the player's inventory in this Deck's screen. */
     public int inventoryY() {
         return inventoryY;
+    }
+
+    /**
+     * Client side: moves the inventory slots so they sit at {@code y}, for a taller grid. Only the screen cares where
+     * slots are drawn, so the server keeps its own.
+     */
+    public void moveInventory(int y) {
+        if (y == inventoryY) {
+            return;
+        }
+        inventoryY = y;
+        for (int i = waferSlots; i < waferSlots + 36; i++) {
+            Slot slot = slots.get(i);
+            int index = slot.getContainerSlot();
+            slot.y = index < 9 ? y + 58 : y + (index - 9) / 9 * 18;
+        }
     }
 
     /** Width of the wafer side panel. */

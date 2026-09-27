@@ -1,6 +1,7 @@
 package dev.micolash.jasm;
 
 import com.mojang.logging.LogUtils;
+import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -32,6 +33,7 @@ public final class Jasm {
         JasmMenus.MENUS.register(modBus);
         JasmRecipes.SERIALIZERS.register(modBus);
         container.registerConfig(ModConfig.Type.SERVER, JasmConfig.SPEC);
+        container.registerConfig(ModConfig.Type.CLIENT, JasmClientConfig.SPEC);
         // Players don't get crafting recipes from the server by default. Sending them lets recipe viewers like JEI
         // show JASM's recipes even when the server doesn't run the viewer itself.
         NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> event.sendRecipes(RecipeType.CRAFTING));

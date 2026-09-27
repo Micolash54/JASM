@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
 import dev.micolash.jasm.autocraft.Rules;
+import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.SearchQuery;
 import dev.micolash.jasm.deck.DeckItem;
@@ -50,13 +51,14 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     /** Width of the main panel; the side panels add to it. */
     private static final int MAIN_WIDTH = DeckMenu.MAIN_WIDTH;
     private static final int COLUMNS = 9;
-    private static final int ROWS = 6;
+    /** Grid rows at the smallest size; the other sizes share out the room the game window has left. */
+    private static final int SMALL_ROWS = 6;
+    /** Room kept free above and below the screen at the largest size. */
+    private static final int MARGIN = 16;
     /** The Rules tab lists taller rows, two lines of text each: five fit where the grid shows six. */
     private static final int RULE_ROW = 21;
-    private static final int RULE_ROWS = ROWS * 18 / RULE_ROW;
     private static final int CHARGE_WIDTH = 60;
     private static final int SCROLL_WIDTH = 10;
-    private static final int SCROLL_HEIGHT = ROWS * 18 - 2;
     private static final int HANDLE_HEIGHT = 15;
 
     private static final JasmButton.Icon SORT_NAME = new JasmButton.Icon(Jasm.id("icon/sort_name"), 7, 5);
@@ -67,6 +69,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private static final JasmButton.Icon ARROW_LEFT = new JasmButton.Icon(Jasm.id("icon/arrow_left"), 3, 5);
     private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow");
     private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 8, 8);
+    private static final JasmButton.Icon[] SIZE_ICONS = {
+            new JasmButton.Icon(Jasm.id("icon/size_small"), 7, 8), new JasmButton.Icon(Jasm.id("icon/size_medium"), 7, 8),
+            new JasmButton.Icon(Jasm.id("icon/size_tall"), 7, 8), new JasmButton.Icon(Jasm.id("icon/size_full"), 7, 8)};
     private static final Identifier RULE_ON = Jasm.id("icon/rule_on");
     private static final Identifier RULE_WAITING = Jasm.id("icon/rule_waiting");
     private static final Identifier RULE_OFF = Jasm.id("icon/rule_off");
@@ -83,9 +88,11 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private final int mainX;
     private final int gridX;
     private final int scrollX;
-    /** Grid and status line sit just above the inventory. */
-    private final int gridY;
-    private final int statusY;
+    /** Grid rows at the chosen size; grid and status line sit just above the inventory. */
+    private int rows = SMALL_ROWS;
+    private int gridY;
+    private int statusY;
+    private Button sizeButton;
     /** The wafer slot whose settings are open, or -1; and the settings as edited here. */
     private int editing = -1;
     private WaferSettings draft = WaferSettings.DEFAULT;
@@ -119,31 +126,79 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         this.scrollX = gridX + COLUMNS * 18 + 3;
         this.titleLabelX = mainX + 8;
         this.inventoryLabelX = mainX + 8;
-        this.inventoryLabelY = menu.inventoryY() - 10;
-        this.gridY = menu.inventoryY() - 12 - ROWS * 18;
-        this.statusY = gridY - 11;
         this.windowDX = mainX + 100;
         this.windowDY = 14;
     }
 
+    /**
+     * Grid rows for the chosen size: the smallest always shows six, the largest as many as the game window fits, and
+     * the two between split the difference.
+     */
+    private int rowsFor(JasmClientConfig.DeckSize size) {
+        int fixed = DeckMenu.INVENTORY_Y + 58 + 18 + 6 - SMALL_ROWS * 18;
+        int most = Math.max(SMALL_ROWS, (height - 2 * MARGIN - fixed) / 18);
+        return SMALL_ROWS + (most - SMALL_ROWS) * size.ordinal() / (JasmClientConfig.DeckSize.values().length - 1);
+    }
+
+    /** Sizes the screen to the chosen grid height, moving the inventory down under the grid. */
+    private void layout() {
+        rows = rowsFor(JasmClientConfig.deckSize());
+        menu.moveInventory(DeckMenu.INVENTORY_Y + (rows - SMALL_ROWS) * 18);
+        imageHeight = menu.inventoryY() + 58 + 18 + 6;
+        inventoryLabelY = menu.inventoryY() - 10;
+        gridY = menu.inventoryY() - 12 - rows * 18;
+        statusY = gridY - 11;
+        scrollRow = Math.min(scrollRow, maxScroll());
+    }
+
+    private int ruleRows() {
+        return rows * 18 / RULE_ROW;
+    }
+
+    private int scrollHeight() {
+        return rows * 18 - 2;
+    }
+
+    /** Steps to the next size, or back one; the screen is laid out again around the new grid. */
+    private void changeSize(boolean back) {
+        JasmClientConfig.DeckSize[] sizes = JasmClientConfig.DeckSize.values();
+        int next = Math.floorMod(JasmClientConfig.deckSize().ordinal() + (back ? -1 : 1), sizes.length);
+        JasmClientConfig.setDeckSize(sizes[next]);
+        rebuildWidgets();
+    }
+
+    private Component sizeLabel() {
+        String name = JasmClientConfig.deckSize().name().toLowerCase(java.util.Locale.ROOT);
+        return Component.translatable("screen.jasm.deck.size", Component.translatable("screen.jasm.deck.size." + name), rows);
+    }
+
     @Override
     protected void init() {
+        layout();
         super.init();
-        search = new EditBox(font, leftPos + mainX + SEARCH_X, topPos + 4, 60, 12, Component.translatable("screen.jasm.deck.search"));
+        // The search text stays when the screen is laid out again for a new size or window.
+        String query = search == null ? "" : search.getValue();
+        search = new EditBox(font, leftPos + mainX + SEARCH_X, topPos + 4, 51, 12, Component.translatable("screen.jasm.deck.search"));
         search.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         search.setMaxLength(64);
+        search.setValue(query);
         search.setResponder(text -> scrollRow = 0);
         addRenderableWidget(search);
         addRenderableWidget(JasmButton.icon(() -> sort == GridEntries.Sort.NAME ? SORT_NAME : SORT_AMOUNT, sortLabel(), b -> {
             sort = sort == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME;
             b.setMessage(sortLabel());
             builtVersion = -1;
-        }, leftPos + mainX + 149, topPos + 3, 20, 14));
+        }, leftPos + mainX + 140, topPos + 3, 14, 14));
         addRenderableWidget(JasmButton.icon(() -> ascending ? ARROW_UP : ARROW_DOWN, directionLabel(), b -> {
             ascending = !ascending;
             b.setMessage(directionLabel());
             builtVersion = -1;
-        }, leftPos + mainX + 170, topPos + 3, 14, 14));
+        }, leftPos + mainX + 155, topPos + 3, 14, 14));
+        sizeButton = JasmButton.icon(() -> SIZE_ICONS[JasmClientConfig.deckSize().ordinal()], sizeLabel(), b -> changeSize(false),
+                leftPos + mainX + 170, topPos + 3, 14, 14);
+        sizeButton.setTooltip(Tooltip.create(Component.empty().append(sizeLabel()).append("\n")
+                .append(Component.translatable("screen.jasm.deck.size_hint").withStyle(ChatFormatting.GRAY))));
+        addRenderableWidget(sizeButton);
         tabs.clear();
         craftWindow = new CraftRequestWindow(menu, font);
         ruleWindow = new RuleWindow(menu, font);
@@ -243,7 +298,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             return -1;
         }
         int row = (int) Math.floor((mouseY - topPos - gridY) / RULE_ROW);
-        if (row >= RULE_ROWS) {
+        if (row >= ruleRows()) {
             return -1;
         }
         row += scrollRow;
@@ -259,7 +314,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         List<CraftRule> rules = rules();
         int limit = Rules.limit(currentDeck());
         int hovered = ruleRowAt(mouseX, mouseY);
-        for (int row = 0; row < RULE_ROWS; row++) {
+        for (int row = 0; row < ruleRows(); row++) {
             int index = scrollRow + row;
             int ry = topPos + gridY + row * RULE_ROW;
             int rx = leftPos + gridX;
@@ -496,15 +551,15 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     private int maxScroll() {
         if (tab == Tab.RULES) {
-            return Math.max(0, Math.min(rules().size() + 1, Rules.limit(currentDeck())) - RULE_ROWS);
+            return Math.max(0, Math.min(rules().size() + 1, Rules.limit(currentDeck())) - ruleRows());
         }
-        return Math.max(0, (visible.size() + COLUMNS - 1) / COLUMNS - ROWS);
+        return Math.max(0, (visible.size() + COLUMNS - 1) / COLUMNS - rows);
     }
 
     private GridEntries.@Nullable Entry<ItemResource> entryAt(double mouseX, double mouseY) {
         int column = (int) Math.floor((mouseX - leftPos - gridX) / 18);
         int row = (int) Math.floor((mouseY - topPos - gridY) / 18);
-        if (!inGrid(mouseX, mouseY) || column < 0 || column >= COLUMNS || row < 0 || row >= ROWS) {
+        if (!inGrid(mouseX, mouseY) || column < 0 || column >= COLUMNS || row < 0 || row >= rows) {
             return null;
         }
         int index = (scrollRow + row) * COLUMNS + column;
@@ -513,7 +568,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     private boolean inGrid(double mouseX, double mouseY) {
         return mouseX >= leftPos + gridX && mouseX < leftPos + gridX + COLUMNS * 18 && mouseY >= topPos + gridY
-                && mouseY < topPos + gridY + ROWS * 18;
+                && mouseY < topPos + gridY + rows * 18;
     }
 
     private boolean hasPower() {
@@ -544,28 +599,28 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             Slot wafer = menu.slots.get(editing);
             graphics.outline(x + wafer.x - 1, y + wafer.y - 1, 18, 18, JasmGui.ACCENT);
         }
-        JasmGui.inset(graphics, x + gridX - 1, y + gridY - 1, COLUMNS * 18, ROWS * 18);
+        JasmGui.inset(graphics, x + gridX - 1, y + gridY - 1, COLUMNS * 18, rows * 18);
         drawScrollBar(graphics, x, y);
     }
 
     /** A track beside the grid with a handle; the handle is greyed out when everything fits without scrolling. */
     private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
-        JasmGui.scrollBar(graphics, x + scrollX, y + gridY - 1, SCROLL_WIDTH, SCROLL_HEIGHT + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
+        JasmGui.scrollBar(graphics, x + scrollX, y + gridY - 1, SCROLL_WIDTH, scrollHeight() + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
     }
 
     private int handleOffset() {
-        int travel = SCROLL_HEIGHT - HANDLE_HEIGHT;
+        int travel = scrollHeight() - HANDLE_HEIGHT;
         return maxScroll() == 0 ? 0 : Math.round(travel * scrollRow / (float) maxScroll());
     }
 
     private boolean onScrollBar(double mouseX, double mouseY) {
         return mouseX >= leftPos + scrollX && mouseX < leftPos + scrollX + SCROLL_WIDTH
-                && mouseY >= topPos + gridY - 1 && mouseY < topPos + gridY + SCROLL_HEIGHT + 1;
+                && mouseY >= topPos + gridY - 1 && mouseY < topPos + gridY + scrollHeight() + 1;
     }
 
     /** Scrolls so the handle's middle sits under the mouse. */
     private void scrollToMouse(double mouseY) {
-        float travel = SCROLL_HEIGHT - HANDLE_HEIGHT;
+        float travel = scrollHeight() - HANDLE_HEIGHT;
         float along = (float) (mouseY - (topPos + gridY) - HANDLE_HEIGHT / 2.0) / travel;
         scrollRow = Math.max(0, Math.min(maxScroll(), Math.round(along * maxScroll())));
     }
@@ -596,7 +651,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         Component notice = menu.notices().current(minecraft.level.getGameTime());
         if (notice != null) {
             graphics.nextStratum();
-            JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + gridX - 1, topPos + gridY + ROWS * 18 - 1, COLUMNS * 18);
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + gridX - 1, topPos + gridY + rows * 18 - 1, COLUMNS * 18);
         }
         if (editing >= 0) {
             graphics.nextStratum();
@@ -624,7 +679,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             return;
         }
         GridEntries.Entry<ItemResource> hovered = entryAt(mouseX, mouseY);
-        for (int row = 0; row < ROWS; row++) {
+        for (int row = 0; row < rows; row++) {
             for (int column = 0; column < COLUMNS; column++) {
                 int index = (scrollRow + row) * COLUMNS + column;
                 if (index >= visible.size()) {
@@ -649,9 +704,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             }
         }
         if (!hasPower()) {
-            graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, JasmGui.SHADE);
+            graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + rows * 18 - 1, JasmGui.SHADE);
             Component text = Component.translatable("screen.jasm.deck.no_power");
-            graphics.text(font, text, x + gridX + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + ROWS * 9 - 4, JasmGui.BAD, true);
+            graphics.text(font, text, x + gridX + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + rows * 9 - 4, JasmGui.BAD, true);
         }
         int barLeft = x + mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH;
         if (mouseX >= barLeft && mouseX < barLeft + CHARGE_WIDTH && mouseY >= y + statusY && mouseY < y + statusY + 7) {
@@ -659,12 +714,12 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                     String.format("%,d", menu.view().energy()), String.format("%,d", tier().battery())), mouseX, mouseY);
         }
         if (menu.isCrafting() && tab == Tab.CRAFT && menu.view().network() < 2 && hasPower()) {
-            graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + ROWS * 18 - 1, JasmGui.SHADE);
+            graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + rows * 18 - 1, JasmGui.SHADE);
             Component text = Component.translatable(menu.view().network() == 0 ? "screen.jasm.craft.not_paired" : "screen.jasm.craft.unreachable");
             List<net.minecraft.util.FormattedCharSequence> wrapped = font.split(text, COLUMNS * 18 - 12);
             for (int i = 0; i < wrapped.size(); i++) {
                 graphics.text(font, wrapped.get(i), x + gridX + (COLUMNS * 18 - font.width(wrapped.get(i))) / 2,
-                        y + gridY + ROWS * 9 - 4 - (wrapped.size() - 1) * 5 + i * 10, JasmGui.MUTED, true);
+                        y + gridY + rows * 9 - 4 - (wrapped.size() - 1) * 5 + i * 10, JasmGui.MUTED, true);
             }
         }
         if (hovered != null && menu.getCarried().isEmpty()) {
@@ -828,6 +883,12 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
+        // Right-click on the size button steps back a size.
+        if (right && sizeButton.isMouseOver(event.x(), event.y()) && !inWindow(event.x(), event.y())) {
+            sizeButton.playDownSound(minecraft.getSoundManager());
+            changeSize(true);
+            return true;
+        }
         if (jobsWindow.contains(event.x(), event.y())) {
             return jobsWindow.mouseClicked(event, doubleClick);
         }
