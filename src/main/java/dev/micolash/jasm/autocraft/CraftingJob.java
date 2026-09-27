@@ -99,20 +99,24 @@ public final class CraftingJob {
         static final Codec<Sent> CODEC = RecordCodecBuilder.create(i -> i.group(
                         Codec.INT.fieldOf("step").forGetter(s -> s.step),
                         BlockPos.CODEC.fieldOf("port").forGetter(s -> s.port),
+                        net.minecraft.core.Direction.CODEC.optionalFieldOf("side", net.minecraft.core.Direction.DOWN).forGetter(s -> s.side),
                         ProcessingCard.Amount.CODEC.listOf().fieldOf("waiting").forGetter(s -> s.waiting),
                         Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since))
                 .apply(i, Sent::new));
 
         final int step;
         final BlockPos port;
+        /** Which side of the port the machine is on. */
+        final net.minecraft.core.Direction side;
         /** Still to come back; entries drop out as they arrive. */
         final List<ProcessingCard.Amount> waiting;
         /** Game time it was sent. */
         final long since;
 
-        Sent(int step, BlockPos port, List<ProcessingCard.Amount> waiting, long since) {
+        Sent(int step, BlockPos port, net.minecraft.core.Direction side, List<ProcessingCard.Amount> waiting, long since) {
             this.step = step;
             this.port = port.immutable();
+            this.side = side;
             this.waiting = new ArrayList<>(waiting);
             this.since = since;
         }
@@ -137,6 +141,15 @@ public final class CraftingJob {
 
         boolean done() {
             return waiting.isEmpty();
+        }
+
+        Machines.At at() {
+            return new Machines.At(port, side);
+        }
+
+        /** How many of {@code key} this set still waits for. */
+        long wants(ItemResource key) {
+            return waiting.stream().filter(a -> a.item().equals(key)).mapToLong(ProcessingCard.Amount::count).sum();
         }
     }
 

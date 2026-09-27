@@ -53,8 +53,8 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
         CraftingJob job = machine instanceof CraftingServerBlockEntity server ? server.job() : null;
         return new Data(machine.ownerName(), machine.running(), cards, job == null ? -1 : job.phase().ordinal(),
                 job == null ? 0 : Math.round(job.progress() * 100), job == null || job.target() == null ? ItemStack.EMPTY : job.target().create(),
-                job == null ? 0 : job.amount(), machine instanceof AccessPortBlockEntity port ? port.machineName().getString() : "",
-                machine instanceof AccessPortBlockEntity port && port.lockJob() != null);
+                job == null ? 0 : job.amount(), machine instanceof AccessPortBlockEntity port ? port.machineNames().getString() : "",
+                machine instanceof AccessPortBlockEntity port && port.locked());
     }
 
     @Override

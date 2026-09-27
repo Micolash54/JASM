@@ -1,12 +1,6 @@
 {
-  "parent": "minecraft:block/cube",
+  "parent": "minecraft:block/cube_all",
   "textures": {
-    "particle": "jasm:block/access_port",
-    "north": "jasm:block/access_port_front",
-    "south": "jasm:block/access_port",
-    "east": "jasm:block/access_port",
-    "west": "jasm:block/access_port",
-    "up": "jasm:block/access_port",
-    "down": "jasm:block/access_port"
+    "all": "jasm:block/access_port"
   }
 }

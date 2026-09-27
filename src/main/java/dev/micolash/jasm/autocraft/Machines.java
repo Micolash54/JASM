@@ -1,6 +1,10 @@
 package dev.micolash.jasm.autocraft;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.network.CableNetwork;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -22,6 +26,29 @@ import org.jspecify.annotations.Nullable;
 public final class Machines {
     private Machines() {}
 
+    /** One machine: the Access Port it touches, and which side of the port it is on. */
+    public record At(BlockPos port, Direction side) {
+        public static final Codec<At> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        BlockPos.CODEC.fieldOf("port").forGetter(At::port),
+                        Direction.CODEC.fieldOf("side").forGetter(At::side))
+                .apply(i, At::new));
+
+        public static final StreamCodec<ByteBuf, At> STREAM_CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC, At::port,
+                Direction.STREAM_CODEC, At::side,
+                At::new);
+
+        public At {
+            port = port.immutable();
+        }
+    }
+
+    /** The machine at {@code at}, if its port stands on {@code network}, is loaded, and something there takes items. */
+    public static @Nullable AccessPortBlockEntity reach(ServerLevel level, @Nullable CableNetwork network, At at) {
+        AccessPortBlockEntity port = port(level, network, at.port());
+        return port != null && port.hasMachine(at.side()) ? port : null;
+    }
+
     /** The Access Ports on {@code network} that are loaded. */
     public static List<AccessPortBlockEntity> ports(CableNetwork network) {
         return network.machines(AccessPortBlockEntity.class);
@@ -35,13 +62,16 @@ public final class Machines {
         return level.getBlockEntity(pos) instanceof AccessPortBlockEntity port ? port : null;
     }
 
-    /** Where items go into the machine a port faces, or null if nothing there takes items. */
-    public static @Nullable ResourceHandler<ItemResource> inlet(AccessPortBlockEntity port) {
+    /** Where items go into the machine on a port's {@code side}, or null if nothing there takes items. */
+    public static @Nullable ResourceHandler<ItemResource> inlet(AccessPortBlockEntity port, Direction side) {
         if (!(port.getLevel() instanceof ServerLevel level)) {
             return null;
         }
-        BlockPos pos = port.machinePos();
-        Direction side = port.facing().getOpposite();
+        return inlet(level, port.getBlockPos().relative(side), side.getOpposite());
+    }
+
+    /** Where items go into the block at {@code pos} through its {@code side}, or null if it takes none. */
+    public static @Nullable ResourceHandler<ItemResource> inlet(Level level, BlockPos pos, Direction side) {
         if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity) {
             // Another crafting block is no machine.
             return null;
@@ -56,17 +86,17 @@ public final class Machines {
         return level.getBlockEntity(pos) instanceof Container container ? VanillaContainerWrapper.of(container) : null;
     }
 
-    /** Whether the port faces something that takes items. */
+    /** Whether any block touching the port takes items. */
     public static boolean hasMachine(AccessPortBlockEntity port) {
-        return inlet(port) != null;
+        return !port.machineSides().isEmpty();
     }
 
     /**
-     * Puts one set of ingredients into the port's machine: all of it, or nothing at all. Returns whether it went in.
-     * The machine decides where each item goes, as with a hopper.
+     * Puts one set of ingredients into the machine on the port's {@code side}: all of it, or nothing at all. Returns
+     * whether it went in. The machine decides where each item goes, as with a hopper.
      */
-    public static boolean push(AccessPortBlockEntity port, List<ProcessingCard.Amount> set) {
-        ResourceHandler<ItemResource> inlet = inlet(port);
+    public static boolean push(AccessPortBlockEntity port, Direction side, List<ProcessingCard.Amount> set) {
+        ResourceHandler<ItemResource> inlet = inlet(port, side);
         if (inlet == null) {
             return false;
         }

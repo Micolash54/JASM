@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -55,17 +56,26 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
         }
     }
 
-    /** An Access Port the card may use, with the name it had when the card was written (for the tooltip). */
-    public record Machine(BlockPos pos, String name) {
+    /**
+     * A machine the card may use: its Access Port, the side of the port it touches, and the name it had when the card
+     * was written (for the tooltip).
+     */
+    public record Machine(BlockPos pos, Direction side, String name) {
         static final Codec<Machine> CODEC = RecordCodecBuilder.create(i -> i.group(
                         BlockPos.CODEC.fieldOf("pos").forGetter(Machine::pos),
+                        Direction.CODEC.optionalFieldOf("side", Direction.DOWN).forGetter(Machine::side),
                         Codec.STRING.optionalFieldOf("name", "").forGetter(Machine::name))
                 .apply(i, Machine::new));
 
         static final StreamCodec<RegistryFriendlyByteBuf, Machine> STREAM_CODEC = StreamCodec.composite(
                 BlockPos.STREAM_CODEC, Machine::pos,
+                Direction.STREAM_CODEC, Machine::side,
                 ByteBufCodecs.stringUtf8(128), Machine::name,
                 Machine::new);
+
+        public Machines.At at() {
+            return new Machines.At(pos, side);
+        }
     }
 
     public static final Codec<ProcessingCard> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -126,8 +136,8 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
         return inputs.stream().filter(a -> !a.isEmpty()).toList();
     }
 
-    /** Ports the card may use. */
-    public List<BlockPos> ports() {
-        return machines.stream().map(Machine::pos).toList();
+    /** The machines the card may use. */
+    public List<Machines.At> spots() {
+        return machines.stream().map(Machine::at).toList();
     }
 }

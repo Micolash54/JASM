@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
@@ -112,9 +113,8 @@ public final class Jobs {
 
     /** Whether a processing card has a machine it can use: one of its ports stands on the network and faces something. */
     static boolean reachable(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
-        for (BlockPos pos : card.ports()) {
-            AccessPortBlockEntity port = Machines.port(level, network, pos);
-            if (port != null && Machines.hasMachine(port)) {
+        for (Machines.At at : card.spots()) {
+            if (Machines.reach(level, network, at) != null) {
                 return true;
             }
         }
@@ -408,26 +408,33 @@ public final class Jobs {
 
     /**
      * How sending went: how many sets went, and, when the ingredients were there but nothing could go, why:
-     * {@code "no_machine"} (none of the card's ports can be reached) or {@code "machine_busy"} (their machines are
-     * taken by another card, full, or without power). Empty otherwise.
+     * {@code "no_machine"} (none of the card's machines can be reached) or {@code "machine_busy"} (they are taken by
+     * another card, full, or their port has no power). Empty otherwise.
      */
     private record Sending(int sent, String blocked) {}
 
+    /** A machine a set can go to right now. */
+    private record Target(AccessPortBlockEntity port, Direction side) {
+        Machines.At at() {
+            return new Machines.At(port.getBlockPos(), side);
+        }
+    }
+
     /**
-     * Sends sets of a processing card's ingredients into its machines, one set at a time, each to the port with the
-     * fewest sets out, while there are free Processor slots and ingredients.
+     * Sends sets of a processing card's ingredients into its machines, one set at a time, each to the machine with
+     * the fewest sets out, while there are free Processor slots and ingredients.
      */
     private static Sending send(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, int stepIndex, ProcessingCard card,
             WaferRecord record, WaferStore store, Map<ItemResource, Long> reserved, int free) {
         CraftingJob.Step step = job.steps.get(stepIndex);
-        List<AccessPortBlockEntity> ports = new ArrayList<>();
+        List<Target> targets = new ArrayList<>();
         boolean anyMachine = false;
-        for (BlockPos pos : card.ports()) {
-            AccessPortBlockEntity port = Machines.port(level, network, pos);
-            if (port != null && Machines.hasMachine(port)) {
+        for (Machines.At at : card.spots()) {
+            AccessPortBlockEntity port = Machines.reach(level, network, at);
+            if (port != null) {
                 anyMachine = true;
-                if (port.running() && port.freeFor(job.id, stepIndex)) {
-                    ports.add(port);
+                if (port.running() && port.freeFor(at.side(), job.id, stepIndex)) {
+                    targets.add(new Target(port, at.side()));
                 }
             }
         }
@@ -444,20 +451,20 @@ public final class Jobs {
             if (!enough) {
                 break;
             }
-            if (ports.isEmpty()) {
+            if (targets.isEmpty()) {
                 blocked = sent > 0 ? "" : anyMachine ? "machine_busy" : "no_machine";
                 break;
             }
-            ports.sort(Comparator.comparingLong(p -> job.sent.stream().filter(s -> s.port.equals(p.getBlockPos())).count()));
-            AccessPortBlockEntity port = ports.getFirst();
-            if (!Machines.push(port, card.usedInputs())) {
+            targets.sort(Comparator.comparingLong(t -> job.sent.stream().filter(s -> s.at().equals(t.at())).count()));
+            Target target = targets.getFirst();
+            if (!Machines.push(target.port(), target.side(), card.usedInputs())) {
                 // Full, or it doesn't take these: try the others, and this one again next tick.
-                ports.remove(port);
+                targets.remove(target);
                 continue;
             }
             set.forEach((key, n) -> store.extract(record, key, n, false, null));
-            job.sent.add(new CraftingJob.Sent(stepIndex, port.getBlockPos(), expected, level.getGameTime()));
-            port.lock(job.id, stepIndex);
+            job.sent.add(new CraftingJob.Sent(stepIndex, target.port().getBlockPos(), target.side(), expected, level.getGameTime()));
+            target.port().lock(target.side(), job.id, stepIndex);
             step.left--;
             sent++;
         }
@@ -465,9 +472,10 @@ public final class Jobs {
     }
 
     /**
-     * Takes in what came back through the ports the job's sets went to. Everything is kept; what the sets wait for
-     * counts toward the oldest ones first. A set with nothing left to wait for frees its Processor slot, and a port
-     * with no sets left is free again. Returns whether anything arrived.
+     * Takes in what came back through the ports the job's sets went to, counting it toward the oldest sets first. A
+     * port can serve several jobs through its different machines: each job takes what its own sets wait for, and
+     * anything else only when it is the one job using the port. A set with nothing left to wait for frees its
+     * Processor slot, and a machine with no sets left is free again. Returns whether anything arrived.
      */
     private static boolean collect(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, WaferRecord record, WaferStore store) {
         if (job.sent.isEmpty()) {
@@ -482,18 +490,23 @@ public final class Jobs {
                 continue;
             }
             List<CraftingJob.Sent> here = job.sent.stream().filter(s -> s.port.equals(pos)).toList();
-            if (!job.id.equals(port.lockJob())) {
-                // The port forgot (a crash rewound it, or it was mined and put back): it is this job's again.
-                port.lock(job.id, here.getFirst().step);
+            for (CraftingJob.Sent set : here) {
+                if (port.lock(set.side) == null) {
+                    // The port forgot (a crash rewound it, or it was mined and put back): the machine is this job's again.
+                    port.lock(set.side, job.id, set.step);
+                }
             }
-            for (ItemStack stack : port.takeIntake()) {
-                if (stack.isEmpty()) {
+            boolean alone = port.lockedJobs().equals(Set.of(job.id));
+            for (Map.Entry<ItemResource, Long> held : port.intake().entrySet()) {
+                ItemResource key = held.getKey();
+                long wanted = here.stream().mapToLong(s -> s.wants(key)).sum();
+                long taken = port.take(key, alone ? held.getValue() : Math.min(held.getValue(), wanted));
+                if (taken <= 0) {
                     continue;
                 }
-                ItemResource key = ItemResource.of(stack);
-                long left = stack.getCount();
-                store.insert(record, key, left, false, null);
+                store.insert(record, key, taken, false, null);
                 any = true;
+                long left = taken;
                 for (CraftingJob.Sent set : here) {
                     if (left <= 0) {
                         break;
@@ -502,18 +515,21 @@ public final class Jobs {
                 }
             }
             job.sent.removeIf(CraftingJob.Sent::done);
-            if (job.sent.stream().noneMatch(s -> s.port.equals(pos))) {
-                port.unlock();
+            for (CraftingJob.Sent set : here) {
+                AccessPortBlockEntity.Lock lock = port.lock(set.side);
+                if (lock != null && lock.job().equals(job.id) && job.sent.stream().noneMatch(s -> s.at().equals(set.at()))) {
+                    port.unlock(set.side);
+                }
             }
         }
         return any;
     }
 
-    /** The job stops waiting on machines: its sets are forgotten and its ports let go. */
+    /** The job stops waiting on machines: its sets are forgotten and its machines let go. */
     private static void release(ServerLevel level, CraftingJob job) {
         for (CraftingJob.Sent set : job.sent) {
-            if (level.isLoaded(set.port) && level.getBlockEntity(set.port) instanceof AccessPortBlockEntity port && job.id.equals(port.lockJob())) {
-                port.unlock();
+            if (level.isLoaded(set.port) && level.getBlockEntity(set.port) instanceof AccessPortBlockEntity port) {
+                port.unlockJob(job.id);
             }
         }
         job.sent.clear();
@@ -540,16 +556,13 @@ public final class Jobs {
         ItemResource item = oldest.waiting.getFirst().item();
         long count = 0;
         for (CraftingJob.Sent set : job.sent) {
-            if (set.port.equals(oldest.port)) {
-                for (ProcessingCard.Amount amount : set.waiting) {
-                    if (amount.item().equals(item)) {
-                        count += amount.count();
-                    }
-                }
+            if (set.at().equals(oldest.at())) {
+                count += set.wants(item);
             }
         }
         AccessPortBlockEntity port = Machines.port(level, network, oldest.port);
-        String name = port == null ? Machines.blockName(level, oldest.port).getString() : port.machineName().getString();
+        String name = port == null ? Machines.blockName(level, oldest.port.relative(oldest.side)).getString()
+                : port.machineName(oldest.side).getString();
         return new CraftingJob.Waiting(name, item, count, Math.max(0, level.getGameTime() - oldest.since));
     }
 

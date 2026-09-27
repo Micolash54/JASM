@@ -86,7 +86,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     /** Processing mode: how many of each grid item (the first nine) and each output (the last three). */
     private final int[] amounts = new int[AMOUNTS];
     /** The Access Ports the next processing card is for. Empty means the Crafting Server: an ordinary crafting card. */
-    private final List<BlockPos> selected = new ArrayList<>();
+    private final List<Machines.At> selected = new ArrayList<>();
     /** What the ghost grid makes right now, shown next to it. */
     private final SimpleContainer preview = new SimpleContainer(1);
     private int previewState = STATE_NONE;
@@ -215,7 +215,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         return !selected.isEmpty();
     }
 
-    public List<BlockPos> selected() {
+    public List<Machines.At> selected() {
         return List.copyOf(selected);
     }
 
@@ -228,9 +228,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     }
 
     /** Adds the port at {@code pos} to the chosen machines, or takes it out again. */
-    public void toggleMachine(BlockPos pos) {
-        if (!selected.remove(pos)) {
-            selected.add(pos.immutable());
+    public void toggleMachine(Machines.At machine) {
+        if (!selected.remove(machine)) {
+            selected.add(machine);
         }
         ghostChanged();
     }
@@ -282,10 +282,10 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         }
         CableNetwork network = Networks.at(level, worldPosition);
         List<ProcessingCard.Machine> machines = new ArrayList<>();
-        for (BlockPos pos : selected) {
-            AccessPortBlockEntity port = Machines.port(level, network, pos);
+        for (Machines.At at : selected) {
+            AccessPortBlockEntity port = Machines.reach(level, network, at);
             if (port != null) {
-                machines.add(new ProcessingCard.Machine(pos, port.machineName().getString()));
+                machines.add(new ProcessingCard.Machine(at.port(), at.side(), port.machineName(at.side()).getString()));
             }
         }
         if (machines.isEmpty()) {
@@ -420,7 +420,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             }
         } else if (found instanceof ProcessingCard card) {
             selected.clear();
-            selected.addAll(card.ports());
+            selected.addAll(card.spots());
             for (int i = 0; i < ProcessingCard.INPUTS; i++) {
                 setProcessingSlot(i, card.inputs().get(i).stack(), card.inputs().get(i).count());
             }
@@ -481,7 +481,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             outputItems.add(outputs.getItem(i));
         }
         output.putIntArray("amounts", amounts.clone());
-        output.store("selected", BlockPos.CODEC.listOf(), List.copyOf(selected));
+        output.store("selected_machines", Machines.At.CODEC.listOf(), List.copyOf(selected));
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
         output.store("trust", TrustList.CODEC, trust);
     }
@@ -508,7 +508,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             amounts[a] = a < saved.length ? saved[a] : 0;
         }
         selected.clear();
-        selected.addAll(input.read("selected", BlockPos.CODEC.listOf()).orElse(List.of()));
+        selected.addAll(input.read("selected_machines", Machines.At.CODEC.listOf()).orElse(List.of()));
         terminalId = input.read("terminal", UUIDUtil.CODEC).orElse(null);
         trust = input.read("trust", TrustList.CODEC).orElse(TrustList.EMPTY);
     }

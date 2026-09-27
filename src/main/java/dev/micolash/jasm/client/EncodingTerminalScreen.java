@@ -300,7 +300,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             graphics.setTooltipForNextFrame(font, List.of(
                     Component.literal(view.present() ? view.name() : Component.translatable("screen.jasm.terminal.machine_missing").getString())
                             .getVisualOrderText(),
-                    Component.translatable("screen.jasm.terminal.machine_at", view.pos().getX(), view.pos().getY(), view.pos().getZ())
+                    Component.translatable("screen.jasm.terminal.machine_at", view.at().port().getX(), view.at().port().getY(), view.at().port().getZ())
                             .withStyle(net.minecraft.ChatFormatting.GRAY).getVisualOrderText()), realMouseX, realMouseY);
         } else if (row == 0) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.crafting_server_hint"), 160),

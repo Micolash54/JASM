@@ -91,9 +91,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             "message.jasm.terminal.encoded", "message.jasm.terminal.no_output", "message.jasm.terminal.no_machine");
 
     /** An Access Port in the machine list: where, its name, whether it still stands on the network, and whether it is chosen. */
-    public record MachineView(BlockPos pos, String name, boolean present, boolean selected) {
+    public record MachineView(Machines.At at, String name, boolean present, boolean selected) {
         public static final StreamCodec<RegistryFriendlyByteBuf, MachineView> STREAM_CODEC = StreamCodec.composite(
-                BlockPos.STREAM_CODEC, MachineView::pos,
+                Machines.At.STREAM_CODEC, MachineView::at,
                 ByteBufCodecs.stringUtf8(128), MachineView::name,
                 ByteBufCodecs.BOOL, MachineView::present,
                 ByteBufCodecs.BOOL, MachineView::selected,
@@ -346,7 +346,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             return false;
         }
         if (id >= BUTTON_MACHINE && id < BUTTON_MACHINE + machines.size()) {
-            terminal.toggleMachine(machines.get(id - BUTTON_MACHINE).pos());
+            terminal.toggleMachine(machines.get(id - BUTTON_MACHINE).at());
             machinesDue = true;
             return true;
         }
@@ -408,22 +408,25 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         this.machines = List.copyOf(machines);
     }
 
-    /** Server side: the machine list as it is now. */
+    /** Server side: the machine list as it is now, one entry per machine touching a port. */
     private List<MachineView> currentMachines(ServerLevel level) {
         CableNetwork network = Networks.at(level, terminal.getBlockPos());
-        List<BlockPos> chosen = terminal.selected();
+        List<Machines.At> chosen = terminal.selected();
         List<MachineView> views = new ArrayList<>();
         if (network != null) {
             for (AccessPortBlockEntity port : Machines.ports(network)) {
                 if (MachineAccess.canUse(port, player)) {
-                    views.add(new MachineView(port.getBlockPos(), port.machineName().getString(), true, chosen.contains(port.getBlockPos())));
+                    for (net.minecraft.core.Direction side : port.machineSides()) {
+                        Machines.At at = new Machines.At(port.getBlockPos(), side);
+                        views.add(new MachineView(at, port.machineName(side).getString(), true, chosen.contains(at)));
+                    }
                 }
             }
         }
-        views.sort(Comparator.comparing(MachineView::name).thenComparing(v -> v.pos().asLong()));
-        for (BlockPos pos : chosen) {
-            if (views.stream().noneMatch(v -> v.pos().equals(pos))) {
-                views.add(new MachineView(pos, "", false, true));
+        views.sort(Comparator.comparing(MachineView::name).thenComparing(v -> v.at().port().asLong()).thenComparing(v -> v.at().side()));
+        for (Machines.At at : chosen) {
+            if (views.stream().noneMatch(v -> v.at().equals(at))) {
+                views.add(new MachineView(at, "", false, true));
             }
         }
         return views.size() > MAX_MACHINES ? views.subList(0, MAX_MACHINES) : views;
