@@ -68,11 +68,11 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         addRenderableWidget(clear);
         trustWindow = new TrustWindow(menu, font);
         accessButton = JasmButton.icon(() -> ACCESS, Component.translatable("screen.jasm.terminal.access"),
-                b -> trustWindow.toggle(leftPos + 8, topPos + 14), leftPos + BAR_X - 16, topPos + 3, 12, 12);
+                b -> trustWindow.toggle(leftPos + 8, topPos + 14), leftPos + BAR_X - 15, topPos + 4, 11, 11);
         accessButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.access_hint")));
         addRenderableWidget(accessButton);
         JasmButton machines = JasmButton.icon(() -> MACHINES, Component.translatable("screen.jasm.terminal.machines"),
-                b -> panelOpen = !panelOpen, leftPos + BAR_X - 30, topPos + 3, 12, 12);
+                b -> panelOpen = !panelOpen, leftPos + BAR_X - 28, topPos + 4, 11, 11);
         machines.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.machines_hint")));
         addRenderableWidget(machines);
     }
