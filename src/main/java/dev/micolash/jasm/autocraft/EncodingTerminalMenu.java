@@ -3,14 +3,18 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.deck.DeckPayloads;
+import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -32,6 +36,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -48,7 +53,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int CARD_OUT_Y = 54;
     public static final int PAIR_X = 152;
     public static final int PAIR_Y = 18;
-    public static final int INVENTORY_Y = 108;
+    public static final int INVENTORY_Y = 112;
     /** Where the terminal's messages show, under the grid. */
     public static final int MESSAGE_Y = 76;
 
@@ -138,6 +143,19 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private List<MachineView> machines = List.of();
     /** Server side: send the machine list with the next update (it opened, or the choice changed). */
     private boolean machinesDue = true;
+    /** Most kinds of item the Deck list shows. */
+    public static final int MAX_DECK_ITEMS = 4096;
+    /** Ticks between looks at the viewer's Deck. */
+    private static final int DECK_EVERY = 10;
+    /** Server side: the Deck contents last sent, or null before the first time. */
+    private @Nullable Map<ItemResource, Long> deckSent;
+    private boolean deckFoundSent;
+    /** Client side: what is on the viewer's Deck, and whether they carry one. */
+    private List<DeckPayloads.Entry> deckItems = List.of();
+    private boolean deckFound;
+    private int deckVersion;
+    /** Client side: the Deck list shows in place of the inventory, whose slots are then hidden. */
+    private boolean deckTab;
     /** Most machines listed. */
     public static final int MAX_MACHINES = 256;
 
@@ -179,11 +197,11 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
+                addSlot(new InventorySlot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+            addSlot(new InventorySlot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
         }
         addDataSlots(data);
         addDataSlots(feedback);
@@ -223,6 +241,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             trustSent = true;
             TerminalAccess.send(serverPlayer, this, terminal);
         }
+        if (deckSent == null || serverPlayer.level().getGameTime() % DECK_EVERY == 0) {
+            sendDeck(serverPlayer);
+        }
         if (machinesDue || serverPlayer.level().getGameTime() % MACHINES_EVERY == 0) {
             machinesDue = false;
             List<MachineView> now = currentMachines((ServerLevel) serverPlayer.level());
@@ -233,6 +254,72 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 }
             }
         }
+    }
+
+    // --- the viewer's Deck ---
+
+    /** Sends what is on the viewer's Deck when it changed, or when they took up or put away a Deck. */
+    private void sendDeck(ServerPlayer player) {
+        ItemStack deck = viewersDeck(player);
+        WaferStore store = WaferStore.ifOpen(player.level().getServer());
+        Map<ItemResource, Long> now = deck.isEmpty() || store == null ? Map.of() : DeckStorage.contents(store, deck);
+        boolean found = !deck.isEmpty();
+        if (deckSent != null && found == deckFoundSent && now.equals(deckSent)) {
+            return;
+        }
+        deckSent = now;
+        deckFoundSent = found;
+        if (player.connection.hasChannel(CraftPayloads.TerminalDeck.TYPE)) {
+            List<DeckPayloads.Entry> items = now.entrySet().stream().limit(MAX_DECK_ITEMS)
+                    .map(e -> new DeckPayloads.Entry(e.getKey(), e.getValue())).toList();
+            PacketDistributor.sendToPlayer(player, new CraftPayloads.TerminalDeck(containerId, found, items));
+        }
+    }
+
+    /** The Deck in the player's hand, else the first one in their inventory (hotbar first); empty if they carry none. */
+    static ItemStack viewersDeck(Player player) {
+        for (ItemStack held : List.of(player.getMainHandItem(), player.getOffhandItem())) {
+            if (held.getItem() instanceof DeckItem) {
+                return held;
+            }
+        }
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
+            if (inventory.getItem(i).getItem() instanceof DeckItem) {
+                return inventory.getItem(i);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /** Client side: the Deck's contents as the server sent them. */
+    public void setDeckItems(boolean found, List<DeckPayloads.Entry> items) {
+        this.deckFound = found;
+        this.deckItems = List.copyOf(items);
+        deckVersion++;
+    }
+
+    public List<DeckPayloads.Entry> deckItems() {
+        return deckItems;
+    }
+
+    /** Whether the viewer carries a Deck. */
+    public boolean deckFound() {
+        return deckFound;
+    }
+
+    /** Goes up with every new list, so the screen knows to rebuild. */
+    public int deckVersion() {
+        return deckVersion;
+    }
+
+    public boolean deckTab() {
+        return deckTab;
+    }
+
+    /** Client side: show the Deck list instead of the inventory. */
+    public void setDeckTab(boolean deckTab) {
+        this.deckTab = deckTab;
     }
 
     public void setTrustView(boolean owner, TrustList trust) {
@@ -505,6 +592,18 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         @Override
         public @Nullable Identifier getNoItemIcon() {
             return icon;
+        }
+    }
+
+    /** A slot of the player's inventory; hidden while the Deck list takes its place. */
+    private final class InventorySlot extends Slot {
+        InventorySlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean isActive() {
+            return !deckTab;
         }
     }
 

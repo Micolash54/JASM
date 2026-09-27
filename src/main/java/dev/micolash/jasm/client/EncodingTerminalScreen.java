@@ -1,13 +1,18 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.registry.JasmBlocks;
+import com.mojang.blaze3d.platform.InputConstants;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
@@ -17,6 +22,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
  * The Encoding Terminal screen: card in and out on the left, the ghost grid and what it makes in the middle, the
@@ -47,6 +53,25 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     private static final int ROWS = (HEIGHT - LIST_Y - 8) / ROW_H;
     /** Whether the machine panel is open; kept while the game runs. */
     private static boolean panelOpen = true;
+    /** Whether the Deck tab shows in place of the inventory; kept while the game runs. */
+    private static boolean showDeck;
+    /** The sheet under the inventory or the Deck list, and the tabs along its top. */
+    private static final int SHEET_X = 4;
+    private static final int SHEET_Y = EncodingTerminalMenu.INVENTORY_Y - 5;
+    private static final int SHEET_WIDTH = WIDTH - 8;
+    private static final int TAB_TOP = SHEET_Y - 11;
+    /** The panel sprite's colours, for tabs drawn to match it. */
+    private static final int OUTLINE = 0xFF11111B;
+    private static final int BODY = 0xFF313244;
+    private static final int LIGHT = 0xFF585B70;
+    private static final int SHADOW = 0xFF181825;
+    private static final int WELL = 0xFF1E1E2E;
+    private EditBox deckSearch;
+    private TerminalDeckList deckList;
+    /** An example picked from the Deck list, following the mouse; placed into ghost slots by clicking or dragging. */
+    private ItemStack ghostHeld = ItemStack.EMPTY;
+    /** Ghost slots filled during the current press, so a drag fills each once. */
+    private final Set<Integer> placed = new HashSet<>();
     private int seenCount;
     private int messageTicks;
     private int scroll;
@@ -77,6 +102,115 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
                 b -> panelOpen = !panelOpen, leftPos + BAR_X - 28, topPos + 4, 11, 11);
         machines.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.machines_hint")));
         addRenderableWidget(machines);
+        deckSearch = new EditBox(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP - 1, 58, 11, Component.translatable("screen.jasm.deck.search"));
+        deckSearch.setHint(Component.translatable("screen.jasm.deck.search").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        deckSearch.setMaxLength(64);
+        addRenderableWidget(deckSearch);
+        deckList = new TerminalDeckList(menu, font, deckSearch, leftPos + 8, topPos + EncodingTerminalMenu.INVENTORY_Y);
+        showDeckTab(showDeck);
+    }
+
+    // --- the inventory and Deck tabs ---
+
+    private void showDeckTab(boolean deck) {
+        showDeck = deck;
+        menu.setDeckTab(deck);
+        deckSearch.visible = deck;
+        if (!deck) {
+            deckSearch.setFocused(false);
+        }
+    }
+
+    /** Where tab {@code i} (0 Inventory, 1 Deck) starts across the screen, and how wide it is. */
+    private int tabX(int i) {
+        return i == 0 ? SHEET_X + 3 : tabX(0) + tabWidth(0) + 2;
+    }
+
+    private int tabWidth(int i) {
+        return font.width(tabLabel(i)) + 10;
+    }
+
+    private Component tabLabel(int i) {
+        return i == 0 ? playerInventoryTitle : Component.translatable("screen.jasm.terminal.tab_deck");
+    }
+
+    /** The tab under the mouse: 0 Inventory, 1 Deck, or -1. */
+    private int tabAt(double mouseX, double mouseY) {
+        double rx = mouseX - leftPos;
+        double ry = mouseY - topPos;
+        if (ry < TAB_TOP || ry >= SHEET_Y) {
+            return -1;
+        }
+        for (int i = 0; i < 2; i++) {
+            if (rx >= tabX(i) && rx < tabX(i) + tabWidth(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * The sheet the inventory or the Deck list sits on, and the two tabs over its top edge: the chosen one stands
+     * out and runs into the sheet like a folder tab, the other sits back, lower and darker.
+     */
+    private void drawSheet(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        int chosen = showDeck ? 1 : 0;
+        int hovered = tabAt(mouseX, mouseY);
+        int left = leftPos;
+        int top = topPos;
+        // The tab at the back first, so the sheet's edge covers its foot.
+        int back = 1 - chosen;
+        int bx = left + tabX(back);
+        int by = top + TAB_TOP + 2;
+        int bw = tabWidth(back);
+        graphics.fill(bx, by, bx + bw, top + SHEET_Y + 1, OUTLINE);
+        graphics.fill(bx + 1, by + 1, bx + bw - 1, top + SHEET_Y + 1, back == hovered ? JasmGui.SELECTED : WELL);
+        JasmGui.panel(graphics, left + SHEET_X, top + SHEET_Y, SHEET_WIDTH, imageHeight - SHEET_Y - 4);
+        // The chosen tab: outline, light top and left, shade on the right, and no line where it meets the sheet.
+        int cx = left + tabX(chosen);
+        int cy = top + TAB_TOP;
+        int cw = tabWidth(chosen);
+        int foot = top + SHEET_Y + 3;
+        graphics.fill(cx, cy, cx + cw, foot, OUTLINE);
+        graphics.fill(cx + 1, cy + 1, cx + cw - 1, foot, BODY);
+        graphics.fill(cx + 1, cy + 1, cx + cw - 1, cy + 2, LIGHT);
+        graphics.fill(cx + 1, cy + 1, cx + 2, foot, LIGHT);
+        graphics.fill(cx + cw - 2, cy + 2, cx + cw - 1, foot, SHADOW);
+    }
+
+    /** The tab names, over the shapes {@link #drawSheet} drew. */
+    private void drawTabLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        int chosen = showDeck ? 1 : 0;
+        int hovered = tabAt(mouseX, mouseY);
+        for (int i = 0; i < 2; i++) {
+            int y = i == chosen ? TAB_TOP + 3 : TAB_TOP + 4;
+            int color = i == chosen ? JasmGui.TEXT : i == hovered ? JasmGui.SUBTEXT : JasmGui.MUTED;
+            graphics.text(font, tabLabel(i), tabX(i) + 5, y, color, false);
+        }
+    }
+
+    // --- picking examples from the Deck ---
+
+    /** The ghost slot (0-8 the grid, 9-11 the outputs) under the mouse that takes items right now, or -1. */
+    private int ghostSlotAt(double mouseX, double mouseY) {
+        for (Slot slot : menu.slots) {
+            int index = processingSlot(slot);
+            if (index >= 0 && index < ghostSlots() && slot.isActive() && isHovering(slot.x, slot.y, 16, 16, mouseX, mouseY)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Does to ghost slot {@code slot} what a click with a real stack does: left puts the copy in (with its count in
+     * processing mode), right clears the slot. Once per slot for each press, so a drag goes over each slot once.
+     */
+    private void placeGhost(int slot, boolean right) {
+        if (placed.add(slot)) {
+            ItemStack example = right ? ItemStack.EMPTY : ghostHeld.copy();
+            ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(menu.containerId, slot, List.of(example)));
+        }
     }
 
     // --- the machine panel ---
@@ -179,7 +313,85 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             }
             return true;
         }
+        boolean left = event.button() == InputConstants.MOUSE_BUTTON_LEFT;
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
+        int tab = tabAt(event.x(), event.y());
+        if (tab >= 0) {
+            if (left) {
+                showDeckTab(tab == 1);
+            }
+            return true;
+        }
+        placed.clear();
+        if (showDeck && deckList.mouseClicked(event.x(), event.y())) {
+            return true;
+        }
+        if (showDeck && deckList.inGrid(event.x(), event.y())) {
+            clickDeckList(event, left, right);
+            return true;
+        }
+        if (!ghostHeld.isEmpty() && (left || right)) {
+            int slot = ghostSlotAt(event.x(), event.y());
+            if (slot >= 0) {
+                placeGhost(slot, right);
+                return true;
+            }
+            // The copy only goes into the grid: clicking anywhere else lets go of it.
+            if (!deckSearch.isMouseOver(event.x(), event.y())) {
+                ghostHeld = ItemStack.EMPTY;
+            }
+        }
         return super.mouseClicked(event, doubleClick);
+    }
+
+    /**
+     * The Deck list clicks like a chest, except that what comes out is a copy and nothing leaves the Deck. Left takes
+     * a stack, right half of one, Shift does nothing. Holding a copy, right lets go of it and left swaps it for what is
+     * under the mouse (or just lets go over an empty cell).
+     */
+    private void clickDeckList(net.minecraft.client.input.MouseButtonEvent event, boolean left, boolean right) {
+        if (event.hasShiftDown() || !(left || right) || !menu.getCarried().isEmpty()) {
+            return;
+        }
+        if (right && !ghostHeld.isEmpty()) {
+            ghostHeld = ItemStack.EMPTY;
+            return;
+        }
+        ghostHeld = ItemStack.EMPTY;
+        var entry = deckList.entryAt(event.x(), event.y());
+        if (entry != null) {
+            int stack = (int) Math.min(entry.count(), entry.key().getMaxStackSize());
+            ghostHeld = entry.key().toStack(right ? (stack + 1) / 2 : stack);
+        }
+    }
+
+    /** Holding a copy, dragging over ghost slots does to each what a click there would. On the Deck list's scroll bar it scrolls. */
+    @Override
+    public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double dx, double dy) {
+        if (showDeck && deckList.mouseDragged(event.y())) {
+            return true;
+        }
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
+        if (!ghostHeld.isEmpty() && (right || event.button() == InputConstants.MOUSE_BUTTON_LEFT)) {
+            int slot = ghostSlotAt(event.x(), event.y());
+            if (slot >= 0) {
+                placeGhost(slot, right);
+            }
+            return true;
+        }
+        return super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        if (deckList.mouseReleased()) {
+            return true;
+        }
+        if (!ghostHeld.isEmpty()) {
+            placed.clear();
+            return true;
+        }
+        return super.mouseReleased(event);
     }
 
     /** The panel sits outside the terminal, but clicking it doesn't throw the held item away. */
@@ -209,6 +421,10 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, Math.max(0, rows() - ROWS));
             return true;
         }
+        if (showDeck && deckList.contains(x, y)) {
+            deckList.scroll(scrollY);
+            return true;
+        }
         if (menu.processing() && hoveredSlot != null && hoveredSlot.hasItem() && scrollY != 0) {
             int slot = processingSlot(hoveredSlot);
             if (slot >= 0) {
@@ -226,6 +442,15 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         if (trustWindow.isOpen() && trustWindow.keyPressed(event)) {
             return true;
         }
+        if (event.isEscape() && !ghostHeld.isEmpty()) {
+            ghostHeld = ItemStack.EMPTY;
+            return true;
+        }
+        // Typing in the Deck search doesn't close the screen or use hotbar keys.
+        if (deckSearch.isFocused() && !event.isEscape()) {
+            deckSearch.keyPressed(event);
+            return true;
+        }
         return super.keyPressed(event);
     }
 
@@ -233,6 +458,9 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
         if (trustWindow.isOpen() && trustWindow.charTyped(event)) {
             return true;
+        }
+        if (deckSearch.isFocused()) {
+            return deckSearch.charTyped(event);
         }
         return super.charTyped(event);
     }
@@ -256,6 +484,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         int x = leftPos;
         int y = topPos;
         JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
+        drawSheet(graphics, mouseX, mouseY);
         for (Slot slot : menu.slots) {
             if (slot.isActive()) {
                 JasmGui.slot(graphics, x + slot.x, y + slot.y);
@@ -266,6 +495,9 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         int arrowX = menu.processing() ? EncodingTerminalMenu.OUTPUTS_X - 13 : 99;
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ARROW_RIGHT, x + arrowX, y + EncodingTerminalMenu.PREVIEW_Y + 3, 9, 9);
         JasmGui.bar(graphics, x + BAR_X, y + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
+        if (showDeck) {
+            deckList.drawBackground(graphics);
+        }
         if (panelOpen) {
             drawPanel(graphics, mouseX, mouseY);
         }
@@ -286,6 +518,17 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         int mouseX = over ? -1000 : realMouseX;
         int mouseY = over ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
+        if (showDeck) {
+            deckList.drawItems(graphics, mouseX, mouseY);
+            if (ghostHeld.isEmpty() && menu.getCarried().isEmpty()) {
+                var key = deckList.keyAt(mouseX, mouseY);
+                if (key != null) {
+                    ItemStack stack = key.toStack(1);
+                    graphics.setTooltipForNextFrame(font, deckList.tooltip(mouseX, mouseY, getTooltipFromContainerItem(stack)),
+                            stack.getTooltipImage(), mouseX, mouseY);
+                }
+            }
+        }
         if (menu.processing()) {
             drawAmounts(graphics);
         }
@@ -316,6 +559,16 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         } else if (row == 0) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.crafting_server_hint"), 160),
                     realMouseX, realMouseY);
+        }
+        if (tabAt(realMouseX, realMouseY) == 1) {
+            graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.tab_deck_hint"), 170),
+                    realMouseX, realMouseY);
+        }
+        // The picked example follows the mouse, over everything else.
+        if (!ghostHeld.isEmpty()) {
+            graphics.nextStratum();
+            graphics.item(ghostHeld, realMouseX - 8, realMouseY - 8);
+            graphics.itemDecorations(font, ghostHeld, realMouseX - 8, realMouseY - 8, ghostHeld.getCount() > 1 ? String.valueOf(ghostHeld.getCount()) : "");
         }
     }
 
@@ -383,7 +636,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             name = font.plainSubstrByWidth(name, room - font.width("...")) + "...";
         }
         graphics.text(font, name, titleLabelX, titleLabelY, JasmGui.TEXT, false);
-        graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
+        drawTabLabels(graphics, xm, ym);
         drawMessage(graphics);
     }
 }

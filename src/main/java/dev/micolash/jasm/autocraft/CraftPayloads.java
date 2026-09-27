@@ -198,6 +198,24 @@ public final class CraftPayloads {
         }
     }
 
+    /**
+     * Server → client: what is on the Deck the viewer of an Encoding Terminal carries (the one in hand, else the first
+     * in the inventory), to pick examples from; {@code found} is false when they carry none.
+     */
+    public record TerminalDeck(int containerId, boolean found, List<DeckPayloads.Entry> items) implements CustomPacketPayload {
+        public static final Type<TerminalDeck> TYPE = new Type<>(Jasm.id("terminal_deck"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, TerminalDeck> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, TerminalDeck::containerId,
+                ByteBufCodecs.BOOL, TerminalDeck::found,
+                DeckPayloads.Entry.STREAM_CODEC.apply(ByteBufCodecs.list(EncodingTerminalMenu.MAX_DECK_ITEMS)), TerminalDeck::items,
+                TerminalDeck::new);
+
+        @Override
+        public Type<TerminalDeck> type() {
+            return TYPE;
+        }
+    }
+
     /** Client → server: set the open Encoding Terminal's ghost grid (JEI); slots 9-11 are the processing outputs. {@code slot} -1 sets all nine. */
     public record Ghost(int containerId, int slot, List<ItemStack> items) implements CustomPacketPayload {
         public static final Type<Ghost> TYPE = new Type<>(Jasm.id("terminal_ghost"));
