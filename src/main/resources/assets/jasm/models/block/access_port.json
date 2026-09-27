@@ -1,6 +1,119 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/block",
   "textures": {
-    "all": "jasm:block/access_port"
-  }
+    "particle": "jasm:block/access_port",
+    "parts": "jasm:block/access_port",
+    "pad": "jasm:block/access_port_pad"
+  },
+  "elements": [
+    {
+      "name": "core",
+      "from": [3, 3, 3],
+      "to": [13, 13, 13],
+      "faces": {
+        "north": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "east": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "south": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "west": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "up": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "down": {"uv": [0, 0, 10, 10], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "cap",
+      "from": [6, 6, 2.5],
+      "to": [10, 10, 3],
+      "faces": {
+        "north": {"uv": [10, 0, 14, 4], "texture": "#parts"},
+        "east": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "west": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "up": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "down": {"uv": [10, 0, 11, 1], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "cap",
+      "from": [13, 6, 6],
+      "to": [13.5, 10, 10],
+      "faces": {
+        "east": {"uv": [10, 0, 14, 4], "texture": "#parts"},
+        "south": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "north": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "up": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "down": {"uv": [10, 0, 11, 1], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "neck",
+      "from": [5, 5, 13],
+      "to": [11, 11, 15],
+      "faces": {
+        "west": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "east": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "up": {"uv": [0, 10, 6, 12], "texture": "#parts"},
+        "down": {"uv": [0, 10, 6, 12], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "pad",
+      "from": [4, 4, 15],
+      "to": [12, 12, 16],
+      "faces": {
+        "south": {"uv": [0, 0, 8, 8], "texture": "#pad"},
+        "north": {"uv": [8, 0, 16, 8], "texture": "#pad"},
+        "west": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "east": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "up": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "down": {"uv": [8, 8, 9, 9], "texture": "#pad"}
+      }
+    },
+    {
+      "name": "neck",
+      "from": [1, 5, 5],
+      "to": [3, 11, 11],
+      "faces": {
+        "north": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "south": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "up": {"uv": [0, 10, 6, 12], "texture": "#parts"},
+        "down": {"uv": [0, 10, 6, 12], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "pad",
+      "from": [0, 4, 4],
+      "to": [1, 12, 12],
+      "faces": {
+        "west": {"uv": [0, 0, 8, 8], "texture": "#pad"},
+        "east": {"uv": [8, 0, 16, 8], "texture": "#pad"},
+        "north": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "south": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "up": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "down": {"uv": [8, 8, 9, 9], "texture": "#pad"}
+      }
+    },
+    {
+      "name": "cap",
+      "from": [6, 13, 6],
+      "to": [10, 13.5, 10],
+      "faces": {
+        "up": {"uv": [10, 0, 14, 4], "texture": "#parts"},
+        "east": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "west": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "south": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "north": {"uv": [10, 0, 11, 1], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "cap",
+      "from": [6, 2.5, 6],
+      "to": [10, 3, 10],
+      "faces": {
+        "down": {"uv": [10, 0, 14, 4], "texture": "#parts"},
+        "east": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "west": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "north": {"uv": [10, 0, 11, 1], "texture": "#parts"},
+        "south": {"uv": [10, 0, 11, 1], "texture": "#parts"}
+      }
+    }
+  ]
 }

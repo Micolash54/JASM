@@ -1,0 +1,22 @@
+{
+  "textures": {
+    "particle": "jasm:block/access_port",
+    "parts": "jasm:block/access_port",
+    "pad": "jasm:block/access_port_pad"
+  },
+  "elements": [
+    {
+      "name": "core",
+      "from": [3, 3, 3],
+      "to": [13, 13, 13],
+      "faces": {
+        "north": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "east": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "south": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "west": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "up": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "down": {"uv": [0, 0, 10, 10], "texture": "#parts"}
+      }
+    }
+  ]
+}

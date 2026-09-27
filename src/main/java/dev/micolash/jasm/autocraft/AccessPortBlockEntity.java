@@ -2,7 +2,9 @@ package dev.micolash.jasm.autocraft;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.ArrayList;
@@ -31,6 +33,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -97,6 +100,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
         port.payForTick();
+        if (level.getGameTime() % 10 == 0) {
+            // A machine can start taking items without its block changing (a modded one finishing its build, say).
+            port.refreshSides();
+        }
         if (!port.locks.isEmpty() && level.getGameTime() % LOCK_CHECK == 0) {
             // A job that ended without letting go (its server was broken in an unloaded spot, say) lets go now.
             AutocraftState autocraft = AutocraftState.get(((ServerLevel) level).getServer());
@@ -137,6 +144,34 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             }
         }
         return sides;
+    }
+
+    /** Updates the port's shape to what touches each side now: a machine (idle or holding a job's items), the network, or nothing. */
+    public void refreshSides() {
+        if (!(level instanceof ServerLevel) || !(getBlockState().getBlock() instanceof AccessPortBlock)) {
+            return;
+        }
+        BlockState state = getBlockState();
+        BlockState shown = state;
+        for (Direction side : Direction.values()) {
+            shown = shown.setValue(AccessPortBlock.SIDES.get(side), sideLooks(side));
+        }
+        if (shown != state) {
+            level.setBlock(worldPosition, shown, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    private PortSide sideLooks(Direction side) {
+        if (hasMachine(side)) {
+            return locks.containsKey(side) ? PortSide.BUSY : PortSide.MACHINE;
+        }
+        BlockPos pos = worldPosition.relative(side);
+        BlockState there = level.getBlockState(pos);
+        boolean hopperIn = there.getBlock() instanceof net.minecraft.world.level.block.HopperBlock
+                && there.getValue(net.minecraft.world.level.block.HopperBlock.FACING) == side.getOpposite();
+        boolean network = there.getBlock() instanceof DataCableBlock || level.getBlockEntity(pos) instanceof MachineBlockEntity
+                || level.getBlockEntity(pos) instanceof ArchiveBlockEntity;
+        return hopperIn || network ? PortSide.LINK : PortSide.NONE;
     }
 
     /**
@@ -211,12 +246,14 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         Lock wanted = new Lock(job, step);
         if (!wanted.equals(locks.put(side, wanted))) {
             setChanged();
+            refreshSides();
         }
     }
 
     public void unlock(Direction side) {
         if (locks.remove(side) != null) {
             setChanged();
+            refreshSides();
         }
     }
 
@@ -224,6 +261,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void unlockJob(UUID job) {
         if (locks.values().removeIf(l -> l.job().equals(job))) {
             setChanged();
+            refreshSides();
         }
     }
 

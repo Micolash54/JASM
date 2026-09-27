@@ -91,7 +91,8 @@ public final class JasmBlocks {
             "crafting_server", () -> new BlockEntityType<>(CraftingServerBlockEntity::new, CRAFTING_SERVER.get()));
 
     public static final DeferredBlock<AccessPortBlock> ACCESS_PORT = BLOCKS.registerBlock("access_port",
-            AccessPortBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            AccessPortBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)
+                    .noOcclusion());
 
     public static final Supplier<BlockEntityType<AccessPortBlockEntity>> ACCESS_PORT_ENTITY = BLOCK_ENTITIES.register(
             "access_port", () -> new BlockEntityType<>(AccessPortBlockEntity::new, ACCESS_PORT.get()));

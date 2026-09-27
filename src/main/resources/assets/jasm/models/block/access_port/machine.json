@@ -1,0 +1,33 @@
+{
+  "textures": {
+    "particle": "jasm:block/access_port",
+    "parts": "jasm:block/access_port",
+    "pad": "jasm:block/access_port_pad"
+  },
+  "elements": [
+    {
+      "name": "neck",
+      "from": [5, 5, 1],
+      "to": [11, 11, 3],
+      "faces": {
+        "east": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "west": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "up": {"uv": [0, 10, 6, 12], "texture": "#parts"},
+        "down": {"uv": [0, 10, 6, 12], "texture": "#parts"}
+      }
+    },
+    {
+      "name": "pad",
+      "from": [4, 4, 0],
+      "to": [12, 12, 1],
+      "faces": {
+        "north": {"uv": [0, 0, 8, 8], "texture": "#pad", "cullface": "north"},
+        "south": {"uv": [8, 0, 16, 8], "texture": "#pad"},
+        "east": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "west": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "up": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "down": {"uv": [8, 8, 9, 9], "texture": "#pad"}
+      }
+    }
+  ]
+}
