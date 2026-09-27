@@ -90,14 +90,30 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             "message.jasm.terminal.output_full", "message.jasm.terminal.empty_grid", "message.jasm.terminal.no_recipe",
             "message.jasm.terminal.encoded", "message.jasm.terminal.no_output", "message.jasm.terminal.no_machine");
 
-    /** An Access Port in the machine list: where, its name, whether it still stands on the network, and whether it is chosen. */
-    public record MachineView(Machines.At at, String name, boolean present, boolean selected) {
+    /**
+     * A machine in the list: where, its name, the block's item to show, whether it still stands on the network, and
+     * whether it is chosen.
+     */
+    public record MachineView(Machines.At at, String name, ItemStack icon, boolean present, boolean selected) {
         public static final StreamCodec<RegistryFriendlyByteBuf, MachineView> STREAM_CODEC = StreamCodec.composite(
                 Machines.At.STREAM_CODEC, MachineView::at,
                 ByteBufCodecs.stringUtf8(128), MachineView::name,
+                ItemStack.OPTIONAL_STREAM_CODEC, MachineView::icon,
                 ByteBufCodecs.BOOL, MachineView::present,
                 ByteBufCodecs.BOOL, MachineView::selected,
                 MachineView::new);
+
+        // Stacks don't compare by content on their own: compare the icon's item, so an unchanged list isn't sent again.
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof MachineView view && at.equals(view.at) && name.equals(view.name)
+                    && ItemStack.matches(icon, view.icon) && present == view.present && selected == view.selected;
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(at, name, present, selected);
+        }
     }
 
     private static final Identifier EMPTY_CARD = Jasm.id("container/empty_card");
@@ -418,7 +434,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 if (MachineAccess.canUse(port, player)) {
                     for (net.minecraft.core.Direction side : port.machineSides()) {
                         Machines.At at = new Machines.At(port.getBlockPos(), side);
-                        views.add(new MachineView(at, port.machineName(side).getString(), true, chosen.contains(at)));
+                        ItemStack icon = new ItemStack(level.getBlockState(port.getBlockPos().relative(side)).getBlock().asItem());
+                        views.add(new MachineView(at, port.machineName(side).getString(), icon, true, chosen.contains(at)));
                     }
                 }
             }
@@ -426,7 +443,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         views.sort(Comparator.comparing(MachineView::name).thenComparing(v -> v.at().port().asLong()).thenComparing(v -> v.at().side()));
         for (Machines.At at : chosen) {
             if (views.stream().noneMatch(v -> v.at().equals(at))) {
-                views.add(new MachineView(at, "", false, true));
+                views.add(new MachineView(at, "", ItemStack.EMPTY, false, true));
             }
         }
         return views.size() > MAX_MACHINES ? views.subList(0, MAX_MACHINES) : views;

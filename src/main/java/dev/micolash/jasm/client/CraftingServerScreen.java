@@ -12,6 +12,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Crafting Server screen: Processors and Storage Modules in a side panel on the left; in
@@ -94,6 +95,15 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
         }
+        Component processors = processors();
+        if (processors != null) {
+            int right = leftPos + PANEL_X + 4 + PANEL_W - 8;
+            int top = topPos + CraftingServerMenu.JOB_Y + 20;
+            if (mouseX >= right - font.width(processors) && mouseX < right && mouseY >= top - 1 && mouseY < top + 9) {
+                graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.server.processors_hint"), 170),
+                        mouseX, mouseY);
+            }
+        }
     }
 
     /** Below the side panel is outside the screen, so items dropped there fall out as usual. */
@@ -124,7 +134,16 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
             case CANCELLING -> Component.translatable("screen.jasm.server.cancelling");
             case RETURNING -> Component.translatable("screen.jasm.server.returning");
         };
-        graphics.text(font, trim(state.getString(), room), tx, CraftingServerMenu.JOB_Y + 20, JasmGui.SUBTEXT, false);
+        Component processors = processors();
+        int stateRoom = room;
+        if (processors != null) {
+            // How many Processors are in use, on the right: all of them busy is why other machines wait.
+            int width = font.width(processors);
+            graphics.text(font, processors, tx + room - width, CraftingServerMenu.JOB_Y + 20,
+                    menu.active() >= menu.parallel() ? JasmGui.TEXT : JasmGui.MUTED, false);
+            stateRoom = room - width - 6;
+        }
+        graphics.text(font, trim(state.getString(), stateRoom), tx, CraftingServerMenu.JOB_Y + 20, JasmGui.SUBTEXT, false);
         Component detail = switch (menu.pause()) {
             case 1 -> Component.translatable("screen.jasm.server.pause.no_power");
             case 2 -> Component.translatable("screen.jasm.server.pause.no_card");
@@ -142,6 +161,12 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
         for (int i = 0; i < Math.min(2, lines.size()); i++) {
             graphics.text(font, lines.get(i), tx, CraftingServerMenu.JOB_Y + 30 + i * 9, menu.pause() == 0 ? JasmGui.MUTED : JasmGui.BAD, false);
         }
+    }
+
+    /** "Processors: 1/2" while the job crafts; null otherwise. */
+    private @Nullable Component processors() {
+        return menu.phase() == CraftingJob.Phase.CRAFTING
+                ? Component.translatable("screen.jasm.server.processors", menu.active(), menu.parallel()) : null;
     }
 
     private String trim(String text, int room) {

@@ -301,6 +301,8 @@
   "screen.jasm.port.hint": "Send the results back into this port.",
   "message.jasm.craft.machine_missing": "A card's machine can't be reached: check its Access Port",
   "screen.jasm.server.waiting": "Waiting on %s: %s × %s (%s)",
+  "screen.jasm.server.processors": "Processors: %s/%s",
+  "screen.jasm.server.processors_hint": "Each Processor runs one craft at a time, or keeps one set out in a machine until its results come back. With all of them busy, the job waits even if other machines are free: add Processors to use more machines at once.",
   "jei.jasm.info.access_port.1": "Place it next to furnaces or any other machines, and join it to the network with a Data Cable. Every block touching it that takes items is a machine you can write processing cards for, placed before or after the port.",
   "jei.jasm.info.access_port.2": "The results must come back into the port: set the machine to output into it, or use a hopper or pipe. It only takes items in while a job is waiting on one of its machines.",
   "screen.jasm.terminal.machines": "Machines",

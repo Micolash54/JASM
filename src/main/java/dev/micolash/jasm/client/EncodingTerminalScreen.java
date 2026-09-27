@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
+import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.util.FormattedCharSequence;
@@ -15,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * The Encoding Terminal screen: card in and out on the left, the ghost grid and what it makes in the middle, the
@@ -39,9 +41,9 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     private static final int MESSAGE_TICKS = 80;
     /** The machine panel, to the right of the terminal. */
     private static final int PANEL_X = WIDTH + 2;
-    private static final int PANEL_W = 108;
+    private static final int PANEL_W = 128;
     private static final int LIST_Y = 18;
-    private static final int ROW_H = 12;
+    private static final int ROW_H = 18;
     private static final int ROWS = (HEIGHT - LIST_Y - 8) / ROW_H;
     /** Whether the machine panel is open; kept while the game runs. */
     private static boolean panelOpen = true;
@@ -118,15 +120,18 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             boolean chosen;
             String name;
             int color;
+            ItemStack icon;
             if (row == 0) {
                 chosen = !menu.processing();
                 name = Component.translatable("screen.jasm.terminal.crafting_server").getString();
                 color = JasmGui.TEXT;
+                icon = new ItemStack(JasmBlocks.CRAFTING_SERVER.get());
             } else {
                 EncodingTerminalMenu.MachineView view = menu.machines().get(row - 1);
                 chosen = view.selected();
                 name = view.present() ? view.name() : Component.translatable("screen.jasm.terminal.machine_missing").getString();
                 color = view.present() ? JasmGui.TEXT : JasmGui.BAD;
+                icon = view.icon();
             }
             if (chosen) {
                 graphics.fill(x + 4, ry, x + PANEL_W - 4, ry + ROW_H, JasmGui.SELECTED);
@@ -136,11 +141,17 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             }
             // A tick box: filled when chosen.
             int bx = x + 7;
-            int by = ry + 3;
+            int by = ry + 6;
             graphics.fill(bx, by, bx + 6, by + 6, JasmGui.MUTED);
             graphics.fill(bx + 1, by + 1, bx + 5, by + 5, chosen ? JasmGui.GOOD : JasmGui.SHADE);
-            String shown = font.width(name) > PANEL_W - 26 ? font.plainSubstrByWidth(name, PANEL_W - 26 - font.width("...")) + "..." : name;
-            graphics.text(font, shown, bx + 9, ry + 2, color, false);
+            // The machine's block, then its name.
+            if (!icon.isEmpty()) {
+                graphics.item(icon, bx + 9, ry + 1);
+            }
+            int textX = bx + 27;
+            int room = x + PANEL_W - 6 - textX;
+            String shown = font.width(name) > room ? font.plainSubstrByWidth(name, room - font.width("...")) + "..." : name;
+            graphics.text(font, shown, textX, ry + 5, color, false);
         }
         if (rows() > ROWS) {
             String more = (scroll + ROWS) + "/" + rows();
