@@ -64,6 +64,12 @@ public final class CraftNetwork {
                         (payload, context) -> ghost((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.Trust.TYPE, CraftPayloads.Trust.STREAM_CODEC,
                         (payload, context) -> trust((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.PortName.TYPE, CraftPayloads.PortName.STREAM_CODEC,
+                        (payload, context) -> portName((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.ProcessingGhost.TYPE, CraftPayloads.ProcessingGhost.STREAM_CODEC,
+                        (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
+                .playToClient(CraftPayloads.TerminalMachines.TYPE, CraftPayloads.TerminalMachines.STREAM_CODEC, CraftNetwork::onTerminalMachines)
+                .playToClient(CraftPayloads.ServerWaiting.TYPE, CraftPayloads.ServerWaiting.STREAM_CODEC, CraftNetwork::onServerWaiting)
                 .playToClient(CraftPayloads.TrustView.TYPE, CraftPayloads.TrustView.STREAM_CODEC, CraftNetwork::onTrustView)
                 .playToClient(CraftPayloads.Status.TYPE, CraftPayloads.Status.STREAM_CODEC, CraftNetwork::onStatus)
                 .playToClient(CraftPayloads.Answer.TYPE, CraftPayloads.Answer.STREAM_CODEC, CraftNetwork::onAnswer);
@@ -202,7 +208,7 @@ public final class CraftNetwork {
             for (int i = 0; i < 9; i++) {
                 menu.setGhost(i, i < payload.items().size() ? payload.items().get(i) : ItemStack.EMPTY);
             }
-        } else if (payload.slot() < 9 && !payload.items().isEmpty()) {
+        } else if (payload.slot() < EncodingTerminalBlockEntity.AMOUNTS && !payload.items().isEmpty()) {
             menu.setGhost(payload.slot(), payload.items().getFirst());
         }
         return true;
@@ -218,6 +224,37 @@ public final class CraftNetwork {
                 TerminalAccess.trust(player, menu, menu.terminal(), payload.name());
             }
         }
+    }
+
+    /** Fills the open terminal's processing grid and outputs from a recipe; nothing real moves. */
+    public static boolean processingGhost(ServerPlayer player, CraftPayloads.ProcessingGhost payload) {
+        if (!(player.containerMenu instanceof EncodingTerminalMenu menu) || menu.containerId != payload.containerId() || !menu.stillValid(player)) {
+            return false;
+        }
+        menu.setProcessing(payload.inputs(), payload.outputs());
+        return true;
+    }
+
+    private static void onServerWaiting(CraftPayloads.ServerWaiting payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof CraftingServerMenu menu && menu.containerId == payload.containerId()) {
+            menu.setWaiting(payload.line().orElse(null));
+        }
+    }
+
+    private static void onTerminalMachines(CraftPayloads.TerminalMachines payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()) {
+            menu.setMachines(payload.machines());
+        }
+    }
+
+    /** Names the open Access Port. */
+    public static boolean portName(ServerPlayer player, CraftPayloads.PortName payload) {
+        if (player.containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId() && menu.stillValid(player)
+                && menu.port() != null) {
+            menu.port().setLabel(payload.name());
+            return true;
+        }
+        return false;
     }
 
     private static void onTrustView(CraftPayloads.TrustView payload, IPayloadContext context) {
@@ -274,7 +311,7 @@ public final class CraftNetwork {
             return new CraftPayloads.Status(menu.containerId, 1, List.of(), jobs, Rules.stalled(server, deck));
         }
         List<ItemResource> craftable = new ArrayList<>();
-        for (RecipeCard card : Jobs.cards(network, player)) {
+        for (Card card : Jobs.cards(network, player)) {
             ItemResource out = ItemResource.of(card.result());
             if (!craftable.contains(out)) {
                 craftable.add(out);
@@ -301,7 +338,7 @@ public final class CraftNetwork {
                 CraftingJob job = crafting.job();
                 ItemResource target = job.target() == null ? ItemResource.EMPTY : ItemResource.of(job.target().create());
                 views.add(new CraftPayloads.JobView(pos, target, job.amount(), job.phase().ordinal(), Math.round(job.progress() * 1000),
-                        Jobs.pauseCode(job.pause())));
+                        Jobs.pauseCode(job.pause()), java.util.Optional.ofNullable(job.waiting()).map(CraftingJob.Waiting::line)));
             }
             if (views.size() >= 64) {
                 break;

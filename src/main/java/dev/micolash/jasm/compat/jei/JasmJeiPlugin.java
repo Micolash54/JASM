@@ -73,6 +73,7 @@ public class JasmJeiPlugin implements IModPlugin {
     public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
         registration.addRecipeTransferHandler(new DeckTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
         registration.addRecipeTransferHandler(new TerminalTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
+        registration.addUniversalRecipeTransferHandler(new ProcessingTransferHandler(registration.getTransferHelper()));
     }
 
     @Override
@@ -86,6 +87,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "recipe_rack", 2, List.of(JasmItems.RECIPE_RACK.get()));
         info(registration, "data_cable", 2, JasmItems.cables());
         info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));
+        info(registration, "access_port", 2, List.of(JasmItems.ACCESS_PORT.get()));
         info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
         info(registration, "storage_module", 1, Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
         info(registration, "archive", 2, Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
@@ -125,7 +127,7 @@ public class JasmJeiPlugin implements IModPlugin {
                     return List.of();
                 }
                 List<Target<I>> targets = new ArrayList<>();
-                for (int i = 0; i < 9; i++) {
+                for (int i = 0; i < screen.ghostSlots(); i++) {
                     int slot = i;
                     Rect2i area = screen.ghostSlotArea(i);
                     targets.add(new Target<>() {
@@ -145,6 +147,13 @@ public class JasmJeiPlugin implements IModPlugin {
 
             @Override
             public void onComplete() {}
+        });
+        registration.addGuiContainerHandler(EncodingTerminalScreen.class, new IGuiContainerHandler<>() {
+            /** Keeps JEI's item list from covering the terminal's machine panel. */
+            @Override
+            public List<Rect2i> getGuiExtraAreas(EncodingTerminalScreen screen) {
+                return screen.panelArea().map(List::of).orElse(List.of());
+            }
         });
         registration.addGuiContainerHandler(DeckScreen.class, new IGuiContainerHandler<>() {
             /** Keeps JEI's item list from covering the settings window where it sticks out past the Deck. */

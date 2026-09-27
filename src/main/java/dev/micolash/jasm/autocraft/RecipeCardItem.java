@@ -11,7 +11,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 
-/** A Filled Recipe Card: its tooltip says what it makes, whether the recipe is shaped, and what goes in. */
+/**
+ * A Filled Recipe Card: its tooltip says what it makes and what goes in, and whether the recipe is shaped, shapeless,
+ * or for machines (and which).
+ */
 public class RecipeCardItem extends Item {
     public RecipeCardItem(Item.Properties properties) {
         super(properties);
@@ -21,9 +24,17 @@ public class RecipeCardItem extends Item {
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder,
             TooltipFlag flag) {
         RecipeCard card = stack.get(JasmComponents.RECIPE_CARD.get());
-        if (card == null) {
+        if (card != null) {
+            crafting(card, builder);
             return;
         }
+        ProcessingCard processing = stack.get(JasmComponents.PROCESSING_CARD.get());
+        if (processing != null) {
+            processing(processing, builder);
+        }
+    }
+
+    private static void crafting(RecipeCard card, Consumer<Component> builder) {
         ItemStack result = card.result();
         builder.accept(Component.translatable("tooltip.jasm.card.makes", result.getCount(), result.getHoverName()).withStyle(ChatFormatting.GRAY));
         builder.accept(Component.translatable(card.shapeless() ? "tooltip.jasm.card.shapeless" : "tooltip.jasm.card.shaped")
@@ -38,5 +49,28 @@ public class RecipeCardItem extends Item {
         }
         counts.forEach((item, n) -> builder.accept(
                 Component.translatable("tooltip.jasm.card.input", n, names.get(item)).withStyle(ChatFormatting.DARK_GRAY)));
+    }
+
+    private static void processing(ProcessingCard card, Consumer<Component> builder) {
+        ProcessingCard.Amount main = card.main();
+        if (!main.isEmpty()) {
+            builder.accept(Component.translatable("tooltip.jasm.card.makes", main.count(), main.stack().getHoverName())
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        for (ProcessingCard.Amount extra : card.extras()) {
+            builder.accept(Component.translatable("tooltip.jasm.card.also", extra.count(), extra.stack().getHoverName())
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        builder.accept(Component.translatable("tooltip.jasm.card.processing").withStyle(ChatFormatting.LIGHT_PURPLE));
+        Map<net.neoforged.neoforge.transfer.item.ItemResource, Integer> counts = new LinkedHashMap<>();
+        for (ProcessingCard.Amount input : card.usedInputs()) {
+            counts.merge(input.item(), input.count(), Integer::sum);
+        }
+        counts.forEach((item, n) -> builder.accept(
+                Component.translatable("tooltip.jasm.card.input", n, item.toStack(1).getHoverName()).withStyle(ChatFormatting.DARK_GRAY)));
+        for (ProcessingCard.Machine machine : card.machines()) {
+            builder.accept(Component.translatable("tooltip.jasm.card.machine", machine.name(), machine.pos().getX(), machine.pos().getY(),
+                    machine.pos().getZ()).withStyle(ChatFormatting.DARK_AQUA));
+        }
     }
 }

@@ -31,6 +31,7 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> RECIPE_RACK = ITEMS.registerSimpleBlockItem(JasmBlocks.RECIPE_RACK);
     private static final List<DeferredItem<BlockItem>> CABLES = new ArrayList<>();
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
+    public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
     private static final Map<ProcessorTier, DeferredItem<ServerPartItem>> PROCESSORS = new EnumMap<>(ProcessorTier.class);
     private static final Map<MemoryTier, DeferredItem<ServerPartItem>> MODULES = new EnumMap<>(MemoryTier.class);
 

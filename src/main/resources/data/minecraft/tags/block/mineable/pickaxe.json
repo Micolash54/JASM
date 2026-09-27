@@ -26,6 +26,7 @@
     "jasm:green_data_cable",
     "jasm:red_data_cable",
     "jasm:black_data_cable",
-    "jasm:crafting_server"
+    "jasm:crafting_server",
+    "jasm:access_port"
   ]
 }

@@ -119,7 +119,9 @@ final class JobsWindow {
             case 3 -> Component.translatable("screen.jasm.server.pause.waiting_player");
             case 4 -> Component.translatable("screen.jasm.server.pause.waiting_space");
             case 5 -> Component.translatable("screen.jasm.server.pause.no_network");
-            default -> switch (job.phase()) {
+            case 6 -> Component.translatable("screen.jasm.server.pause.machine_busy");
+            case 7 -> Component.translatable("screen.jasm.server.pause.no_machine");
+            default -> job.phase() == 0 && job.waiting().isPresent() ? job.waiting().get() : switch (job.phase()) {
                 case 0 -> Component.translatable("screen.jasm.server.crafting", Math.round(job.progress() / 10F));
                 case 1 -> Component.translatable("screen.jasm.server.cancelling");
                 default -> Component.translatable("screen.jasm.server.returning");

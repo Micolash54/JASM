@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/access_port"
+    },
+    "facing=east": {
+      "model": "jasm:block/access_port",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/access_port",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/access_port",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "jasm:block/access_port",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "jasm:block/access_port",
+      "x": 90
+    }
+  }
+}

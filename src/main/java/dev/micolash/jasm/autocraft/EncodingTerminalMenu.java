@@ -5,7 +5,18 @@ import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.Networks;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.neoforged.neoforge.network.PacketDistributor;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -41,27 +52,53 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     /** Where the terminal's messages show, under the grid. */
     public static final int MESSAGE_Y = 76;
 
+    /** Processing mode: the column of what the machine gives back, beside the grid. */
+    public static final int OUTPUTS_X = 102;
+    public static final int OUTPUTS_Y = 18;
+
     public static final int SLOT_CARD_IN = 0;
     public static final int SLOT_CARD_OUT = 1;
     public static final int SLOT_PAIR = 2;
     public static final int SLOT_GHOST = 3;
     public static final int SLOT_PREVIEW = SLOT_GHOST + 9;
-    public static final int SLOT_INVENTORY = SLOT_PREVIEW + 1;
+    public static final int SLOT_OUTPUTS = SLOT_PREVIEW + 1;
+    public static final int SLOT_INVENTORY = SLOT_OUTPUTS + ProcessingCard.OUTPUTS;
 
     public static final int BUTTON_ENCODE = 0;
     public static final int BUTTON_CLEAR = 1;
+    /** Back to crafting cards. */
+    public static final int BUTTON_CRAFTING_SERVER = 2;
+    /** {@code BUTTON_AMOUNT + slot * 4 + op}: processing slot 0-11 (grid, then outputs); op 0 +1, 1 -1, 2 +10, 3 -10. */
+    public static final int BUTTON_AMOUNT = 100;
+    /** {@code BUTTON_MACHINE + i}: choose or drop the {@code i}th machine of the list last sent. */
+    public static final int BUTTON_MACHINE = 1000;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
     static final int DATA_STATE = 2;
     static final int DATA_RUNNING = 3;
     static final int DATA_PAIRED = 4;
-    static final int DATA_COUNT = 5;
+    static final int DATA_PROCESSING = 5;
+    static final int DATA_AMOUNTS = 6;
+    static final int DATA_COUNT = DATA_AMOUNTS + EncodingTerminalBlockEntity.AMOUNTS;
+
+    /** Ticks between refreshes of the machine list. */
+    private static final int MACHINES_EVERY = 20;
 
     /** Messages the screen can show, by number; 0 is none. */
     public static final List<String> MESSAGES = List.of("", "message.jasm.terminal.no_power", "message.jasm.terminal.no_card",
             "message.jasm.terminal.output_full", "message.jasm.terminal.empty_grid", "message.jasm.terminal.no_recipe",
-            "message.jasm.terminal.encoded");
+            "message.jasm.terminal.encoded", "message.jasm.terminal.no_output", "message.jasm.terminal.no_machine");
+
+    /** An Access Port in the machine list: where, its name, whether it still stands on the network, and whether it is chosen. */
+    public record MachineView(BlockPos pos, String name, boolean present, boolean selected) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, MachineView> STREAM_CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC, MachineView::pos,
+                ByteBufCodecs.stringUtf8(128), MachineView::name,
+                ByteBufCodecs.BOOL, MachineView::present,
+                ByteBufCodecs.BOOL, MachineView::selected,
+                MachineView::new);
+    }
 
     private static final Identifier EMPTY_CARD = Jasm.id("container/empty_card");
     private static final Identifier EMPTY_DECK = Jasm.id("container/empty_deck");
@@ -69,6 +106,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private final Notices.Shown notices = new Notices.Shown();
     private final Container container;
     private final Container ghost;
+    private final Container outputs;
     private final ContainerData data;
     /** The last message for this screen, and a count that goes up with each one so a repeat still shows. */
     private final ContainerData feedback = new SimpleContainerData(2);
@@ -80,10 +118,16 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     /** Client side: what the server said about trust. */
     private boolean owner;
     private TrustList trust = TrustList.EMPTY;
+    /** The Access Ports in the list: on the server the last list sent, on the client the last received. */
+    private List<MachineView> machines = List.of();
+    /** Server side: send the machine list with the next update (it opened, or the choice changed). */
+    private boolean machinesDue = true;
+    /** Most machines listed. */
+    public static final int MAX_MACHINES = 256;
 
     /** Server side. */
     public EncodingTerminalMenu(int containerId, Inventory inventory, EncodingTerminalBlockEntity terminal, ContainerLevelAccess access) {
-        this(containerId, inventory, terminal, terminal.ghost(), terminal.preview(), terminal.data(), access, terminal);
+        this(containerId, inventory, terminal, terminal.ghost(), terminal.outputs(), terminal.preview(), terminal.data(), access, terminal);
     }
 
     /** Client side. */
@@ -93,14 +137,16 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             public boolean canPlaceItem(int slot, ItemStack stack) {
                 return EncodingTerminalBlockEntity.accepts(slot, stack);
             }
-        }, new SimpleContainer(9), new SimpleContainer(1), new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null);
+        }, new SimpleContainer(9), new SimpleContainer(ProcessingCard.OUTPUTS), new SimpleContainer(1), new SimpleContainerData(DATA_COUNT),
+                ContainerLevelAccess.NULL, null);
     }
 
-    private EncodingTerminalMenu(int containerId, Inventory inventory, Container container, Container ghost, Container preview,
-            ContainerData data, ContainerLevelAccess access, @Nullable EncodingTerminalBlockEntity terminal) {
+    private EncodingTerminalMenu(int containerId, Inventory inventory, Container container, Container ghost, Container outputs,
+            Container preview, ContainerData data, ContainerLevelAccess access, @Nullable EncodingTerminalBlockEntity terminal) {
         super(JasmMenus.ENCODING_TERMINAL.get(), containerId);
         this.container = container;
         this.ghost = ghost;
+        this.outputs = outputs;
         this.data = data;
         this.access = access;
         this.terminal = terminal;
@@ -111,7 +157,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         for (int i = 0; i < 9; i++) {
             addSlot(new FakeSlot(ghost, i, GRID_X + (i % 3) * 18, GRID_Y + (i / 3) * 18));
         }
-        addSlot(new FakeSlot(preview, 0, PREVIEW_X, PREVIEW_Y));
+        addSlot(new FakeSlot(preview, 0, PREVIEW_X, PREVIEW_Y, () -> !processing()));
+        for (int i = 0; i < ProcessingCard.OUTPUTS; i++) {
+            addSlot(new FakeSlot(outputs, i, OUTPUTS_X, OUTPUTS_Y + i * 18, this::processing));
+        }
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
@@ -144,13 +193,29 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         return terminal;
     }
 
-    /** The trust list goes to the screen with the first update after opening. */
+    /**
+     * The trust list goes to the screen with the first update after opening; the machine list then, whenever the
+     * choice changes, and once a second if the ports changed.
+     */
     @Override
     public void broadcastChanges() {
         super.broadcastChanges();
-        if (!trustSent && terminal != null && player instanceof ServerPlayer serverPlayer) {
+        if (terminal == null || !(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        if (!trustSent) {
             trustSent = true;
             TerminalAccess.send(serverPlayer, this, terminal);
+        }
+        if (machinesDue || serverPlayer.level().getGameTime() % MACHINES_EVERY == 0) {
+            machinesDue = false;
+            List<MachineView> now = currentMachines((ServerLevel) serverPlayer.level());
+            if (!now.equals(machines)) {
+                machines = now;
+                if (serverPlayer.connection.hasChannel(CraftPayloads.TerminalMachines.TYPE)) {
+                    PacketDistributor.sendToPlayer(serverPlayer, new CraftPayloads.TerminalMachines(containerId, now));
+                }
+            }
         }
     }
 
@@ -199,14 +264,25 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         return !terminal.isRemoved() && stillValid(access, player, JasmBlocks.ENCODING_TERMINAL.get()) && terminal.isAuthorized(player);
     }
 
-    /** Ghost slots: holding an item copies it in, empty-handed (or right-click) clears the slot. The preview can't be taken. */
+    /**
+     * Ghost slots: holding an item copies it in, empty-handed (or right-click) clears the slot. In processing mode the
+     * copy keeps the held stack's count, and the output column works the same. The preview can't be taken.
+     */
     @Override
     public void clicked(int slotIndex, int buttonNum, ContainerInput input, Player player) {
-        if (slotIndex >= SLOT_GHOST && slotIndex < SLOT_PREVIEW) {
-            if (input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE) {
+        boolean grid = slotIndex >= SLOT_GHOST && slotIndex < SLOT_PREVIEW;
+        boolean output = slotIndex >= SLOT_OUTPUTS && slotIndex < SLOT_INVENTORY;
+        if (grid || output) {
+            if ((input == ContainerInput.PICKUP || input == ContainerInput.QUICK_MOVE) && (grid || processing())) {
                 ItemStack carried = getCarried();
                 boolean clear = carried.isEmpty() || buttonNum == 1 || input == ContainerInput.QUICK_MOVE;
-                ghost.setItem(slotIndex - SLOT_GHOST, clear ? ItemStack.EMPTY : carried.copyWithCount(1));
+                int slot = grid ? slotIndex - SLOT_GHOST : 9 + slotIndex - SLOT_OUTPUTS;
+                ItemStack example = clear ? ItemStack.EMPTY : carried;
+                if (terminal != null && processing()) {
+                    terminal.setProcessingSlot(slot, example, carried.getCount());
+                } else if (grid) {
+                    ghost.setItem(slot, example.isEmpty() ? ItemStack.EMPTY : example.copyWithCount(1));
+                }
             }
             return;
         }
@@ -216,17 +292,76 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         super.clicked(slotIndex, buttonNum, input, player);
     }
 
-    /** Puts {@code stack} (or nothing) in ghost slot {@code slot}: for JEI's recipe button and drag-and-drop. */
+    /**
+     * Puts {@code stack} (or nothing) in ghost slot {@code slot}, 0-8 the grid and 9-11 the outputs: for JEI's recipe
+     * button and drag-and-drop. In processing mode it keeps the stack's count.
+     */
     public void setGhost(int slot, ItemStack stack) {
-        if (slot >= 0 && slot < 9) {
+        if (terminal != null && processing() && slot >= 0 && slot < EncodingTerminalBlockEntity.AMOUNTS) {
+            terminal.setProcessingSlot(slot, stack, stack.getCount());
+        } else if (slot >= 0 && slot < 9) {
             ghost.setItem(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
         }
+    }
+
+    /**
+     * Processing mode: fills the grid and the outputs from a recipe (JEI's "+"). The same item in several slots is
+     * added up; what doesn't fit (more than nine kinds in, three out) is left out.
+     */
+    public void setProcessing(List<ItemStack> inputs, List<ItemStack> outputs) {
+        if (terminal == null || !processing()) {
+            return;
+        }
+        List<ItemStack> in = merged(inputs, ProcessingCard.INPUTS);
+        List<ItemStack> out = merged(outputs, ProcessingCard.OUTPUTS);
+        for (int i = 0; i < ProcessingCard.INPUTS; i++) {
+            ItemStack stack = i < in.size() ? in.get(i) : ItemStack.EMPTY;
+            terminal.setProcessingSlot(i, stack, stack.getCount());
+        }
+        for (int i = 0; i < ProcessingCard.OUTPUTS; i++) {
+            ItemStack stack = i < out.size() ? out.get(i) : ItemStack.EMPTY;
+            terminal.setProcessingSlot(9 + i, stack, stack.getCount());
+        }
+    }
+
+    private static List<ItemStack> merged(List<ItemStack> stacks, int most) {
+        List<ItemStack> merged = new ArrayList<>();
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            ItemStack same = merged.stream().filter(s -> ItemStack.isSameItemSameComponents(s, stack)).findFirst().orElse(null);
+            if (same != null) {
+                same.setCount(same.getCount() + stack.getCount());
+            } else if (merged.size() < most) {
+                merged.add(stack.copy());
+            }
+        }
+        return merged;
     }
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (terminal == null || !(player instanceof ServerPlayer serverPlayer)) {
             return false;
+        }
+        if (id >= BUTTON_MACHINE && id < BUTTON_MACHINE + machines.size()) {
+            terminal.toggleMachine(machines.get(id - BUTTON_MACHINE).pos());
+            machinesDue = true;
+            return true;
+        }
+        if (id >= BUTTON_AMOUNT && id < BUTTON_AMOUNT + EncodingTerminalBlockEntity.AMOUNTS * 4) {
+            int slot = (id - BUTTON_AMOUNT) / 4;
+            int change = switch ((id - BUTTON_AMOUNT) % 4) {
+                case 0 -> 1;
+                case 1 -> -1;
+                case 2 -> 10;
+                default -> -10;
+            };
+            if (processing() && terminal.amount(slot) > 0) {
+                terminal.setAmount(slot, terminal.amount(slot) + change);
+            }
+            return true;
         }
         switch (id) {
             case BUTTON_ENCODE -> {
@@ -235,15 +370,63 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 return true;
             }
             case BUTTON_CLEAR -> {
-                for (int i = 0; i < 9; i++) {
-                    ghost.setItem(i, ItemStack.EMPTY);
+                for (int i = 0; i < EncodingTerminalBlockEntity.AMOUNTS; i++) {
+                    terminal.setProcessingSlot(i, ItemStack.EMPTY, 0);
                 }
+                return true;
+            }
+            case BUTTON_CRAFTING_SERVER -> {
+                terminal.selectCraftingServer();
+                machinesDue = true;
                 return true;
             }
             default -> {
                 return false;
             }
         }
+    }
+
+    // --- the machine list ---
+
+    /** Whether the terminal writes processing cards (some machine is chosen). */
+    public boolean processing() {
+        return data.get(DATA_PROCESSING) != 0;
+    }
+
+    /** How many of processing slot {@code slot} (0-8 the grid, 9-11 the outputs); 0 where empty. */
+    public int amount(int slot) {
+        return slot >= 0 && slot < EncodingTerminalBlockEntity.AMOUNTS ? data.get(DATA_AMOUNTS + slot) : 0;
+    }
+
+    /** The Access Ports on the terminal's network that the viewer may use, and chosen ones that are gone. */
+    public List<MachineView> machines() {
+        return machines;
+    }
+
+    /** Client side: the list the server sent. */
+    public void setMachines(List<MachineView> machines) {
+        this.machines = List.copyOf(machines);
+    }
+
+    /** Server side: the machine list as it is now. */
+    private List<MachineView> currentMachines(ServerLevel level) {
+        CableNetwork network = Networks.at(level, terminal.getBlockPos());
+        List<BlockPos> chosen = terminal.selected();
+        List<MachineView> views = new ArrayList<>();
+        if (network != null) {
+            for (AccessPortBlockEntity port : Machines.ports(network)) {
+                if (MachineAccess.canUse(port, player)) {
+                    views.add(new MachineView(port.getBlockPos(), port.machineName().getString(), true, chosen.contains(port.getBlockPos())));
+                }
+            }
+        }
+        views.sort(Comparator.comparing(MachineView::name).thenComparing(v -> v.pos().asLong()));
+        for (BlockPos pos : chosen) {
+            if (views.stream().noneMatch(v -> v.pos().equals(pos))) {
+                views.add(new MachineView(pos, "", false, true));
+            }
+        }
+        return views.size() > MAX_MACHINES ? views.subList(0, MAX_MACHINES) : views;
     }
 
     /**
@@ -305,10 +488,22 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
     }
 
-    /** A ghost or preview slot: shows an item, never takes or gives one. */
+    /** A ghost or preview slot: shows an item, never takes or gives one. Some only show in one of the two modes. */
     public static final class FakeSlot extends Slot {
+        private final BooleanSupplier active;
+
         FakeSlot(Container container, int index, int x, int y) {
+            this(container, index, x, y, () -> true);
+        }
+
+        FakeSlot(Container container, int index, int x, int y, BooleanSupplier active) {
             super(container, index, x, y);
+            this.active = active;
+        }
+
+        @Override
+        public boolean isActive() {
+            return active.getAsBoolean();
         }
 
         @Override

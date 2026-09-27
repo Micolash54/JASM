@@ -8,6 +8,8 @@ import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -23,7 +25,8 @@ public final class CraftPayloads {
     public static final int MAX_LIST = 1_024;
 
     /** One job of this Deck as the screen shows it. {@code phase}: 0 crafting, 1 stopping, 2 returning. */
-    public record JobView(BlockPos server, ItemResource target, long amount, int phase, int progress, int pause) {
+    /** {@code waiting}: the machine it has waited on longest, as a line to show. */
+    public record JobView(BlockPos server, ItemResource target, long amount, int phase, int progress, int pause, Optional<Component> waiting) {
         static final StreamCodec<RegistryFriendlyByteBuf, JobView> STREAM_CODEC = StreamCodec.composite(
                 BlockPos.STREAM_CODEC, JobView::server,
                 ItemResource.STREAM_CODEC, JobView::target,
@@ -31,7 +34,22 @@ public final class CraftPayloads {
                 ByteBufCodecs.VAR_INT, JobView::phase,
                 ByteBufCodecs.VAR_INT, JobView::progress,
                 ByteBufCodecs.VAR_INT, JobView::pause,
+                ByteBufCodecs.optional(ComponentSerialization.STREAM_CODEC), JobView::waiting,
                 JobView::new);
+    }
+
+    /** Server → client: what the open Crafting Server's job waits on at a machine, if anything. */
+    public record ServerWaiting(int containerId, Optional<Component> line) implements CustomPacketPayload {
+        public static final Type<ServerWaiting> TYPE = new Type<>(Jasm.id("server_waiting"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ServerWaiting> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, ServerWaiting::containerId,
+                ByteBufCodecs.optional(ComponentSerialization.STREAM_CODEC), ServerWaiting::line,
+                ServerWaiting::new);
+
+        @Override
+        public Type<ServerWaiting> type() {
+            return TYPE;
+        }
     }
 
     /** A server the request could go to. */
@@ -150,7 +168,37 @@ public final class CraftPayloads {
         }
     }
 
-    /** Client → server: set the open Encoding Terminal's ghost grid (JEI). {@code slot} -1 sets all nine. */
+    /** Client → server: fill the open terminal's processing grid and outputs from a recipe (JEI), with counts. */
+    public record ProcessingGhost(int containerId, List<ItemStack> inputs, List<ItemStack> outputs) implements CustomPacketPayload {
+        public static final Type<ProcessingGhost> TYPE = new Type<>(Jasm.id("terminal_processing_ghost"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ProcessingGhost> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, ProcessingGhost::containerId,
+                ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list(64)), ProcessingGhost::inputs,
+                ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list(64)), ProcessingGhost::outputs,
+                ProcessingGhost::new);
+
+        @Override
+        public Type<ProcessingGhost> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server → client: the Access Ports the open terminal can write processing cards for. */
+    public record TerminalMachines(int containerId, List<EncodingTerminalMenu.MachineView> machines) implements CustomPacketPayload {
+        public static final Type<TerminalMachines> TYPE = new Type<>(Jasm.id("terminal_machines"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, TerminalMachines> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, TerminalMachines::containerId,
+                EncodingTerminalMenu.MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(EncodingTerminalMenu.MAX_MACHINES)),
+                TerminalMachines::machines,
+                TerminalMachines::new);
+
+        @Override
+        public Type<TerminalMachines> type() {
+            return TYPE;
+        }
+    }
+
+    /** Client → server: set the open Encoding Terminal's ghost grid (JEI); slots 9-11 are the processing outputs. {@code slot} -1 sets all nine. */
     public record Ghost(int containerId, int slot, List<ItemStack> items) implements CustomPacketPayload {
         public static final Type<Ghost> TYPE = new Type<>(Jasm.id("terminal_ghost"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Ghost> STREAM_CODEC = StreamCodec.composite(
@@ -195,7 +243,20 @@ public final class CraftPayloads {
         }
     }
 
-    /** Client → server: stop this Deck's job on {@code server}. */
+    /** Client → server: rename the open Access Port; empty goes back to the machine's name. */
+    public record PortName(int containerId, String name) implements CustomPacketPayload {
+        public static final Type<PortName> TYPE = new Type<>(Jasm.id("port_name"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortName> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortName::containerId,
+                ByteBufCodecs.stringUtf8(AccessPortMenu.MAX_NAME), PortName::name,
+                PortName::new);
+
+        @Override
+        public Type<PortName> type() {
+            return TYPE;
+        }
+    }
+
     /** Client → server: open the screen of the server running one of this Deck's jobs. */
     public record OpenServer(int containerId, BlockPos server) implements CustomPacketPayload {
         public static final Type<OpenServer> TYPE = new Type<>(Jasm.id("craft_open_server"));
@@ -210,6 +271,7 @@ public final class CraftPayloads {
         }
     }
 
+    /** Client → server: stop this Deck's job on {@code server}. */
     public record Cancel(int containerId, BlockPos server) implements CustomPacketPayload {
         public static final Type<Cancel> TYPE = new Type<>(Jasm.id("craft_cancel"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Cancel> STREAM_CODEC = StreamCodec.composite(

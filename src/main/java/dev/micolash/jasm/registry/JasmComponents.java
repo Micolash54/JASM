@@ -3,6 +3,7 @@ package dev.micolash.jasm.registry;
 import com.mojang.serialization.Codec;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
+import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
@@ -42,6 +43,10 @@ public final class JasmComponents {
     /** A Filled Recipe Card's recipe. */
     public static final Supplier<DataComponentType<RecipeCard>> RECIPE_CARD = COMPONENTS.registerComponentType(
             "recipe_card", b -> b.persistent(RecipeCard.CODEC).networkSynchronized(RecipeCard.STREAM_CODEC));
+
+    /** A Filled Recipe Card's recipe for a machine behind an Access Port. */
+    public static final Supplier<DataComponentType<ProcessingCard>> PROCESSING_CARD = COMPONENTS.registerComponentType(
+            "processing_card", b -> b.persistent(ProcessingCard.CODEC).networkSynchronized(ProcessingCard.STREAM_CODEC));
 
     /** An Encoding Terminal's identity: Crafting Decks paired with it remember it. */
     public static final Supplier<DataComponentType<UUID>> TERMINAL_ID = COMPONENTS.registerComponentType(

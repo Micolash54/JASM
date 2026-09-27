@@ -91,8 +91,8 @@ public final class Jobs {
     }
 
     /** Cards on {@code network} in racks with power that {@code player} may use. */
-    public static List<RecipeCard> cards(CableNetwork network, ServerPlayer player) {
-        Set<RecipeCard> cards = new LinkedHashSet<>();
+    public static List<Card> cards(CableNetwork network, ServerPlayer player) {
+        Set<Card> cards = new LinkedHashSet<>();
         for (RecipeRackBlockEntity rack : network.machines(RecipeRackBlockEntity.class)) {
             if (MachineAccess.canUse(rack, player)) {
                 cards.addAll(rack.cards());
@@ -102,12 +102,23 @@ public final class Jobs {
     }
 
     /** Every card on the network, whoever may use them: what a running job may keep using. */
-    static Set<RecipeCard> allCards(CableNetwork network) {
-        Set<RecipeCard> cards = new HashSet<>();
+    static Set<Card> allCards(CableNetwork network) {
+        Set<Card> cards = new HashSet<>();
         for (RecipeRackBlockEntity rack : network.machines(RecipeRackBlockEntity.class)) {
             cards.addAll(rack.cards());
         }
         return cards;
+    }
+
+    /** Whether a processing card has a machine it can use: one of its ports stands on the network and faces something. */
+    static boolean reachable(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
+        for (BlockPos pos : card.ports()) {
+            AccessPortBlockEntity port = Machines.port(level, network, pos);
+            if (port != null && Machines.hasMachine(port)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // --- planning ---
@@ -143,7 +154,7 @@ public final class Jobs {
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
         Map<ItemResource, Long> stock = DeckStorage.contents(store, deck);
-        CardBook book = new CardBook(level, cards(network, player), stock.keySet());
+        CardBook book = new CardBook(level, cards(network, player), stock.keySet(), card -> reachable(level, network, card));
         CraftPlanner.Plan<ItemResource> plan = CraftPlanner.plan(target, Math.max(1, amount), stock, book);
         List<ServerOption> servers = new ArrayList<>();
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
@@ -160,8 +171,9 @@ public final class Jobs {
             }
         }
         String problem = switch (plan.problem()) {
-            case NO_PATTERN -> "message.jasm.craft.no_card";
-            case MISSING -> "message.jasm.craft.missing";
+            case NO_PATTERN -> book.unreachable(target) ? "message.jasm.craft.machine_missing" : "message.jasm.craft.no_card";
+            case MISSING -> plan.missing().keySet().stream().anyMatch(book::unreachable) ? "message.jasm.craft.machine_missing"
+                    : "message.jasm.craft.missing";
             case TOO_COMPLEX -> "message.jasm.craft.too_complex";
             case NONE -> servers.isEmpty() ? "message.jasm.craft.no_server"
                     : chosen < 0 ? (servers.stream().anyMatch(ServerOption::fits) ? "message.jasm.craft.servers_busy" : "message.jasm.craft.too_big")
@@ -231,7 +243,7 @@ public final class Jobs {
         }
         List<CraftingJob.Step> steps = new ArrayList<>();
         for (CraftPlanner.Step<ItemResource> step : preview.plan().steps()) {
-            steps.add(CraftingJob.step(((CardBook.CardPattern) step.pattern()).card().card(), step.crafts()));
+            steps.add(CraftingJob.step(((CardBook.Entry) step.pattern()).card(), step.crafts()));
         }
         UUID id = UUID.randomUUID();
         CraftingJob job = CraftingJob.start(id, record.serial(), record.id(), player.getUUID(), player.getPlainTextName(), deckId,
@@ -276,12 +288,20 @@ public final class Jobs {
             return;
         }
         CableNetwork network = Networks.at(level, server.getBlockPos());
-        Set<RecipeCard> cards = network == null ? Set.of() : allCards(network);
+        Set<Card> cards = network == null ? Set.of() : allCards(network);
         boolean changed = finishCrafts(level, job, record, store);
+        changed |= collect(level, network, job, record, store);
+        if (job.phase == CraftingJob.Phase.CANCELLING && !job.sent.isEmpty()) {
+            // Whatever is out in machines stays there; the job stops waiting for it.
+            release(level, job);
+            changed = true;
+        }
         boolean started = false;
         boolean missingCard = false;
+        // A machine that can't be used right now: the job waits for it rather than giving up.
+        String machineBlocked = "";
         if (job.phase == CraftingJob.Phase.CRAFTING) {
-            int free = server.parallel() - job.running.size();
+            int free = server.parallel() - job.running.size() - job.sent.size();
             Map<ItemResource, Long> reserved = reserved(job);
             for (int i = 0; i < job.steps.size() && free > 0; i++) {
                 CraftingJob.Step step = job.steps.get(i);
@@ -290,6 +310,15 @@ public final class Jobs {
                 }
                 if (!cards.contains(step.card)) {
                     missingCard = true;
+                    continue;
+                }
+                if (step.card instanceof ProcessingCard processing) {
+                    Sending sending = send(level, network, job, i, processing, record, store, reserved, free);
+                    free -= sending.sent();
+                    started |= sending.sent() > 0;
+                    if (machineBlocked.isEmpty()) {
+                        machineBlocked = sending.blocked();
+                    }
                     continue;
                 }
                 CardRecipes.Resolved card = job.resolved(level, i);
@@ -313,14 +342,19 @@ public final class Jobs {
         if (started || changed) {
             server.setChanged();
         }
-        job.pause = missingCard && job.running.isEmpty() ? "no_card" : "";
+        boolean idle = job.running.isEmpty() && job.sent.isEmpty();
+        job.pause = !idle ? "" : missingCard ? "no_card" : machineBlocked;
+        job.waiting = waiting(level, network, job);
         boolean stepsLeft = job.steps.stream().anyMatch(s -> s.left > 0);
-        if (job.running.isEmpty()) {
+        if (!machineBlocked.isEmpty()) {
+            job.stuck = 0;
+        }
+        if (idle) {
             if (job.phase == CraftingJob.Phase.CANCELLING || !stepsLeft) {
                 job.phase = CraftingJob.Phase.RETURNING;
                 job.pause = "";
                 server.setChanged();
-            } else if (!missingCard && !started && ++job.stuck >= STUCK_TICKS) {
+            } else if (!missingCard && machineBlocked.isEmpty() && !started && ++job.stuck >= STUCK_TICKS) {
                 job.phase = CraftingJob.Phase.RETURNING;
                 job.pause = "";
                 server.setChanged();
@@ -368,6 +402,155 @@ public final class Jobs {
             }
         }
         return any;
+    }
+
+    // --- machines ---
+
+    /**
+     * How sending went: how many sets went, and, when the ingredients were there but nothing could go, why:
+     * {@code "no_machine"} (none of the card's ports can be reached) or {@code "machine_busy"} (their machines are
+     * taken by another card, full, or without power). Empty otherwise.
+     */
+    private record Sending(int sent, String blocked) {}
+
+    /**
+     * Sends sets of a processing card's ingredients into its machines, one set at a time, each to the port with the
+     * fewest sets out, while there are free Processor slots and ingredients.
+     */
+    private static Sending send(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, int stepIndex, ProcessingCard card,
+            WaferRecord record, WaferStore store, Map<ItemResource, Long> reserved, int free) {
+        CraftingJob.Step step = job.steps.get(stepIndex);
+        List<AccessPortBlockEntity> ports = new ArrayList<>();
+        boolean anyMachine = false;
+        for (BlockPos pos : card.ports()) {
+            AccessPortBlockEntity port = Machines.port(level, network, pos);
+            if (port != null && Machines.hasMachine(port)) {
+                anyMachine = true;
+                if (port.running() && port.freeFor(job.id, stepIndex)) {
+                    ports.add(port);
+                }
+            }
+        }
+        Map<ItemResource, Long> set = new HashMap<>();
+        for (ProcessingCard.Amount input : card.usedInputs()) {
+            set.merge(input.item(), (long) input.count(), Long::sum);
+        }
+        List<ProcessingCard.Amount> expected = card.outputs().stream().filter(a -> !a.isEmpty()).toList();
+        int sent = 0;
+        String blocked = "";
+        while (sent < free && step.left > 0) {
+            boolean enough = set.entrySet().stream()
+                    .allMatch(e -> record.count(e.getKey()) - reserved.getOrDefault(e.getKey(), 0L) >= e.getValue());
+            if (!enough) {
+                break;
+            }
+            if (ports.isEmpty()) {
+                blocked = sent > 0 ? "" : anyMachine ? "machine_busy" : "no_machine";
+                break;
+            }
+            ports.sort(Comparator.comparingLong(p -> job.sent.stream().filter(s -> s.port.equals(p.getBlockPos())).count()));
+            AccessPortBlockEntity port = ports.getFirst();
+            if (!Machines.push(port, card.usedInputs())) {
+                // Full, or it doesn't take these: try the others, and this one again next tick.
+                ports.remove(port);
+                continue;
+            }
+            set.forEach((key, n) -> store.extract(record, key, n, false, null));
+            job.sent.add(new CraftingJob.Sent(stepIndex, port.getBlockPos(), expected, level.getGameTime()));
+            port.lock(job.id, stepIndex);
+            step.left--;
+            sent++;
+        }
+        return new Sending(sent, blocked);
+    }
+
+    /**
+     * Takes in what came back through the ports the job's sets went to. Everything is kept; what the sets wait for
+     * counts toward the oldest ones first. A set with nothing left to wait for frees its Processor slot, and a port
+     * with no sets left is free again. Returns whether anything arrived.
+     */
+    private static boolean collect(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, WaferRecord record, WaferStore store) {
+        if (job.sent.isEmpty()) {
+            return false;
+        }
+        boolean any = false;
+        Set<BlockPos> ports = new LinkedHashSet<>();
+        job.sent.forEach(s -> ports.add(s.port));
+        for (BlockPos pos : ports) {
+            AccessPortBlockEntity port = Machines.port(level, network, pos);
+            if (port == null) {
+                continue;
+            }
+            List<CraftingJob.Sent> here = job.sent.stream().filter(s -> s.port.equals(pos)).toList();
+            if (!job.id.equals(port.lockJob())) {
+                // The port forgot (a crash rewound it, or it was mined and put back): it is this job's again.
+                port.lock(job.id, here.getFirst().step);
+            }
+            for (ItemStack stack : port.takeIntake()) {
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                ItemResource key = ItemResource.of(stack);
+                long left = stack.getCount();
+                store.insert(record, key, left, false, null);
+                any = true;
+                for (CraftingJob.Sent set : here) {
+                    if (left <= 0) {
+                        break;
+                    }
+                    left -= set.arrive(key, left);
+                }
+            }
+            job.sent.removeIf(CraftingJob.Sent::done);
+            if (job.sent.stream().noneMatch(s -> s.port.equals(pos))) {
+                port.unlock();
+            }
+        }
+        return any;
+    }
+
+    /** The job stops waiting on machines: its sets are forgotten and its ports let go. */
+    private static void release(ServerLevel level, CraftingJob job) {
+        for (CraftingJob.Sent set : job.sent) {
+            if (level.isLoaded(set.port) && level.getBlockEntity(set.port) instanceof AccessPortBlockEntity port && job.id.equals(port.lockJob())) {
+                port.unlock();
+            }
+        }
+        job.sent.clear();
+    }
+
+    /**
+     * A chunk with a port or server of this job is being saved and unloaded: the job's items are written too, so a
+     * crash later can't find a set both inside the machine and back in the job.
+     */
+    static void writeNow(MinecraftServer server, UUID jobId) {
+        WaferStore store = WaferStore.ifOpen(server);
+        AutocraftState.Job entry = AutocraftState.get(server).job(jobId).orElse(null);
+        if (store != null && entry != null) {
+            store.bySerial(entry.serial()).filter(r -> r.id().equals(entry.recordId())).ifPresent(store::writeNow);
+        }
+    }
+
+    /** The machine the job has waited on longest: its name, what is still to come, and for how long. */
+    private static CraftingJob.@Nullable Waiting waiting(ServerLevel level, @Nullable CableNetwork network, CraftingJob job) {
+        CraftingJob.Sent oldest = job.sent.stream().min(Comparator.comparingLong(s -> s.since)).orElse(null);
+        if (oldest == null || oldest.waiting.isEmpty()) {
+            return null;
+        }
+        ItemResource item = oldest.waiting.getFirst().item();
+        long count = 0;
+        for (CraftingJob.Sent set : job.sent) {
+            if (set.port.equals(oldest.port)) {
+                for (ProcessingCard.Amount amount : set.waiting) {
+                    if (amount.item().equals(item)) {
+                        count += amount.count();
+                    }
+                }
+            }
+        }
+        AccessPortBlockEntity port = Machines.port(level, network, oldest.port);
+        String name = port == null ? Machines.blockName(level, oldest.port).getString() : port.machineName().getString();
+        return new CraftingJob.Waiting(name, item, count, Math.max(0, level.getGameTime() - oldest.since));
     }
 
     /** Ingredients running crafts have set aside. */
@@ -474,6 +657,7 @@ public final class Jobs {
 
     /** The job is over: the server is free, and its entry goes once its record is safely written. */
     private static void finish(ServerLevel level, CraftingServerBlockEntity server, CraftingJob job) {
+        release(level, job);
         server.setJob(null);
         AutocraftState.get(level.getServer()).finishJob(job.id);
     }
@@ -645,6 +829,8 @@ public final class Jobs {
             case "waiting_player" -> 3;
             case "waiting_space" -> 4;
             case "no_network" -> 5;
+            case "machine_busy" -> 6;
+            case "no_machine" -> 7;
             default -> 0;
         };
     }

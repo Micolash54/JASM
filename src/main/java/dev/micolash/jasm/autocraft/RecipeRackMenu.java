@@ -26,7 +26,8 @@ public class RecipeRackMenu extends AbstractContainerMenu {
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
     static final int DATA_RUNNING = 2;
-    static final int DATA_COUNT = 3;
+    static final int DATA_MISSING = 3;
+    static final int DATA_COUNT = 4;
 
     private static final Identifier EMPTY_CARD = Jasm.id("container/empty_card");
 
@@ -79,6 +80,11 @@ public class RecipeRackMenu extends AbstractContainerMenu {
 
     public boolean running() {
         return data.get(DATA_RUNNING) != 0;
+    }
+
+    /** Whether card slot {@code slot} holds a processing card whose machines can't be reached. */
+    public boolean machineMissing(int slot) {
+        return slot >= 0 && slot < RecipeRackBlockEntity.SLOTS && (data.get(DATA_MISSING) & 0xFFFF & (1 << slot)) != 0;
     }
 
     @Override

@@ -26,6 +26,10 @@ public class RecipeRackScreen extends AbstractContainerScreen<RecipeRackMenu> {
         JasmGui.panel(graphics, leftPos, topPos, imageWidth, imageHeight);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
+            if (menu.machineMissing(slot.index)) {
+                // A red well: this card's machine can't be reached.
+                graphics.fill(leftPos + slot.x, topPos + slot.y, leftPos + slot.x + 16, topPos + slot.y + 16, 0x80F38BA8);
+            }
         }
         JasmGui.bar(graphics, leftPos + BAR_X, topPos + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
     }
@@ -37,6 +41,17 @@ public class RecipeRackScreen extends AbstractContainerScreen<RecipeRackMenu> {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
         }
+    }
+
+    /** A card whose machine can't be reached says so at the top of its tooltip. */
+    @Override
+    protected java.util.List<Component> getTooltipFromContainerItem(net.minecraft.world.item.ItemStack stack) {
+        java.util.List<Component> lines = super.getTooltipFromContainerItem(stack);
+        if (hoveredSlot != null && menu.machineMissing(hoveredSlot.index)) {
+            lines = new java.util.ArrayList<>(lines);
+            lines.add(1, Component.translatable("screen.jasm.rack.machine_missing").withStyle(net.minecraft.ChatFormatting.RED));
+        }
+        return lines;
     }
 
     @Override

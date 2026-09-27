@@ -35,6 +35,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(GeneratorInfo.Client.INSTANCE, CombustionGeneratorBlock.class);
         registration.registerEnergyStorageClient(InfiniteEnergy.INSTANCE);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
+        registration.registerBlockComponent(MachineInfo.Client.INSTANCE, dev.micolash.jasm.autocraft.AccessPortBlock.class);
         // A Recipe Rack says how many cards it holds; the list of every card would only crowd the box.
         registration.addTooltipCollectedCallback((box, accessor) -> {
             if (accessor instanceof BlockAccessor block && block.getBlockEntity() instanceof RecipeRackBlockEntity) {

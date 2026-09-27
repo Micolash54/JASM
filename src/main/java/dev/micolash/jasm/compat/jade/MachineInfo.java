@@ -1,6 +1,7 @@
 package dev.micolash.jasm.compat.jade;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
@@ -20,13 +21,15 @@ import snownee.jade.api.config.IPluginConfig;
 
 /**
  * Crafting-network blocks: whose they are and whether they have power; for a Recipe Rack, how many cards it holds;
- * for a Crafting Server, what its job makes and how far along it is.
+ * for a Crafting Server, what its job makes and how far along it is; for an Access Port, the machine it faces and
+ * whether a job is using it.
  */
 public class MachineInfo implements StreamServerDataProvider<BlockAccessor, MachineInfo.Data> {
     public static final MachineInfo INSTANCE = new MachineInfo();
 
-    /** {@code phase}: -1 no job, else the job's phase. {@code cards}: -1 when not a rack. */
-    public record Data(String owner, boolean running, int cards, int phase, int progress, ItemStack target, long amount) {
+    /** {@code phase}: -1 no job, else the job's phase. {@code cards}: -1 when not a rack. {@code machine}: empty when not a port. */
+    public record Data(String owner, boolean running, int cards, int phase, int progress, ItemStack target, long amount, String machine,
+            boolean inUse) {
         static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, Data::owner,
                 ByteBufCodecs.BOOL, Data::running,
@@ -35,6 +38,8 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                 ByteBufCodecs.VAR_INT, Data::progress,
                 ItemStack.OPTIONAL_STREAM_CODEC, Data::target,
                 ByteBufCodecs.VAR_LONG, Data::amount,
+                ByteBufCodecs.STRING_UTF8, Data::machine,
+                ByteBufCodecs.BOOL, Data::inUse,
                 Data::new);
     }
 
@@ -48,7 +53,8 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
         CraftingJob job = machine instanceof CraftingServerBlockEntity server ? server.job() : null;
         return new Data(machine.ownerName(), machine.running(), cards, job == null ? -1 : job.phase().ordinal(),
                 job == null ? 0 : Math.round(job.progress() * 100), job == null || job.target() == null ? ItemStack.EMPTY : job.target().create(),
-                job == null ? 0 : job.amount());
+                job == null ? 0 : job.amount(), machine instanceof AccessPortBlockEntity port ? port.machineName().getString() : "",
+                machine instanceof AccessPortBlockEntity port && port.lockJob() != null);
     }
 
     @Override
@@ -73,6 +79,10 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                 }
                 if (!data.running()) {
                     tooltip.add(Component.translatable("screen.jasm.machine.no_power"));
+                }
+                if (!data.machine().isEmpty()) {
+                    tooltip.add(Component.translatable("screen.jasm.port.machine", data.machine()));
+                    tooltip.add(Component.translatable(data.inUse() ? "screen.jasm.port.in_use" : "screen.jasm.port.idle"));
                 }
                 if (data.cards() >= 0) {
                     tooltip.add(Component.translatable("jade.jasm.rack.cards", data.cards()));

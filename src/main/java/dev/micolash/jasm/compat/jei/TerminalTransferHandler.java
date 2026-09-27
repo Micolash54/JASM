@@ -50,6 +50,14 @@ final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTe
     @SuppressWarnings("removal")
     public @Nullable IRecipeTransferError transferRecipe(EncodingTerminalMenu menu, RecipeHolder<CraftingRecipe> recipe, IRecipeSlotsView slots,
             Player player, boolean maxTransfer, boolean doTransfer) {
+        if (menu.processing()) {
+            // With a machine chosen, a crafting recipe fills the processing grid like any other.
+            if (doTransfer) {
+                ProcessingTransferHandler.send(menu, ProcessingTransferHandler.items(slots, RecipeIngredientRole.INPUT),
+                        ProcessingTransferHandler.items(slots, RecipeIngredientRole.OUTPUT));
+            }
+            return null;
+        }
         List<IRecipeSlotView> inputs = slots.getSlotViews(RecipeIngredientRole.INPUT);
         if (inputs.size() > 9) {
             return helper.createInternalError();

@@ -23,7 +23,7 @@ public final class CardRecipes {
 
     /** Why a grid can't be encoded, or the card it makes. */
     public sealed interface Encoding {
-        record Card(RecipeCard card) implements Encoding {}
+        record Card(dev.micolash.jasm.autocraft.Card card) implements Encoding {}
 
         record Refused(String messageKey) implements Encoding {}
     }

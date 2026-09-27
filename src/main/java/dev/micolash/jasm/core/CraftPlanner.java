@@ -24,8 +24,13 @@ public final class CraftPlanner<K> {
 
         long outputCount();
 
-        /** Each used slot: the items it accepts, the encoded one first. One item per slot per craft. */
+        /** Each used slot: the items it accepts, the encoded one first. */
         List<List<K>> slots();
+
+        /** How many items slot {@code slot} (an index into {@link #slots()}) takes per craft. */
+        default long amount(int slot) {
+            return 1;
+        }
 
         /** Left behind by one craft, besides the output. */
         Map<K, Long> remainders();
@@ -98,11 +103,12 @@ public final class CraftPlanner<K> {
     /** Gathers the ingredients for {@code crafts} of {@code pattern}, then adds the step. */
     private void run(Pattern<K> pattern, long crafts, int depth) {
         // Slots that take the same items are supplied together, so their ingredients are crafted in one go.
-        Map<List<K>, Integer> groups = new LinkedHashMap<>();
-        for (List<K> options : pattern.slots()) {
-            groups.merge(options, 1, Integer::sum);
+        Map<List<K>, Long> groups = new LinkedHashMap<>();
+        List<List<K>> slots = pattern.slots();
+        for (int i = 0; i < slots.size(); i++) {
+            groups.merge(slots.get(i), pattern.amount(i), Long::sum);
         }
-        for (Map.Entry<List<K>, Integer> group : groups.entrySet()) {
+        for (Map.Entry<List<K>, Long> group : groups.entrySet()) {
             supply(group.getKey(), saturatingMul(crafts, group.getValue()), depth);
             if (tooComplex) {
                 return;

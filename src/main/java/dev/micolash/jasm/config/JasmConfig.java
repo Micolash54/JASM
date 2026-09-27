@@ -60,6 +60,9 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue SERVER_DRAIN = BUILDER
             .comment("FE a Crafting Server uses each tick on its own, busy or idle")
             .defineInRange("serverDrain", 20, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue PORT_DRAIN = BUILDER
+            .comment("FE an Access Port uses each tick")
+            .defineInRange("portDrain", 2, 0, 1_000_000);
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_BASIC = BUILDER
             .comment("FE each Basic Processor adds to its server's use per tick")
             .defineInRange("basicProcessorDrain", 10, 0, 1_000_000);

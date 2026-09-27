@@ -2,6 +2,7 @@ package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveMenu;
+import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
@@ -33,6 +34,9 @@ public final class JasmMenus {
 
     public static final Supplier<MenuType<CraftingServerMenu>> CRAFTING_SERVER = MENUS.register("crafting_server",
             () -> new MenuType<>(CraftingServerMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<AccessPortMenu>> ACCESS_PORT = MENUS.register("access_port",
+            () -> IMenuTypeExtension.create(AccessPortMenu::client));
 
     private JasmMenus() {}
 }

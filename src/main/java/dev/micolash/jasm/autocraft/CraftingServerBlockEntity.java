@@ -87,6 +87,15 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         server.shown.setItem(0, job == null || job.target() == null ? ItemStack.EMPTY : job.target().create().copyWithCount(1));
     }
 
+    /** A job with sets out in machines has its items written as this chunk is saved (see {@link Jobs#writeNow}). */
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        if (job != null && job.sentCount() > 0 && level instanceof ServerLevel serverLevel) {
+            Jobs.writeNow(serverLevel.getServer(), job.id());
+        }
+    }
+
     @Override
     public int drainPerTick() {
         int drain = JasmConfig.SERVER_DRAIN.getAsInt();

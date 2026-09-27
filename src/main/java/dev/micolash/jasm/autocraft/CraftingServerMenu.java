@@ -77,6 +77,9 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     private final int deckSlot;
     /** Tells the screen whether it was opened from a Deck (1) or not (0). */
     private final ContainerData remoteData;
+    private final Player viewer;
+    /** What the job waits on at a machine: on the server the line last sent, on the client the last received. */
+    private @Nullable Component waiting;
 
     /** Server side, at the block. */
     public CraftingServerMenu(int containerId, Inventory inventory, CraftingServerBlockEntity server, ContainerLevelAccess access) {
@@ -108,6 +111,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         this.deckId = deckId;
         this.deckSlot = deckSlot;
         this.remoteData = new SimpleContainerData(1);
+        this.viewer = inventory.player;
         remoteData.set(0, deckId != null ? 1 : 0);
         for (int i = 0; i < CraftingServerBlockEntity.PROCESSOR_SLOTS; i++) {
             addSlot(new PartSlot(this, parts, i, PARTS_X, PARTS_Y + i * 18, EMPTY_PROCESSOR));
@@ -126,6 +130,33 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         }
         addDataSlots(data);
         addDataSlots(remoteData);
+    }
+
+    /** Sends the line saying what the job waits on at a machine whenever it changes. */
+    @Override
+    public void broadcastChanges() {
+        super.broadcastChanges();
+        if (server == null || !(viewer instanceof ServerPlayer player)) {
+            return;
+        }
+        CraftingJob job = server.job();
+        Component now = job == null || job.waiting() == null ? null : job.waiting().line();
+        if (!java.util.Objects.equals(now, waiting)) {
+            waiting = now;
+            if (player.connection.hasChannel(CraftPayloads.ServerWaiting.TYPE)) {
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
+                        new CraftPayloads.ServerWaiting(containerId, java.util.Optional.ofNullable(now)));
+            }
+        }
+    }
+
+    /** Client side: what the job waits on at a machine, or null. */
+    public @Nullable Component waiting() {
+        return waiting;
+    }
+
+    public void setWaiting(@Nullable Component waiting) {
+        this.waiting = waiting;
     }
 
     /** Whether this screen was opened from a Crafting Deck, so it can go back to it. */

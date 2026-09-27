@@ -444,6 +444,16 @@ public final class WaferStore {
         }
     }
 
+    /**
+     * Writes a record now if it has changes, without waiting for the next save: for a job whose items went into a
+     * machine whose chunk is being saved right now, so that the two agree after a crash.
+     */
+    public void writeNow(WaferRecord record) {
+        if (record.isDirty()) {
+            write(record);
+        }
+    }
+
     /** Full save: every player file has already been written. */
     void writeAllDirty() {
         for (WaferRecord record : records.values()) {

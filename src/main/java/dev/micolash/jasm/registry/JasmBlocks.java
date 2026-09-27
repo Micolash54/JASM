@@ -4,6 +4,8 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveTier;
+import dev.micolash.jasm.autocraft.AccessPortBlock;
+import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.CraftingServerBlock;
 import dev.micolash.jasm.autocraft.CraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlock;
@@ -87,6 +89,12 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<CraftingServerBlockEntity>> CRAFTING_SERVER_ENTITY = BLOCK_ENTITIES.register(
             "crafting_server", () -> new BlockEntityType<>(CraftingServerBlockEntity::new, CRAFTING_SERVER.get()));
+
+    public static final DeferredBlock<AccessPortBlock> ACCESS_PORT = BLOCKS.registerBlock("access_port",
+            AccessPortBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<AccessPortBlockEntity>> ACCESS_PORT_ENTITY = BLOCK_ENTITIES.register(
+            "access_port", () -> new BlockEntityType<>(AccessPortBlockEntity::new, ACCESS_PORT.get()));
 
     /** Undyed first, then one per dye colour. */
     private static final Map<Optional<DyeColor>, DeferredBlock<DataCableBlock>> CABLES = new LinkedHashMap<>();

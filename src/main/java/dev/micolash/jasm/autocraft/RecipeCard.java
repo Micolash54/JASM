@@ -18,7 +18,7 @@ import net.minecraft.world.item.crafting.Recipe;
  * What a Filled Recipe Card remembers: the recipe, the 3×3 grid as it was encoded, what one craft makes, and whether
  * the recipe is shapeless. The grid is only an example: crafting may use any item the recipe accepts in a slot.
  */
-public record RecipeCard(ResourceKey<Recipe<?>> recipe, ItemContainerContents grid, ItemStackTemplate output, boolean shapeless) {
+public record RecipeCard(ResourceKey<Recipe<?>> recipe, ItemContainerContents grid, ItemStackTemplate output, boolean shapeless) implements Card {
     public static final Codec<RecipeCard> CODEC = RecordCodecBuilder.create(i -> i.group(
                     ResourceKey.codec(Registries.RECIPE).fieldOf("recipe").forGetter(RecipeCard::recipe),
                     ItemContainerContents.CODEC.fieldOf("grid").forGetter(RecipeCard::grid),
@@ -41,6 +41,7 @@ public record RecipeCard(ResourceKey<Recipe<?>> recipe, ItemContainerContents gr
     }
 
     /** What one craft makes. A fresh copy. */
+    @Override
     public ItemStack result() {
         return output.create();
     }

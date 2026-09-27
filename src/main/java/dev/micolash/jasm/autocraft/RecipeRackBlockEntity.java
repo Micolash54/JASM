@@ -1,9 +1,11 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.Networks;
+import net.minecraft.server.level.ServerLevel;
 import dev.micolash.jasm.registry.JasmBlocks;
-import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,8 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     public static final int CAPACITY = 5_000;
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
+    /** One bit per slot: a processing card none of whose machines can be reached. Worked out once a second. */
+    private int missing;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -35,6 +39,7 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
                 case RecipeRackMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
                 case RecipeRackMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
                 case RecipeRackMenu.DATA_RUNNING -> running() ? 1 : 0;
+                case RecipeRackMenu.DATA_MISSING -> missing;
                 default -> 0;
             };
         }
@@ -54,6 +59,21 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
 
     static void serverTick(Level level, BlockPos pos, BlockState state, RecipeRackBlockEntity rack) {
         rack.payForTick();
+        if (level.getGameTime() % 20 == 0) {
+            rack.checkMachines((ServerLevel) level);
+        }
+    }
+
+    /** Marks the processing cards whose machines can't be reached, for the screen. */
+    private void checkMachines(ServerLevel level) {
+        CableNetwork network = Networks.at(level, worldPosition);
+        int bits = 0;
+        for (int i = 0; i < SLOTS; i++) {
+            if (Card.of(items.get(i)) instanceof ProcessingCard card && !Jobs.reachable(level, network, card)) {
+                bits |= 1 << i;
+            }
+        }
+        missing = bits;
     }
 
     @Override
@@ -62,11 +82,11 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     }
 
     /** The cards the network can see: none while the rack has no power. */
-    public List<RecipeCard> cards() {
-        List<RecipeCard> cards = new ArrayList<>();
+    public List<Card> cards() {
+        List<Card> cards = new ArrayList<>();
         if (running()) {
             for (ItemStack stack : items) {
-                RecipeCard card = stack.get(JasmComponents.RECIPE_CARD.get());
+                Card card = Card.of(stack);
                 if (card != null) {
                     cards.add(card);
                 }
@@ -80,7 +100,7 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     }
 
     public static boolean accepts(ItemStack stack) {
-        return stack.is(JasmItems.FILLED_RECIPE_CARD.get()) && stack.has(JasmComponents.RECIPE_CARD.get());
+        return stack.is(JasmItems.FILLED_RECIPE_CARD.get()) && Card.of(stack) != null;
     }
 
     @Override

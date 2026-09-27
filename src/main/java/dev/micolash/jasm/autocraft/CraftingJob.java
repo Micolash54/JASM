@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -18,7 +20,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * One job on a Crafting Server: what was asked for, the crafts still to run, the crafts running right now, and where
  * its items are (a hidden record in the wafer store). The items never sit anywhere else: a running craft only takes
- * its ingredients and adds its result when it finishes, in one step.
+ * its ingredients and adds its result when it finishes, in one step. The one exception is a set sent into a machine
+ * behind an Access Port: it leaves the record when it goes in, and what comes back is added as it arrives.
  */
 public final class CraftingJob {
     public enum Phase implements StringRepresentable {
@@ -40,22 +43,22 @@ public final class CraftingJob {
     /** One card and how many crafts of it are left. */
     public static final class Step {
         static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        RecipeCard.CODEC.fieldOf("card").forGetter(s -> s.card),
+                        Card.CODEC.fieldOf("card").forGetter(s -> s.card),
                         Codec.LONG.fieldOf("left").forGetter(s -> s.left),
                         Codec.LONG.fieldOf("total").forGetter(s -> s.total))
                 .apply(i, Step::new));
 
-        final RecipeCard card;
+        final Card card;
         long left;
         final long total;
 
-        Step(RecipeCard card, long left, long total) {
+        Step(Card card, long left, long total) {
             this.card = card;
             this.left = left;
             this.total = total;
         }
 
-        public RecipeCard card() {
+        public Card card() {
             return card;
         }
 
@@ -88,6 +91,65 @@ public final class CraftingJob {
         }
     }
 
+    /**
+     * One set of a processing card's ingredients sent into a machine: which step, through which Access Port, what
+     * has yet to come back, and when it went. It holds a Processor slot until nothing is left to wait for.
+     */
+    public static final class Sent {
+        static final Codec<Sent> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        Codec.INT.fieldOf("step").forGetter(s -> s.step),
+                        BlockPos.CODEC.fieldOf("port").forGetter(s -> s.port),
+                        ProcessingCard.Amount.CODEC.listOf().fieldOf("waiting").forGetter(s -> s.waiting),
+                        Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since))
+                .apply(i, Sent::new));
+
+        final int step;
+        final BlockPos port;
+        /** Still to come back; entries drop out as they arrive. */
+        final List<ProcessingCard.Amount> waiting;
+        /** Game time it was sent. */
+        final long since;
+
+        Sent(int step, BlockPos port, List<ProcessingCard.Amount> waiting, long since) {
+            this.step = step;
+            this.port = port.immutable();
+            this.waiting = new ArrayList<>(waiting);
+            this.since = since;
+        }
+
+        /** Counts {@code amount} of {@code key} as arrived. Returns how many of them this set was waiting for. */
+        long arrive(ItemResource key, long amount) {
+            for (int i = 0; i < waiting.size(); i++) {
+                ProcessingCard.Amount wanted = waiting.get(i);
+                if (wanted.item().equals(key)) {
+                    long used = Math.min(amount, wanted.count());
+                    int rest = (int) (wanted.count() - used);
+                    if (rest <= 0) {
+                        waiting.remove(i);
+                    } else {
+                        waiting.set(i, new ProcessingCard.Amount(key, rest));
+                    }
+                    return used;
+                }
+            }
+            return 0;
+        }
+
+        boolean done() {
+            return waiting.isEmpty();
+        }
+    }
+
+    /** What a job is waiting on at a machine, for screens. */
+    public record Waiting(String machine, ItemResource item, long count, long ticks) {
+        /** "Waiting on Energized Smelter: 1 × Charcoal (0:12)". */
+        public Component line() {
+            long seconds = ticks / 20;
+            String time = seconds / 60 + ":" + String.format("%02d", seconds % 60);
+            return Component.translatable("screen.jasm.server.waiting", machine, count, item.toStack(1).getHoverName(), time);
+        }
+    }
+
     public static final Codec<CraftingJob> CODEC = RecordCodecBuilder.create(i -> i.group(
                     UUIDUtil.CODEC.fieldOf("id").forGetter(j -> j.id),
                     Codec.LONG.fieldOf("serial").forGetter(j -> j.serial),
@@ -99,6 +161,7 @@ public final class CraftingJob {
                     Codec.LONG.optionalFieldOf("amount", 0L).forGetter(j -> j.amount),
                     Step.CODEC.listOf().optionalFieldOf("steps", List.of()).forGetter(j -> j.steps),
                     Running.CODEC.listOf().optionalFieldOf("running", List.of()).forGetter(j -> j.running),
+                    Sent.CODEC.listOf().optionalFieldOf("sent", List.of()).forGetter(j -> j.sent),
                     Phase.CODEC.optionalFieldOf("phase", Phase.CRAFTING).forGetter(j -> j.phase),
                     Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer))
             .apply(i, CraftingJob::new));
@@ -114,11 +177,15 @@ public final class CraftingJob {
     final long amount;
     final List<Step> steps;
     final List<Running> running;
+    /** Sets of ingredients out in machines. */
+    final List<Sent> sent;
     /** The results go into the requester's inventory rather than onto the Deck. */
     final boolean toPlayer;
     Phase phase;
     /** Why nothing is happening right now, for screens; not saved. */
     String pause = "";
+    /** The machine the job has waited on longest, for screens; not saved. */
+    @Nullable Waiting waiting;
     /** Ticks in a row with nothing running and nothing able to start; not saved. */
     int stuck;
     /** Each step's card with its live recipe, looked up once; not saved. */
@@ -129,7 +196,8 @@ public final class CraftingJob {
     private record SlotKey(int step, int slot, ItemResource key) {}
 
     private CraftingJob(UUID id, long serial, UUID recordId, UUID requester, String requesterName, Optional<UUID> deck,
-            Optional<ItemStackTemplate> target, long amount, List<Step> steps, List<Running> running, Phase phase, boolean toPlayer) {
+            Optional<ItemStackTemplate> target, long amount, List<Step> steps, List<Running> running, List<Sent> sent, Phase phase,
+            boolean toPlayer) {
         this.id = id;
         this.serial = serial;
         this.recordId = recordId;
@@ -140,6 +208,7 @@ public final class CraftingJob {
         this.amount = amount;
         this.steps = new ArrayList<>(steps);
         this.running = new ArrayList<>(running);
+        this.sent = new ArrayList<>(sent);
         this.phase = phase;
         this.toPlayer = toPlayer;
     }
@@ -147,18 +216,19 @@ public final class CraftingJob {
     static CraftingJob start(UUID id, long serial, UUID recordId, UUID requester, String requesterName, UUID deck, ItemStackTemplate target,
             long amount, List<Step> steps, boolean toPlayer) {
         return new CraftingJob(id, serial, recordId, requester, requesterName, Optional.of(deck), Optional.of(target), amount, steps,
-                List.of(), Phase.CRAFTING, toPlayer);
+                List.of(), List.of(), Phase.CRAFTING, toPlayer);
     }
 
     /** A job found in the list of running jobs but missing from its server (after a crash): it only returns its items. */
     static CraftingJob adopted(AutocraftState.Job entry) {
         return new CraftingJob(entry.id(), entry.serial(), entry.recordId(), entry.requester(), entry.requesterName(), entry.deck(),
-                Optional.empty(), 0, List.of(), List.of(), Phase.RETURNING, false);
+                Optional.empty(), 0, List.of(), List.of(), List.of(), Phase.RETURNING, false);
     }
 
-    /** Step {@code index}'s card with its recipe, or null if the recipe is gone. */
+    /** Step {@code index}'s crafting card with its recipe, or null if the recipe is gone (or it is a processing card). */
     CardRecipes.@Nullable Resolved resolved(ServerLevel level, int index) {
-        return resolved.computeIfAbsent(index, i -> Optional.ofNullable(CardRecipes.resolve(level, steps.get(i).card))).orElse(null);
+        return resolved.computeIfAbsent(index, i -> steps.get(i).card instanceof RecipeCard card
+                ? Optional.ofNullable(CardRecipes.resolve(level, card)) : Optional.empty()).orElse(null);
     }
 
     /** Whether {@code key} may go in {@code slot} of step {@code step}'s card; remembered for the rest of the job. */
@@ -166,7 +236,7 @@ public final class CraftingJob {
         return accepted.computeIfAbsent(new SlotKey(step, slot, key), k -> card.accepts(level, slot, key));
     }
 
-    static Step step(RecipeCard card, long crafts) {
+    static Step step(Card card, long crafts) {
         return new Step(card, crafts, crafts);
     }
 
@@ -206,8 +276,18 @@ public final class CraftingJob {
         return steps;
     }
 
+    /** Crafts in progress, in the server and out in machines. */
     public int runningCount() {
-        return running.size();
+        return running.size() + sent.size();
+    }
+
+    /** Sets out in machines. */
+    public int sentCount() {
+        return sent.size();
+    }
+
+    public @Nullable Waiting waiting() {
+        return waiting;
     }
 
     public String pause() {
@@ -222,7 +302,7 @@ public final class CraftingJob {
             total += step.total;
             left += step.left;
         }
-        left += running.size();
+        left += running.size() + sent.size();
         return total == 0 ? 1F : Math.clamp(1F - left / (float) total, 0F, 1F);
     }
 }

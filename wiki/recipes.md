@@ -60,6 +60,7 @@ Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold 
 | ![Encoding Terminal](images/recipes/encoding_terminal.png) | **Encoding Terminal** | 4 × Iron Ingot, 1 × Glass Pane, 2 × Redstone, 1 × Crafting Table, 1 × Amethyst Shard |
 | ![Recipe Rack](images/recipes/recipe_rack.png) | **Recipe Rack** | 4 × Iron Ingot, 2 × Empty Recipe Card, 2 × Redstone, 1 × Bookshelf |
 | ![Crafting Server](images/recipes/crafting_server.png) | **Crafting Server** | 4 × Iron Ingot, 1 × Diamond, 2 × Crafting Table, 1 × Basic Processor, 1 × Redstone Block |
+| ![Access Port](images/recipes/access_port.png) | **Access Port** | 4 × Iron Ingot, 2 × Redstone, 2 × Data Cable, 1 × Hopper |
 | ![Data Cable](images/recipes/data_cable.png) | **Data Cable** | 6 × Iron Nugget, 2 × Redstone, 1 × Amethyst Shard |
 | ![Red Data Cable](images/recipes/red_data_cable.png) | **Red Data Cable** | 8 × Data Cable (any colour), 1 × Red Dye |
 
