@@ -1,12 +1,16 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
+import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
 
 /** Client-only setup. */
 @EventBusSubscriber(modid = Jasm.MODID, value = Dist.CLIENT)
@@ -17,6 +21,17 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerItemProperties(RegisterRangeSelectItemModelPropertyEvent event) {
         event.register(Jasm.id("deck_charge"), DeckCharge.MAP_CODEC);
+    }
+
+    @SubscribeEvent
+    static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(JasmBlocks.RECIPE_RACK_ENTITY.get(), RecipeRackRenderer::new);
+    }
+
+    /** The card the Recipe Rack draws in each filled slot. */
+    @SubscribeEvent
+    static void registerModels(ModelEvent.RegisterStandalone event) {
+        event.register(RecipeRackRenderer.CARD_MODEL, SimpleUnbakedStandaloneModel.simpleModelWrapper(RecipeRackRenderer.CARD_MODEL_ID));
     }
 
     @SubscribeEvent

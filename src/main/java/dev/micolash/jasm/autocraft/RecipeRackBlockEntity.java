@@ -10,8 +10,12 @@ import dev.micolash.jasm.registry.JasmItems;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -19,6 +23,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -31,6 +36,8 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     /** One bit per slot: a processing card none of whose machines can be reached. Worked out once a second. */
     private int missing;
+    /** One bit per slot that holds a card, as last sent to players. It's all their game needs to draw the cards. */
+    private int shownCards;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -62,6 +69,26 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         if (level.getGameTime() % 20 == 0) {
             rack.checkMachines((ServerLevel) level);
         }
+        int filled = rack.filledSlots();
+        if (filled != rack.shownCards) {
+            rack.shownCards = filled;
+            level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    private int filledSlots() {
+        int bits = 0;
+        for (int i = 0; i < SLOTS; i++) {
+            if (!items.get(i).isEmpty()) {
+                bits |= 1 << i;
+            }
+        }
+        return bits;
+    }
+
+    /** Whether the slot holds a card, as far as a player's game knows. */
+    public boolean showsCard(int slot) {
+        return (shownCards & (1 << slot)) != 0;
     }
 
     /** Marks the processing cards whose machines can't be reached, for the screen. */
@@ -149,5 +176,28 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         super.loadAdditional(input);
         items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
+    }
+
+    // Players only get which slots are filled, not the cards themselves.
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("cards", filledSlots());
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(ValueInput input) {
+        shownCards = input.getIntOr("cards", 0);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ValueInput input) {
+        shownCards = input.getIntOr("cards", 0);
     }
 }

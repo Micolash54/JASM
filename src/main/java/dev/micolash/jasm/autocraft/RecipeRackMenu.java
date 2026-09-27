@@ -17,11 +17,17 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
-/** The Recipe Rack's menu: 16 card slots in two rows, then the player's inventory (27) and hotbar (9). */
+/**
+ * The Recipe Rack's menu: 16 card slots in a 4 × 4 grid, laid out like the front of the block, then the player's
+ * inventory (27) and hotbar (9).
+ */
 public class RecipeRackMenu extends AbstractContainerMenu {
-    public static final int CARDS_X = 17;
+    public static final int COLUMNS = 4;
+    public static final int CARDS_X = (176 - COLUMNS * 18) / 2 + 1;
     public static final int CARDS_Y = 22;
-    public static final int INVENTORY_Y = 90;
+    /** Just under the last row of cards. */
+    public static final int CARDS_BOTTOM = CARDS_Y + RecipeRackBlockEntity.SLOTS / COLUMNS * 18;
+    public static final int INVENTORY_Y = CARDS_BOTTOM + 32;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -57,7 +63,7 @@ public class RecipeRackMenu extends AbstractContainerMenu {
         this.access = access;
         this.rack = rack;
         for (int i = 0; i < RecipeRackBlockEntity.SLOTS; i++) {
-            addSlot(new CardSlot(container, i, CARDS_X + (i % 8) * 18, CARDS_Y + (i / 8) * 18));
+            addSlot(new CardSlot(container, i, CARDS_X + (i % COLUMNS) * 18, CARDS_Y + (i / COLUMNS) * 18));
         }
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {

@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 
-/** The Recipe Rack screen: two rows of card slots under the title and charge bar. */
+/** The Recipe Rack screen: a 4 × 4 grid of card slots under the title and charge bar, like the front of the block. */
 public class RecipeRackScreen extends AbstractContainerScreen<RecipeRackMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = RecipeRackMenu.INVENTORY_Y + 58 + 18 + 6;
@@ -62,7 +62,7 @@ public class RecipeRackScreen extends AbstractContainerScreen<RecipeRackMenu> {
             // Between the cards and the inventory, wrapped to the panel.
             java.util.List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.translatable("screen.jasm.rack.no_power"), imageWidth - 16);
             for (int i = 0; i < Math.min(2, lines.size()); i++) {
-                graphics.text(font, lines.get(i), (imageWidth - font.width(lines.get(i))) / 2, RecipeRackMenu.CARDS_Y + 39 + i * 9, JasmGui.BAD, false);
+                graphics.text(font, lines.get(i), (imageWidth - font.width(lines.get(i))) / 2, RecipeRackMenu.CARDS_BOTTOM + 3 + i * 9, JasmGui.BAD, false);
             }
         }
     }
