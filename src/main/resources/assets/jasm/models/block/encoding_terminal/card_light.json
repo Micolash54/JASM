@@ -1,0 +1,20 @@
+{
+  "textures": {
+    "particle": "jasm:block/encoding_terminal_card",
+    "card": "jasm:block/encoding_terminal_card"
+  },
+  "elements": [
+    {
+      "name": "card",
+      "from": [8.5, 2, 1.5],
+      "to": [12.5, 2.5, 6],
+      "faces": {
+        "north": {"uv": [4, 0, 5, 1], "texture": "#card"},
+        "east": {"uv": [4, 0, 5, 1], "texture": "#card"},
+        "south": {"uv": [4, 0, 5, 1], "texture": "#card"},
+        "west": {"uv": [4, 0, 5, 1], "texture": "#card"},
+        "up": {"uv": [0, 0, 4, 4.5], "texture": "#card"}
+      }
+    }
+  ]
+}

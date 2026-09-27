@@ -1,0 +1,17 @@
+{
+  "textures": {
+    "particle": "jasm:block/encoding_terminal_screen",
+    "screen": "jasm:block/encoding_terminal_screen"
+  },
+  "elements": [
+    {
+      "name": "screen",
+      "from": [3, 8, 0.99],
+      "to": [13, 13, 0.99],
+      "shade_direction_override": "up",
+      "faces": {
+        "north": {"uv": [0, 0, 10, 5], "texture": "#screen"}
+      }
+    }
+  ]
+}

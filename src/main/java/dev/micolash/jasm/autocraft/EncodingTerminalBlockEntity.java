@@ -15,11 +15,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.SimpleContainer;
@@ -30,6 +34,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -45,6 +50,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static final int CARD_OUT = 1;
     public static final int PAIR = 2;
     public static final int SLOTS = 3;
+    /** Cards the two piles out front can show between them. */
+    public static final int PILE_CARDS = 16;
     public static final int CAPACITY = 10_000;
 
     /** What the menu shows about the ghost grid. */
@@ -94,6 +101,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     private boolean previewReady;
     /** Whether this block has told the list of terminals where it stands since it was placed or loaded. */
     private boolean placed;
+    /** The card piles and screen as last sent to players, packed by {@link #looks()}. */
+    private int shownLooks;
     private @Nullable UUID terminalId;
     private TrustList trust = TrustList.EMPTY;
 
@@ -137,6 +146,29 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (terminal.payForTick()) {
             terminal.pairDeck();
         }
+        int looks = terminal.looks();
+        if (looks != terminal.shownLooks) {
+            terminal.shownLooks = looks;
+            level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** Cards in the piles out front (one per four blank cards, sixteen at most), then one bit for "someone has it open". */
+    private int looks() {
+        int cards = Math.min(PILE_CARDS, (items.get(CARD_IN).getCount() + 3) / 4);
+        boolean inUse = level != null && level.players().stream()
+                .anyMatch(player -> player.containerMenu instanceof EncodingTerminalMenu menu && menu.terminal() == this);
+        return inUse ? cards | 1 << 5 : cards;
+    }
+
+    /** How many cards the piles out front show, as a player's game knows it. */
+    public int shownCards() {
+        return shownLooks & 31;
+    }
+
+    /** Whether a player has this terminal open, as a player's game knows it: the screen lights up. */
+    public boolean shownInUse() {
+        return (shownLooks >> 5 & 1) != 0;
     }
 
     /**
@@ -537,5 +569,28 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         super.removeComponentsFromTag(output);
         output.discard("terminal");
         output.discard("trust");
+    }
+
+    // Players only get what the front shows, not the cards, recipe or trust list.
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("looks", looks());
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(ValueInput input) {
+        shownLooks = input.getIntOr("looks", 0);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ValueInput input) {
+        shownLooks = input.getIntOr("looks", 0);
     }
 }
