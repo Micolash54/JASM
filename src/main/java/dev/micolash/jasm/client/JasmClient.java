@@ -26,12 +26,14 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(JasmBlocks.RECIPE_RACK_ENTITY.get(), RecipeRackRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), CraftingServerRenderer::new);
     }
 
-    /** The card the Recipe Rack draws in each filled slot. */
+    /** The cards, parts and fans the Recipe Rack and Crafting Server draw on top of their blocks. */
     @SubscribeEvent
     static void registerModels(ModelEvent.RegisterStandalone event) {
         event.register(RecipeRackRenderer.CARD_MODEL, SimpleUnbakedStandaloneModel.simpleModelWrapper(RecipeRackRenderer.CARD_MODEL_ID));
+        CraftingServerRenderer.registerModels(event);
     }
 
     @SubscribeEvent

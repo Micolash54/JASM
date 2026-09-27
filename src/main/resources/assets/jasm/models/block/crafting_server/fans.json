@@ -1,0 +1,40 @@
+{
+  "textures": {
+    "particle": "jasm:block/crafting_server_fan",
+    "fan": "jasm:block/crafting_server_fan"
+  },
+  "elements": [
+    {
+      "name": "fan_0",
+      "from": [1, 11, 14.05],
+      "to": [5, 15, 14.05],
+      "faces": {
+        "south": {"uv": [0, 0, 4, 4], "texture": "#fan"}
+      }
+    },
+    {
+      "name": "fan_1",
+      "from": [11, 11, 14.05],
+      "to": [15, 15, 14.05],
+      "faces": {
+        "south": {"uv": [0, 0, 4, 4], "texture": "#fan"}
+      }
+    },
+    {
+      "name": "fan_2",
+      "from": [1, 1, 14.05],
+      "to": [5, 5, 14.05],
+      "faces": {
+        "south": {"uv": [0, 0, 4, 4], "texture": "#fan"}
+      }
+    },
+    {
+      "name": "fan_3",
+      "from": [11, 1, 14.05],
+      "to": [15, 5, 14.05],
+      "faces": {
+        "south": {"uv": [0, 0, 4, 4], "texture": "#fan"}
+      }
+    }
+  ]
+}

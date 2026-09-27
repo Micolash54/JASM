@@ -4,8 +4,12 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -16,6 +20,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -37,6 +42,8 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     private boolean adoptChecked;
     /** What the job makes, for the screen. */
     private final SimpleContainer shown = new SimpleContainer(1);
+    /** The parts and power as last sent to players, packed by {@link #looks()}: all their game needs to draw the block. */
+    private int shownLooks;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -85,6 +92,40 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         CraftingJob job = server.job;
         // What the job makes; the screen writes the amount beside it.
         server.shown.setItem(0, job == null || job.target() == null ? ItemStack.EMPTY : job.target().create().copyWithCount(1));
+        int looks = server.looks();
+        if (looks != server.shownLooks) {
+            server.shownLooks = looks;
+            level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** Three bits per slot, the part's tier plus one (0 when empty), then one bit for power. */
+    private int looks() {
+        int bits = 0;
+        for (int i = 0; i < SLOTS; i++) {
+            Enum<?> tier = i < PROCESSOR_SLOTS ? ServerPartItem.processorOf(items.get(i)) : ServerPartItem.memoryOf(items.get(i));
+            if (tier != null) {
+                bits |= (tier.ordinal() + 1) << (3 * i);
+            }
+        }
+        return running() ? bits | 1 << (3 * SLOTS) : bits;
+    }
+
+    /** The tier of the Processor in {@code slot} as a player's game knows it, or null. */
+    public @Nullable ProcessorTier shownProcessor(int slot) {
+        int code = shownLooks >> (3 * slot) & 7;
+        return code == 0 ? null : ProcessorTier.values()[code - 1];
+    }
+
+    /** The tier of the Storage Module in module slot {@code slot} (0 to 3) as a player's game knows it, or null. */
+    public @Nullable MemoryTier shownModule(int slot) {
+        int code = shownLooks >> (3 * (PROCESSOR_SLOTS + slot)) & 7;
+        return code == 0 ? null : MemoryTier.values()[code - 1];
+    }
+
+    /** Whether the fans turn: the server has power. */
+    public boolean shownRunning() {
+        return (shownLooks >> (3 * SLOTS) & 1) != 0;
     }
 
     /** A job with sets out in machines has its items written as this chunk is saved (see {@link Jobs#writeNow}). */
@@ -220,5 +261,28 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         job = input.read("job", CraftingJob.CODEC).orElse(null);
+    }
+
+    // Players only get what the front and back show, not the parts or the job.
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("looks", looks());
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(ValueInput input) {
+        shownLooks = input.getIntOr("looks", 0);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ValueInput input) {
+        shownLooks = input.getIntOr("looks", 0);
     }
 }
