@@ -52,7 +52,7 @@ A Deck with a crafting grid. Made from a Deck of the same tier, or upgraded from
 
 ## Autocrafting
 
-Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold them for the network; Crafting Servers run the jobs. Data Cables join it all and carry power. Eight cables around any dye give eight cables of that colour.
+Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold them for the network; Crafting Servers run the jobs. Data Cables join it all and carry power. Eight cables around any dye give eight cables of that colour. A Filled Recipe Card crafted on its own turns back into an Empty Recipe Card.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
