@@ -63,6 +63,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.CRYSTAL_RESONATOR);
                 output.accept(JasmItems.CHIP_WORKSHOP);
                 output.accept(JasmItems.CRYSTAL_FOUNDRY);
+                output.accept(JasmItems.BITLING_STATION);
                 output.accept(JasmItems.BLANK_CHIP);
                 output.accept(JasmItems.UNQUENCHED_LOGIC_CHIP);
                 output.accept(JasmItems.UNQUENCHED_MEMORY_CHIP);

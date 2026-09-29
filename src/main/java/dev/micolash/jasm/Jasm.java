@@ -6,6 +6,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.crystal.Quenching;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.registry.JasmEntities;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmRecipes;
@@ -29,6 +30,7 @@ public final class Jasm {
         JasmComponents.COMPONENTS.register(modBus);
         JasmBlocks.BLOCKS.register(modBus);
         JasmBlocks.BLOCK_ENTITIES.register(modBus);
+        JasmEntities.ENTITIES.register(modBus);
         JasmItems.ITEMS.register(modBus);
         JasmTabs.TABS.register(modBus);
         JasmMenus.MENUS.register(modBus);

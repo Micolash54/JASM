@@ -23,6 +23,7 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Data Cables**: join the crafting blocks and carry power between them. Dye them to keep networks apart.
 - **Crystals and chips**: grow Data Crystals from seeded amethyst, cut them into Blank Chips, and cook and cool them into Logic and Memory Chips, the parts JASM's recipes are made of. The Crystal Foundry grows crystals in bulk, and a Crystal Resonator speeds up seeded amethyst.
 - **Chip Workshop and Bitlings**: a little robot helper works the Workshop, turning Blank Chips into Logic, Memory and Link Chips, and now and then a rare Advanced one. Bitlings learn from every chip they make and grow up into Nibblings and Bytelings. See [the guide](wiki/chips-and-bitlings.md).
+- **Bitling Station**: put a Bitling in it and a little living copy roams around, hops, rests, and walks home to recharge on the pad. You can pet it.
 - **Creative Battery**: unlimited power for creative worlds, with a charging slot.
 - **Safe by design**: copied wafers stop working, a crash never duplicates items, and items from removed mods are kept until the mod comes back.
 

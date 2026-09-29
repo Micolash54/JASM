@@ -116,11 +116,12 @@ Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data
 
 ## Bitlings and the Chip Workshop
 
-A Bitling in the Chip Workshop turns Blank Chips into chips. A Basic Bitling becomes a Logic, Memory or Link Bitling with chips of that type and keeps its charge. A Bitling or Nibbling with a full training bar grows up into the next stage; training starts again.
+A Bitling in the Chip Workshop turns Blank Chips into chips. A Basic Bitling becomes a Logic, Memory or Link Bitling with chips of that type and keeps its charge. A Bitling or Nibbling with a full training bar grows up into the next stage; training starts again. The Bitling Station lets one of them roam around it.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
 | ![Chip Workshop](images/recipes/chip_workshop.png) | **Chip Workshop** | 2 × Logic Chip, 4 × Iron Ingot, 2 × Memory Chip, 1 × Crafting Table |
+| ![Bitling Station](images/recipes/bitling_station.png) | **Bitling Station** | 1 × Logic Chip, 6 × Iron Ingot, 1 × Memory Chip, 1 × Crystal Resonator |
 | ![Basic Bitling](images/recipes/basic_bitling.png) | **Basic Bitling** | 4 × Logic Chip, 4 × Memory Chip, 1 × Iron Ingot |
 | ![Logic Bitling](images/recipes/logic_bitling.png) | **Logic Bitling** | 8 × Logic Chip, 1 × Basic Bitling |
 | ![Memory Bitling](images/recipes/memory_bitling.png) | **Memory Bitling** | 8 × Memory Chip, 1 × Basic Bitling |

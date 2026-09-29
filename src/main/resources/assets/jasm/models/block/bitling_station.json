@@ -1,0 +1,211 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "jasm:block/network_casing",
+    "casing": "jasm:block/network_casing",
+    "pad": "jasm:block/crystal_resonator_top",
+    "glow": "jasm:block/data_crystal_cluster_chunk"
+  },
+  "elements": [
+    {
+      "name": "base",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        3,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "east": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "south": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "west": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        }
+      }
+    },
+    {
+      "name": "plate",
+      "from": [
+        2,
+        3,
+        2
+      ],
+      "to": [
+        14,
+        4,
+        14
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "east": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "south": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "west": {
+          "uv": [
+            0,
+            12,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#pad"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#casing"
+        }
+      }
+    },
+    {
+      "name": "glow_strip",
+      "from": [
+        5,
+        3.1,
+        13
+      ],
+      "to": [
+        11,
+        3.9,
+        14
+      ],
+      "light_emission": 12,
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            6,
+            1
+          ],
+          "texture": "#glow"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            6,
+            1
+          ],
+          "texture": "#glow"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            6,
+            1
+          ],
+          "texture": "#glow"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "texture": "#glow"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "texture": "#glow"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/bitling_station"
+    },
+    "facing=east": {
+      "model": "jasm:block/bitling_station",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/bitling_station",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/bitling_station",
+      "y": 270
+    }
+  }
+}

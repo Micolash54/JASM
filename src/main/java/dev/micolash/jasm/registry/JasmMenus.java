@@ -11,6 +11,7 @@ import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import java.util.function.Supplier;
 import dev.micolash.jasm.crystal.CrystalFoundryMenu;
+import dev.micolash.jasm.station.BitlingStationMenu;
 import dev.micolash.jasm.workshop.ChipWorkshopMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
@@ -33,6 +34,9 @@ public final class JasmMenus {
 
     public static final Supplier<MenuType<ChipWorkshopMenu>> CHIP_WORKSHOP = MENUS.register("chip_workshop",
             () -> new MenuType<>(ChipWorkshopMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<BitlingStationMenu>> BITLING_STATION = MENUS.register("bitling_station",
+            () -> new MenuType<>(BitlingStationMenu::new, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<EncodingTerminalMenu>> ENCODING_TERMINAL = MENUS.register("encoding_terminal",
             () -> new MenuType<>(EncodingTerminalMenu::new, FeatureFlags.VANILLA_SET));

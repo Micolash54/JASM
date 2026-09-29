@@ -23,6 +23,8 @@ import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.station.BitlingStationBlock;
+import dev.micolash.jasm.station.BitlingStationBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopBlock;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import java.util.EnumMap;
@@ -146,6 +148,12 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<ChipWorkshopBlockEntity>> CHIP_WORKSHOP_ENTITY = BLOCK_ENTITIES.register(
             "chip_workshop", () -> new BlockEntityType<>(ChipWorkshopBlockEntity::new, CHIP_WORKSHOP.get()));
+
+    public static final DeferredBlock<BitlingStationBlock> BITLING_STATION = BLOCKS.registerBlock("bitling_station",
+            BitlingStationBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL).noOcclusion());
+
+    public static final Supplier<BlockEntityType<BitlingStationBlockEntity>> BITLING_STATION_ENTITY = BLOCK_ENTITIES.register(
+            "bitling_station", () -> new BlockEntityType<>(BitlingStationBlockEntity::new, BITLING_STATION.get()));
 
     private static BlockBehaviour.Properties seededProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.COLOR_PURPLE).randomTicks().strength(1.5F).sound(SoundType.AMETHYST).requiresCorrectToolForDrops()

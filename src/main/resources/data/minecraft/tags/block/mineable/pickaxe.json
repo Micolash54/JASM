@@ -37,6 +37,7 @@
     "jasm:data_crystal_cluster",
     "jasm:crystal_resonator",
     "jasm:chip_workshop",
-    "jasm:crystal_foundry"
+    "jasm:crystal_foundry",
+    "jasm:bitling_station"
   ]
 }

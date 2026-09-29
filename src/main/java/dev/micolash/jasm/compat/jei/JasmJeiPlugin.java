@@ -104,6 +104,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "crystal_resonator", 2, List.of(JasmItems.CRYSTAL_RESONATOR.get()));
         info(registration, "bitling", 3, JasmItems.bitlings());
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
+        info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
         registration.addRecipes(FoundryCategory.TYPE, java.util.List.of(FoundryCategory.Grow.fromConfig()));
         info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));

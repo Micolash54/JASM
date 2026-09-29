@@ -160,6 +160,35 @@ public final class JasmConfig {
             .defineInRange("batteryByteling", 400_000, 1, Integer.MAX_VALUE);
 
     static {
+        BUILDER.pop().push("bitling_station");
+    }
+
+    public static final ModConfigSpec.IntValue STATION_ROAM_DRAIN = BUILDER
+            .comment("FE per tick a roaming Bitling uses from its battery while it is out and about")
+            .defineInRange("roamDrain", 5, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue STATION_CHARGE_RATE = BUILDER
+            .comment("FE per tick the Bitling Station gives a Bitling sitting on it, from the station's own power")
+            .defineInRange("stationChargeRate", 20, 1, 1_000_000);
+    public static final ModConfigSpec.DoubleValue STATION_RETURN_AT = BUILDER
+            .comment("Battery fraction at which a roaming Bitling heads home to recharge")
+            .defineInRange("returnAt", 0.05, 0.0, 1.0);
+    public static final ModConfigSpec.IntValue STATION_RADIUS_DEFAULT = BUILDER
+            .comment("Roaming radius, in blocks, a new Bitling Station starts with")
+            .defineInRange("radiusDefault", 8, 4, 16);
+    public static final ModConfigSpec.IntValue STATION_RADIUS_MAX = BUILDER
+            .comment("Largest roaming radius the station's slider allows")
+            .defineInRange("radiusMax", 16, 4, 16);
+    public static final ModConfigSpec.IntValue STATION_HEALTH = BUILDER
+            .comment("Health of a roaming Bitling (2 per heart)")
+            .defineInRange("health", 10, 1, 1_000);
+    public static final ModConfigSpec.IntValue STATION_RESPAWN_SECONDS = BUILDER
+            .comment("Seconds before a knocked-out Bitling pops out of its station again")
+            .defineInRange("respawnSeconds", 30, 1, 3_600);
+    public static final ModConfigSpec.IntValue STATION_STUCK_SECONDS = BUILDER
+            .comment("Seconds a Bitling can be stuck on its way home before it teleports onto the station")
+            .defineInRange("stuckSeconds", 10, 1, 600);
+
+    static {
         BUILDER.pop();
     }
 

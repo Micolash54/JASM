@@ -6,7 +6,6 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -41,8 +40,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class ChipWorkshopRenderer implements BlockEntityRenderer<ChipWorkshopBlockEntity, ChipWorkshopRenderer.State> {
     /** The moving parts that have a model, in drawing order. */
-    private static final String[] PARTS = {"leg_left", "leg_right", "body", "arm_left", "arm_right", "chip", "head", "eyes", "antenna"};
-    private static final Map<BitlingKind, Map<String, StandaloneModelKey<BlockStateModelPart>>> KEYS = new EnumMap<>(BitlingKind.class);
+    static final String[] PARTS = {"leg_left", "leg_right", "body", "arm_left", "arm_right", "chip", "head", "eyes", "antenna"};
+    static final Map<BitlingKind, Map<String, StandaloneModelKey<BlockStateModelPart>>> KEYS = new EnumMap<>(BitlingKind.class);
 
     static {
         for (BitlingKind kind : BitlingKind.values()) {
@@ -63,8 +62,6 @@ public class ChipWorkshopRenderer implements BlockEntityRenderer<ChipWorkshopBlo
     /** The Bitling model's own feet centre. */
     private static final float FEET_X = 8;
     private static final float FEET_Z = 7.75F;
-    private static final float[] ZERO = {0, 0, 0};
-    private static final float[] ONE = {1, 1, 1};
 
     private final BitlingAnimations animations;
 
@@ -134,35 +131,12 @@ public class ChipWorkshopRenderer implements BlockEntityRenderer<ChipWorkshopBlo
                 continue;
             }
             poseStack.pushPose();
-            pose(part, clip, time, poseStack);
+            animations.pose(part, clip, time, poseStack);
             collector.submitBlockModel(poseStack, Sheets.cutoutBlockItemSheet(), List.of(model), BlockModelRenderState.EMPTY_TINTS,
                     state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
             poseStack.popPose();
         }
         poseStack.popPose();
-    }
-
-    /** Moves {@code part} and every part it hangs from, root first, to where the loop has them at {@code time}. */
-    private void pose(String part, BitlingAnimations.@Nullable Clip clip, float time, PoseStack poseStack) {
-        List<BitlingAnimations.Bone> chain = new ArrayList<>();
-        for (BitlingAnimations.Bone bone = animations.bones().get(part); bone != null;
-                bone = bone.parent() == null ? null : animations.bones().get(bone.parent())) {
-            chain.addFirst(bone);
-        }
-        for (BitlingAnimations.Bone bone : chain) {
-            float[] move = BitlingAnimations.sample(clip, bone.name(), "position", time, ZERO);
-            float[] turn = BitlingAnimations.sample(clip, bone.name(), "rotation", time, ZERO);
-            float[] size = BitlingAnimations.sample(clip, bone.name(), "scale", time, ONE);
-            float[] pivot = bone.pivot();
-            poseStack.translate(move[0] / 16, move[1] / 16, move[2] / 16);
-            poseStack.translate(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
-            poseStack.rotateDegrees(Axis.ZP, turn[2]);
-            poseStack.rotateDegrees(Axis.YP, turn[1]);
-            poseStack.rotateDegrees(Axis.XP, turn[0]);
-            // A part shrunk to nothing, like the chip before it is picked up, is simply not there.
-            poseStack.scale(Math.max(size[0], 1e-4F), Math.max(size[1], 1e-4F), Math.max(size[2], 1e-4F));
-            poseStack.translate(-pivot[0] / 16, -pivot[1] / 16, -pivot[2] / 16);
-        }
     }
 
     public static class State extends BlockEntityRenderState {

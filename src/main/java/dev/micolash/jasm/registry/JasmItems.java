@@ -74,6 +74,7 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> CRYSTAL_RESONATOR = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_RESONATOR);
     public static final DeferredItem<BlockItem> CHIP_WORKSHOP = ITEMS.registerSimpleBlockItem(JasmBlocks.CHIP_WORKSHOP);
     public static final DeferredItem<BlockItem> CRYSTAL_FOUNDRY = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_FOUNDRY);
+    public static final DeferredItem<BlockItem> BITLING_STATION = ITEMS.registerSimpleBlockItem(JasmBlocks.BITLING_STATION);
     private static final Map<ProcessorTier, DeferredItem<ServerPartItem>> PROCESSORS = new EnumMap<>(ProcessorTier.class);
     private static final Map<MemoryTier, DeferredItem<ServerPartItem>> MODULES = new EnumMap<>(MemoryTier.class);
 

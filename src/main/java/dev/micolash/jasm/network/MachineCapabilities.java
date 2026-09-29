@@ -33,6 +33,8 @@ public final class MachineCapabilities {
         event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(),
                 (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), (workshop, side) -> workshop.automation());
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.BITLING_STATION_ENTITY.get(),
+                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
         event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(),
                 (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), (foundry, side) -> foundry.automation());

@@ -37,6 +37,17 @@ Put a **Bitling** in the Workshop and feed it Blank Chips. It makes Logic, Memor
 - **Battery**: the Workshop itself uses no power, only the critter does. Power from a cable or a neighbouring generator goes straight into the critter's battery, and each chip uses some of it. With no power at all, the critter keeps working until its battery runs flat, then naps until it is charged again. You can also charge a critter in a Combustion Generator.
 - A Basic Bitling becomes a Logic, Memory or Link Bitling when crafted with chips of that type.
 
+## The Bitling Station
+
+Put any Bitling, Nibbling or Byteling in a **Bitling Station** and a little living Bitling pops out and roams around it: walking, sprinting, hopping, looking about and lying down for a rest. Right-click it to pet it.
+
+- The little Bitling is only a body. The **critter's own battery** pays for its walk (5 FE a tick while it is out and about).
+- When the battery runs low (5%), it walks home and sits on the pad. The station charges it from its own power, 20 FE a tick, so connect the station to a Data Cable network or put a generator next to it.
+- If it gets stuck on the way home or its battery is empty, it teleports back onto the pad.
+- The station's screen shows what it is doing, its battery, and a slider for how far it may roam (4 to 16 blocks).
+- If something knocks it out, it comes back after 30 seconds with full health. Take the critter out and the little Bitling is gone.
+- Hoppers and pipes can't reach the critter slot. Only its owner and the players they trust can open the station.
+
 ## How the tiers use the chips
 
 | Tier | Needs |

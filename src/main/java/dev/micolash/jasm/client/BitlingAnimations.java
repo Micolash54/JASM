@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import dev.micolash.jasm.Jasm;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -69,6 +71,49 @@ public final class BitlingAnimations {
 
     public @Nullable Clip clip(String name) {
         return clips.get(name);
+    }
+
+    private static final float[] ZERO = {0, 0, 0};
+    private static final float[] ONE = {1, 1, 1};
+
+    /** Moves {@code part} and every part it hangs from, root first, to where the loop has them at {@code time}. */
+    public void pose(String part, @Nullable Clip clip, float time, PoseStack poseStack) {
+        pose(part, clip, time, null, 0, 1, poseStack);
+    }
+
+    /**
+     * Like {@link #pose(String, Clip, float, PoseStack)}, but easing from the loop {@code from} (at {@code fromTime}) into
+     * {@code to} (at {@code toTime}) as {@code blend} goes from 0 to 1, so a change of loop never snaps.
+     */
+    public void pose(String part, @Nullable Clip to, float toTime, @Nullable Clip from, float fromTime, float blend, PoseStack poseStack) {
+        List<Bone> chain = new ArrayList<>();
+        for (Bone bone = bones.get(part); bone != null; bone = bone.parent() == null ? null : bones.get(bone.parent())) {
+            chain.addFirst(bone);
+        }
+        for (Bone bone : chain) {
+            float[] move = mix(bone, "position", to, toTime, from, fromTime, blend, ZERO);
+            float[] turn = mix(bone, "rotation", to, toTime, from, fromTime, blend, ZERO);
+            float[] size = mix(bone, "scale", to, toTime, from, fromTime, blend, ONE);
+            float[] pivot = bone.pivot();
+            poseStack.translate(move[0] / 16, move[1] / 16, move[2] / 16);
+            poseStack.translate(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
+            poseStack.rotateDegrees(Axis.ZP, turn[2]);
+            poseStack.rotateDegrees(Axis.YP, turn[1]);
+            poseStack.rotateDegrees(Axis.XP, turn[0]);
+            // A part shrunk to nothing, like the chip before it is picked up, is simply not there.
+            poseStack.scale(Math.max(size[0], 1e-4F), Math.max(size[1], 1e-4F), Math.max(size[2], 1e-4F));
+            poseStack.translate(-pivot[0] / 16, -pivot[1] / 16, -pivot[2] / 16);
+        }
+    }
+
+    private static float[] mix(Bone bone, String channel, @Nullable Clip to, float toTime, @Nullable Clip from, float fromTime, float blend,
+            float[] fallback) {
+        float[] a = sample(to, bone.name(), channel, toTime, fallback);
+        if (from == null || blend >= 1) {
+            return a;
+        }
+        float[] b = sample(from, bone.name(), channel, fromTime, fallback);
+        return new float[] {b[0] + (a[0] - b[0]) * blend, b[1] + (a[1] - b[1]) * blend, b[2] + (a[2] - b[2]) * blend};
     }
 
     /** A part's value on one channel at {@code time} seconds into the loop, or {@code fallback} if it has no keys. */

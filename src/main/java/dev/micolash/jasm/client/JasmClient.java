@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.registry.JasmEntities;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -30,6 +31,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), ChipWorkshopRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), CrystalFoundryRenderer::new);
+        event.registerEntityRenderer(JasmEntities.STATION_BITLING.get(), StationBitlingRenderer::new);
     }
 
     /** The cards, parts, fans and screens the crafting blocks draw on top of themselves. */
@@ -50,6 +52,7 @@ public final class JasmClient {
         event.register(JasmMenus.COMBUSTION_GENERATOR.get(), CombustionGeneratorScreen::new);
         event.register(JasmMenus.CHIP_WORKSHOP.get(), ChipWorkshopScreen::new);
         event.register(JasmMenus.CRYSTAL_FOUNDRY.get(), CrystalFoundryScreen::new);
+        event.register(JasmMenus.BITLING_STATION.get(), BitlingStationScreen::new);
         event.register(JasmMenus.ENCODING_TERMINAL.get(), EncodingTerminalScreen::new);
         event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
