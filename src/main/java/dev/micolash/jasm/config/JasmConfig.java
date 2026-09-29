@@ -125,9 +125,6 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue BITLING_DRAIN_PER_CHIP = BUILDER
             .comment("FE taken from the working critter for each chip it finishes, in Single and in Batch mode")
             .defineInRange("bitlingDrainPerChip", 2000, 0, 1_000_000);
-    public static final ModConfigSpec.IntValue BITLING_RECHARGE_RATE = BUILDER
-            .comment("FE per tick the Chip Workshop moves from the power it is given into its critter's battery")
-            .defineInRange("bitlingRechargeRate", 20, 1, 1_000_000);
     public static final ModConfigSpec.DoubleValue ODDS_OWN_TYPE_BITLING = BUILDER
             .comment("Chance a young typed Bitling makes its own chip type; the other two types share the rest")
             .defineInRange("oddsOwnTypeBitling", 0.60, 0.0, 1.0);
@@ -166,9 +163,6 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue STATION_ROAM_DRAIN = BUILDER
             .comment("FE per tick a roaming Bitling uses from its battery while it is out and about")
             .defineInRange("roamDrain", 5, 0, 1_000_000);
-    public static final ModConfigSpec.IntValue STATION_CHARGE_RATE = BUILDER
-            .comment("FE per tick the Bitling Station gives a Bitling sitting on it, from the station's own power")
-            .defineInRange("stationChargeRate", 20, 1, 1_000_000);
     public static final ModConfigSpec.DoubleValue STATION_RETURN_AT = BUILDER
             .comment("Battery fraction at which a roaming Bitling heads home to recharge")
             .defineInRange("returnAt", 0.05, 0.0, 1.0);

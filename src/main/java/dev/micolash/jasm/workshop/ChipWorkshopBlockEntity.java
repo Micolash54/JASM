@@ -215,14 +215,14 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         setChanged();
     }
 
-    /** Moves the power the Workshop was given into the critter's battery, at most the recharge rate each tick. */
+    /** Moves the power the Workshop was given into the critter's battery. */
     private void feed(ServerLevel level, ItemStack critter, BitlingItem bitling) {
         // Asking for the network keeps it alive, so it passes power on to this block each tick.
         Networks.at(level, worldPosition);
         int amount = energy.getAmountAsInt();
         fed = amount > 0;
         int charge = BitlingItem.energy(critter);
-        int moved = Math.min(Math.min(amount, JasmConfig.BITLING_RECHARGE_RATE.getAsInt()), bitling.battery() - charge);
+        int moved = Math.min(amount, bitling.battery() - charge);
         if (moved > 0) {
             energy.set(amount - moved);
             critter.set(JasmComponents.ENERGY.get(), charge + moved);

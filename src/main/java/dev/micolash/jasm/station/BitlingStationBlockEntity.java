@@ -144,7 +144,7 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
         int charge = BitlingItem.energy(critter);
         if (charging) {
             int amount = energy.getAmountAsInt();
-            int moved = Math.min(Math.min(amount, JasmConfig.STATION_CHARGE_RATE.getAsInt()), bitling.battery() - charge);
+            int moved = Math.min(amount, bitling.battery() - charge);
             if (moved > 0) {
                 energy.set(amount - moved);
                 critter.set(JasmComponents.ENERGY.get(), charge + moved);

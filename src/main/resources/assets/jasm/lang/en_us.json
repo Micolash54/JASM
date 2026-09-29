@@ -77,6 +77,7 @@
   "block.jasm.green_data_cable": "Green Data Cable",
   "block.jasm.red_data_cable": "Red Data Cable",
   "block.jasm.black_data_cable": "Black Data Cable",
+  "tooltip.jasm.cable.rate": "Transfer rate: %s FE/t",
   "tooltip.jasm.card.makes": "Makes %s × %s",
   "tooltip.jasm.card.shaped": "Shaped",
   "tooltip.jasm.card.shapeless": "Shapeless",
