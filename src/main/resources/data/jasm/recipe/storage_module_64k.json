@@ -2,14 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "X": "minecraft:emerald",
-    "Y": "minecraft:blaze_rod",
     "R": "minecraft:redstone",
-    "W": "jasm:storage_module_16k"
+    "W": "jasm:storage_module_16k",
+    "A": "jasm:advanced_memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XAX",
     "RWR",
-    "WRW"
+    "WAW"
   ],
   "result": {
     "id": "jasm:storage_module_64k"

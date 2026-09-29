@@ -5,12 +5,12 @@
     "G": "minecraft:glass_pane",
     "R": "minecraft:redstone",
     "C": "minecraft:crafting_table",
-    "A": "minecraft:amethyst_shard"
+    "L": "jasm:logic_chip"
   },
   "pattern": [
     "IGI",
     "RCR",
-    "IAI"
+    "ILI"
   ],
   "result": {
     "id": "jasm:encoding_terminal"

@@ -3,11 +3,12 @@
   "key": {
     "R": "minecraft:redstone",
     "G": "minecraft:gold_ingot",
-    "Q": "minecraft:quartz"
+    "Q": "minecraft:quartz",
+    "L": "jasm:logic_chip"
   },
   "pattern": [
     "RGR",
-    "GQG",
+    "LQL",
     "RGR"
   ],
   "result": {

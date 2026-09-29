@@ -2,7 +2,7 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:gold_ingot",
-    "Y": "minecraft:diamond",
+    "Y": "jasm:logic_chip",
     "R": "minecraft:redstone",
     "P": "jasm:starter_deck"
   },

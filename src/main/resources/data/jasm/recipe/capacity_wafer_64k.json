@@ -2,14 +2,14 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:blaze_rod",
-    "Y": "minecraft:netherite_ingot",
     "R": "minecraft:redstone",
-    "W": "jasm:capacity_wafer_16k"
+    "W": "jasm:capacity_wafer_16k",
+    "A": "jasm:advanced_memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XAX",
     "RWR",
-    "WRW"
+    "WAW"
   ],
   "source": "jasm:capacity_wafer_16k",
   "result": {

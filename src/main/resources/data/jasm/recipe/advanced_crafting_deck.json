@@ -6,10 +6,11 @@
     "F": "minecraft:fletching_table",
     "P": "jasm:advanced_deck",
     "S": "minecraft:smithing_table",
-    "C": "minecraft:cartography_table"
+    "C": "minecraft:cartography_table",
+    "K": "jasm:link_chip"
   },
   "pattern": [
-    "RTR",
+    "KTK",
     "FPS",
     "RCR"
   ],

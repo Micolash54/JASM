@@ -2,14 +2,15 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:blaze_rod",
-    "Y": "minecraft:netherite_ingot",
     "R": "minecraft:redstone",
-    "P": "jasm:elite_deck"
+    "P": "jasm:elite_deck",
+    "A": "jasm:advanced_logic_chip",
+    "B": "jasm:advanced_link_chip"
   },
   "pattern": [
-    "XYX",
+    "XAX",
     "RPR",
-    "XRX"
+    "XBX"
   ],
   "source": "jasm:elite_deck",
   "result": {

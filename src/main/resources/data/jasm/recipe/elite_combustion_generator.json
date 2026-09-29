@@ -2,12 +2,12 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:emerald",
-    "Y": "minecraft:blaze_rod",
     "R": "minecraft:redstone",
-    "P": "jasm:advanced_combustion_generator"
+    "P": "jasm:advanced_combustion_generator",
+    "A": "jasm:advanced_logic_chip"
   },
   "pattern": [
-    "XYX",
+    "XAX",
     "RPR",
     "XRX"
   ],

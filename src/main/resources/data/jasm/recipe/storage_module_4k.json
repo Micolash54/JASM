@@ -2,12 +2,12 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "X": "minecraft:gold_ingot",
-    "Y": "minecraft:diamond",
     "R": "minecraft:redstone",
-    "W": "jasm:storage_module_1k"
+    "W": "jasm:storage_module_1k",
+    "M": "jasm:memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XMX",
     "RWR",
     "WRW"
   ],

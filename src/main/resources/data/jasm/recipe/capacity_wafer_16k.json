@@ -2,14 +2,15 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:emerald",
-    "Y": "minecraft:blaze_rod",
     "R": "minecraft:redstone",
-    "W": "jasm:capacity_wafer_4k"
+    "W": "jasm:capacity_wafer_4k",
+    "K": "jasm:link_chip",
+    "M": "jasm:memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XKX",
     "RWR",
-    "WRW"
+    "WMW"
   ],
   "source": "jasm:capacity_wafer_4k",
   "result": {

@@ -2,13 +2,13 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "I": "minecraft:iron_ingot",
-    "D": "minecraft:diamond",
     "C": "minecraft:crafting_table",
     "P": "jasm:basic_processor",
-    "R": "minecraft:redstone_block"
+    "R": "minecraft:redstone_block",
+    "L": "jasm:logic_chip"
   },
   "pattern": [
-    "IDI",
+    "ILI",
     "CPC",
     "IRI"
   ],

@@ -2,12 +2,12 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:diamond",
-    "Y": "minecraft:ender_pearl",
     "R": "minecraft:redstone",
-    "P": "jasm:basic_combustion_generator"
+    "P": "jasm:basic_combustion_generator",
+    "K": "jasm:link_chip"
   },
   "pattern": [
-    "XYX",
+    "XKX",
     "RPR",
     "XRX"
   ],

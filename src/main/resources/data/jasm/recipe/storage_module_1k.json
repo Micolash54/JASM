@@ -3,11 +3,11 @@
   "key": {
     "C": "minecraft:copper_ingot",
     "R": "minecraft:redstone",
-    "Q": "minecraft:quartz"
+    "M": "jasm:memory_chip"
   },
   "pattern": [
     "CRC",
-    "RQR",
+    "RMR",
     "CRC"
   ],
   "result": {

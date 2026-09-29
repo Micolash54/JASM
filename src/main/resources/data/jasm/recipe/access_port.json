@@ -4,10 +4,11 @@
     "I": "minecraft:iron_ingot",
     "H": "minecraft:hopper",
     "C": "jasm:data_cable",
-    "R": "minecraft:redstone"
+    "R": "minecraft:redstone",
+    "K": "jasm:link_chip"
   },
   "pattern": [
-    "IRI",
+    "IKI",
     "CHC",
     "IRI"
   ],

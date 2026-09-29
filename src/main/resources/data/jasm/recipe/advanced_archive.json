@@ -2,12 +2,12 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:emerald",
-    "Y": "minecraft:blaze_rod",
     "R": "minecraft:redstone",
-    "P": "jasm:basic_archive"
+    "P": "jasm:basic_archive",
+    "K": "jasm:link_chip"
   },
   "pattern": [
-    "XYX",
+    "XKX",
     "RPR",
     "XRX"
   ],

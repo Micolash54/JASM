@@ -6,10 +6,11 @@
     "F": "minecraft:fletching_table",
     "P": "jasm:elite_deck",
     "S": "minecraft:smithing_table",
-    "C": "minecraft:cartography_table"
+    "C": "minecraft:cartography_table",
+    "A": "jasm:advanced_logic_chip"
   },
   "pattern": [
-    "RTR",
+    "ATR",
     "FPS",
     "RCR"
   ],

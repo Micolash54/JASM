@@ -2,14 +2,14 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:gold_ingot",
-    "Y": "minecraft:diamond",
     "R": "minecraft:redstone",
-    "W": "jasm:capacity_wafer_basic"
+    "W": "jasm:capacity_wafer_basic",
+    "M": "jasm:memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XMX",
     "RWR",
-    "WRW"
+    "WMW"
   ],
   "source": "jasm:capacity_wafer_basic",
   "result": {

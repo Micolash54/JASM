@@ -3,11 +3,11 @@
   "key": {
     "B": "jasm:basic_processor",
     "R": "minecraft:redstone",
-    "D": "minecraft:diamond"
+    "K": "jasm:link_chip"
   },
   "pattern": [
     "BRB",
-    "RDR",
+    "RKR",
     "BRB"
   ],
   "result": {

@@ -2,12 +2,12 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:diamond",
-    "Y": "minecraft:ender_pearl",
     "R": "minecraft:redstone",
-    "W": "jasm:type_wafer_8"
+    "W": "jasm:type_wafer_8",
+    "M": "jasm:memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XMX",
     "RWR",
     "XWX"
   ],

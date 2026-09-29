@@ -3,11 +3,11 @@
   "key": {
     "A": "jasm:advanced_processor",
     "R": "minecraft:redstone",
-    "E": "minecraft:emerald"
+    "L": "jasm:advanced_logic_chip"
   },
   "pattern": [
     "ARA",
-    "RER",
+    "RLR",
     "ARA"
   ],
   "result": {

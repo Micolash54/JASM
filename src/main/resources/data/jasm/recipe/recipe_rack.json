@@ -3,12 +3,12 @@
   "key": {
     "I": "minecraft:iron_ingot",
     "C": "jasm:recipe_card",
-    "R": "minecraft:redstone",
-    "B": "minecraft:bookshelf"
+    "B": "minecraft:bookshelf",
+    "M": "jasm:memory_chip"
   },
   "pattern": [
     "ICI",
-    "RBR",
+    "MBM",
     "ICI"
   ],
   "result": {

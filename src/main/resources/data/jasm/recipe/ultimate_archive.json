@@ -2,12 +2,12 @@
   "type": "jasm:upgrade",
   "key": {
     "X": "minecraft:blaze_rod",
-    "Y": "minecraft:netherite_ingot",
     "R": "minecraft:redstone",
-    "P": "jasm:advanced_archive"
+    "P": "jasm:advanced_archive",
+    "A": "jasm:advanced_memory_chip"
   },
   "pattern": [
-    "XYX",
+    "XAX",
     "RPR",
     "XRX"
   ],
