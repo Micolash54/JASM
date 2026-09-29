@@ -1,0 +1,78 @@
+{
+  "textures": {
+    "chip": "jasm:block/chip_workshop_parts",
+    "particle": "jasm:block/chip_workshop_parts"
+  },
+  "elements": [
+    {
+      "name": "held_chip",
+      "from": [
+        10.85,
+        2.1,
+        5.25
+      ],
+      "to": [
+        12.35,
+        3.35,
+        6.6
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": "#chip"
+        },
+        "south": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": "#chip"
+        },
+        "east": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": "#chip"
+        },
+        "west": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": "#chip"
+        },
+        "up": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": "#chip"
+        },
+        "down": {
+          "uv": [
+            12,
+            0,
+            14,
+            2
+          ],
+          "texture": "#chip"
+        }
+      },
+      "shade_direction_override": "up"
+    }
+  ]
+}

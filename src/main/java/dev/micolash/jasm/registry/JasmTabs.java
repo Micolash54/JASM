@@ -8,6 +8,7 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.wafer.WaferTier;
+import dev.micolash.jasm.workshop.BitlingItem;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -49,6 +50,34 @@ public final class JasmTabs {
                     output.accept(JasmItems.module(tier));
                 }
                 output.accept(JasmItems.RECIPE_CARD);
+                output.accept(JasmItems.CRYSTAL_SEED);
+                output.accept(JasmItems.SEEDED_AMETHYST);
+                output.accept(JasmItems.WORN_SEEDED_AMETHYST);
+                output.accept(JasmItems.CRACKED_SEEDED_AMETHYST);
+                output.accept(JasmItems.SMALL_DATA_CRYSTAL_BUD);
+                output.accept(JasmItems.MEDIUM_DATA_CRYSTAL_BUD);
+                output.accept(JasmItems.LARGE_DATA_CRYSTAL_BUD);
+                output.accept(JasmItems.DATA_CRYSTAL_CLUSTER);
+                output.accept(JasmItems.CRYSTAL_DUST);
+                output.accept(JasmItems.DATA_CRYSTAL);
+                output.accept(JasmItems.CRYSTAL_RESONATOR);
+                output.accept(JasmItems.CHIP_WORKSHOP);
+                output.accept(JasmItems.CRYSTAL_FOUNDRY);
+                output.accept(JasmItems.BLANK_CHIP);
+                output.accept(JasmItems.UNQUENCHED_LOGIC_CHIP);
+                output.accept(JasmItems.UNQUENCHED_MEMORY_CHIP);
+                output.accept(JasmItems.LOGIC_CHIP);
+                output.accept(JasmItems.MEMORY_CHIP);
+                output.accept(JasmItems.LINK_CHIP);
+                output.accept(JasmItems.ADVANCED_LOGIC_CHIP);
+                output.accept(JasmItems.ADVANCED_MEMORY_CHIP);
+                output.accept(JasmItems.ADVANCED_LINK_CHIP);
+                for (BitlingItem bitling : JasmItems.bitlings()) {
+                    output.accept(bitling);
+                    ItemStack charged = new ItemStack(bitling);
+                    charged.set(JasmComponents.ENERGY.get(), bitling.battery());
+                    output.accept(charged);
+                }
                 JasmItems.cables().forEach(output::accept);
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })

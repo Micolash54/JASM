@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "A": "minecraft:amethyst_shard",
+    "R": "minecraft:redstone",
+    "C": "minecraft:copper_ingot"
+  },
+  "pattern": [
+    " A ",
+    "RCR",
+    " A "
+  ],
+  "result": {
+    "id": "jasm:crystal_seed",
+    "count": 1
+  }
+}

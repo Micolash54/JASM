@@ -80,5 +80,9 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<Integer>> ENERGY = COMPONENTS.registerComponentType(
             "energy", b -> b.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT));
 
+    /** Chips a critter has made towards its next stage. */
+    public static final Supplier<DataComponentType<Integer>> TRAINING = COMPONENTS.registerComponentType(
+            "training", b -> b.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT));
+
     private JasmComponents() {}
 }

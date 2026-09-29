@@ -1,0 +1,17 @@
+{
+  "type": "jasm:evolve",
+  "key": {
+    "C": "jasm:advanced_logic_chip",
+    "B": "jasm:logic_nibbling",
+    "N": "minecraft:netherite_scrap"
+  },
+  "pattern": [
+    "CNC",
+    "CBC",
+    "CCC"
+  ],
+  "source": "jasm:logic_nibbling",
+  "result": {
+    "id": "jasm:logic_byteling"
+  }
+}

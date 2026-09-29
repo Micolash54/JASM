@@ -1,0 +1,17 @@
+{
+  "type": "jasm:evolve",
+  "key": {
+    "C": "jasm:advanced_link_chip",
+    "B": "jasm:link_nibbling",
+    "N": "minecraft:netherite_scrap"
+  },
+  "pattern": [
+    "CNC",
+    "CBC",
+    "CCC"
+  ],
+  "source": "jasm:link_nibbling",
+  "result": {
+    "id": "jasm:link_byteling"
+  }
+}

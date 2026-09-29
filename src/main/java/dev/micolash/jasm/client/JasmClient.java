@@ -28,6 +28,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.RECIPE_RACK_ENTITY.get(), RecipeRackRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), CraftingServerRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), ChipWorkshopRenderer::new);
     }
 
     /** The cards, parts, fans and screens the crafting blocks draw on top of themselves. */
@@ -36,6 +37,7 @@ public final class JasmClient {
         event.register(RecipeRackRenderer.CARD_MODEL, SimpleUnbakedStandaloneModel.simpleModelWrapper(RecipeRackRenderer.CARD_MODEL_ID));
         CraftingServerRenderer.registerModels(event);
         EncodingTerminalRenderer.registerModels(event);
+        ChipWorkshopRenderer.registerModels(event);
     }
 
     @SubscribeEvent
@@ -44,6 +46,8 @@ public final class JasmClient {
         event.register(JasmMenus.ARCHIVE.get(), ArchiveScreen::new);
         event.register(JasmMenus.CREATIVE_BATTERY.get(), CreativeBatteryScreen::new);
         event.register(JasmMenus.COMBUSTION_GENERATOR.get(), CombustionGeneratorScreen::new);
+        event.register(JasmMenus.CHIP_WORKSHOP.get(), ChipWorkshopScreen::new);
+        event.register(JasmMenus.CRYSTAL_FOUNDRY.get(), CrystalFoundryScreen::new);
         event.register(JasmMenus.ENCODING_TERMINAL.get(), EncodingTerminalScreen::new);
         event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);

@@ -1,0 +1,7 @@
+{
+  "type": "jasm:quenching",
+  "ingredient": "jasm:unquenched_memory_chip",
+  "result": {
+    "id": "jasm:memory_chip"
+  }
+}

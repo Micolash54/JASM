@@ -27,6 +27,16 @@
     "jasm:red_data_cable",
     "jasm:black_data_cable",
     "jasm:crafting_server",
-    "jasm:access_port"
+    "jasm:access_port",
+    "jasm:seeded_amethyst",
+    "jasm:worn_seeded_amethyst",
+    "jasm:cracked_seeded_amethyst",
+    "jasm:small_data_crystal_bud",
+    "jasm:medium_data_crystal_bud",
+    "jasm:large_data_crystal_bud",
+    "jasm:data_crystal_cluster",
+    "jasm:crystal_resonator",
+    "jasm:chip_workshop",
+    "jasm:crystal_foundry"
   ]
 }

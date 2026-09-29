@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "A": "minecraft:amethyst_shard",
+    "R": "minecraft:redstone_block"
+  },
+  "pattern": [
+    "CAC",
+    "ARA",
+    "CAC"
+  ],
+  "result": {
+    "id": "jasm:crystal_resonator",
+    "count": 1
+  }
+}

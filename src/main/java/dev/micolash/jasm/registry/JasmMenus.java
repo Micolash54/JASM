@@ -10,6 +10,8 @@ import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import java.util.function.Supplier;
+import dev.micolash.jasm.crystal.CrystalFoundryMenu;
+import dev.micolash.jasm.workshop.ChipWorkshopMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -25,6 +27,12 @@ public final class JasmMenus {
             () -> new MenuType<>(CreativeBatteryMenu::new, FeatureFlags.VANILLA_SET));
     public static final Supplier<MenuType<CombustionGeneratorMenu>> COMBUSTION_GENERATOR = MENUS.register("combustion_generator",
             () -> new MenuType<>(CombustionGeneratorMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<CrystalFoundryMenu>> CRYSTAL_FOUNDRY = MENUS.register("crystal_foundry",
+            () -> new MenuType<>(CrystalFoundryMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<ChipWorkshopMenu>> CHIP_WORKSHOP = MENUS.register("chip_workshop",
+            () -> new MenuType<>(ChipWorkshopMenu::new, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<EncodingTerminalMenu>> ENCODING_TERMINAL = MENUS.register("encoding_terminal",
             () -> new MenuType<>(EncodingTerminalMenu::new, FeatureFlags.VANILLA_SET));

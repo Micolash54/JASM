@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/amethyst_bud",
+  "textures": {
+    "layer0": "jasm:block/medium_data_crystal_bud"
+  }
+}

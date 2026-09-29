@@ -1,0 +1,146 @@
+package dev.micolash.jasm.crystal;
+
+import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import org.jspecify.annotations.Nullable;
+
+/** The Foundry's menu: the seed slot, the 3×3 output grid, then the player's inventory and hotbar. */
+public class CrystalFoundryMenu extends AbstractContainerMenu {
+    public static final int INPUT_X = 26;
+    public static final int INPUT_Y = 35;
+    public static final int OUTPUT_X = 108;
+    public static final int OUTPUT_Y = 17;
+    public static final int ROW_Y = 78;
+    public static final int INVENTORY_Y = 104;
+
+    static final int DATA_PROGRESS = 0;
+    static final int DATA_TICKS = 1;
+    static final int DATA_MADE = 2;
+    static final int DATA_PER_SEED = 3;
+    static final int DATA_ENERGY_LOW = 4;
+    static final int DATA_ENERGY_HIGH = 5;
+    static final int DATA_FLAGS = 6;
+    static final int DATA_COUNT = 7;
+
+    static final int FLAG_GROWING = 1;
+    static final int FLAG_POWERED = 2;
+    static final int FLAG_FULL = 4;
+
+    private static final int MACHINE_SLOTS = CrystalFoundryBlockEntity.SLOTS;
+    private static final int HOTBAR_START = MACHINE_SLOTS + 27;
+    private static final int HOTBAR_END = HOTBAR_START + 9;
+
+    private final ContainerData data;
+    private final ContainerLevelAccess access;
+    private final @Nullable Block block;
+
+    /** Server side. */
+    public CrystalFoundryMenu(int containerId, Inventory inventory, Container container, ContainerData data, ContainerLevelAccess access,
+            @Nullable Block block) {
+        super(JasmMenus.CRYSTAL_FOUNDRY.get(), containerId);
+        this.data = data;
+        this.access = access;
+        this.block = block;
+        addSlot(new MachineSlot(container, CrystalFoundryBlockEntity.INPUT, INPUT_X, INPUT_Y));
+        for (int i = 0; i < CrystalFoundryBlockEntity.OUTPUT_COUNT; i++) {
+            addSlot(new MachineSlot(container, CrystalFoundryBlockEntity.OUTPUT_FIRST + i, OUTPUT_X + i % 3 * 18, OUTPUT_Y + i / 3 * 18));
+        }
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
+            }
+        }
+        for (int column = 0; column < 9; column++) {
+            addSlot(new Slot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+        }
+        addDataSlots(data);
+    }
+
+    /** Client side. */
+    public CrystalFoundryMenu(int containerId, Inventory inventory) {
+        this(containerId, inventory, new SimpleContainer(CrystalFoundryBlockEntity.SLOTS) {
+            @Override
+            public boolean canPlaceItem(int slot, ItemStack stack) {
+                return CrystalFoundryBlockEntity.accepts(slot, stack);
+            }
+        }, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null);
+    }
+
+    public float progress() {
+        int ticks = data.get(DATA_TICKS);
+        return ticks <= 0 ? 0 : data.get(DATA_PROGRESS) / (float) ticks;
+    }
+
+    public int made() {
+        return data.get(DATA_MADE);
+    }
+
+    public int perSeed() {
+        return data.get(DATA_PER_SEED);
+    }
+
+    public int energy() {
+        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+    }
+
+    public boolean growing() {
+        return (data.get(DATA_FLAGS) & FLAG_GROWING) != 0;
+    }
+
+    public boolean powered() {
+        return (data.get(DATA_FLAGS) & FLAG_POWERED) != 0;
+    }
+
+    public boolean full() {
+        return (data.get(DATA_FLAGS) & FLAG_FULL) != 0;
+    }
+
+    @Override
+    public boolean stillValid(Player player) {
+        return block == null || stillValid(access, player, block);
+    }
+
+    /** Shift-click: seeds to the seed slot; out of the Foundry to the hotbar, then the inventory. */
+    @Override
+    public ItemStack quickMoveStack(Player player, int index) {
+        Slot clicked = slots.get(index);
+        if (!clicked.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack stack = clicked.getItem();
+        ItemStack before = stack.copy();
+        boolean moved = index < MACHINE_SLOTS
+                ? moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false) || moveItemStackTo(stack, MACHINE_SLOTS, HOTBAR_START, false)
+                : CrystalFoundryBlockEntity.accepts(CrystalFoundryBlockEntity.INPUT, stack) && moveItemStackTo(stack, 0, 1, false);
+        if (!moved) {
+            return ItemStack.EMPTY;
+        }
+        if (stack.isEmpty()) {
+            clicked.setByPlayer(ItemStack.EMPTY);
+        } else {
+            clicked.setChanged();
+        }
+        return before;
+    }
+
+    private static final class MachineSlot extends Slot {
+        MachineSlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return container.canPlaceItem(getContainerSlot(), stack);
+        }
+    }
+}

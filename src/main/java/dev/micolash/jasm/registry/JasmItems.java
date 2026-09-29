@@ -6,11 +6,16 @@ import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.autocraft.RecipeCardItem;
 import dev.micolash.jasm.autocraft.ServerPartItem;
+import dev.micolash.jasm.core.BitlingKind;
+import dev.micolash.jasm.core.BitlingStage;
+import dev.micolash.jasm.core.ChipType;
+import dev.micolash.jasm.crystal.CrystalSeedItem;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
+import dev.micolash.jasm.workshop.BitlingItem;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -32,6 +37,43 @@ public final class JasmItems {
     private static final List<DeferredItem<BlockItem>> CABLES = new ArrayList<>();
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
+    public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
+    public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");
+    public static final DeferredItem<Item> CRYSTAL_DUST = ITEMS.registerSimpleItem("crystal_dust");
+    public static final DeferredItem<BlockItem> SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.SEEDED_AMETHYST);
+    public static final DeferredItem<BlockItem> WORN_SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.WORN_SEEDED_AMETHYST);
+    public static final DeferredItem<BlockItem> CRACKED_SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.CRACKED_SEEDED_AMETHYST);
+    public static final DeferredItem<BlockItem> SMALL_DATA_CRYSTAL_BUD = ITEMS.registerSimpleBlockItem(JasmBlocks.SMALL_DATA_CRYSTAL_BUD);
+    public static final DeferredItem<BlockItem> MEDIUM_DATA_CRYSTAL_BUD = ITEMS.registerSimpleBlockItem(JasmBlocks.MEDIUM_DATA_CRYSTAL_BUD);
+    public static final DeferredItem<BlockItem> LARGE_DATA_CRYSTAL_BUD = ITEMS.registerSimpleBlockItem(JasmBlocks.LARGE_DATA_CRYSTAL_BUD);
+    public static final DeferredItem<BlockItem> DATA_CRYSTAL_CLUSTER = ITEMS.registerSimpleBlockItem(JasmBlocks.DATA_CRYSTAL_CLUSTER);
+    public static final DeferredItem<Item> BLANK_CHIP = ITEMS.registerSimpleItem("blank_chip");
+    public static final DeferredItem<Item> UNQUENCHED_LOGIC_CHIP = ITEMS.registerSimpleItem("unquenched_logic_chip");
+    public static final DeferredItem<Item> UNQUENCHED_MEMORY_CHIP = ITEMS.registerSimpleItem("unquenched_memory_chip");
+    public static final DeferredItem<Item> LOGIC_CHIP = ITEMS.registerSimpleItem("logic_chip");
+    public static final DeferredItem<Item> MEMORY_CHIP = ITEMS.registerSimpleItem("memory_chip");
+    public static final DeferredItem<Item> LINK_CHIP = ITEMS.registerSimpleItem("link_chip");
+    public static final DeferredItem<Item> ADVANCED_LOGIC_CHIP = ITEMS.registerSimpleItem("advanced_logic_chip");
+    public static final DeferredItem<Item> ADVANCED_MEMORY_CHIP = ITEMS.registerSimpleItem("advanced_memory_chip");
+    public static final DeferredItem<Item> ADVANCED_LINK_CHIP = ITEMS.registerSimpleItem("advanced_link_chip");
+    private static final Map<BitlingKind, Map<BitlingStage, DeferredItem<BitlingItem>>> BITLINGS = new EnumMap<>(BitlingKind.class);
+
+    static {
+        for (BitlingKind kind : BitlingKind.values()) {
+            Map<BitlingStage, DeferredItem<BitlingItem>> stages = new EnumMap<>(BitlingStage.class);
+            for (BitlingStage stage : BitlingStage.values()) {
+                // A Basic Bitling never grows up.
+                if (kind != BitlingKind.BASIC || stage == BitlingStage.BITLING) {
+                    stages.put(stage, ITEMS.registerItem(BitlingItem.registryName(kind, stage), p -> new BitlingItem(p, kind, stage)));
+                }
+            }
+            BITLINGS.put(kind, stages);
+        }
+    }
+
+    public static final DeferredItem<BlockItem> CRYSTAL_RESONATOR = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_RESONATOR);
+    public static final DeferredItem<BlockItem> CHIP_WORKSHOP = ITEMS.registerSimpleBlockItem(JasmBlocks.CHIP_WORKSHOP);
+    public static final DeferredItem<BlockItem> CRYSTAL_FOUNDRY = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_FOUNDRY);
     private static final Map<ProcessorTier, DeferredItem<ServerPartItem>> PROCESSORS = new EnumMap<>(ProcessorTier.class);
     private static final Map<MemoryTier, DeferredItem<ServerPartItem>> MODULES = new EnumMap<>(MemoryTier.class);
 
@@ -95,6 +137,26 @@ public final class JasmItems {
 
     public static ServerPartItem module(MemoryTier tier) {
         return MODULES.get(tier).get();
+    }
+
+    /** The critter of {@code kind} at {@code stage}; a Basic Bitling only exists at {@link BitlingStage#BITLING}. */
+    public static BitlingItem bitling(BitlingKind kind, BitlingStage stage) {
+        return BITLINGS.get(kind).get(stage).get();
+    }
+
+    /** Every critter, Basic first, then each type from young to grown. */
+    public static List<BitlingItem> bitlings() {
+        List<BitlingItem> all = new ArrayList<>();
+        BITLINGS.values().forEach(stages -> stages.values().forEach(b -> all.add(b.get())));
+        return all;
+    }
+
+    public static Item chip(ChipType type, boolean advanced) {
+        return (switch (type) {
+            case LOGIC -> advanced ? ADVANCED_LOGIC_CHIP : LOGIC_CHIP;
+            case MEMORY -> advanced ? ADVANCED_MEMORY_CHIP : MEMORY_CHIP;
+            case LINK -> advanced ? ADVANCED_LINK_CHIP : LINK_CHIP;
+        }).get();
     }
 
     /** Every Data Cable item, undyed first. */

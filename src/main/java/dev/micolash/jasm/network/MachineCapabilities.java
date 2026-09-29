@@ -28,6 +28,14 @@ public final class MachineCapabilities {
                 (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
         event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.ACCESS_PORT_ENTITY.get(),
                 (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CRYSTAL_RESONATOR_ENTITY.get(),
+                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(),
+                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
+        event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), (workshop, side) -> workshop.automation());
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(),
+                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
+        event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), (foundry, side) -> foundry.automation());
         // An Access Port takes results in on every side while a job uses it, and never gives anything out.
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.ACCESS_PORT_ENTITY.get(),
                 (port, side) -> new WorldlyContainerWrapper(port, side == null ? Direction.UP : side));

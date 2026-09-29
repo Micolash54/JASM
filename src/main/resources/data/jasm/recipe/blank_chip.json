@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": "jasm:data_crystal",
+  "result": {
+    "id": "jasm:blank_chip",
+    "count": 1
+  }
+}

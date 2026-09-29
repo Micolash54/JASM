@@ -1,0 +1,848 @@
+{
+  "textures": {
+    "skin": "jasm:block/bitling/basic",
+    "particle": "jasm:block/bitling/basic"
+  },
+  "elements": [
+    {
+      "name": "helmet_rim",
+      "from": [
+        4,
+        6.75,
+        3.5
+      ],
+      "to": [
+        12,
+        7.75,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "helmet",
+      "from": [
+        3.5,
+        7.75,
+        3.75
+      ],
+      "to": [
+        12.5,
+        14,
+        10.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            7,
+            0,
+            16,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            7,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            7,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            0,
+            6,
+            9,
+            12.5
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "helmet_top",
+      "from": [
+        4.5,
+        14.5,
+        4
+      ],
+      "to": [
+        11.5,
+        15,
+        10
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            0,
+            6,
+            9,
+            12.5
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "face",
+      "from": [
+        4.5,
+        8.5,
+        2.8
+      ],
+      "to": [
+        11.5,
+        13,
+        3
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            12,
+            15,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            13,
+            12,
+            15,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            13,
+            12,
+            15,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            13,
+            12,
+            15,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            13,
+            12,
+            15,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            13,
+            12,
+            15,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "blush_left",
+      "from": [
+        4.75,
+        9.25,
+        2.75
+      ],
+      "to": [
+        5.75,
+        9.75,
+        2.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "blush_right",
+      "from": [
+        10.25,
+        9.25,
+        2.75
+      ],
+      "to": [
+        11.25,
+        9.75,
+        2.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            1,
+            13,
+            2,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "mouth",
+      "from": [
+        7.5,
+        9.25,
+        2.75
+      ],
+      "to": [
+        8.5,
+        9.5,
+        2.8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            13,
+            3,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            2,
+            13,
+            3,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            2,
+            13,
+            3,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            2,
+            13,
+            3,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            2,
+            13,
+            3,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            2,
+            13,
+            3,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "forehead_panel",
+      "from": [
+        6.75,
+        13,
+        2.85
+      ],
+      "to": [
+        9.25,
+        14,
+        3
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "ear_left",
+      "from": [
+        2.5,
+        9,
+        5.5
+      ],
+      "to": [
+        3.5,
+        12,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "ear_right",
+      "from": [
+        12.5,
+        9,
+        5.5
+      ],
+      "to": [
+        13.5,
+        12,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "helmet_front_back",
+      "from": [
+        4.25,
+        7.75,
+        3
+      ],
+      "to": [
+        11.75,
+        14,
+        11
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            7,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            7,
+            0,
+            16,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            0,
+            0,
+            7,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            7,
+            6
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            0,
+            6,
+            9,
+            12.5
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            11,
+            10,
+            13,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "helmet_step",
+      "from": [
+        4,
+        14,
+        3.5
+      ],
+      "to": [
+        12,
+        14.5,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            0,
+            6,
+            9,
+            12.5
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    }
+  ]
+}

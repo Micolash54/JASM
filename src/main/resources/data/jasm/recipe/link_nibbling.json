@@ -1,0 +1,17 @@
+{
+  "type": "jasm:evolve",
+  "key": {
+    "C": "jasm:link_chip",
+    "B": "jasm:link_bitling",
+    "D": "minecraft:diamond"
+  },
+  "pattern": [
+    "CDC",
+    "CBC",
+    "CCC"
+  ],
+  "source": "jasm:link_bitling",
+  "result": {
+    "id": "jasm:link_nibbling"
+  }
+}

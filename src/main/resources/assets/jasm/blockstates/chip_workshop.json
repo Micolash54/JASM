@@ -1,0 +1,49 @@
+{
+  "variants": {
+    "facing=north,status=idle": {
+      "model": "jasm:block/chip_workshop"
+    },
+    "facing=north,status=working": {
+      "model": "jasm:block/chip_workshop_working"
+    },
+    "facing=north,status=napping": {
+      "model": "jasm:block/chip_workshop_napping"
+    },
+    "facing=east,status=idle": {
+      "model": "jasm:block/chip_workshop",
+      "y": 90
+    },
+    "facing=east,status=working": {
+      "model": "jasm:block/chip_workshop_working",
+      "y": 90
+    },
+    "facing=east,status=napping": {
+      "model": "jasm:block/chip_workshop_napping",
+      "y": 90
+    },
+    "facing=south,status=idle": {
+      "model": "jasm:block/chip_workshop",
+      "y": 180
+    },
+    "facing=south,status=working": {
+      "model": "jasm:block/chip_workshop_working",
+      "y": 180
+    },
+    "facing=south,status=napping": {
+      "model": "jasm:block/chip_workshop_napping",
+      "y": 180
+    },
+    "facing=west,status=idle": {
+      "model": "jasm:block/chip_workshop",
+      "y": 270
+    },
+    "facing=west,status=working": {
+      "model": "jasm:block/chip_workshop_working",
+      "y": 270
+    },
+    "facing=west,status=napping": {
+      "model": "jasm:block/chip_workshop_napping",
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "C": "jasm:memory_chip",
+    "B": "jasm:basic_bitling"
+  },
+  "pattern": [
+    "CCC",
+    "CBC",
+    "CCC"
+  ],
+  "source": "jasm:basic_bitling",
+  "result": {
+    "id": "jasm:memory_bitling"
+  }
+}

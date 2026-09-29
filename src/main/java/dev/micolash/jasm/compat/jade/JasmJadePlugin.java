@@ -1,5 +1,7 @@
 package dev.micolash.jasm.compat.jade;
 
+import dev.micolash.jasm.workshop.ChipWorkshopBlock;
+import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
@@ -27,6 +29,8 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(GeneratorInfo.INSTANCE, CombustionGeneratorBlockEntity.class);
         registration.registerEnergyStorage(InfiniteEnergy.INSTANCE, CreativeBatteryBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
+        registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);
+        registration.registerBlockDataProvider(FoundryInfo.INSTANCE, dev.micolash.jasm.crystal.CrystalFoundryBlockEntity.class);
     }
 
     @Override
@@ -35,6 +39,8 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(GeneratorInfo.Client.INSTANCE, CombustionGeneratorBlock.class);
         registration.registerEnergyStorageClient(InfiniteEnergy.INSTANCE);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
+        registration.registerBlockComponent(WorkshopInfo.Client.INSTANCE, ChipWorkshopBlock.class);
+        registration.registerBlockComponent(FoundryInfo.Client.INSTANCE, dev.micolash.jasm.crystal.CrystalFoundryBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, dev.micolash.jasm.autocraft.AccessPortBlock.class);
         // A Recipe Rack says how many cards it holds; the list of every card would only crowd the box.
         registration.addTooltipCollectedCallback((box, accessor) -> {

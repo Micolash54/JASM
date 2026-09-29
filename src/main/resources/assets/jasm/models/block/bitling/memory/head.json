@@ -1,0 +1,7 @@
+{
+  "parent": "jasm:block/bitling/head",
+  "textures": {
+    "skin": "jasm:block/bitling/memory",
+    "particle": "jasm:block/bitling/memory"
+  }
+}

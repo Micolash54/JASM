@@ -1,0 +1,6 @@
+{
+  "parent": "jasm:block/chip_workshop",
+  "textures": {
+    "status": "jasm:block/chip_workshop_status_working"
+  }
+}

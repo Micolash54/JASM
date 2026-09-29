@@ -1,0 +1,428 @@
+{
+  "textures": {
+    "skin": "jasm:block/bitling/basic",
+    "particle": "jasm:block/bitling/basic"
+  },
+  "elements": [
+    {
+      "name": "body",
+      "from": [
+        5,
+        2.75,
+        5.75
+      ],
+      "to": [
+        11,
+        6.75,
+        9.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            6,
+            15,
+            10
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "chest_panel",
+      "from": [
+        6.5,
+        3.25,
+        5.55
+      ],
+      "to": [
+        9.5,
+        4.75,
+        5.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "chest_light",
+      "from": [
+        7.5,
+        3.75,
+        5.45
+      ],
+      "to": [
+        8.5,
+        4.25,
+        5.55
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "bow_knot",
+      "from": [
+        7.5,
+        5.5,
+        5.1
+      ],
+      "to": [
+        8.5,
+        6.5,
+        5.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            11,
+            12,
+            13,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "bow_left",
+      "from": [
+        5.75,
+        5.25,
+        5.2
+      ],
+      "to": [
+        7.5,
+        6.75,
+        5.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "bow_right",
+      "from": [
+        8.5,
+        5.25,
+        5.2
+      ],
+      "to": [
+        10.25,
+        6.75,
+        5.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "textures": {
+    "skin": "jasm:block/bitling/basic",
+    "particle": "jasm:block/bitling/basic"
+  },
+  "elements": [
+    {
+      "name": "arm_right",
+      "from": [
+        11,
+        3.5,
+        6.75
+      ],
+      "to": [
+        12.25,
+        6.25,
+        8.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            14,
+            11,
+            16
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "hand_right",
+      "from": [
+        10.75,
+        2.75,
+        6.5
+      ],
+      "to": [
+        12.5,
+        3.75,
+        9
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            10,
+            11,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    }
+  ]
+}

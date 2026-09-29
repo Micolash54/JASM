@@ -1,0 +1,17 @@
+{
+  "type": "jasm:evolve",
+  "key": {
+    "C": "jasm:advanced_memory_chip",
+    "B": "jasm:memory_nibbling",
+    "N": "minecraft:netherite_scrap"
+  },
+  "pattern": [
+    "CNC",
+    "CBC",
+    "CCC"
+  ],
+  "source": "jasm:memory_nibbling",
+  "result": {
+    "id": "jasm:memory_byteling"
+  }
+}

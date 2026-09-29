@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "L": "jasm:logic_chip",
+    "M": "jasm:memory_chip",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "LML",
+    "MIM",
+    "LML"
+  ],
+  "result": {
+    "id": "jasm:basic_bitling"
+  }
+}

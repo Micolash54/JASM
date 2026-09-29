@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 400,
+  "experience": 0.1,
+  "ingredient": "jasm:blank_chip",
+  "result": {
+    "id": "jasm:unquenched_memory_chip"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:memory_byteling"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_memory_nibbling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:memory_nibbling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_memory_nibbling"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:memory_byteling"
+    ]
+  }
+}

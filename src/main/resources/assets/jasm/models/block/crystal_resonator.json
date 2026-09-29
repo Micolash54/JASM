@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "jasm:block/crystal_resonator_top",
+    "side": "jasm:block/crystal_resonator_side"
+  }
+}

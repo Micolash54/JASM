@@ -1,6 +1,7 @@
 package dev.micolash.jasm.compat.jei;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.client.ReceivedRecipes;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
@@ -35,6 +36,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
@@ -52,7 +54,10 @@ public class JasmJeiPlugin implements IModPlugin {
 
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
-        registration.addRecipeCategories(new GeneratorFuelCategory(registration.getJeiHelpers().getGuiHelper()));
+        registration.addRecipeCategories(new GeneratorFuelCategory(registration.getJeiHelpers().getGuiHelper()),
+                new QuenchingCategory(registration.getJeiHelpers().getGuiHelper()),
+                new WorkshopCategory(registration.getJeiHelpers().getGuiHelper()),
+                new FoundryCategory(registration.getJeiHelpers().getGuiHelper()));
     }
 
     @Override
@@ -60,6 +65,9 @@ public class JasmJeiPlugin implements IModPlugin {
         for (GeneratorTier tier : GeneratorTier.values()) {
             registration.addCraftingStation(GeneratorFuelCategory.TYPE, JasmItems.generator(tier));
         }
+        registration.addCraftingStation(QuenchingCategory.TYPE, Items.WATER_BUCKET);
+        registration.addCraftingStation(WorkshopCategory.TYPE, JasmItems.CHIP_WORKSHOP.get());
+        registration.addCraftingStation(FoundryCategory.TYPE, JasmItems.CRYSTAL_FOUNDRY.get());
         for (ItemLike deck : craftingDecks()) {
             registration.addCraftingStation(RecipeTypes.CRAFTING, deck);
         }
@@ -91,6 +99,14 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
         info(registration, "storage_module", 1, Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
         info(registration, "archive", 2, Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
+        info(registration, "crystal_seed", 3, List.of(JasmItems.CRYSTAL_SEED.get(), JasmItems.SEEDED_AMETHYST.get(),
+                JasmItems.WORN_SEEDED_AMETHYST.get(), JasmItems.CRACKED_SEEDED_AMETHYST.get()));
+        info(registration, "crystal_resonator", 2, List.of(JasmItems.CRYSTAL_RESONATOR.get()));
+        info(registration, "bitling", 3, JasmItems.bitlings());
+        info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
+        registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
+        registration.addRecipes(FoundryCategory.TYPE, java.util.List.of(FoundryCategory.Grow.fromConfig()));
+        info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
         info(registration, "combustion_generator", 2, Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
 
@@ -114,6 +130,7 @@ public class JasmJeiPlugin implements IModPlugin {
                 .map(fuel -> new GeneratorFuelCategory.Fuel(fuel.getInputs(), fuel.getBurnTime()))
                 .toList();
         recipes.addRecipes(GeneratorFuelCategory.TYPE, fuels);
+        recipes.addRecipes(QuenchingCategory.TYPE, ReceivedRecipes.quenching().stream().map(QuenchingCategory.Quench::of).toList());
     }
 
     @Override

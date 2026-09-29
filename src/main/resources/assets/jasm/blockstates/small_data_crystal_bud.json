@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "jasm:block/small_data_crystal_bud",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "jasm:block/small_data_crystal_bud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "jasm:block/small_data_crystal_bud",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/small_data_crystal_bud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "jasm:block/small_data_crystal_bud"
+    },
+    "facing=west": {
+      "model": "jasm:block/small_data_crystal_bud",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

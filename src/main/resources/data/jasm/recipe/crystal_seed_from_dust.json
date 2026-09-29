@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "jasm:crystal_dust",
+    "jasm:crystal_dust",
+    "jasm:crystal_dust",
+    "jasm:crystal_dust",
+    "minecraft:redstone"
+  ],
+  "result": {
+    "id": "jasm:crystal_seed",
+    "count": 1
+  }
+}

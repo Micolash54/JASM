@@ -1,0 +1,7 @@
+{
+  "parent": "jasm:block/bitling/eyes",
+  "textures": {
+    "skin": "jasm:block/bitling/link",
+    "particle": "jasm:block/bitling/link"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/crystal_foundry"
+    },
+    "facing=east": {
+      "model": "jasm:block/crystal_foundry",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/crystal_foundry",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/crystal_foundry",
+      "y": 270
+    }
+  }
+}

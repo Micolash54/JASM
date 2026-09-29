@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/crystal_resonator"
+    },
+    "facing=east": {
+      "model": "jasm:block/crystal_resonator",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/crystal_resonator",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/crystal_resonator",
+      "y": 270
+    }
+  }
+}

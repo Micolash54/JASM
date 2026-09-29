@@ -1,0 +1,148 @@
+{
+  "textures": {
+    "skin": "jasm:block/bitling/basic",
+    "particle": "jasm:block/bitling/basic"
+  },
+  "elements": [
+    {
+      "name": "antenna",
+      "from": [
+        7.75,
+        15,
+        6.75
+      ],
+      "to": [
+        8.25,
+        16.75,
+        7.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            10,
+            15,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            13,
+            10,
+            15,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            13,
+            10,
+            15,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            13,
+            10,
+            15,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            13,
+            10,
+            15,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            13,
+            10,
+            15,
+            12
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    },
+    {
+      "name": "antenna_ball",
+      "from": [
+        7.25,
+        16.75,
+        6.25
+      ],
+      "to": [
+        8.75,
+        18.25,
+        7.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            13,
+            14,
+            15,
+            16
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            9,
+            12,
+            11,
+            14
+          ],
+          "texture": "#skin"
+        }
+      },
+      "shade_direction_override": "up"
+    }
+  ]
+}

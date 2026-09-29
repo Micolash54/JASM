@@ -92,6 +92,74 @@ public final class JasmConfig {
             .defineInRange("cableBuffer", 1_000, 1, 1_000_000);
 
     static {
+        BUILDER.pop().push("chips");
+    }
+
+    public static final ModConfigSpec.DoubleValue SEEDED_WEAR_CHANCE = BUILDER
+            .comment("Chance each time a Data Crystal bud grows that its Seeded Amethyst wears down one stage")
+            .defineInRange("seededWearChance", 0.12, 0.0, 1.0);
+    public static final ModConfigSpec.IntValue RESONATOR_DRAIN = BUILDER
+            .comment("FE a powered Crystal Resonator uses each tick")
+            .defineInRange("resonatorDrain", 10, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue RESONATOR_INTERVAL = BUILDER
+            .comment("Ticks between the extra growth attempts a Crystal Resonator gives each Seeded Amethyst it touches")
+            .defineInRange("resonatorInterval", 600, 1, 72_000);
+    public static final ModConfigSpec.IntValue QUENCH_TICKS = BUILDER
+            .comment("Ticks an Unquenched chip must lie in water to become a chip")
+            .defineInRange("quenchTicks", 40, 1, 12_000);
+    public static final ModConfigSpec.IntValue FOUNDRY_CRYSTALS_PER_SEED = BUILDER
+            .comment("Data Crystals, cut straight into Blank Chips, that the Crystal Foundry grows from one Crystal Seed")
+            .defineInRange("foundryCrystalsPerSeed", 16, 1, 1_000);
+    public static final ModConfigSpec.IntValue FOUNDRY_TICKS_PER_CRYSTAL = BUILDER
+            .comment("Ticks the Crystal Foundry takes to grow and cut one crystal")
+            .defineInRange("foundryTicksPerCrystal", 200, 1, 72_000);
+    public static final ModConfigSpec.IntValue FOUNDRY_DRAIN = BUILDER
+            .comment("FE the Crystal Foundry uses each tick while growing")
+            .defineInRange("foundryDrain", 40, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue WORKSHOP_TICKS_PER_OPERATION = BUILDER
+            .comment("Ticks one Chip Workshop operation takes in Single mode (one chip)")
+            .defineInRange("workshopTicksPerOperation", 200, 1, 72_000);
+    public static final ModConfigSpec.IntValue WORKSHOP_TICKS_PER_BATCH = BUILDER
+            .comment("Ticks one Chip Workshop operation takes in Batch mode, however many chips (up to 8) it makes")
+            .defineInRange("workshopTicksPerBatch", 1200, 1, 72_000);
+    public static final ModConfigSpec.IntValue BITLING_DRAIN_PER_CHIP = BUILDER
+            .comment("FE taken from the working critter for each chip it finishes, in Single and in Batch mode")
+            .defineInRange("bitlingDrainPerChip", 2000, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue BITLING_RECHARGE_RATE = BUILDER
+            .comment("FE per tick the Chip Workshop moves from the power it is given into its critter's battery")
+            .defineInRange("bitlingRechargeRate", 20, 1, 1_000_000);
+    public static final ModConfigSpec.DoubleValue ODDS_OWN_TYPE_BITLING = BUILDER
+            .comment("Chance a young typed Bitling makes its own chip type; the other two types share the rest")
+            .defineInRange("oddsOwnTypeBitling", 0.60, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ADVANCED_CHANCE_BASIC = BUILDER
+            .comment("Chance a chip made by a Basic Bitling comes out Advanced")
+            .defineInRange("advancedChanceBasic", 0.02, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ADVANCED_CHANCE_BITLING = BUILDER
+            .comment("Chance a chip made by a typed Bitling comes out Advanced")
+            .defineInRange("advancedChanceBitling", 0.05, 0.0, 1.0);
+    public static final ModConfigSpec.DoubleValue ADVANCED_CHANCE_NIBBLING = BUILDER
+            .comment("Chance a chip made by a Nibbling comes out Advanced")
+            .defineInRange("advancedChanceNibbling", 0.15, 0.0, 1.0);
+    public static final ModConfigSpec.IntValue TRAINING_BITLING = BUILDER
+            .comment("Chips a typed Bitling must make before it can evolve")
+            .defineInRange("trainingBitling", 100, 1, 1_000_000);
+    public static final ModConfigSpec.IntValue TRAINING_NIBBLING = BUILDER
+            .comment("Chips a Nibbling must make before it can evolve")
+            .defineInRange("trainingNibbling", 300, 1, 1_000_000);
+    public static final ModConfigSpec.IntValue BATTERY_BASIC = BUILDER
+            .comment("FE the battery of a Basic Bitling holds")
+            .defineInRange("batteryBasic", 50_000, 1, Integer.MAX_VALUE);
+    public static final ModConfigSpec.IntValue BATTERY_BITLING = BUILDER
+            .comment("FE the battery of a typed Bitling holds")
+            .defineInRange("batteryBitling", 100_000, 1, Integer.MAX_VALUE);
+    public static final ModConfigSpec.IntValue BATTERY_NIBBLING = BUILDER
+            .comment("FE the battery of a Nibbling holds")
+            .defineInRange("batteryNibbling", 200_000, 1, Integer.MAX_VALUE);
+    public static final ModConfigSpec.IntValue BATTERY_BYTELING = BUILDER
+            .comment("FE the battery of a Byteling holds")
+            .defineInRange("batteryByteling", 400_000, 1, Integer.MAX_VALUE);
+
+    static {
         BUILDER.pop();
     }
 

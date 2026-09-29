@@ -36,7 +36,9 @@ public class JasmButton extends Button {
 
     @Override
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        Identifier sprite = !active ? DISABLED : isHoveredOrFocused() ? HIGHLIGHTED : NORMAL;
+        // A click leaves the button focused; only show that when the player is moving around with the keyboard.
+        boolean lit = isHovered() || isFocused() && net.minecraft.client.Minecraft.getInstance().getLastInputType().isKeyboard();
+        Identifier sprite = !active ? DISABLED : lit ? HIGHLIGHTED : NORMAL;
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, getX(), getY(), getWidth(), getHeight());
         if (icon != null) {
             Icon shown = icon.get();

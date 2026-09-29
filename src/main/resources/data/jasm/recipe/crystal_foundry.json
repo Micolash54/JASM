@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "L": "jasm:logic_chip",
+    "M": "jasm:memory_chip",
+    "I": "minecraft:iron_ingot",
+    "F": "minecraft:blast_furnace",
+    "A": "minecraft:amethyst_block"
+  },
+  "pattern": [
+    "LAL",
+    "MFM",
+    "III"
+  ],
+  "result": {
+    "id": "jasm:crystal_foundry"
+  }
+}

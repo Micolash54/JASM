@@ -1,0 +1,17 @@
+{
+  "type": "jasm:evolve",
+  "key": {
+    "C": "jasm:memory_chip",
+    "B": "jasm:memory_bitling",
+    "D": "minecraft:diamond"
+  },
+  "pattern": [
+    "CDC",
+    "CBC",
+    "CCC"
+  ],
+  "source": "jasm:memory_bitling",
+  "result": {
+    "id": "jasm:memory_nibbling"
+  }
+}

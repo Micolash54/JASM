@@ -20,6 +20,7 @@ public final class JasmGui {
     public static final int ACCENT = 0xFFB4BEFE;
     public static final int GOOD = 0xFFA6E3A1;
     public static final int BAD = 0xFFF38BA8;
+    public static final int WARN = 0xFFF9E2AF;
     public static final int SELECTED = 0xFF45475A;
     public static final int HOVER = 0x30FFFFFF;
     public static final int SHADE = 0xB011111B;

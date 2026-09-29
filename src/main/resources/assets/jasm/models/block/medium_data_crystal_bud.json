@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "jasm:block/medium_data_crystal_bud"
+  }
+}

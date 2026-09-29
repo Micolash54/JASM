@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:link_nibbling"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_link_bitling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:link_bitling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_link_bitling"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:link_nibbling"
+    ]
+  }
+}

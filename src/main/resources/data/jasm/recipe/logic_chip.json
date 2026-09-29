@@ -1,0 +1,7 @@
+{
+  "type": "jasm:quenching",
+  "ingredient": "jasm:unquenched_logic_chip",
+  "result": {
+    "id": "jasm:logic_chip"
+  }
+}

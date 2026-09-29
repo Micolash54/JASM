@@ -21,6 +21,8 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Machines**: put an Access Port next to furnaces, modded machines or a multiblock (every side counts), and write processing cards for it: what goes in, and up to three things that come back. Jobs send the ingredients in and wait for the results to come back into the port. Choose several machines and the work is shared between them.
 - **Crafting rules**: "when I have fewer than 16 torches, craft 32" or "every minute, craft 8 bread", set on the Crafting Deck, with the results sent to the Deck or straight into your inventory.
 - **Data Cables**: join the crafting blocks and carry power between them. Dye them to keep networks apart.
+- **Crystals and chips**: grow Data Crystals from seeded amethyst, cut them into Blank Chips, and cook and cool them into Logic and Memory Chips, the parts JASM's recipes are made of. The Crystal Foundry grows crystals in bulk, and a Crystal Resonator speeds up seeded amethyst.
+- **Chip Workshop and Bitlings**: a little robot helper works the Workshop, turning Blank Chips into Logic, Memory and Link Chips, and now and then a rare Advanced one. Bitlings learn from every chip they make and grow up into Nibblings and Bytelings. See [the guide](wiki/chips-and-bitlings.md).
 - **Creative Battery**: unlimited power for creative worlds, with a charging slot.
 - **Safe by design**: copied wafers stop working, a crash never duplicates items, and items from removed mods are kept until the mod comes back.
 
@@ -30,14 +32,14 @@ JASM is in early testing. Things will change between versions, so back up your w
 
 ## Recipes
 
-Every item except the Creative Battery is craftable in survival. The first tier uses vanilla items, and each higher tier is crafted from the one below it, keeping everything it holds. See [all recipes](wiki/recipes.md).
+Every item except the Creative Battery is craftable in survival. The first tier uses vanilla items; higher tiers use JASM's own chips, from hand-made Logic and Memory Chips up to Advanced chips from the Chip Workshop. Each higher tier is crafted from the one below it, keeping everything it holds. See [all recipes](wiki/recipes.md).
 
 ## Requirements
 
 - Minecraft 26.3
 - NeoForge 26.3.0.16-beta
 
-Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed, you get all recipes, info pages and a fuel page for the generators, the Deck's grid works with JEI's recipe keys, and JEI's "+" fills the Crafting Deck's grid and the Encoding Terminal. With [Jade](https://www.curseforge.com/minecraft/mc-mods/jade), looking at an Archive, generator or crafting block shows its details.
+Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed, you get all recipes, info pages and a fuel page for the generators, the Deck's grid works with JEI's recipe keys, and JEI's "+" fills the Crafting Deck's grid and the Encoding Terminal. With [Jade](https://www.curseforge.com/minecraft/mc-mods/jade), looking at an Archive, generator, crafting block, Chip Workshop or Crystal Foundry shows its details.
 
 ## Installing
 

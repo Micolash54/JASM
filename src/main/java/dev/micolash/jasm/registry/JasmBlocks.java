@@ -14,10 +14,17 @@ import dev.micolash.jasm.autocraft.RecipeRackBlock;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlock;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
+import dev.micolash.jasm.crystal.CrystalFoundryBlock;
+import dev.micolash.jasm.crystal.CrystalFoundryBlockEntity;
+import dev.micolash.jasm.crystal.ResonatorBlock;
+import dev.micolash.jasm.crystal.ResonatorBlockEntity;
+import dev.micolash.jasm.crystal.SeededAmethystBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.workshop.ChipWorkshopBlock;
+import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +34,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.level.block.AmethystClusterBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -96,6 +105,58 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<AccessPortBlockEntity>> ACCESS_PORT_ENTITY = BLOCK_ENTITIES.register(
             "access_port", () -> new BlockEntityType<>(AccessPortBlockEntity::new, ACCESS_PORT.get()));
+
+    // Seeded Amethyst wears Seeded -> Worn -> Cracked -> Block of Amethyst, so the chain is registered back to front.
+    public static final DeferredBlock<SeededAmethystBlock> CRACKED_SEEDED_AMETHYST = BLOCKS.registerBlock("cracked_seeded_amethyst",
+            p -> new SeededAmethystBlock(p, () -> Blocks.AMETHYST_BLOCK), JasmBlocks::seededProperties);
+    public static final DeferredBlock<SeededAmethystBlock> WORN_SEEDED_AMETHYST = BLOCKS.registerBlock("worn_seeded_amethyst",
+            p -> new SeededAmethystBlock(p, CRACKED_SEEDED_AMETHYST), JasmBlocks::seededProperties);
+    public static final DeferredBlock<SeededAmethystBlock> SEEDED_AMETHYST = BLOCKS.registerBlock("seeded_amethyst",
+            p -> new SeededAmethystBlock(p, WORN_SEEDED_AMETHYST), JasmBlocks::seededProperties);
+
+    public static final DeferredBlock<AmethystClusterBlock> DATA_CRYSTAL_CLUSTER = BLOCKS.registerBlock("data_crystal_cluster",
+            p -> new AmethystClusterBlock(7.0F, 10.0F, p), p -> budProperties(p, SoundType.AMETHYST_CLUSTER, 5));
+    public static final DeferredBlock<AmethystClusterBlock> LARGE_DATA_CRYSTAL_BUD = BLOCKS.registerBlock("large_data_crystal_bud",
+            p -> new AmethystClusterBlock(5.0F, 10.0F, p), p -> budProperties(p, SoundType.MEDIUM_AMETHYST_BUD, 4));
+    public static final DeferredBlock<AmethystClusterBlock> MEDIUM_DATA_CRYSTAL_BUD = BLOCKS.registerBlock("medium_data_crystal_bud",
+            p -> new AmethystClusterBlock(4.0F, 10.0F, p), p -> budProperties(p, SoundType.LARGE_AMETHYST_BUD, 2));
+    public static final DeferredBlock<AmethystClusterBlock> SMALL_DATA_CRYSTAL_BUD = BLOCKS.registerBlock("small_data_crystal_bud",
+            p -> new AmethystClusterBlock(3.0F, 8.0F, p), p -> budProperties(p, SoundType.SMALL_AMETHYST_BUD, 1));
+
+    public static final DeferredBlock<ResonatorBlock> CRYSTAL_RESONATOR = BLOCKS.registerBlock("crystal_resonator",
+            ResonatorBlock::new, p -> p.mapColor(MapColor.COLOR_PURPLE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<ResonatorBlockEntity>> CRYSTAL_RESONATOR_ENTITY = BLOCK_ENTITIES.register(
+            "crystal_resonator", () -> new BlockEntityType<>(ResonatorBlockEntity::new, CRYSTAL_RESONATOR.get()));
+
+    public static final DeferredBlock<CrystalFoundryBlock> CRYSTAL_FOUNDRY = BLOCKS.registerBlock("crystal_foundry",
+            CrystalFoundryBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<CrystalFoundryBlockEntity>> CRYSTAL_FOUNDRY_ENTITY = BLOCK_ENTITIES.register(
+            "crystal_foundry", () -> new BlockEntityType<>(CrystalFoundryBlockEntity::new, CRYSTAL_FOUNDRY.get()));
+
+    public static final DeferredBlock<ChipWorkshopBlock> CHIP_WORKSHOP = BLOCKS.registerBlock("chip_workshop",
+            ChipWorkshopBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)
+                    // The lamp at the back: bright while the Bitling works, dim while it naps.
+                    .lightLevel(state -> switch (state.getValue(ChipWorkshopBlock.STATUS)) {
+                        case WORKING -> 12;
+                        case NAPPING -> 5;
+                        case IDLE -> 0;
+                    }));
+
+    public static final Supplier<BlockEntityType<ChipWorkshopBlockEntity>> CHIP_WORKSHOP_ENTITY = BLOCK_ENTITIES.register(
+            "chip_workshop", () -> new BlockEntityType<>(ChipWorkshopBlockEntity::new, CHIP_WORKSHOP.get()));
+
+    private static BlockBehaviour.Properties seededProperties(BlockBehaviour.Properties p) {
+        return p.mapColor(MapColor.COLOR_PURPLE).randomTicks().strength(1.5F).sound(SoundType.AMETHYST).requiresCorrectToolForDrops()
+                .pushReaction(PushReaction.POPPED);
+    }
+
+    // Same as vanilla's buds, which swap the medium and large sounds too.
+    private static BlockBehaviour.Properties budProperties(BlockBehaviour.Properties p, SoundType sound, int light) {
+        return p.mapColor(MapColor.COLOR_PURPLE).forceSolidOn().noOcclusion().sound(sound).strength(1.5F).lightLevel(state -> light)
+                .pushReaction(PushReaction.POPPED);
+    }
 
     /** Undyed first, then one per dye colour. */
     private static final Map<Optional<DyeColor>, DeferredBlock<DataCableBlock>> CABLES = new LinkedHashMap<>();

@@ -1,0 +1,7 @@
+{
+  "parent": "jasm:block/bitling/body",
+  "textures": {
+    "skin": "jasm:block/bitling/logic",
+    "particle": "jasm:block/bitling/logic"
+  }
+}
