@@ -293,6 +293,8 @@
   "config.jade.plugin_jasm.combustion_generator": "Combustion Generator details",
   "config.jade.plugin_jasm.creative_battery": "Creative Battery energy",
   "config.jade.plugin_jasm.machine": "Crafting network block details",
+  "config.jade.plugin_jasm.chip_workshop": "Chip Workshop details",
+  "config.jade.plugin_jasm.crystal_foundry": "Crystal Foundry details",
   "block.jasm.access_port": "Access Port",
   "tooltip.jasm.card.also": "Also %s × %s",
   "tooltip.jasm.card.processing": "Processing",

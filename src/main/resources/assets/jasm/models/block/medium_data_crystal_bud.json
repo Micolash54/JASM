@@ -1,6 +1,244 @@
 {
-  "parent": "minecraft:block/cross",
   "textures": {
-    "cross": "jasm:block/medium_data_crystal_bud"
-  }
+    "chunk": "jasm:block/data_crystal_cluster_chunk",
+    "particle": "jasm:block/medium_data_crystal_bud"
+  },
+  "elements": [
+    {
+      "from": [
+        6.376,
+        -0.56,
+        6.768
+      ],
+      "to": [
+        9.512,
+        4.088,
+        9.736
+      ],
+      "light_emission": 10,
+      "rotation": {
+        "angle": -10,
+        "axis": "z",
+        "origin": [
+          7.944,
+          0,
+          8.224
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "from": [
+        4.864,
+        -0.672,
+        5.424
+      ],
+      "to": [
+        7.16,
+        2.744,
+        7.888
+      ],
+      "light_emission": 10,
+      "rotation": {
+        "angle": 24,
+        "axis": "z",
+        "origin": [
+          6.04,
+          0,
+          6.656
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "rotation": 270,
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "from": [
+        9.12,
+        -0.672,
+        6.992
+      ],
+      "to": [
+        11.192,
+        2.52,
+        9.344
+      ],
+      "light_emission": 10,
+      "rotation": {
+        "angle": -25,
+        "axis": "z",
+        "origin": [
+          10.128,
+          0,
+          8.168
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "rotation": 180,
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    }
+  ]
 }

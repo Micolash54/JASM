@@ -5,8 +5,12 @@ import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -14,6 +18,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -73,6 +78,74 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CrystalFoundryBlockEntity foundry) {
         foundry.tick();
+        foundry.syncGrowth(level);
+    }
+
+    /** What players were last told: 1 growing, 2 busy, and the progress it was at. -1 until the first tick. */
+    private int sentState = -1;
+    private int sentProgress;
+    private int sinceSent;
+
+    /** Tells players when the crystal starts, stops, pauses or begins its next round, and now and then to keep their clocks true. */
+    private void syncGrowth(Level level) {
+        int state = (growing ? 1 : 0) | (busy ? 2 : 0);
+        boolean restarted = progress < sentProgress;
+        if (state != sentState || restarted || busy && ++sinceSent >= 40) {
+            sentState = state;
+            sentProgress = progress;
+            sinceSent = 0;
+            BlockState block = getBlockState();
+            level.sendBlockUpdated(worldPosition, block, block, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    private boolean shownGrowing;
+    private boolean shownBusy;
+    private int shownProgress;
+    private int shownTicks = 1;
+    private long shownAt;
+
+    /** How far along the crystal in the chamber is, 0 to 1, as the player's game sees it. -1 when nothing is growing. */
+    public float shownGrowth(long gameTime, float partialTicks) {
+        if (!shownGrowing) {
+            return -1;
+        }
+        float elapsed = shownBusy ? gameTime - shownAt + partialTicks : 0;
+        return Math.clamp((shownProgress + elapsed) / shownTicks, 0F, 1F);
+    }
+
+    // Players only get how the crystal is coming along, not the slots.
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean("growing", growing);
+        tag.putBoolean("busy", busy);
+        tag.putInt("progress", progress);
+        tag.putInt("ticks", JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getAsInt());
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(ValueInput input) {
+        shown(input);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ValueInput input) {
+        shown(input);
+    }
+
+    private void shown(ValueInput input) {
+        shownGrowing = input.getBooleanOr("growing", false);
+        shownBusy = input.getBooleanOr("busy", false);
+        shownProgress = input.getIntOr("progress", 0);
+        shownTicks = Math.max(1, input.getIntOr("ticks", 1));
+        shownAt = level == null ? 0 : level.getGameTime();
     }
 
     private void tick() {

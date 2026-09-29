@@ -29,6 +29,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), CraftingServerRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), ChipWorkshopRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), CrystalFoundryRenderer::new);
     }
 
     /** The cards, parts, fans and screens the crafting blocks draw on top of themselves. */
@@ -38,6 +39,7 @@ public final class JasmClient {
         CraftingServerRenderer.registerModels(event);
         EncodingTerminalRenderer.registerModels(event);
         ChipWorkshopRenderer.registerModels(event);
+        CrystalFoundryRenderer.registerModels(event);
     }
 
     @SubscribeEvent

@@ -1,6 +1,165 @@
 {
-  "parent": "minecraft:block/cross",
   "textures": {
-    "cross": "jasm:block/small_data_crystal_bud"
-  }
+    "chunk": "jasm:block/data_crystal_cluster_chunk",
+    "particle": "jasm:block/small_data_crystal_bud"
+  },
+  "elements": [
+    {
+      "from": [
+        6.84,
+        -0.4,
+        7.12
+      ],
+      "to": [
+        9.08,
+        2.92,
+        9.24
+      ],
+      "light_emission": 10,
+      "rotation": {
+        "angle": -10,
+        "axis": "z",
+        "origin": [
+          7.96,
+          0,
+          8.16
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "from": [
+        8.8,
+        -0.48,
+        7.28
+      ],
+      "to": [
+        10.28,
+        1.8,
+        8.96
+      ],
+      "light_emission": 10,
+      "rotation": {
+        "angle": -25,
+        "axis": "z",
+        "origin": [
+          9.52,
+          0,
+          8.12
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "rotation": 180,
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    }
+  ]
 }
