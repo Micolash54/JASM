@@ -44,18 +44,8 @@ public final class DeckStorage {
         }
 
         @Override
-        public int priority() {
-            return record == null ? 0 : record.settings().priority();
-        }
-
-        @Override
-        public boolean listed(ItemResource key) {
-            return record != null && record.settings().lists(key.getItem());
-        }
-
-        @Override
-        public boolean only() {
-            return record != null && record.settings().only();
+        public boolean accepts(ItemResource key) {
+            return record == null || record.settings().rank(key.getItem()) >= 0;
         }
 
         @Override
@@ -174,6 +164,9 @@ public final class DeckStorage {
             return false;
         }
         SlotView view = views.get(slot);
+        List<WaferSettings.Filter> previous = view.record() == null ? List.of() : view.record().settings().rules();
+        if (settings.rules().stream().anyMatch(rule -> !rule.valid() && previous.stream()
+                .noneMatch(old -> old.mode() == rule.mode() && old.value().equals(rule.value())))) return false;
         WaferRecord record = view.record();
         if (record == null) {
             ItemStack blank = view.wafer();
@@ -205,6 +198,42 @@ public final class DeckStorage {
                 wafers = wafers.with(allocation.slot(), blank);
             }
             moved += store.insert(record, key, allocation.amount(), false, player);
+        }
+        deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
+        return moved;
+    }
+
+    /** Fill wafers left to right, choosing each wafer's highest matching rows before other items in the batch. */
+    public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player) {
+        var left = new java.util.LinkedHashMap<ItemResource, Long>();
+        items.forEach((key, amount) -> {
+            if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) left.put(key, amount);
+        });
+        var moved = new java.util.LinkedHashMap<ItemResource, Long>();
+        List<SlotView> slots = views(store, deck, player);
+        DeckWafers wafers = DeckItem.wafers(deck);
+        for (int i = 0; i < slots.size(); i++) {
+            SlotView slot = slots.get(i);
+            if (!slot.usable()) continue;
+            WaferRecord record = slot.record();
+            WaferSettings settings = record == null ? WaferSettings.DEFAULT : record.settings();
+            List<ItemResource> order = new ArrayList<>(left.keySet());
+            order.removeIf(key -> settings.rank(key.getItem()) < 0);
+            order.sort(java.util.Comparator.comparingInt(key -> settings.rank(key.getItem())));
+            for (ItemResource key : order) {
+                long remaining = left.get(key);
+                if (remaining <= 0 || (record == null ? slot.room(key) : record.roomFor(key)) <= 0) continue;
+                if (record == null) {
+                    ItemStack blank = slot.wafer();
+                    record = WaferValidator.format(store, blank, player);
+                    wafers = wafers.with(i, blank);
+                }
+                long stored = store.insert(record, key, remaining, false, player);
+                if (stored > 0) {
+                    moved.merge(key, stored, Long::sum);
+                    left.put(key, remaining - stored);
+                }
+            }
         }
         deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
         return moved;

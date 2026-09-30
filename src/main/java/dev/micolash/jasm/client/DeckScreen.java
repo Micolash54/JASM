@@ -30,7 +30,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
@@ -44,8 +43,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Deck screen: wafer slots in a side panel on the left; in the main panel, charge and wafer status, a
  * searchable, scrollable grid of everything on the Deck's wafers, and the player's inventory. A Crafting Deck adds a
- * panel on the right with its 3×3 crafting grid. Right-clicking a wafer opens its settings (priority and filter) in a
- * small window on top, which can be dragged by its title bar.
+ * panel on the right with its 3×3 crafting grid. Right-clicking a wafer opens its ordered filters in a
+ * window on top, which can be dragged by its title bar.
  */
 public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     /** Width of the main panel; the side panels add to it. */
@@ -65,7 +64,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private static final JasmButton.Icon SORT_AMOUNT = new JasmButton.Icon(Jasm.id("icon/sort_amount"), 7, 5);
     private static final JasmButton.Icon ARROW_UP = new JasmButton.Icon(Jasm.id("icon/arrow_up"), 5, 3);
     private static final JasmButton.Icon ARROW_DOWN = new JasmButton.Icon(Jasm.id("icon/arrow_down"), 5, 3);
-    private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final JasmButton.Icon ARROW_LEFT = new JasmButton.Icon(Jasm.id("icon/arrow_left"), 3, 5);
     private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow");
     private static final Identifier CRAFTABLE = Jasm.id("icon/craftable");
@@ -94,20 +92,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private int gridY;
     private int statusY;
     private Button sizeButton;
-    /** The wafer slot whose settings are open, or -1; and the settings as edited here. */
-    private int editing = -1;
-    private WaferSettings draft = WaferSettings.DEFAULT;
-    /** The settings window's buttons, each with its place in the window. Drawn and clicked by hand, above the rest. */
-    private final List<Placed> settingsButtons = new ArrayList<>();
-    private Button modeButton;
-    /** Where the settings window sits, from the screen's corner. Kept while the Deck stays open. */
-    private int windowDX;
-    private int windowDY;
-    /** While dragging the window: where in it the mouse took hold; -1 when not dragging. */
-    private int grabX = -1;
-    private int grabY;
-
-    private record Placed(Button button, int x, int y) {}
+    private WaferFilterWindow filterWindow;
 
     /** A Crafting Deck's two views of its grid: what is stored, and what its network can craft. */
     private enum Tab { ITEMS, CRAFT, RULES }
@@ -127,8 +112,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         this.scrollX = gridX + COLUMNS * 18 + 3;
         this.titleLabelX = mainX + 8;
         this.inventoryLabelX = mainX + 8;
-        this.windowDX = mainX + 100;
-        this.windowDY = 14;
     }
 
     /**
@@ -233,23 +216,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             addRenderableWidget(clear);
         }
 
-        settingsButtons.clear();
-        place(JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> closeSettings(), 0, 0, 11, 11),
-                WINDOW_WIDTH - 16, 5);
-        place(JasmButton.text(Component.literal("-"), b -> changePriority(-1), 0, 0, 14, 14), 58, BODY_Y + 27);
-        place(JasmButton.text(Component.literal("+"), b -> changePriority(1), 0, 0, 14, 14), 102, BODY_Y + 27);
-        modeButton = place(JasmButton.text(modeLabel(), b -> {
-            send(new WaferSettings(draft.priority(), !draft.only(), draft.filter()));
-            b.setMessage(modeLabel());
-        }, 0, 0, 42, 14), 58, BODY_Y + 47);
-        place(JasmButton.text(Component.translatable("screen.jasm.deck.settings.done"), b -> closeSettings(), 0, 0, 36, 14),
-                WINDOW_WIDTH - 7 - 36, BODY_Y + 87);
-        layoutWindow();
-    }
-
-    private Button place(Button button, int x, int y) {
-        settingsButtons.add(new Placed(button, x, y));
-        return button;
+        if (filterWindow == null) filterWindow = new WaferFilterWindow(menu, font);
     }
 
     /** The open tab's button is greyed out, so it reads as the one selected. */
@@ -352,106 +319,27 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     // --- wafer settings ---
 
-    private static final int WINDOW_WIDTH = 176;
-    private static final int WINDOW_HEIGHT = 112;
-    /** The title bar: grab it to move the window. Everything else sits below it. */
-    private static final int TITLE_HEIGHT = 22;
-    private static final int BODY_Y = 4;
-    private static final int WINDOW_SHADOW = 0x6E000000;
-    /** Where the search box starts in the main panel; the title gets the room before it. */
     private static final int SEARCH_X = 86;
 
-    /** The window's left edge on screen, kept fully on screen. */
-    private int windowX() {
-        return Math.clamp(leftPos + windowDX, 0, Math.max(0, width - WINDOW_WIDTH));
-    }
-
-    private int windowY() {
-        return Math.clamp(topPos + windowDY, 0, Math.max(0, height - WINDOW_HEIGHT));
-    }
-
-    private void layoutWindow() {
-        for (Placed placed : settingsButtons) {
-            placed.button().setPosition(windowX() + placed.x(), windowY() + placed.y());
-            placed.button().visible = editing >= 0;
-        }
-    }
-
     private boolean inWindow(double mouseX, double mouseY) {
-        return editing >= 0 && mouseX >= windowX() && mouseX < windowX() + WINDOW_WIDTH && mouseY >= windowY()
-                && mouseY < windowY() + WINDOW_HEIGHT;
-    }
-
-    private Component modeLabel() {
-        return Component.translatable(draft.only() ? "screen.jasm.deck.settings.only" : "screen.jasm.deck.settings.prefer");
+        return filterWindow != null && filterWindow.contains(mouseX, mouseY);
     }
 
     private void openSettings(int slot) {
-        editing = slot;
-        List<DeckStorage.SlotStatus> slots = menu.view().slots();
-        draft = slot < slots.size() ? slots.get(slot).settings() : WaferSettings.DEFAULT;
-        modeButton.setMessage(modeLabel());
-        layoutWindow();
+        search.setFocused(false);
+        craftWindow.close();
+        ruleWindow.close();
+        jobsWindow.close();
+        filterWindow.open(slot, leftPos + mainX, topPos + 20, width, height);
     }
 
     private void closeSettings() {
-        editing = -1;
-        grabX = -1;
-        layoutWindow();
+        if (filterWindow != null) filterWindow.close();
     }
 
-    private void changePriority(int step) {
-        send(new WaferSettings(draft.priority() + step, draft.only(), draft.filter()));
-    }
-
-    /** Keeps the edit here and tells the server; the server checks and cleans it up on its side too. */
-    private void send(WaferSettings settings) {
-        draft = settings;
-        ClientPacketDistributor.sendToServer(new DeckPayloads.Configure(menu.containerId, editing, settings));
-    }
-
-    /** The filter slot under the mouse, or -1. */
-    private int filterSlotAt(double mouseX, double mouseY) {
-        int fx = windowX() + 8;
-        int fy = windowY() + BODY_Y + 67;
-        if (mouseY < fy || mouseY >= fy + 16 || mouseX < fx) {
-            return -1;
-        }
-        int index = (int) ((mouseX - fx) / 18);
-        return index < WaferSettings.FILTER_SLOTS && mouseX < fx + index * 18 + 16 ? index : -1;
-    }
-
-    private static @Nullable Item filterItem(Identifier id) {
-        return BuiltInRegistries.ITEM.get(id).map(holder -> holder.value()).orElse(null);
-    }
-
-    /** Holding an item: put it in this filter slot. Empty-handed: clear the slot. The item itself is never used up. */
-    private void clickFilter(int index) {
-        ItemStack carried = menu.getCarried();
-        setFilter(index, carried.isEmpty() ? null : carried.getItem());
-    }
-
-    /** Puts {@code item} in filter slot {@code index}, or clears the slot when it is null. */
+    /** An item dragged from JEI fills the new filter's ghost input. */
     public void setFilter(int index, @Nullable Item item) {
-        if (editing < 0) {
-            return;
-        }
-        List<Identifier> filter = new ArrayList<>(draft.filter());
-        if (item == null) {
-            if (index < filter.size()) {
-                filter.remove(index);
-            }
-        } else {
-            Identifier id = BuiltInRegistries.ITEM.getKey(item);
-            if (!filter.contains(id)) {
-                if (index < filter.size()) {
-                    filter.set(index, id);
-                } else {
-                    filter.add(id);
-                }
-            }
-        }
-        send(new WaferSettings(draft.priority(), draft.only(), filter));
+        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setItem(item == null ? ItemStack.EMPTY : new ItemStack(item));
     }
 
     // --- for item list mods (JEI) ---
@@ -467,7 +355,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (ruleWindow != null && ruleWindow.isOpen()) {
             return ruleWindow.area();
         }
-        return editing < 0 ? Optional.empty() : Optional.of(new Rect2i(windowX(), windowY(), WINDOW_WIDTH + 3, WINDOW_HEIGHT + 3));
+        return filterWindow == null ? Optional.empty() : filterWindow.area();
     }
 
     /** The rule window's item slot while it is open, for dropping items from JEI. */
@@ -482,24 +370,18 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         }
     }
 
-    /** The filter slots on screen while the settings window is open, in order. */
+    /** The new filter's ghost slot while the settings window is open. */
     public List<Rect2i> filterSlotAreas() {
-        List<Rect2i> areas = new ArrayList<>();
-        if (editing >= 0) {
-            for (int i = 0; i < WaferSettings.FILTER_SLOTS; i++) {
-                areas.add(new Rect2i(windowX() + 8 + i * 18, windowY() + BODY_Y + 67, 16, 16));
-            }
-        }
-        return areas;
+        return filterWindow != null && filterWindow.isOpen() ? List.of(filterWindow.slotArea()) : List.of();
     }
 
     /** The grid item or filter item under the mouse. */
     public Optional<ShownItem> itemAt(double mouseX, double mouseY) {
         if (inWindow(mouseX, mouseY)) {
-            int index = filterSlotAt(mouseX, mouseY);
-            Item item = index >= 0 && index < draft.filter().size() ? filterItem(draft.filter().get(index)) : null;
-            return item == null ? Optional.empty()
-                    : Optional.of(new ShownItem(new ItemStack(item), windowX() + 8 + index * 18, windowY() + BODY_Y + 67));
+            ItemStack ghost = filterWindow.ghost();
+            Rect2i slot = filterWindow.slotArea();
+            return ghost.isEmpty() || !slot.contains((int) mouseX, (int) mouseY) ? Optional.empty()
+                    : Optional.of(new ShownItem(ghost, slot.getX(), slot.getY()));
         }
         GridEntries.Entry<ItemResource> entry = entryAt(mouseX, mouseY);
         if (entry == null) {
@@ -596,8 +478,8 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
         drawCharge(graphics, x, y);
-        if (editing >= 0 && editing < menu.slots.size()) {
-            Slot wafer = menu.slots.get(editing);
+        if (filterWindow != null && filterWindow.isOpen() && filterWindow.selected() < menu.slots.size()) {
+            Slot wafer = menu.slots.get(filterWindow.selected());
             graphics.outline(x + wafer.x - 1, y + wafer.y - 1, 18, 18, JasmGui.ACCENT);
         }
         JasmGui.inset(graphics, x + gridX - 1, y + gridY - 1, COLUMNS * 18, rows * 18);
@@ -638,7 +520,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         rebuildIfNeeded();
-        if (editing >= 0 && !(editing < menu.view().slots().size() && menu.view().slots().get(editing).present())) {
+        if (filterWindow.isOpen() && !(filterWindow.selected() < menu.view().slots().size() && menu.view().slots().get(filterWindow.selected()).present())) {
             closeSettings();
         }
         // Under the settings or request window nothing lights up or shows a tooltip.
@@ -654,9 +536,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             graphics.nextStratum();
             JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + gridX - 1, topPos + gridY + rows * 18 - 1, COLUMNS * 18);
         }
-        if (editing >= 0) {
+        if (filterWindow.isOpen()) {
             graphics.nextStratum();
-            drawSettings(graphics, realMouseX, realMouseY, a);
+            filterWindow.draw(graphics, realMouseX, realMouseY, a, width, height);
         }
         if (craftWindow.isOpen()) {
             graphics.nextStratum();
@@ -734,64 +616,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         }
     }
 
-    /** The settings window: a title bar with the wafer and a close button, then priority, filter mode and filter slots. */
-    private void drawSettings(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        int p = windowX();
-        int q = windowY();
-        graphics.fill(p + 3, q + 3, p + WINDOW_WIDTH + 3, q + WINDOW_HEIGHT + 3, WINDOW_SHADOW);
-        JasmGui.panel(graphics, p, q, WINDOW_WIDTH, WINDOW_HEIGHT);
-        ItemStack wafer = menu.slots.get(editing).getItem();
-        graphics.item(wafer, p + 6, q + 4);
-        Component slotLabel = Component.translatable("screen.jasm.deck.settings.slot", editing + 1);
-        int slotLabelX = p + WINDOW_WIDTH - 21 - font.width(slotLabel);
-        String name = wafer.getHoverName().getString();
-        int room = slotLabelX - 4 - (p + 26);
-        if (font.width(name) > room) {
-            name = font.plainSubstrByWidth(name, room - font.width("...")) + "...";
-        }
-        graphics.text(font, name, p + 26, q + 8, JasmGui.TEXT, false);
-        graphics.text(font, slotLabel, slotLabelX, q + 8, JasmGui.MUTED, false);
-        graphics.fill(p + 4, q + TITLE_HEIGHT, p + WINDOW_WIDTH - 4, q + TITLE_HEIGHT + 1, JasmGui.SELECTED);
-        for (Placed placed : settingsButtons) {
-            placed.button().extractRenderState(graphics, mouseX, mouseY, a);
-        }
-
-        q += BODY_Y;
-        for (int i = 0; i < WaferSettings.FILTER_SLOTS; i++) {
-            JasmGui.slot(graphics, p + 8 + i * 18, q + 67);
-        }
-
-        graphics.text(font, Component.translatable("screen.jasm.deck.settings.priority"), p + 7, q + 31, JasmGui.SUBTEXT, false);
-        JasmGui.inset(graphics, p + 74, q + 27, 26, 14);
-        String value = draft.priority() > 0 ? "+" + draft.priority() : String.valueOf(draft.priority());
-        graphics.text(font, value, p + 74 + (26 - font.width(value)) / 2, q + 31, JasmGui.TEXT, false);
-        String when = draft.priority() > 0 ? "screen.jasm.deck.settings.fills_first" : draft.priority() < 0 ? "screen.jasm.deck.settings.fills_last"
-                : "screen.jasm.deck.settings.normal";
-        graphics.text(font, Component.translatable(when), p + 120, q + 31, JasmGui.MUTED, false);
-
-        graphics.text(font, Component.translatable("screen.jasm.deck.settings.filter"), p + 7, q + 51, JasmGui.SUBTEXT, false);
-        graphics.text(font, Component.translatable(draft.only() ? "screen.jasm.deck.settings.nothing_else" : "screen.jasm.deck.settings.others_too"),
-                p + 104, q + 51, JasmGui.MUTED, false);
-        int hoveredFilter = filterSlotAt(mouseX, mouseY);
-        for (int i = 0; i < draft.filter().size(); i++) {
-            Item item = filterItem(draft.filter().get(i));
-            int fx = p + 8 + i * 18;
-            int fy = q + 67;
-            if (item != null) {
-                graphics.item(new ItemStack(item), fx, fy);
-            }
-            if (i == hoveredFilter && menu.getCarried().isEmpty()) {
-                graphics.setTooltipForNextFrame(font, item != null ? new ItemStack(item).getHoverName()
-                        : Component.literal(draft.filter().get(i).toString()), mouseX, mouseY);
-            }
-        }
-        if (hoveredFilter >= 0) {
-            int fx = p + 8 + hoveredFilter * 18;
-            graphics.fill(fx, q + 67, fx + 16, q + 83, JasmGui.HOVER);
-        }
-        graphics.text(font, Component.translatable("screen.jasm.deck.settings.hint"), p + 7, q + 91, JasmGui.MUTED, false);
-    }
-
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         // Long names are cut short so they never run under the search box.
@@ -847,14 +671,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 lines.add(Component.translatable("screen.jasm.deck.wafer_types", status.typesUsed(), status.types()).withStyle(ChatFormatting.GRAY));
             }
             WaferSettings settings = status.settings();
-            if (settings.priority() != 0) {
-                lines.add(Component.translatable("screen.jasm.deck.priority", settings.priority() > 0 ? "+" + settings.priority() : settings.priority())
-                        .withStyle(ChatFormatting.GRAY));
-            }
-            if (!settings.filter().isEmpty() || settings.only()) {
-                lines.add(Component.translatable(settings.only() ? "screen.jasm.deck.only" : "screen.jasm.deck.prefers", settings.filter().size())
-                        .withStyle(ChatFormatting.GRAY));
-            }
+            if (!settings.rules().isEmpty()) lines.add(Component.translatable("screen.jasm.filter.count", settings.rules().size()).withStyle(ChatFormatting.GRAY));
             if (status.fromMissingMods() > 0) {
                 lines.add(Component.translatable("screen.jasm.deck.missing", String.format("%,d", status.fromMissingMods()))
                         .withStyle(ChatFormatting.RED));
@@ -903,19 +720,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         // The settings window takes every click that lands on it, before the grid or tabs underneath
         // (whichever tab is open), so nothing there is touched.
         if (inWindow(event.x(), event.y())) {
-            for (Placed placed : settingsButtons) {
-                if (placed.button().mouseClicked(event, doubleClick)) {
-                    return true;
-                }
-            }
-            int filter = filterSlotAt(event.x(), event.y());
-            if (filter >= 0) {
-                clickFilter(filter);
-            } else if (!right && event.y() < windowY() + TITLE_HEIGHT) {
-                grabX = (int) event.x() - windowX();
-                grabY = (int) event.y() - windowY();
-            }
-            return true;
+            return filterWindow.mouseClicked(event, doubleClick);
         }
         // The rule window stays open while items are picked up from the inventory for its slot.
         if (tab == Tab.RULES && inGrid(event.x(), event.y())) {
@@ -947,7 +752,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         // same wafer again closes them.
         Slot clickedSlot = slotAt(event.x(), event.y());
         if (right && clickedSlot != null && clickedSlot.index < menu.waferSlots() && clickedSlot.hasItem() && menu.getCarried().isEmpty()) {
-            if (editing == clickedSlot.index) {
+            if (filterWindow.selected() == clickedSlot.index) {
                 closeSettings();
             } else {
                 openSettings(clickedSlot.index);
@@ -980,15 +785,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (craftWindow.mouseDragged(event)) {
             return true;
         }
-        if (grabX >= 0) {
-            windowDX = Math.clamp((int) event.x() - grabX, 0, Math.max(0, width - WINDOW_WIDTH)) - leftPos;
-            windowDY = Math.clamp((int) event.y() - grabY, 0, Math.max(0, height - WINDOW_HEIGHT)) - topPos;
-            layoutWindow();
-            return true;
-        }
-        if (inWindow(event.x(), event.y())) {
-            return true;
-        }
+        if (filterWindow.isOpen() && filterWindow.mouseDragged(event, width, height)) return true;
         if (draggingHandle) {
             scrollToMouse(event.y());
             return true;
@@ -1002,13 +799,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (craftWindow.mouseReleased()) {
             return true;
         }
-        if (grabX >= 0) {
-            grabX = -1;
-            return true;
-        }
-        if (inWindow(event.x(), event.y())) {
-            return true;
-        }
+        if (filterWindow.isOpen() && filterWindow.mouseReleased(event)) return true;
         if (draggingHandle) {
             draggingHandle = false;
             return true;
@@ -1028,7 +819,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             return craftWindow.mouseScrolled(scrollY);
         }
         if (inWindow(x, y)) {
-            return true;
+            return filterWindow.mouseScrolled(scrollY);
         }
         if (inGrid(x, y) || onScrollBar(x, y)) {
             scrollRow = Math.max(0, Math.min(maxScroll(), scrollRow - (int) Math.signum(scrollY)));
@@ -1039,6 +830,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (filterWindow.isOpen() && filterWindow.charTyped(event)) return true;
         if (craftWindow.isOpen() && craftWindow.charTyped(event)) {
             return true;
         }
@@ -1069,10 +861,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (ruleWindow.isOpen() && ruleWindow.keyPressed(event)) {
             return true;
         }
-        if (editing >= 0 && event.isEscape()) {
-            closeSettings();
-            return true;
-        }
+        if (filterWindow.isOpen() && filterWindow.keyPressed(event)) return true;
         if (search.isFocused() && !event.isEscape()) {
             search.keyPressed(event);
             return true;

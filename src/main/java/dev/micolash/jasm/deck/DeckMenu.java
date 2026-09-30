@@ -380,14 +380,27 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return;
         }
         placing = true;
+        wafers.flush();
+        var incoming = new java.util.LinkedHashMap<ItemResource, Long>();
+        for (int i = 0; i < DeckGridContainer.SIZE; i++) {
+            ItemStack stack = grid.getItem(i);
+            if (!stack.isEmpty()) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+        }
+        var accepted = DeckStorage.hasPower(deck)
+                ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player)
+                : new java.util.LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack stack = grid.getItem(i);
             if (!stack.isEmpty()) {
-                store(player, stack);
+                ItemResource key = ItemResource.of(stack);
+                int take = (int) Math.min(stack.getCount(), accepted.getOrDefault(key, 0L));
+                stack.shrink(take);
+                accepted.put(key, accepted.getOrDefault(key, 0L) - take);
                 grid.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack);
             }
         }
         placing = false;
+        wafers.reload();
         updateResult(player, null);
     }
 

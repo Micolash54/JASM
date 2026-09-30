@@ -666,9 +666,8 @@ public final class Jobs {
         prepareOpenDeck(player, deck);
         DeckStorage.checkAll(store, deck, player);
         long moved = 0;
-        for (var held : items.entrySet()) {
-            long stored = DeckStorage.depositAmount(store, deck, held.getKey(), held.getValue(), player);
-            if (stored > 0) moved += store.extract(record, held.getKey(), stored, false, player);
+        for (var held : DeckStorage.depositAmounts(store, deck, items, player).entrySet()) {
+            moved += store.extract(record, held.getKey(), held.getValue(), false, player);
         }
         refreshOpenDeck(player, deck);
         return moved;

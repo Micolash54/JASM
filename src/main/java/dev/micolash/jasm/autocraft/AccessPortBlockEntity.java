@@ -224,11 +224,19 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         Jobs.prepareOpenDeck(player, deck);
         DeckStorage.checkAll(store, deck, player);
         // The old ninth intake slot can still contain saved returns; drain it without accepting new items there.
+        var incoming = new java.util.LinkedHashMap<ItemResource, Long>();
+        for (int i = 0; i < SLOTS; i++) {
+            ItemStack stack = items.get(i);
+            if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack))) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+        }
+        var accepted = DeckStorage.depositAmounts(store, deck, incoming, player);
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
             if (stack.isEmpty() || expected.contains(ItemResource.of(stack))) continue;
-            long moved = DeckStorage.depositAmount(store, deck, ItemResource.of(stack), stack.getCount(), player);
+            ItemResource key = ItemResource.of(stack);
+            long moved = Math.min(stack.getCount(), accepted.getOrDefault(key, 0L));
             if (moved > 0) {
+                accepted.put(key, accepted.get(key) - moved);
                 stack.shrink((int) moved);
                 setChanged();
             }

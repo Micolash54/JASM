@@ -13,7 +13,7 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Capacity Wafers**: storage chips in five sizes, from Basic up to 64K.
 - **Type Wafers**: hold only a few kinds of items, but lots of each. Five sizes, from 4 types up to 64.
 - **Decks**: handheld readers that hold several wafers at once, with a searchable storage screen. Five tiers, from Starter to Ultimate.
-- **Wafer priorities**: choose which wafer in a Deck fills first, and which items each wafer is for.
+- **Wafer filters**: right-click a wafer in the Deck to edit its ordered Item, Tag and Mod ID filters. Each row can Allow or Deny, be disabled, moved or removed. Wafers without filters accept everything; otherwise the first enabled matching row must Allow an item for it to enter. Wafers fill left to right, and higher Allow rows take space first when several item types arrive together.
 - **Archives**: back up wafers and rebuild a lost one onto a blank. Shift-right-click with the linked Deck to back up its wafers in slot order, skipping those already backed up on the network. A short message shows the overall backed-up count. A standalone Archive works for its owner without a Terminal or paired Deck, and links the owner's held Deck automatically on its first backup. On a network it defaults to the network owner, who can select another trusted player's paired Deck. Trusted players can view the backups. Replacing a lost Deck for the same player keeps their backups.
 - **Combustion Generators**: burn anything a furnace burns for power, in Basic, Advanced and Elite tiers. Each has a charging slot for Decks.
 - **Crafting Decks**: Advanced, Elite and Ultimate Decks with a 3×3 crafting grid that takes ingredients straight from the wafers and refills itself.
