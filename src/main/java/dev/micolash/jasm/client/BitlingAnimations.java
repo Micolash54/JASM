@@ -78,42 +78,74 @@ public final class BitlingAnimations {
 
     /** Moves {@code part} and every part it hangs from, root first, to where the loop has them at {@code time}. */
     public void pose(String part, @Nullable Clip clip, float time, PoseStack poseStack) {
-        pose(part, clip, time, null, 0, 1, poseStack);
+        for (Bone bone : chain(part)) {
+            move(bone, boneAt(clip, bone.name(), time), poseStack);
+        }
+    }
+
+    /** Like {@link #pose(String, Clip, float, PoseStack)}, but from a whole pose made by {@link #sample(Clip, float)}. */
+    public void pose(String part, Map<String, float[]> pose, PoseStack poseStack) {
+        for (Bone bone : chain(part)) {
+            float[] values = pose.get(bone.name());
+            move(bone, values == null ? REST : values, poseStack);
+        }
     }
 
     /**
-     * Like {@link #pose(String, Clip, float, PoseStack)}, but easing from the loop {@code from} (at {@code fromTime}) into
-     * {@code to} (at {@code toTime}) as {@code blend} goes from 0 to 1, so a change of loop never snaps.
+     * Where every part is at {@code time} seconds into a loop: for each part its move, turn and size, nine numbers. Two of
+     * these can be blended with {@link #mix}, so one loop eases out of wherever the last one really was.
      */
-    public void pose(String part, @Nullable Clip to, float toTime, @Nullable Clip from, float fromTime, float blend, PoseStack poseStack) {
+    public Map<String, float[]> sample(@Nullable Clip clip, float time) {
+        Map<String, float[]> pose = new LinkedHashMap<>();
+        for (String bone : bones.keySet()) {
+            pose.put(bone, boneAt(clip, bone, time));
+        }
+        return pose;
+    }
+
+    /** Part of the way ({@code blend} from 0 to 1) from one pose to another. */
+    public static Map<String, float[]> mix(Map<String, float[]> from, Map<String, float[]> to, float blend) {
+        Map<String, float[]> pose = new LinkedHashMap<>();
+        for (Map.Entry<String, float[]> e : to.entrySet()) {
+            float[] a = from.getOrDefault(e.getKey(), REST);
+            float[] b = e.getValue();
+            float[] v = new float[9];
+            for (int i = 0; i < 9; i++) {
+                v[i] = a[i] + (b[i] - a[i]) * blend;
+            }
+            pose.put(e.getKey(), v);
+        }
+        return pose;
+    }
+
+    private List<Bone> chain(String part) {
         List<Bone> chain = new ArrayList<>();
         for (Bone bone = bones.get(part); bone != null; bone = bone.parent() == null ? null : bones.get(bone.parent())) {
             chain.addFirst(bone);
         }
-        for (Bone bone : chain) {
-            float[] move = mix(bone, "position", to, toTime, from, fromTime, blend, ZERO);
-            float[] turn = mix(bone, "rotation", to, toTime, from, fromTime, blend, ZERO);
-            float[] size = mix(bone, "scale", to, toTime, from, fromTime, blend, ONE);
-            float[] pivot = bone.pivot();
-            poseStack.translate(move[0] / 16, move[1] / 16, move[2] / 16);
-            poseStack.translate(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
-            poseStack.rotateDegrees(Axis.ZP, turn[2]);
-            poseStack.rotateDegrees(Axis.YP, turn[1]);
-            poseStack.rotateDegrees(Axis.XP, turn[0]);
-            // A part shrunk to nothing, like the chip before it is picked up, is simply not there.
-            poseStack.scale(Math.max(size[0], 1e-4F), Math.max(size[1], 1e-4F), Math.max(size[2], 1e-4F));
-            poseStack.translate(-pivot[0] / 16, -pivot[1] / 16, -pivot[2] / 16);
-        }
+        return chain;
     }
 
-    private static float[] mix(Bone bone, String channel, @Nullable Clip to, float toTime, @Nullable Clip from, float fromTime, float blend,
-            float[] fallback) {
-        float[] a = sample(to, bone.name(), channel, toTime, fallback);
-        if (from == null || blend >= 1) {
-            return a;
-        }
-        float[] b = sample(from, bone.name(), channel, fromTime, fallback);
-        return new float[] {b[0] + (a[0] - b[0]) * blend, b[1] + (a[1] - b[1]) * blend, b[2] + (a[2] - b[2]) * blend};
+    /** No move, no turn, full size. */
+    private static final float[] REST = {0, 0, 0, 0, 0, 0, 1, 1, 1};
+
+    private static float[] boneAt(@Nullable Clip clip, String bone, float time) {
+        float[] move = sample(clip, bone, "position", time, ZERO);
+        float[] turn = sample(clip, bone, "rotation", time, ZERO);
+        float[] size = sample(clip, bone, "scale", time, ONE);
+        return new float[] {move[0], move[1], move[2], turn[0], turn[1], turn[2], size[0], size[1], size[2]};
+    }
+
+    private static void move(Bone bone, float[] v, PoseStack poseStack) {
+        float[] pivot = bone.pivot();
+        poseStack.translate(v[0] / 16, v[1] / 16, v[2] / 16);
+        poseStack.translate(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
+        poseStack.rotateDegrees(Axis.ZP, v[5]);
+        poseStack.rotateDegrees(Axis.YP, v[4]);
+        poseStack.rotateDegrees(Axis.XP, v[3]);
+        // A part shrunk to nothing, like the chip before it is picked up, is simply not there.
+        poseStack.scale(Math.max(v[6], 1e-4F), Math.max(v[7], 1e-4F), Math.max(v[8], 1e-4F));
+        poseStack.translate(-pivot[0] / 16, -pivot[1] / 16, -pivot[2] / 16);
     }
 
     /** A part's value on one channel at {@code time} seconds into the loop, or {@code fallback} if it has no keys. */

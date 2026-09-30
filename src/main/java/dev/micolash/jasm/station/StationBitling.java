@@ -9,11 +9,13 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.control.MoveControl;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -51,6 +53,10 @@ public class StationBitling extends PathfinderMob {
     private static final double SPRINT = 1.0;
     private static final double TIRED_WALK = 0.085;
     private static final double HOME_WALK = 0.215;
+    /** Degrees it turns in a tick. */
+    private static final float TURN_STEP = 10;
+    /** Facing further off than this, it stops and turns on the spot before walking on. */
+    private static final float TURN_ON_SPOT = 35;
 
     private @Nullable BlockPos station;
     private Mode mode = Mode.ROAM;
@@ -66,13 +72,9 @@ public class StationBitling extends PathfinderMob {
     private int hurtRun;
     private @Nullable Vec3 lastPosition;
 
-    // Client side only: which loop played before this one, and when this one began, so the two can blend.
-    private Act shownAct = Act.STAND;
-    private Act previousAct = Act.STAND;
-    private int shownSince;
-
     public StationBitling(EntityType<? extends StationBitling> type, Level level) {
         super(type, level);
+        this.moveControl = new TurningMoveControl(this);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -107,15 +109,6 @@ public class StationBitling extends PathfinderMob {
 
     public Act act() {
         return Act.of(entityData.get(DATA_ACT));
-    }
-
-    public Act previousAct() {
-        return previousAct;
-    }
-
-    /** The age, in ticks, at which the current act began (client side). */
-    public int actSince() {
-        return shownSince;
     }
 
     /** The station this Bitling belongs to. */
@@ -162,15 +155,31 @@ public class StationBitling extends PathfinderMob {
         return false;
     }
 
+    /** The body always faces where the Bitling faces, so it never swivels round on the spot by itself. */
     @Override
-    public void tick() {
-        super.tick();
-        if (level().isClientSide()) {
-            Act now = act();
-            if (now != shownAct) {
-                previousAct = shownAct;
-                shownAct = now;
-                shownSince = tickCount;
+    protected void tickHeadTurn(float yBodyRotT) {
+        yBodyRot = getYRot();
+        yHeadRot = getYRot();
+    }
+
+    /** Walks like any mob, but turns a little at a time, and turns on the spot before setting off another way. */
+    private static final class TurningMoveControl extends MoveControl<StationBitling> {
+        TurningMoveControl(StationBitling mob) {
+            super(mob);
+        }
+
+        @Override
+        public void tick() {
+            boolean moving = operation == Operation.MOVE_TO;
+            float before = mob.getYRot();
+            super.tick();
+            if (!moving) {
+                return;
+            }
+            float wanted = Mth.wrapDegrees(mob.getYRot() - before);
+            mob.setYRot(before + Mth.clamp(wanted, -TURN_STEP, TURN_STEP));
+            if (Math.abs(wanted) > TURN_ON_SPOT) {
+                mob.setSpeed(0);
             }
         }
     }
