@@ -182,6 +182,7 @@ public class DataCableBlockEntity extends BlockEntity {
             this.face = face;
         }
         @Override public boolean hasMachine(Direction side) { return side == face && super.hasMachine(side); }
+        @Override protected boolean canPowerSide(Direction side) { return side == face; }
         @Override public void refreshSides() {}
         @Override public void setChanged() { DataCableBlockEntity.this.setChanged(); }
         @Override public boolean isRemoved() { return super.isRemoved() || DataCableBlockEntity.this.isRemoved() || ports.get(face) != this; }

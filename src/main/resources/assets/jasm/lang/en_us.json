@@ -308,6 +308,8 @@
   "config.jade.plugin_jasm.chip_workshop": "Chip Workshop details",
   "config.jade.plugin_jasm.crystal_foundry": "Crystal Foundry details",
   "block.jasm.access_port": "Access Port",
+  "item.jasm.power_upgrade": "Power Upgrade",
+  "screen.jasm.port.power_hint": "Insert a Power Upgrade to supply FE to attached machines.",
   "item.jasm.thin_access_port": "Access Port",
   "tooltip.jasm.card.also": "Also %s × %s",
   "tooltip.jasm.card.processing": "Processing",

@@ -7,6 +7,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.registry.JasmItems;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
@@ -32,12 +33,15 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -52,6 +56,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class AccessPortBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     public static final int SLOTS = 9;
+    public static final int POWER_SLOT = SLOTS;
+    private static final int INVENTORY_SIZE = SLOTS + 1;
     public static final int CAPACITY = 5_000;
     private static final int[] ALL = {0, 1, 2, 3, 4, 5, 6, 7, 8};
     /** Ticks between checks that the jobs holding locks still exist. */
@@ -68,7 +74,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 .apply(i, SavedLock::new));
     }
 
-    private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
+    private NonNullList<ItemStack> items = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
     private final Map<Direction, Lock> locks = new EnumMap<>(Direction.class);
     /** A name the player gave the port; empty for the machines' own names. */
     private String label = "";
@@ -100,6 +106,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
         port.payForTick();
+        port.sendPower();
         if (level.getGameTime() % 10 == 0) {
             // A machine can start taking items without its block changing (a modded one finishing its build, say).
             port.refreshSides();
@@ -112,6 +119,35 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 if (job == null || job.finished()) {
                     port.unlockJob(id);
                 }
+            }
+        }
+    }
+
+    public boolean hasPowerUpgrade() {
+        return getItem(POWER_SLOT).is(JasmItems.POWER_UPGRADE.get());
+    }
+
+    protected boolean canPowerSide(Direction side) { return true; }
+
+    /** The upgrade sends spare charge to nearby machines, even without a crafting job. */
+    private void sendPower() {
+        if (level == null || networkBlocked() || !hasPowerUpgrade()) return;
+        for (Direction side : Direction.values()) {
+            int available = energy.getAmountAsInt() - drainPerTick();
+            if (available <= 0) return;
+            if (!canPowerSide(side)) continue;
+            BlockPos targetPos = worldPosition.relative(side);
+            if (!level.isLoaded(targetPos)) continue;
+            var targetBlock = level.getBlockState(targetPos).getBlock();
+            var entity = level.getBlockEntity(targetPos);
+            // JASM blocks share power through their own network.
+            if (targetBlock instanceof DataCableBlock || entity instanceof MachineBlockEntity
+                    || entity instanceof ArchiveBlockEntity || entity instanceof dev.micolash.jasm.network.NetworkPowerSource) continue;
+            var target = level.getCapability(Capabilities.Energy.BLOCK, targetPos, side.getOpposite());
+            if (target == null) continue;
+            try (Transaction tx = Transaction.openRoot()) {
+                int accepted = target.insert(available, tx);
+                if (accepted > 0 && energy.extract(accepted, tx) == accepted) tx.commit();
             }
         }
     }
@@ -303,7 +339,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     /** What the intake holds, by item. */
     Map<ItemResource, Long> intake() {
         Map<ItemResource, Long> held = new java.util.LinkedHashMap<>();
-        for (ItemStack stack : items) {
+        for (int i = 0; i < SLOTS; i++) {
+            ItemStack stack = items.get(i);
             if (!stack.isEmpty()) {
                 held.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
             }
@@ -318,7 +355,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return open();
+        return slot == POWER_SLOT ? stack.is(JasmItems.POWER_UPGRADE.get()) : open();
     }
 
     @Override
@@ -333,7 +370,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
-        return open();
+        return slot < SLOTS && open();
     }
 
     @Override
@@ -357,7 +394,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public int getContainerSize() {
-        return SLOTS;
+        return INVENTORY_SIZE;
     }
 
     @Override
@@ -395,7 +432,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
+        items = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         locks.clear();
         input.read("locks", SavedLock.CODEC.listOf()).orElse(List.of()).forEach(l -> locks.put(l.side(), new Lock(l.job(), l.step())));
@@ -406,6 +443,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     @Override
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
+        // Inventory contents drop separately when either form is broken.
+        components.set(DataComponents.CONTAINER, ItemContainerContents.EMPTY);
         if (!label.isEmpty()) {
             components.set(DataComponents.CUSTOM_NAME, Component.literal(label));
         }
