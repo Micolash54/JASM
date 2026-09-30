@@ -176,7 +176,7 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addGuiContainerHandler(dev.micolash.jasm.client.AccessPortScreen.class, new IGuiContainerHandler<>() {
             @Override
             public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.AccessPortScreen screen) {
-                return List.of(screen.upgradePanelArea());
+                return screen.extraAreas();
             }
         });
         registration.addGuiContainerHandler(dev.micolash.jasm.client.ArchiveScreen.class, new IGuiContainerHandler<>() {

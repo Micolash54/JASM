@@ -4,6 +4,7 @@ package dev.micolash.jasm.network;
 public record DeckLinkLayout(int width, int height) {
     public static final DeckLinkLayout TERMINAL = new DeckLinkLayout(72, 124);
     public static final DeckLinkLayout ARCHIVE = new DeckLinkLayout(100, 148);
+    public static final DeckLinkLayout PORT = new DeckLinkLayout(100, 148);
     public static final int INPUT_Y = 32;
     public static final int OUTPUT_Y = 68;
     public static final int MESSAGE_Y = 92;

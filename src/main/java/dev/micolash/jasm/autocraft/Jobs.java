@@ -510,6 +510,7 @@ public final class Jobs {
             for (Map.Entry<ItemResource, Long> held : port.intake().entrySet()) {
                 ItemResource key = held.getKey();
                 long wanted = here.stream().mapToLong(s -> s.wants(key)).sum();
+                if (wanted == 0) continue;
                 long taken = port.take(key, alone ? held.getValue() : Math.min(held.getValue(), wanted));
                 if (taken <= 0) {
                     continue;
@@ -829,17 +830,37 @@ public final class Jobs {
     }
 
     /** An open Deck screen keeps working copies of the wafers; bring them up to date before and after a change. */
-    private static void prepareOpenDeck(ServerPlayer player, ItemStack deck) {
+    static void prepareOpenDeck(ServerPlayer player, ItemStack deck) {
         if (player.containerMenu instanceof DeckMenu menu && menu.deck() == deck) {
             menu.wafers().flush();
         }
     }
 
-    private static void refreshOpenDeck(ServerPlayer player, ItemStack deck) {
+    static void refreshOpenDeck(ServerPlayer player, ItemStack deck) {
         if (player.containerMenu instanceof DeckMenu menu && menu.deck() == deck) {
             menu.wafers().reload();
             DeckViewTracker.markDirty(menu);
         }
+    }
+
+    /** Null means a locked job is unloaded: keep its possible returns until it can be checked. */
+    static @Nullable Set<ItemResource> expectedPortReturns(ServerLevel level, AccessPortBlockEntity port) {
+        Set<ItemResource> expected = new HashSet<>();
+        var state = AutocraftState.get(level.getServer());
+        for (UUID id : port.lockedJobs()) {
+            var entry = state.job(id).orElse(null);
+            if (entry == null || entry.finished()) continue;
+            ServerLevel jobLevel = level.getServer().getLevel(entry.server().dimension());
+            BlockPos pos = entry.server().pos();
+            if (jobLevel == null || !jobLevel.isLoaded(pos) || !(jobLevel.getBlockEntity(pos) instanceof CraftingServerBlockEntity server)
+                    || server.job() == null || !server.job().id().equals(id)) return null;
+            for (var sent : server.job().sent) {
+                if (sent.port.equals(port.getBlockPos()) && port.lock(sent.side) != null) {
+                    sent.waiting.forEach(amount -> expected.add(amount.item()));
+                }
+            }
+        }
+        return expected;
     }
 
     /** A short code for why a job waits, for the server's screen. */

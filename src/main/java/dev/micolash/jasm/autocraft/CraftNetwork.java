@@ -69,6 +69,7 @@ public final class CraftNetwork {
                 .playToServer(CraftPayloads.ProcessingGhost.TYPE, CraftPayloads.ProcessingGhost.STREAM_CODEC,
                         (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
                 .playToClient(CraftPayloads.TerminalMachines.TYPE, CraftPayloads.TerminalMachines.STREAM_CODEC, CraftNetwork::onTerminalMachines)
+                .playToClient(CraftPayloads.PortMachines.TYPE, CraftPayloads.PortMachines.STREAM_CODEC, CraftNetwork::onPortMachines)
                 .playToClient(CraftPayloads.TerminalDeck.TYPE, CraftPayloads.TerminalDeck.STREAM_CODEC, CraftNetwork::onTerminalDeck)
                 .playToClient(CraftPayloads.ServerWaiting.TYPE, CraftPayloads.ServerWaiting.STREAM_CODEC, CraftNetwork::onServerWaiting)
                 .playToClient(CraftPayloads.TrustView.TYPE, CraftPayloads.TrustView.STREAM_CODEC, CraftNetwork::onTrustView)
@@ -249,6 +250,12 @@ public final class CraftNetwork {
 
     private static void onTerminalMachines(CraftPayloads.TerminalMachines payload, IPayloadContext context) {
         if (context.player().containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()) {
+            menu.setMachines(payload.machines());
+        }
+    }
+
+    private static void onPortMachines(CraftPayloads.PortMachines payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()) {
             menu.setMachines(payload.machines());
         }
     }

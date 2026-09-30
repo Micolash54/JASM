@@ -24,6 +24,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 import org.jspecify.annotations.Nullable;
 
 /** The independent Access Ports mounted on a cable's faces. */
@@ -40,6 +43,12 @@ public class DataCableBlockEntity extends BlockEntity {
 
     public @Nullable AccessPortBlockEntity port(Direction side) {
         return ports.get(side);
+    }
+
+    /** The mounted part, rather than the cable, supplies this face's item input. */
+    public @Nullable ResourceHandler<ItemResource> itemInput(@Nullable Direction side) {
+        AttachedPort port = side == null ? null : ports.get(side);
+        return port == null ? null : port.itemInput;
     }
 
     public boolean attach(Direction side, ItemStack stack, Player player) {
@@ -108,6 +117,7 @@ public class DataCableBlockEntity extends BlockEntity {
             if (getBlockState().getBlock() instanceof DataCableBlock cable) cable.refreshConnections(serverLevel, worldPosition);
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
             level.invalidateCapabilities(worldPosition);
+            level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
         }
     }
 
@@ -177,13 +187,21 @@ public class DataCableBlockEntity extends BlockEntity {
 
     private final class AttachedPort extends AccessPortBlockEntity {
         private final Direction face;
+        private final ResourceHandler<ItemResource> itemInput;
         AttachedPort(Direction face) {
             super(DataCableBlockEntity.this.worldPosition, JasmBlocks.ACCESS_PORT.get().defaultBlockState());
             this.face = face;
+            this.itemInput = new WorldlyContainerWrapper(this, face);
         }
         @Override public boolean hasMachine(Direction side) { return side == face && super.hasMachine(side); }
+        @Override public boolean acceptsOrdinaryItems() { return false; }
         @Override protected boolean canPowerSide(Direction side) { return side == face; }
-        @Override public void refreshSides() {}
+        @Override public void refreshSides() {
+            if (level instanceof ServerLevel && installed()) {
+                level.invalidateCapabilities(worldPosition);
+                level.updateNeighborsAt(worldPosition, DataCableBlockEntity.this.getBlockState().getBlock());
+            }
+        }
         @Override public void setChanged() { DataCableBlockEntity.this.setChanged(); }
         @Override public boolean isRemoved() { return super.isRemoved() || DataCableBlockEntity.this.isRemoved() || ports.get(face) != this; }
         @Override public boolean installed() { return !isRemoved(); }

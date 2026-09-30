@@ -261,6 +261,17 @@ public final class CraftPayloads {
         }
     }
 
+    /** Server → client: machines touching the open Access Port. */
+    public record PortMachines(int containerId, List<AccessPortMenu.MachineView> machines) implements CustomPacketPayload {
+        public static final Type<PortMachines> TYPE = new Type<>(Jasm.id("port_machines"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortMachines> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortMachines::containerId,
+                AccessPortMenu.MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(6)), PortMachines::machines,
+                PortMachines::new);
+
+        @Override public Type<PortMachines> type() { return TYPE; }
+    }
+
     /** Client → server: rename the open Access Port; empty goes back to the machine's name. */
     public record PortName(int containerId, String name) implements CustomPacketPayload {
         public static final Type<PortName> TYPE = new Type<>(Jasm.id("port_name"));

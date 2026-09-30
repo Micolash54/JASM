@@ -4,10 +4,17 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
@@ -25,10 +32,12 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
@@ -50,16 +59,18 @@ import org.jspecify.annotations.Nullable;
  * time, so machines placed or removed later count at once.
  *
  * <p>While a job has sent a set of ingredients into one of its machines, that side is locked to the job and the port
- * takes in whatever arrives (from a pipe, a hopper, or a machine itself) into a small intake, which the jobs empty
- * every tick. With no side locked it refuses everything, so nothing ends up where no job waits for it. Nothing can be
- * pulled out of it.
+ * takes in returns for the job. Full-block ports also accept ordinary items and forward them to a paired Deck.
+ * Thin ports accept only processing returns. Automation cannot pull items out.
  */
 public class AccessPortBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     public static final int SLOTS = 9;
+    public static final int BUFFER_SLOTS = 8;
     public static final int POWER_SLOT = SLOTS;
-    private static final int INVENTORY_SIZE = SLOTS + 1;
+    public static final int DECK_IN = POWER_SLOT + 1;
+    public static final int DECK_OUT = DECK_IN + 1;
+    private static final int INVENTORY_SIZE = DECK_OUT + 1;
     public static final int CAPACITY = 5_000;
-    private static final int[] ALL = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    private static final int[] BUFFER = {0, 1, 2, 3, 4, 5, 6, 7};
     /** Ticks between checks that the jobs holding locks still exist. */
     private static final int LOCK_CHECK = 40;
 
@@ -78,6 +89,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private final Map<Direction, Lock> locks = new EnumMap<>(Direction.class);
     /** A name the player gave the port; empty for the machines' own names. */
     private String label = "";
+    private @Nullable UUID destinationDeck;
+    private @Nullable UUID pendingLinker;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -87,6 +100,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
                 case AccessPortMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case AccessPortMenu.DATA_LOCKED -> locks.size();
+                case AccessPortMenu.DATA_DEFAULT_DECK -> defaultDeck() ? 1 : 0;
+                case AccessPortMenu.DATA_LINKED -> deckLinked() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -107,6 +122,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
         port.payForTick();
         port.sendPower();
+        port.processDeckLink();
+        port.forwardItems();
         if (level.getGameTime() % 10 == 0) {
             // A machine can start taking items without its block changing (a modded one finishing its build, say).
             port.refreshSides();
@@ -125,6 +142,104 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     public boolean hasPowerUpgrade() {
         return getItem(POWER_SLOT).is(JasmItems.POWER_UPGRADE.get());
+    }
+
+    public boolean acceptsOrdinaryItems() { return true; }
+
+    public boolean defaultDeck() { return destinationDeck == null; }
+
+    private List<UUID> terminalIds(CableNetwork network) {
+        return network.machines(EncodingTerminalBlockEntity.class).stream().map(EncodingTerminalBlockEntity::ensureId).toList();
+    }
+
+    private AutocraftState.@Nullable Pairing destination(CableNetwork network) {
+        var state = AutocraftState.get(((ServerLevel) level).getServer());
+        List<UUID> terminals = terminalIds(network);
+        var pairing = destinationDeck == null ? state.pairedPlayer(terminals, owner()).orElse(null)
+                : state.pairing(destinationDeck).filter(p -> terminals.contains(p.terminal())).orElse(null);
+        if (pairing == null || owner() == null || !pairing.player().equals(owner())
+                && !MachineAccess.trustedBy(network, owner(), pairing.player())) return null;
+        return pairing;
+    }
+
+    public void queueDeckLink(Player player) {
+        if (!MachineAccess.canUse(this, player)) return;
+        pendingLinker = getItem(DECK_IN).isEmpty() ? null : player.getUUID();
+        setChanged();
+        processDeckLink();
+    }
+
+    public void processDeckLink() {
+        if (!(level instanceof ServerLevel serverLevel) || networkBlocked()
+                || pendingLinker == null || !getItem(DECK_OUT).isEmpty()) return;
+        ItemStack deck = getItem(DECK_IN);
+        if (!DeckItem.isCrafting(deck)) {
+            pendingLinker = null;
+            setChanged();
+            return;
+        }
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        if (network == null || owner() == null || !pendingLinker.equals(owner())
+                && !MachineAccess.trustedBy(network, owner(), pendingLinker)) return;
+        UUID id = deck.get(JasmComponents.DECK_ID.get());
+        var pairing = id == null ? null : AutocraftState.get(serverLevel.getServer()).pairing(id).orElse(null);
+        if (pairing == null || !terminalIds(network).contains(pairing.terminal())
+                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))
+                || !pairing.player().equals(owner()) && !MachineAccess.trustedBy(network, owner(), pairing.player())) return;
+        destinationDeck = pairing.player().equals(owner()) ? null : id;
+        items.set(DECK_IN, ItemStack.EMPTY);
+        items.set(DECK_OUT, deck);
+        pendingLinker = null;
+        setChanged();
+    }
+
+    public boolean resetDeck(Player player) {
+        if (!getItem(DECK_IN).isEmpty() || !MachineAccess.canUse(this, player)) return false;
+        destinationDeck = null;
+        setChanged();
+        return true;
+    }
+
+    public boolean deckLinked() {
+        if (!(level instanceof ServerLevel serverLevel) || networkBlocked()) return false;
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        var pairing = network == null ? null : destination(network);
+        return pairing != null && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()));
+    }
+
+    /** Items a processing job still expects stay here for its server to collect first. */
+    private void forwardItems() {
+        if (!(level instanceof ServerLevel serverLevel) || !running() || networkBlocked()) return;
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        var pairing = network == null ? null : destination(network);
+        if (pairing == null) return;
+        ServerPlayer player = serverLevel.getServer().getPlayerList().getPlayer(pairing.player());
+        if (player == null) return;
+        ItemStack deck = Jobs.findDeck(player, pairing.deck());
+        if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
+        if (deck.isEmpty() || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
+        Set<ItemResource> expected = Jobs.expectedPortReturns(serverLevel, this);
+        if (expected == null) return;
+        var store = WaferStore.get(serverLevel.getServer());
+        Jobs.prepareOpenDeck(player, deck);
+        DeckStorage.checkAll(store, deck, player);
+        // The old ninth intake slot can still contain saved returns; drain it without accepting new items there.
+        for (int i = 0; i < SLOTS; i++) {
+            ItemStack stack = items.get(i);
+            if (stack.isEmpty() || expected.contains(ItemResource.of(stack))) continue;
+            long moved = DeckStorage.depositAmount(store, deck, ItemResource.of(stack), stack.getCount(), player);
+            if (moved > 0) {
+                stack.shrink((int) moved);
+                setChanged();
+            }
+        }
+        Jobs.refreshOpenDeck(player, deck);
+    }
+
+    @Override
+    protected void onOwnerChanged(@Nullable UUID previous) {
+        destinationDeck = null;
+        pendingLinker = null;
     }
 
     protected boolean canPowerSide(Direction side) { return true; }
@@ -348,14 +463,16 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return held;
     }
 
-    /** Whether the port takes items in now: some side locked to a job, and powered. */
+    /** Full blocks always accept buffered items; thin ports require a powered processing job. */
     public boolean open() {
-        return !locks.isEmpty() && running();
+        return acceptsOrdinaryItems() || !locks.isEmpty() && running();
     }
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return slot == POWER_SLOT ? stack.is(JasmItems.POWER_UPGRADE.get()) : open();
+        if (slot == POWER_SLOT) return stack.is(JasmItems.POWER_UPGRADE.get());
+        if (slot == DECK_IN) return DeckItem.isCrafting(stack);
+        return slot >= 0 && slot < BUFFER_SLOTS;
     }
 
     @Override
@@ -365,12 +482,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public int[] getSlotsForFace(Direction side) {
-        return ALL;
+        return BUFFER;
     }
 
     @Override
     public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
-        return slot < SLOTS && open();
+        return slot >= 0 && slot < BUFFER_SLOTS && open();
     }
 
     @Override
@@ -416,7 +533,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void writeOpening(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(worldPosition);
         buf.writeUtf(label, AccessPortMenu.MAX_NAME);
-        net.minecraft.network.chat.ComponentSerialization.STREAM_CODEC.encode(buf, machineNames());
+        AccessPortMenu.MachineView.STREAM_CODEC.apply(net.minecraft.network.codec.ByteBufCodecs.list(6))
+                .encode(buf, AccessPortMenu.connectedMachines(this));
     }
 
     @Override
@@ -427,6 +545,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         locks.forEach((side, lock) -> saved.add(new SavedLock(side, lock.job(), lock.step())));
         output.store("locks", SavedLock.CODEC.listOf(), saved);
         output.putString("label", label);
+        output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
+        output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
     }
 
     @Override
@@ -437,6 +557,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         locks.clear();
         input.read("locks", SavedLock.CODEC.listOf()).orElse(List.of()).forEach(l -> locks.put(l.side(), new Lock(l.job(), l.step())));
         label = input.getStringOr("label", "");
+        destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
+        pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
     }
 
     /** The mined item keeps the port's name. */
