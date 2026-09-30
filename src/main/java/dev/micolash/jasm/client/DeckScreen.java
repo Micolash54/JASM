@@ -68,6 +68,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final JasmButton.Icon ARROW_LEFT = new JasmButton.Icon(Jasm.id("icon/arrow_left"), 3, 5);
     private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow");
+    private static final Identifier CRAFTABLE = Jasm.id("icon/craftable");
     private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 8, 8);
     private static final JasmButton.Icon[] SIZE_ICONS = {
             new JasmButton.Icon(Jasm.id("icon/size_small"), 7, 8), new JasmButton.Icon(Jasm.id("icon/size_medium"), 7, 8),
@@ -533,7 +534,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 entries.add(entry(e.getKey(), e.getValue()));
             }
         }
-        // Craftable items show on both tabs; on Items only when none are stored, with a "craft" mark instead of a count.
+        // Add unstored craftable items on Items; Craft shows every known recipe output.
         for (ItemResource key : tab == Tab.RULES ? Set.<ItemResource>of() : view.craftable()) {
             if (tab == Tab.CRAFT || !view.contents().containsKey(key)) {
                 entries.add(entry(key, view.contents().getOrDefault(key, 0L)));
@@ -690,13 +691,14 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 int sy = y + gridY + row * 18;
                 ItemStack stack = entry.key().toStack(1);
                 graphics.item(stack, sx, sy);
-                if (entry.count() <= 0 || tab == Tab.CRAFT) {
-                    // Can be crafted: the Craft tab and things with none stored show a mark instead of a count.
-                    graphics.itemDecorations(font, stack, sx, sy, "");
+                graphics.itemDecorations(font, stack, sx, sy,
+                        entry.count() <= 0 || tab == Tab.CRAFT ? "" : GridEntries.abbreviate(entry.count()));
+                if (tab == Tab.CRAFT) {
                     graphics.nextStratum();
                     graphics.text(font, "+", sx + 17 - font.width("+"), sy + 9, JasmGui.ACCENT, true);
-                } else {
-                    graphics.itemDecorations(font, stack, sx, sy, GridEntries.abbreviate(entry.count()));
+                } else if (menu.view().craftable().contains(entry.key())) {
+                    graphics.nextStratum();
+                    graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CRAFTABLE, sx + 10, sy, 6, 6);
                 }
                 if (entry == hovered) {
                     graphics.fill(sx, sy, sx + 16, sy + 16, JasmGui.HOVER);
