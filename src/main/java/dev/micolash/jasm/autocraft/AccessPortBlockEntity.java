@@ -463,7 +463,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return held;
     }
 
-    /** Full blocks always accept buffered items; thin ports require a powered processing job. */
+    /** Items can enter the buffer even while the port is idle or unpowered. */
     public boolean open() {
         return acceptsOrdinaryItems() || !locks.isEmpty() && running();
     }

@@ -294,6 +294,7 @@ public final class Jobs {
             return;
         }
         if (!powered) {
+            if (level.getGameTime() % DELIVER_EVERY == 0 && deliverTarget(level, server, job, record, store)) server.setChanged();
             job.pause = "no_power";
             return;
         }
@@ -348,6 +349,9 @@ public final class Jobs {
                     started = true;
                 }
             }
+        }
+        if (changed || level.getGameTime() % DELIVER_EVERY == 0) {
+            changed |= deliverTarget(level, server, job, record, store);
         }
         if (started || changed) {
             server.setChanged();
@@ -620,6 +624,56 @@ public final class Jobs {
 
     // --- handing back ---
 
+    /** Requested products can leave during a job; ingredients and other products stay until it ends. */
+    private static boolean deliverTarget(ServerLevel level, CraftingServerBlockEntity server, CraftingJob job, WaferRecord record, WaferStore store) {
+        if (job.target == null) return false;
+        ItemResource target = ItemResource.of(job.target.create());
+        long available = record.count(target) - targetNeeded(level, job, target);
+        if (available <= 0) return false;
+        ServerPlayer player = level.getServer().getPlayerList().getPlayer(job.requester);
+        ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
+        if (deck.isEmpty() || !onDeckNetwork(deck, level, server.getBlockPos())) return false;
+        Map<ItemResource, Long> products = Map.of(target, available);
+        return (job.toPlayer ? moveToInventory(player, record, store, products) : moveToDeck(player, deck, record, store, products)) > 0;
+    }
+
+    /** Keep requested items that a running or remaining craft may still need as ingredients. */
+    private static long targetNeeded(ServerLevel level, CraftingJob job, ItemResource target) {
+        long needed = reserved(job).getOrDefault(target, 0L);
+        if (job.phase != CraftingJob.Phase.CRAFTING) return needed;
+        for (int stepIndex = 0; stepIndex < job.steps.size(); stepIndex++) {
+            CraftingJob.Step step = job.steps.get(stepIndex);
+            if (step.left <= 0) continue;
+            long perCraft = 0;
+            if (step.card instanceof ProcessingCard card) {
+                perCraft = card.usedInputs().stream().filter(input -> input.item().equals(target)).mapToLong(ProcessingCard.Amount::count).sum();
+            } else {
+                CardRecipes.Resolved card = job.resolved(level, stepIndex);
+                if (card == null) return Long.MAX_VALUE;
+                for (int slot = 0; slot < 9; slot++) {
+                    if (!card.encoded(slot).isEmpty() && job.accepts(level, stepIndex, card, slot, target)) perCraft++;
+                }
+            }
+            if (perCraft > 0) {
+                if (step.left > (Long.MAX_VALUE - needed) / perCraft) return Long.MAX_VALUE;
+                needed += step.left * perCraft;
+            }
+        }
+        return needed;
+    }
+
+    private static long moveToDeck(ServerPlayer player, ItemStack deck, WaferRecord record, WaferStore store, Map<ItemResource, Long> items) {
+        prepareOpenDeck(player, deck);
+        DeckStorage.checkAll(store, deck, player);
+        long moved = 0;
+        for (var held : items.entrySet()) {
+            long stored = DeckStorage.depositAmount(store, deck, held.getKey(), held.getValue(), player);
+            if (stored > 0) moved += store.extract(record, held.getKey(), stored, false, player);
+        }
+        refreshOpenDeck(player, deck);
+        return moved;
+    }
+
     /** Puts what the job holds onto the requester's Crafting Deck, if they are online with it. */
     private static void deliver(ServerLevel level, CraftingServerBlockEntity server, CraftingJob job, WaferRecord record, WaferStore store) {
         if (record.contents().isEmpty()) {
@@ -646,16 +700,7 @@ public final class Jobs {
             }
             return;
         }
-        prepareOpenDeck(player, deck);
-        DeckStorage.checkAll(store, deck, player);
-        for (Map.Entry<ItemResource, Long> held : List.copyOf(record.contents().entrySet())) {
-            // Move it in two steps under the requester's name: onto the wafers, then off the job, so both records agree.
-            long stored = DeckStorage.depositAmount(store, deck, held.getKey(), held.getValue(), player);
-            if (stored > 0) {
-                store.extract(record, held.getKey(), stored, false, player);
-            }
-        }
-        refreshOpenDeck(player, deck);
+        moveToDeck(player, deck, record, store, new LinkedHashMap<>(record.contents()));
         if (record.contents().isEmpty()) {
             finish(level, server, job);
         } else {
@@ -728,9 +773,13 @@ public final class Jobs {
 
     /** Moves what the job holds into the player's inventory, as far as it fits. Returns how many items went in. */
     private static long moveToInventory(ServerPlayer player, WaferRecord record, WaferStore store) {
+        return moveToInventory(player, record, store, new LinkedHashMap<>(record.contents()));
+    }
+
+    private static long moveToInventory(ServerPlayer player, WaferRecord record, WaferStore store, Map<ItemResource, Long> items) {
         long moved = 0;
         Inventory inventory = player.getInventory();
-        for (Map.Entry<ItemResource, Long> held : List.copyOf(record.contents().entrySet())) {
+        for (Map.Entry<ItemResource, Long> held : items.entrySet()) {
             ItemResource key = held.getKey();
             long left = held.getValue();
             while (left > 0) {

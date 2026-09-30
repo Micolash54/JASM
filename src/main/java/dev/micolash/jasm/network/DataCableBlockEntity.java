@@ -194,7 +194,6 @@ public class DataCableBlockEntity extends BlockEntity {
             this.itemInput = new WorldlyContainerWrapper(this, face);
         }
         @Override public boolean hasMachine(Direction side) { return side == face && super.hasMachine(side); }
-        @Override public boolean acceptsOrdinaryItems() { return false; }
         @Override protected boolean canPowerSide(Direction side) { return side == face; }
         @Override public void refreshSides() {
             if (level instanceof ServerLevel && installed()) {
