@@ -6,6 +6,8 @@ import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.network.DataCableBlockEntity;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -45,9 +47,8 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
 
     @Override
     public @Nullable Data streamData(BlockAccessor accessor) {
-        if (!(accessor.getBlockEntity() instanceof MachineBlockEntity machine)) {
-            return null;
-        }
+        MachineBlockEntity machine = machine(accessor);
+        if (machine == null) return null;
         int cards = machine instanceof RecipeRackBlockEntity rack
                 ? (int) java.util.stream.IntStream.range(0, rack.getContainerSize()).filter(i -> !rack.getItem(i).isEmpty()).count() : -1;
         CraftingJob job = machine instanceof CraftingServerBlockEntity server ? server.job() : null;
@@ -55,6 +56,15 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                 job == null ? 0 : Math.round(job.progress() * 100), job == null || job.target() == null ? ItemStack.EMPTY : job.target().create(),
                 job == null ? 0 : job.amount(), machine instanceof AccessPortBlockEntity port ? port.machineNames().getString() : "",
                 machine instanceof AccessPortBlockEntity port && port.locked());
+    }
+
+    static @Nullable MachineBlockEntity machine(BlockAccessor accessor) {
+        if (accessor.getBlockEntity() instanceof MachineBlockEntity machine) return machine;
+        if (accessor.getBlockEntity() instanceof DataCableBlockEntity cable) {
+            var side = DataCableBlock.hitPort(cable, accessor.getHitResult().getLocation());
+            if (side != null) return cable.port(side);
+        }
+        return null;
     }
 
     @Override

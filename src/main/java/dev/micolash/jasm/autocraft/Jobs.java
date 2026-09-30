@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -491,14 +492,14 @@ public final class Jobs {
             return false;
         }
         boolean any = false;
-        Set<BlockPos> ports = new LinkedHashSet<>();
-        job.sent.forEach(s -> ports.add(s.port));
-        for (BlockPos pos : ports) {
-            AccessPortBlockEntity port = Machines.port(level, network, pos);
-            if (port == null) {
-                continue;
-            }
-            List<CraftingJob.Sent> here = job.sent.stream().filter(s -> s.port.equals(pos)).toList();
+        Map<AccessPortBlockEntity, List<CraftingJob.Sent>> ports = new LinkedHashMap<>();
+        for (CraftingJob.Sent set : job.sent) {
+            AccessPortBlockEntity port = Machines.port(level, network, set.port, set.side);
+            if (port != null) ports.computeIfAbsent(port, unused -> new ArrayList<>()).add(set);
+        }
+        for (var entry : ports.entrySet()) {
+            AccessPortBlockEntity port = entry.getKey();
+            List<CraftingJob.Sent> here = entry.getValue();
             for (CraftingJob.Sent set : here) {
                 if (port.lock(set.side) == null) {
                     // The port forgot (a crash rewound it, or it was mined and put back): the machine is this job's again.
@@ -537,7 +538,7 @@ public final class Jobs {
     /** The job stops waiting on machines: its sets are forgotten and its machines let go. */
     private static void release(ServerLevel level, CraftingJob job) {
         for (CraftingJob.Sent set : job.sent) {
-            if (level.isLoaded(set.port) && level.getBlockEntity(set.port) instanceof AccessPortBlockEntity port) {
+            if (level.isLoaded(set.port) && Machines.port(level, Networks.at(level, set.port), set.port, set.side) instanceof AccessPortBlockEntity port) {
                 port.unlockJob(job.id);
             }
         }
@@ -569,7 +570,7 @@ public final class Jobs {
                 count += set.wants(item);
             }
         }
-        AccessPortBlockEntity port = Machines.port(level, network, oldest.port);
+        AccessPortBlockEntity port = Machines.port(level, network, oldest.port, oldest.side);
         String name = port == null ? Machines.blockName(level, oldest.port.relative(oldest.side)).getString()
                 : port.machineName(oldest.side).getString();
         return new CraftingJob.Waiting(name, item, count, Math.max(0, level.getGameTime() - oldest.since));

@@ -167,10 +167,16 @@ public class JasmJeiPlugin implements IModPlugin {
             public void onComplete() {}
         });
         registration.addGuiContainerHandler(EncodingTerminalScreen.class, new IGuiContainerHandler<>() {
-            /** Keeps JEI's item list from covering the terminal's machine panel. */
+            /** Keeps JEI's item list from covering the terminal's side panels. */
             @Override
             public List<Rect2i> getGuiExtraAreas(EncodingTerminalScreen screen) {
-                return screen.panelArea().map(List::of).orElse(List.of());
+                return screen.sidePanelAreas();
+            }
+        });
+        registration.addGuiContainerHandler(dev.micolash.jasm.client.ArchiveScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.ArchiveScreen screen) {
+                return List.of(screen.deckPanelArea());
             }
         });
         registration.addGuiContainerHandler(DeckScreen.class, new IGuiContainerHandler<>() {

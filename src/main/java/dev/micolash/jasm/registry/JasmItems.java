@@ -6,6 +6,7 @@ import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.autocraft.RecipeCardItem;
 import dev.micolash.jasm.autocraft.ServerPartItem;
+import dev.micolash.jasm.autocraft.ThinAccessPortItem;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipType;
@@ -37,6 +38,7 @@ public final class JasmItems {
     private static final List<DeferredItem<BlockItem>> CABLES = new ArrayList<>();
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
+    public static final DeferredItem<ThinAccessPortItem> THIN_ACCESS_PORT = ITEMS.registerItem("thin_access_port", ThinAccessPortItem::new);
     public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
     public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");
     public static final DeferredItem<Item> CRYSTAL_DUST = ITEMS.registerSimpleItem("crystal_dust");

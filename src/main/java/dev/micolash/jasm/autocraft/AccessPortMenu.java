@@ -1,7 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -14,6 +13,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** The Access Port's menu: no slots, only its charge, whether a job is using it, and its name. */
@@ -88,7 +88,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return port == null || !port.isRemoved() && stillValid(access, player, JasmBlocks.ACCESS_PORT.get()) && MachineAccess.canUse(port, player);
+        return port == null || port.installed() && player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64 && MachineAccess.canUse(port, player);
     }
 
     @Override

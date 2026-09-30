@@ -29,6 +29,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(GeneratorInfo.INSTANCE, CombustionGeneratorBlockEntity.class);
         registration.registerEnergyStorage(InfiniteEnergy.INSTANCE, CreativeBatteryBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
+        registration.registerBlockDataProvider(MachineInfo.INSTANCE, dev.micolash.jasm.network.DataCableBlockEntity.class);
         registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);
         registration.registerBlockDataProvider(FoundryInfo.INSTANCE, dev.micolash.jasm.crystal.CrystalFoundryBlockEntity.class);
     }
@@ -39,11 +40,16 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(GeneratorInfo.Client.INSTANCE, CombustionGeneratorBlock.class);
         registration.registerEnergyStorageClient(InfiniteEnergy.INSTANCE);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
+        registration.registerBlockComponent(MachineInfo.Client.INSTANCE, dev.micolash.jasm.network.DataCableBlock.class);
         registration.registerBlockComponent(WorkshopInfo.Client.INSTANCE, ChipWorkshopBlock.class);
         registration.registerBlockComponent(FoundryInfo.Client.INSTANCE, dev.micolash.jasm.crystal.CrystalFoundryBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, dev.micolash.jasm.autocraft.AccessPortBlock.class);
         // A Recipe Rack says how many cards it holds; the list of every card would only crowd the box.
         registration.addTooltipCollectedCallback((box, accessor) -> {
+            if (accessor instanceof BlockAccessor block && block.getBlock() instanceof dev.micolash.jasm.network.DataCableBlock
+                    && MachineInfo.machine(block) instanceof dev.micolash.jasm.autocraft.AccessPortBlockEntity port) {
+                box.getTooltip().replace(JadeIds.CORE_OBJECT_NAME, port.getDisplayName());
+            }
             if (accessor instanceof BlockAccessor block && block.getBlockEntity() instanceof RecipeRackBlockEntity) {
                 box.getTooltip().remove(JadeIds.UNIVERSAL_ITEM_STORAGE);
             }

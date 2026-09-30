@@ -1,36 +1,169 @@
 package dev.micolash.jasm.network;
 
+import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.PipeBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.neoforged.neoforge.capabilities.Capabilities;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 /**
  * A Data Cable, undyed or in one of the 16 dye colours. Cables of the same colour join; an undyed cable joins every
- * colour; any cable joins a crafting-network block. Cables also reach toward anything that stores FE, to show where
- * power goes in and out.
+ * colour; any cable joins a JASM network block.
  */
-public class DataCableBlock extends PipeBlock {
+public class DataCableBlock extends PipeBlock implements EntityBlock {
+    public static final BooleanProperty HAS_PORTS = BooleanProperty.create("has_ports");
     private final @Nullable DyeColor color;
 
     public DataCableBlock(BlockBehaviour.Properties properties, @Nullable DyeColor color) {
         super(6.0F, properties);
         this.color = color;
         registerDefaultState(stateDefinition.any().setValue(NORTH, false).setValue(EAST, false).setValue(SOUTH, false)
-                .setValue(WEST, false).setValue(UP, false).setValue(DOWN, false));
+                .setValue(WEST, false).setValue(UP, false).setValue(DOWN, false).setValue(HAS_PORTS, false));
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new DataCableBlockEntity(pos, state);
+    }
+
+    @Override
+    public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+        if (level.isClientSide() || type != JasmBlocks.DATA_CABLE_ENTITY.get()) return null;
+        return (world, pos, shown, entity) -> DataCableBlockEntity.serverTick(world, pos, shown, (DataCableBlockEntity) entity);
+    }
+
+    public static VoxelShape portShape(Direction side) {
+        return switch (side) {
+            case NORTH -> Shapes.or(Block.box(4,4,0,12,12,2), Block.box(5,5,2,11,11,5));
+            case SOUTH -> Shapes.or(Block.box(4,4,14,12,12,16), Block.box(5,5,11,11,11,14));
+            case WEST -> Shapes.or(Block.box(0,4,4,2,12,12), Block.box(2,5,5,5,11,11));
+            case EAST -> Shapes.or(Block.box(14,4,4,16,12,12), Block.box(11,5,5,14,11,11));
+            case DOWN -> Shapes.or(Block.box(4,0,4,12,2,12), Block.box(5,2,5,11,5,11));
+            case UP -> Shapes.or(Block.box(4,14,4,12,16,12), Block.box(5,11,5,11,14,11));
+        };
+    }
+
+    @Override
+    protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
+            CollisionContext context) {
+        var shape = super.getShape(state, level, pos, context);
+        if (level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+            for (Direction side : Direction.values()) if (cable.port(side) != null) shape = Shapes.or(shape, portShape(side));
+        }
+        return shape;
+    }
+
+    public static @Nullable Direction hitPort(DataCableBlockEntity cable, Vec3 hit) {
+        var local = hit.subtract(Vec3.atLowerCornerOf(cable.getBlockPos()));
+        for (Direction side : Direction.values()) {
+            if (cable.port(side) != null && portShape(side).toAabbs().stream().anyMatch(box -> box.inflate(0.00001).contains(local))) return side;
+        }
+        return null;
+    }
+
+    public static @Nullable Direction selectedPort(BlockGetter level, BlockPos pos, Player player) {
+        var hit = player.pick(player.blockInteractionRange(), 1, false);
+        return hit instanceof BlockHitResult blockHit && blockHit.getBlockPos().equals(pos)
+                && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? hitPort(cable, hit.getLocation()) : null;
+    }
+
+    @Override
+    protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+        return selectedPort(level, pos, player) != null
+                ? JasmBlocks.ACCESS_PORT.get().defaultBlockState().getDestroyProgress(player, level, pos)
+                : super.getDestroyProgress(state, player, level, pos);
+    }
+
+    @Override
+    protected RenderShape getRenderShape(BlockState state) {
+        // The part renderer draws the whole host so cracks stay on the selected part.
+        return state.getValue(HAS_PORTS) ? RenderShape.INVISIBLE : RenderShape.MODEL;
+    }
+
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+            Player player, BlockHitResult hit) {
+        if (level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+            Direction side = hitPort(cable, hit.getLocation());
+            if (side != null) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    cable.syncOwners();
+                    var port = cable.port(side);
+                    if (MachineAccess.canUse(port, player)) serverPlayer.openMenu(port, port::writeOpening);
+                    else serverPlayer.sendOverlayMessage(Component.translatable("message.jasm.machine.no_access", port.ownerName()));
+                }
+                return InteractionResult.SUCCESS;
+            }
+        }
+        return InteractionResult.PASS;
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        return selectedPort(level, pos, player) == null ? super.playerWillDestroy(level, pos, state, player) : state;
+    }
+
+    @Override
+    public boolean onDestroyedByPlayer(BlockState state, Level level, BlockPos pos, Player player,
+            ItemStack tool, boolean harvest, FluidState fluid) {
+        Direction side = selectedPort(level, pos, player);
+        if (side != null && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+            if (level.isClientSide()) return false;
+            cable.syncOwners();
+            if (MachineAccess.canUse(cable.port(side), player)) {
+                if (level instanceof ServerLevel serverLevel) {
+                    var bounds = portShape(side).bounds();
+                    var center = bounds.getCenter().add(Vec3.atLowerCornerOf(pos));
+                    serverLevel.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, JasmBlocks.ACCESS_PORT.get().defaultBlockState()),
+                            center.x, center.y, center.z, 16, bounds.getXsize() / 4, bounds.getYsize() / 4, bounds.getZsize() / 4, 0.05);
+                }
+                cable.detach(side, !player.preventsBlockDrops());
+            }
+            return false;
+        }
+        return level.isClientSide() ? level.setBlock(pos, fluid.createLegacyBlock(), 11) : level.removeBlock(pos, false);
+    }
+
+    @Override
+    public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData,
+            Player player) {
+        if (level instanceof Level world && world.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+            Direction side = selectedPort(world, pos, player);
+            if (side != null) return cable.portItem(cable.port(side));
+        }
+        return new ItemStack(this);
     }
 
     public @Nullable DyeColor color() {
@@ -44,7 +177,7 @@ public class DataCableBlock extends PipeBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN);
+        builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN, HAS_PORTS);
     }
 
     @Override
@@ -65,6 +198,7 @@ public class DataCableBlock extends PipeBlock {
 
     private boolean connects(BlockGetter level, BlockPos neighbourPos, BlockState neighbour, Direction direction) {
         BlockPos own = neighbourPos.relative(direction.getOpposite());
+        if (level.getBlockEntity(own) instanceof DataCableBlockEntity host && host.port(direction) != null) return false;
         if (level instanceof ServerLevel serverLevel && level.getBlockState(own).getBlock() instanceof DataCableBlock
                 && (neighbour.getBlock() instanceof DataCableBlock || level.getBlockEntity(neighbourPos) instanceof MachineBlockEntity
                     || level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity
@@ -77,8 +211,8 @@ public class DataCableBlock extends PipeBlock {
         if (neighbour.getBlock() instanceof MachineBlock) {
             return true;
         }
-        return level instanceof Level world && neighbour.hasBlockEntity()
-                && world.getCapability(Capabilities.Energy.BLOCK, neighbourPos, direction.getOpposite()) != null;
+        return level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity
+                || level.getBlockEntity(neighbourPos) instanceof NetworkPowerSource;
     }
 
     public void refreshConnections(ServerLevel level, BlockPos pos) {
@@ -86,7 +220,7 @@ public class DataCableBlock extends PipeBlock {
         if (!state.is(this)) {
             return;
         }
-        BlockState updated = state;
+        BlockState updated = state.setValue(HAS_PORTS, level.getBlockEntity(pos) instanceof DataCableBlockEntity host && !host.ports().isEmpty());
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
             updated = updated.setValue(PROPERTY_BY_DIRECTION.get(side), connects(level, next, level.getBlockState(next), side));

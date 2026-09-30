@@ -43,6 +43,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.RECIPE_RACK);
                 output.accept(JasmItems.CRAFTING_SERVER);
                 output.accept(JasmItems.ACCESS_PORT);
+                output.accept(JasmItems.THIN_ACCESS_PORT);
                 for (ProcessorTier tier : ProcessorTier.values()) {
                     output.accept(JasmItems.processor(tier));
                 }

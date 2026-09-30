@@ -5,6 +5,7 @@ import dev.micolash.jasm.archive.ArchivePayloads;
 import dev.micolash.jasm.archive.ArchiveService;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.wafer.WaferNumbers;
+import dev.micolash.jasm.network.DeckLinkLayout;
 import java.util.List;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -21,6 +22,7 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  * with plain fills. Who else may use it is set at an Encoding Terminal on its network.
  */
 public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
+    private static final DeckLinkLayout LINK_PANEL = DeckLinkLayout.ARCHIVE;
     private static final int WIDTH = 200;
     private static final int HEIGHT = ArchiveMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int LIST_X = 8;
@@ -45,11 +47,13 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     public ArchiveScreen(ArchiveMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
         this.inventoryLabelY = ArchiveMenu.INVENTORY_Y - 10;
+        this.inventoryLabelX = ArchiveMenu.INVENTORY_X;
     }
 
     @Override
     protected void init() {
         super.init();
+        leftPos = (width - WIDTH - LINK_PANEL.width() - 2) / 2 + LINK_PANEL.width() + 2;
         int x = leftPos;
         int y = topPos;
         link = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.link"),
@@ -63,7 +67,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
                 x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
         resetDeck = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.reset_deck"),
                 b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.RESET_DECK)),
-                x + 32, y + ArchiveMenu.DECK_OUT_Y - 1, 112, 18));
+                x + LINK_PANEL.panelX() + 8, y + DeckLinkLayout.RESET_Y, LINK_PANEL.width() - 16, 18));
         updateWidgets();
     }
 
@@ -99,11 +103,11 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         int x = leftPos;
         int y = topPos;
         JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
+        DeckLinkPanel.draw(graphics, font, x, y, LINK_PANEL);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
         JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_WIDTH + 2, ROWS * ROW_HEIGHT + 2);
-        graphics.text(font, "↓", x + ArchiveMenu.DECK_X + 5, y + ArchiveMenu.DECK_IN_Y + 19, JasmGui.SUBTEXT, false);
 
         drawScrollBar(graphics, x, y);
 
@@ -175,6 +179,11 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
                     Component.translatable("screen.jasm.archive.drain", menu.tier().drainPerTick())
                             .withStyle(ChatFormatting.GRAY).getVisualOrderText()), mouseX, mouseY);
         }
+        if (!menu.view().linkedPlayer().isEmpty() && mouseX >= leftPos + LINK_PANEL.panelX() + 8
+                && mouseX < leftPos - 10 && mouseY >= topPos + DeckLinkLayout.MESSAGE_Y
+                && mouseY < topPos + DeckLinkLayout.MESSAGE_Y + 20) {
+            graphics.setTooltipForNextFrame(font, Component.literal(menu.view().linkedPlayer()), mouseX, mouseY);
+        }
         if (hoveredSlot != null && !hoveredSlot.hasItem() && hoveredSlot.index <= ArchiveMenu.RECOVERY_SLOT) {
             graphics.setTooltipForNextFrame(font, Component.translatable(hoveredSlot.index == ArchiveMenu.LINK_SLOT
                     ? "screen.jasm.archive.link_hint" : "screen.jasm.archive.recover_hint"), mouseX, mouseY);
@@ -190,15 +199,31 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         if (menu.view().energy() == 0) {
             graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
         }
-        String destination = !menu.deckLinked() ? "screen.jasm.archive.no_deck"
-                : menu.defaultDeck() ? "screen.jasm.archive.owner_deck" : "screen.jasm.archive.linked_deck";
-        graphics.text(font, Component.translatable(destination), 32, ArchiveMenu.DECK_IN_Y + 3, JasmGui.SUBTEXT, false);
-        if (menu.getSlot(ArchiveMenu.DECK_OUT).hasItem()) {
-            graphics.text(font, Component.translatable("screen.jasm.terminal.linked"), 150, ArchiveMenu.DECK_OUT_Y + 3, JasmGui.GOOD, false);
+        if (!menu.view().linkedPlayer().isEmpty()) {
+            graphics.text(font, Component.translatable("screen.jasm.archive.linked_player"),
+                    LINK_PANEL.panelX() + 8, DeckLinkLayout.MESSAGE_Y,
+                    menu.getSlot(ArchiveMenu.DECK_OUT).hasItem() ? JasmGui.GOOD : JasmGui.SUBTEXT, false);
+            String playerName = menu.view().linkedPlayer();
+            int room = LINK_PANEL.width() - 16;
+            String shown = font.width(playerName) <= room ? playerName
+                    : font.plainSubstrByWidth(playerName, room - font.width("...")) + "...";
+            graphics.text(font, shown, LINK_PANEL.panelX() + 8, DeckLinkLayout.MESSAGE_Y + 10, JasmGui.MUTED, false);
+        } else {
+            DeckLinkPanel.message(graphics, font, Component.translatable("screen.jasm.archive.no_deck"), JasmGui.SUBTEXT, LINK_PANEL);
         }
     }
 
+    public net.minecraft.client.renderer.Rect2i deckPanelArea() {
+        return new net.minecraft.client.renderer.Rect2i(leftPos + LINK_PANEL.panelX(), topPos, LINK_PANEL.width(), LINK_PANEL.height());
+    }
+
     // --- input ---
+
+    @Override
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
+        return !DeckLinkPanel.contains(mouseX, mouseY, leftPos, topPos, LINK_PANEL)
+                && super.hasClickedOutside(mouseX, mouseY, left, top);
+    }
 
     /** The list row under the mouse, counting scrolled-away rows, or -1. */
     private int rowAt(double mouseX, double mouseY) {

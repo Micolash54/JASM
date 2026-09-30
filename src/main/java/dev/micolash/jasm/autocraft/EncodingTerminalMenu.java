@@ -6,6 +6,7 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.TrustList;
+import dev.micolash.jasm.network.DeckLinkLayout;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
@@ -44,22 +45,22 @@ import org.jspecify.annotations.Nullable;
  * player's inventory (27) and hotbar (9). Ghost slots copy what is clicked into them and never take the item.
  */
 public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board {
-    public static final int GRID_X = 30;
+    public static final int GRID_X = 54;
     public static final int GRID_Y = 18;
-    public static final int PREVIEW_X = 124;
+    public static final int PREVIEW_X = 136;
     public static final int PREVIEW_Y = 36;
-    public static final int CARD_X = 8;
+    public static final int CARD_X = 24;
     public static final int CARD_IN_Y = 18;
     public static final int CARD_OUT_Y = 54;
-    public static final int PAIR_X = 152;
-    public static final int PAIR_Y = 18;
-    public static final int PAIR_OUT_Y = 54;
+    public static final int PAIR_X = DeckLinkLayout.TERMINAL.slotX();
+    public static final int PAIR_Y = DeckLinkLayout.INPUT_Y;
+    public static final int PAIR_OUT_Y = DeckLinkLayout.OUTPUT_Y;
     public static final int INVENTORY_Y = 128;
     /** Where the terminal's messages show, under the grid. */
     public static final int MESSAGE_Y = 92;
 
     /** Processing mode: the column of what the machine gives back, beside the grid. */
-    public static final int OUTPUTS_X = 102;
+    public static final int OUTPUTS_X = 136;
     public static final int OUTPUTS_Y = 18;
 
     public static final int SLOT_CARD_IN = 0;

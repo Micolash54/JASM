@@ -41,6 +41,10 @@ public final class MachineCapabilities {
         // An Access Port takes results in on every side while a job uses it, and never gives anything out.
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.ACCESS_PORT_ENTITY.get(),
                 (port, side) -> new WorldlyContainerWrapper(port, side == null ? Direction.UP : side));
+        event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.DATA_CABLE_ENTITY.get(), (cable, side) -> {
+            var port = side == null ? null : cable.port(side);
+            return port == null ? null : new WorldlyContainerWrapper(port, side);
+        });
         // A cable takes FE into its network. It looks its network up on every push, so it never holds on to one that
         // was thrown away.
         event.registerBlock(Capabilities.Energy.BLOCK, (level, pos, state, entity, side) ->

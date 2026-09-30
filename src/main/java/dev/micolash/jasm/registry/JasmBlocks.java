@@ -23,6 +23,7 @@ import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.station.BitlingStationBlock;
 import dev.micolash.jasm.station.BitlingStationBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopBlock;
@@ -37,10 +38,11 @@ import java.util.stream.Collectors;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.AmethystClusterBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -166,6 +168,9 @@ public final class JasmBlocks {
                 .pushReaction(PushReaction.POPPED);
     }
 
+    public static final Supplier<BlockEntityType<DataCableBlockEntity>> DATA_CABLE_ENTITY = BLOCK_ENTITIES.register(
+            "data_cable", () -> new BlockEntityType<>(DataCableBlockEntity::new, cables().stream().map(DeferredBlock::get).toArray(Block[]::new)));
+
     /** Undyed first, then one per dye colour. */
     private static final Map<Optional<DyeColor>, DeferredBlock<DataCableBlock>> CABLES = new LinkedHashMap<>();
 
@@ -178,7 +183,7 @@ public final class JasmBlocks {
     }
 
     private static BlockBehaviour.Properties cableProperties(BlockBehaviour.Properties p) {
-        return p.mapColor(MapColor.COLOR_GRAY).strength(0.5F).sound(SoundType.METAL).noOcclusion();
+        return p.mapColor(MapColor.COLOR_GRAY).strength(0.5F).sound(SoundType.METAL).noOcclusion().dynamicShape();
     }
 
     /** The cable of {@code color}, or the undyed one for null. */

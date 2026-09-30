@@ -49,14 +49,15 @@ public final class ArchivePayloads {
             ArchiveService.Entry::new);
 
     /** Everything the Archive screen shows. Sent when it opens, after every action, and whenever it changes. */
-    public record State(int containerId, int energy, int registrations, List<ArchiveService.Entry> entries) implements CustomPacketPayload {
-        public static final State EMPTY = new State(-1, 0, 0, List.of());
+    public record State(int containerId, int energy, int registrations, List<ArchiveService.Entry> entries, String linkedPlayer) implements CustomPacketPayload {
+        public static final State EMPTY = new State(-1, 0, 0, List.of(), "");
         public static final Type<State> TYPE = new Type<>(Jasm.id("archive_state"));
         public static final StreamCodec<RegistryFriendlyByteBuf, State> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, State::containerId,
                 ByteBufCodecs.VAR_INT, State::energy,
                 ByteBufCodecs.VAR_INT, State::registrations,
                 ENTRY_CODEC.apply(ByteBufCodecs.list(64)), State::entries,
+                ByteBufCodecs.STRING_UTF8, State::linkedPlayer,
                 State::new);
 
         @Override

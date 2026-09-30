@@ -10,6 +10,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
 import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
 
@@ -17,6 +18,11 @@ import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneMod
 @EventBusSubscriber(modid = Jasm.MODID, value = Dist.CLIENT)
 public final class JasmClient {
     private JasmClient() {}
+
+    @SubscribeEvent
+    static void registerBlockExtensions(RegisterClientExtensionsEvent event) {
+        event.registerBlock(new DataCableClientExtensions(), JasmBlocks.cables().stream().map(b -> (net.minecraft.world.level.block.Block) b.get()).toArray(net.minecraft.world.level.block.Block[]::new));
+    }
 
     /** Lets item models pick a Deck's picture by how charged it is. */
     @SubscribeEvent
@@ -26,6 +32,7 @@ public final class JasmClient {
 
     @SubscribeEvent
     static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(JasmBlocks.DATA_CABLE_ENTITY.get(), DataCableRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.RECIPE_RACK_ENTITY.get(), RecipeRackRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), CraftingServerRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalRenderer::new);
@@ -38,6 +45,7 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerModels(ModelEvent.RegisterStandalone event) {
         event.register(RecipeRackRenderer.CARD_MODEL, SimpleUnbakedStandaloneModel.simpleModelWrapper(RecipeRackRenderer.CARD_MODEL_ID));
+        event.register(DataCableRenderer.PORT, SimpleUnbakedStandaloneModel.simpleModelWrapper(DataCableRenderer.PORT_ID));
         CraftingServerRenderer.registerModels(event);
         EncodingTerminalRenderer.registerModels(event);
         ChipWorkshopRenderer.registerModels(event);

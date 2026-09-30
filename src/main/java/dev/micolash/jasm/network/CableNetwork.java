@@ -9,8 +9,6 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
@@ -26,8 +24,6 @@ public final class CableNetwork {
     private final Set<BlockPos> machines;
     private final boolean complete;
     private final SimpleEnergyHandler buffer;
-    /** Blocks outside the network that touch a cable and may take FE, found when the network was built. */
-    private final List<BlockCapabilityCache<EnergyHandler, @Nullable Direction>> outlets = new ArrayList<>();
     private long lastTick = -1;
 
     CableNetwork(ServerLevel level, Set<BlockPos> cables, Set<BlockPos> machines, int energy, boolean complete) {
@@ -38,17 +34,6 @@ public final class CableNetwork {
         int capacity = (int) Math.min(Integer.MAX_VALUE, Math.max(1L, (long) cables.size()) * JasmConfig.CABLE_BUFFER.getAsInt());
         this.buffer = new SimpleEnergyHandler(capacity, capacity, capacity);
         this.buffer.set(Math.clamp(energy, 0, capacity));
-        for (BlockPos cable : cables) {
-            for (Direction side : Direction.values()) {
-                BlockPos next = cable.relative(side);
-                // Cables of another colour are another network: power doesn't leak across. Machines get theirs above.
-                boolean foreign = !machines.contains(next) && (level.getBlockEntity(next) instanceof MachineBlockEntity
-                        || level.getBlockEntity(next) instanceof ArchiveBlockEntity || level.getBlockEntity(next) instanceof NetworkPowerSource);
-                if (!cables.contains(next) && !machines.contains(next) && !foreign && !(level.getBlockState(next).getBlock() instanceof DataCableBlock)) {
-                    outlets.add(BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, next, side.getOpposite()));
-                }
-            }
-        }
     }
 
     public Set<BlockPos> cables() {
@@ -71,6 +56,11 @@ public final class CableNetwork {
         for (BlockPos pos : machines) {
             if (level.isLoaded(pos) && kind.isInstance(level.getBlockEntity(pos))) {
                 found.add(kind.cast(level.getBlockEntity(pos)));
+            }
+        }
+        for (BlockPos pos : cables) {
+            if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+                for (var port : cable.ports()) if (kind.isInstance(port)) found.add(kind.cast(port));
             }
         }
         return found;
@@ -123,6 +113,11 @@ public final class CableNetwork {
                 needy.add(target);
             }
         }
+        for (BlockPos pos : cables) {
+            if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+                for (var port : cable.ports()) if (port.energy().getAmountAsInt() < port.capacity()) needy.add(port.energy());
+            }
+        }
         if (!needy.isEmpty()) {
             int share = Math.max(1, Math.min(rate, buffer.getAmountAsInt() / needy.size()));
             int start = (int) Math.floorMod(now, (long) needy.size());
@@ -131,15 +126,6 @@ public final class CableNetwork {
             }
         }
         shareAdjacentPower();
-        for (BlockCapabilityCache<EnergyHandler, @Nullable Direction> outlet : outlets) {
-            if (buffer.getAmountAsInt() <= 0) {
-                return;
-            }
-            EnergyHandler target = outlet.getCapability();
-            if (target != null) {
-                move(target, rate);
-            }
-        }
     }
 
     private void move(EnergyHandler target, int limit) {

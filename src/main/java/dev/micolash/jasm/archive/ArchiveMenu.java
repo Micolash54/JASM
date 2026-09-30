@@ -3,6 +3,7 @@ package dev.micolash.jasm.archive;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.DeckLinkLayout;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
@@ -42,10 +43,11 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     public static final int RECOVERY_X = 118;
     public static final int DECK_IN = 2;
     public static final int DECK_OUT = 3;
-    public static final int DECK_X = 8;
-    public static final int DECK_IN_Y = 148;
-    public static final int DECK_OUT_Y = 178;
-    public static final int INVENTORY_Y = 212;
+    public static final int DECK_X = DeckLinkLayout.ARCHIVE.slotX();
+    public static final int DECK_IN_Y = DeckLinkLayout.INPUT_Y;
+    public static final int DECK_OUT_Y = DeckLinkLayout.OUTPUT_Y;
+    public static final int INVENTORY_X = 20;
+    public static final int INVENTORY_Y = 160;
     private static final int INVENTORY_START = 4;
     /** How often, in ticks, the server rebuilds the linked list to see whether it changed. */
     private static final int REFRESH_TICKS = 20;
@@ -117,11 +119,11 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         addDataSlots(permissions);
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
+                addSlot(new Slot(inventory, 9 + row * 9 + column, INVENTORY_X + column * 18, INVENTORY_Y + row * 18));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+            addSlot(new Slot(inventory, column, INVENTORY_X + column * 18, INVENTORY_Y + 58));
         }
     }
 
@@ -235,11 +237,29 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
             return withEnergy(ArchivePayloads.State.EMPTY, archive.energy().getAmountAsInt());
         }
         return new ArchivePayloads.State(containerId, archive.energy().getAmountAsInt(), record.tier().registrations(),
-                ArchiveService.entries(store, record));
+                ArchiveService.entries(store, record), linkedPlayerName(record));
+    }
+
+    private String linkedPlayerName(ArchiveRecord record) {
+        var id = record.defaultDeck() ? record.owner() : record.deckPlayer();
+        if (id == null) return "";
+        var server = player.level().getServer();
+        var online = server.getPlayerList().getPlayer(id);
+        if (online != null) return online.getName().getString();
+        if (id.equals(record.owner())) return record.ownerName();
+        var cached = server.services().nameToIdCache().get(id);
+        if (cached.isPresent()) return cached.get().name();
+        var network = dev.micolash.jasm.network.Networks.at((net.minecraft.server.level.ServerLevel) archive.getLevel(), archive.getBlockPos());
+        if (network != null) {
+            for (var terminal : network.machines(dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity.class)) {
+                for (var entry : terminal.trust().entries()) if (entry.id().equals(id)) return entry.name();
+            }
+        }
+        return "";
     }
 
     private ArchivePayloads.State withEnergy(ArchivePayloads.State state, int energy) {
-        return new ArchivePayloads.State(containerId, energy, state.registrations(), state.entries());
+        return new ArchivePayloads.State(containerId, energy, state.registrations(), state.entries(), state.linkedPlayer());
     }
 
     /**

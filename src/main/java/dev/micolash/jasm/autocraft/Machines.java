@@ -3,13 +3,15 @@ package dev.micolash.jasm.autocraft;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.network.CableNetwork;
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.StreamCodec;
+import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import io.netty.buffer.ByteBuf;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.WorldlyContainer;
@@ -45,7 +47,7 @@ public final class Machines {
 
     /** The machine at {@code at}, if its port stands on {@code network}, is loaded, and something there takes items. */
     public static @Nullable AccessPortBlockEntity reach(ServerLevel level, @Nullable CableNetwork network, At at) {
-        AccessPortBlockEntity port = port(level, network, at.port());
+        AccessPortBlockEntity port = port(level, network, at.port(), at.side());
         return port != null && port.hasMachine(at.side()) ? port : null;
     }
 
@@ -62,6 +64,13 @@ public final class Machines {
         return level.getBlockEntity(pos) instanceof AccessPortBlockEntity port ? port : null;
     }
 
+    public static @Nullable AccessPortBlockEntity port(ServerLevel level, @Nullable CableNetwork network, BlockPos pos, Direction side) {
+        AccessPortBlockEntity full = port(level, network, pos);
+        if (full != null) return full;
+        if (network == null || !network.contains(pos) || !level.isLoaded(pos)) return null;
+        return level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? cable.port(side) : null;
+    }
+
     /** Where items go into the machine on a port's {@code side}, or null if nothing there takes items. */
     public static @Nullable ResourceHandler<ItemResource> inlet(AccessPortBlockEntity port, Direction side) {
         if (!(port.getLevel() instanceof ServerLevel level)) {
@@ -72,7 +81,7 @@ public final class Machines {
 
     /** Where items go into the block at {@code pos} through its {@code side}, or null if it takes none. */
     public static @Nullable ResourceHandler<ItemResource> inlet(Level level, BlockPos pos, Direction side) {
-        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity) {
+        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
             // Another crafting block is no machine.
             return null;
         }

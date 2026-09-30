@@ -98,7 +98,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         super(JasmBlocks.ACCESS_PORT_ENTITY.get(), pos, state, CAPACITY);
     }
 
-    static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
+    public static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
         port.payForTick();
         if (level.getGameTime() % 10 == 0) {
             // A machine can start taking items without its block changing (a modded one finishing its build, say).
@@ -129,6 +129,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     @Override
     public int drainPerTick() {
         return JasmConfig.PORT_DRAIN.getAsInt();
+    }
+
+    public boolean installed() {
+        return !isRemoved() && level != null && level.getBlockEntity(worldPosition) == this;
     }
 
     // --- the machines ---

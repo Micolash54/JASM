@@ -59,7 +59,7 @@ public final class Networks {
     public static boolean canConnect(ServerLevel level, BlockPos from, BlockPos to) {
         Networks networks = of(level);
         return networks.isMember(from) && networks.isMember(to)
-                && networks.joins(level.getBlockState(from), level.getBlockState(to), to) && networks.ownerCompatible(from, to);
+                && networks.joins(level.getBlockState(from), level.getBlockState(to), from, to) && networks.ownerCompatible(from, to);
     }
 
     private void refreshCableShapes(BlockPos pos) {
@@ -147,7 +147,7 @@ public final class Networks {
         Set<UUID> owners = new HashSet<>();
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
-            if (!isMember(next) || !joins(level.getBlockState(pos), level.getBlockState(next), next)
+            if (!isMember(next) || !joins(level.getBlockState(pos), level.getBlockState(next), pos, next)
                     || contestedMachine(next) || CableClaims.get(level).blocked(level, next)) {
                 continue;
             }
@@ -191,7 +191,7 @@ public final class Networks {
     private boolean hasOtherNeighbour(BlockPos pos, BlockPos except) {
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
-            if (!next.equals(except) && isMember(next) && joins(level.getBlockState(pos), level.getBlockState(next), next)
+            if (!next.equals(except) && isMember(next) && joins(level.getBlockState(pos), level.getBlockState(next), pos, next)
                     && ownerCompatible(pos, next)) {
                 return true;
             }
@@ -222,7 +222,7 @@ public final class Networks {
             }
             for (Direction side : Direction.values()) {
                 BlockPos more = next.relative(side);
-                if (!seen.contains(more) && isMember(more) && joins(level.getBlockState(next), level.getBlockState(more), more)) {
+                if (!seen.contains(more) && isMember(more) && joins(level.getBlockState(next), level.getBlockState(more), next, more)) {
                     queue.add(more);
                 }
             }
@@ -269,7 +269,7 @@ public final class Networks {
                 if (!seen.contains(next) && level.isLoaded(next)
                         && level.getBlockState(next).getBlock() instanceof DataCableBlock
                         && claims.owner(level, next) == null && !claims.blocked(level, next)
-                        && joins(level.getBlockState(pos), level.getBlockState(next), next)) {
+                        && joins(level.getBlockState(pos), level.getBlockState(next), pos, next)) {
                     queue.add(next);
                 }
             }
@@ -328,7 +328,7 @@ public final class Networks {
                 if (!level.isLoaded(next)) {
                     complete = false;
                 }
-                if (!seen.contains(next) && level.isLoaded(next) && joins(state, level.getBlockState(next), next)
+                if (!seen.contains(next) && level.isLoaded(next) && joins(state, level.getBlockState(next), at, next)
                         && ownerCompatible(at, next)) {
                     seen.add(next);
                     queue.add(next);
@@ -362,7 +362,10 @@ public final class Networks {
     }
 
     /** Whether data passes between two touching blocks. */
-    private boolean joins(BlockState from, BlockState to, BlockPos toPos) {
+    private boolean joins(BlockState from, BlockState to, BlockPos fromPos, BlockPos toPos) {
+        Direction face = Direction.getApproximateNearest(toPos.getX() - fromPos.getX(), toPos.getY() - fromPos.getY(), toPos.getZ() - fromPos.getZ());
+        if (level.getBlockEntity(fromPos) instanceof DataCableBlockEntity cable && cable.port(face) != null
+                || level.getBlockEntity(toPos) instanceof DataCableBlockEntity other && other.port(face.getOpposite()) != null) return false;
         boolean fromCable = from.getBlock() instanceof DataCableBlock;
         boolean toCable = to.getBlock() instanceof DataCableBlock;
         if (fromCable && toCable) {
@@ -401,7 +404,7 @@ public final class Networks {
                 if (!next.equals(except) && !cables.contains(next) && level.isLoaded(next)
                         && level.getBlockState(next).getBlock() instanceof DataCableBlock
                         && claims.owner(level, next) == null && !claims.blocked(level, next)
-                        && joins(level.getBlockState(pos), level.getBlockState(next), next)) {
+                        && joins(level.getBlockState(pos), level.getBlockState(next), pos, next)) {
                     queue.add(next);
                 }
             }
@@ -413,7 +416,7 @@ public final class Networks {
                 BlockPos next = cable.relative(side);
                 UUID owner = ownerAt(next);
                 if (next.equals(except) || owner == null || contestedMachine(next) || claims.blocked(level, next)
-                        || !joins(level.getBlockState(cable), level.getBlockState(next), next)) {
+                        || !joins(level.getBlockState(cable), level.getBlockState(next), cable, next)) {
                     continue;
                 }
                 Wave seed = new Wave(cable, owner, 0);
@@ -443,7 +446,7 @@ public final class Networks {
             }
             for (Direction side : Direction.values()) {
                 BlockPos next = wave.pos().relative(side);
-                if (cables.contains(next) && joins(level.getBlockState(wave.pos()), level.getBlockState(next), next)) {
+                if (cables.contains(next) && joins(level.getBlockState(wave.pos()), level.getBlockState(next), wave.pos(), next)) {
                     waves.add(new Wave(next, wave.owner(), wave.distance() + 1));
                 }
             }
@@ -504,7 +507,7 @@ public final class Networks {
             for (Direction side : Direction.values()) {
                 BlockPos next = pos.relative(side);
                 if (!isMember(next) || contestedMachine(next) || CableClaims.get(level).blocked(level, next)
-                        || !joins(level.getBlockState(pos), level.getBlockState(next), next)) {
+                        || !joins(level.getBlockState(pos), level.getBlockState(next), pos, next)) {
                     continue;
                 }
                 UUID owner = ownerAt(next);
