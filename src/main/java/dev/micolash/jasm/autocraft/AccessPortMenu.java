@@ -6,6 +6,8 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.transfer.PortOperations;
+import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -31,17 +33,19 @@ import org.jspecify.annotations.Nullable;
 /** The port's upgrades, item buffer, Deck link, status and player inventory. */
 public class AccessPortMenu extends AbstractContainerMenu {
     public static final int MAX_NAME = 32;
-    public static final int POWER_X = -24;
-    public static final int POWER_Y = 160;
+    public static final int POWER_X = PortUpgradeLayout.POWER_X;
+    public static final int POWER_Y = PortUpgradeLayout.POWER_Y;
     public static final int INVENTORY_Y = 136;
-    public static final int PANEL_X = -30;
-    public static final int PANEL_Y = 18;
-    public static final int PANEL_SIZE = 28;
-    public static final int BUFFER_X = 16;
+    public static final int PANEL_X = PortUpgradeLayout.PANEL_X;
+    public static final int PANEL_Y = PortUpgradeLayout.PANEL_Y;
+    public static final int PANEL_WIDTH = PortUpgradeLayout.PANEL_WIDTH;
+    public static final int PANEL_HEIGHT = PortUpgradeLayout.SPEED_PANEL_HEIGHT;
+    public static final int BUFFER_X = (PortUpgradeLayout.MAIN_WIDTH - 8 * 18) / 2;
     public static final int BUFFER_Y = 100;
     public static final int SLOT_BUFFER = 1;
     public static final int SLOT_DECK_IN = SLOT_BUFFER + AccessPortBlockEntity.BUFFER_SLOTS;
     public static final int SLOT_DECK_OUT = SLOT_DECK_IN + 1;
+    public static final int SLOT_SPEED = SLOT_DECK_OUT + 1;
     public static final int RESET_DECK = 0;
 
     static final int DATA_ENERGY_LOW = 0;
@@ -84,13 +88,14 @@ public class AccessPortMenu extends AbstractContainerMenu {
         this.label = label;
         this.machines = List.copyOf(machines);
         this.player = inventory.player;
-        this.inventoryStart = SLOT_DECK_OUT + 1;
+        this.inventoryStart = SLOT_SPEED + PortOperations.UPGRADE_SLOTS;
         this.hotbarStart = inventoryStart + 27;
         addDataSlots(data);
-        var container = port == null ? new SimpleContainer(AccessPortBlockEntity.DECK_OUT + 1) : port;
+        var container = port == null ? new SimpleContainer(AccessPortBlockEntity.INVENTORY_SIZE) : port;
         addSlot(new Slot(container, AccessPortBlockEntity.POWER_SLOT, POWER_X, powerY()) {
             @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
             @Override public int getMaxStackSize() { return 1; }
+            @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
         for (int col = 0; col < AccessPortBlockEntity.BUFFER_SLOTS; col++) {
             addSlot(new Slot(container, col, BUFFER_X + col * 18, BUFFER_Y));
@@ -103,22 +108,34 @@ public class AccessPortMenu extends AbstractContainerMenu {
         addSlot(new Slot(container, AccessPortBlockEntity.DECK_OUT, DeckLinkLayout.PORT.slotX(), DeckLinkLayout.OUTPUT_Y) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
         });
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
+            addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.x(i), PortUpgradeLayout.y(i)) {
+                @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.SPEED_UPGRADE.get()); }
+                @Override public int getMaxStackSize() { return 1; }
+                @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+            });
+        }
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + col, 8 + col * 18, inventoryY() + row * 18));
+                addSlot(new Slot(inventory, 9 + row * 9 + col, (PortUpgradeLayout.MAIN_WIDTH - 162) / 2 + col * 18, inventoryY() + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inventory, col, 8 + col * 18, inventoryY() + 58));
+            addSlot(new Slot(inventory, col, (PortUpgradeLayout.MAIN_WIDTH - 162) / 2 + col * 18, inventoryY() + 58));
         }
     }
 
     public int inventoryY() { return INVENTORY_Y; }
     public int powerY() { return POWER_Y; }
-    public int upgradePanelY() { return powerY() - 6; }
+    public int upgradePanelY() { return PANEL_Y; }
     public boolean defaultDeck() { return data.get(DATA_DEFAULT_DECK) != 0; }
     public boolean deckLinked() { return data.get(DATA_LINKED) != 0; }
     public boolean canResetDeck() { return !defaultDeck() && getSlot(SLOT_DECK_IN).getItem().isEmpty(); }
+    public int rate() {
+        int upgrades = 0;
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) if (getSlot(SLOT_SPEED + i).getItem().is(JasmItems.SPEED_UPGRADE.get())) upgrades++;
+        return PortOperations.itemsPerOperation(upgrades);
+    }
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
@@ -213,6 +230,12 @@ public class AccessPortMenu extends AbstractContainerMenu {
                     || moveItemStackTo(stack, inventoryStart, hotbarStart, false);
         } else if (stack.is(JasmItems.POWER_UPGRADE.get())) {
             moved = moveItemStackTo(stack, 0, 1, false);
+        } else if (stack.is(JasmItems.SPEED_UPGRADE.get())) {
+            moved = false;
+            for (int i = 0; i < PortOperations.UPGRADE_SLOTS && !stack.isEmpty(); i++) {
+                if (!moveItemStackTo(stack, SLOT_SPEED, inventoryStart, false)) break;
+                moved = true;
+            }
         } else if (DeckItem.isCrafting(stack)) {
             moved = moveItemStackTo(stack, SLOT_DECK_IN, SLOT_DECK_OUT, false);
         } else {

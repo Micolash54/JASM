@@ -179,6 +179,26 @@ public class JasmJeiPlugin implements IModPlugin {
                 return screen.extraAreas();
             }
         });
+        registration.addGuiContainerHandler(dev.micolash.jasm.client.TransferPortScreen.class, new IGuiContainerHandler<>() {
+            @Override public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.TransferPortScreen screen) { return screen.extraAreas(); }
+        });
+        registration.addGhostIngredientHandler(dev.micolash.jasm.client.TransferPortScreen.class, new IGhostIngredientHandler<>() {
+            @Override public <I> List<Target<I>> getTargetsTyped(dev.micolash.jasm.client.TransferPortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+                Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK);
+                if (stack.isEmpty() || stack.get().isEmpty()) return List.of();
+                List<Target<I>> targets = new ArrayList<>();
+                List<Rect2i> areas = screen.filterSlots();
+                for (int i = 0; i < areas.size(); i++) {
+                    int index = i;
+                    targets.add(new Target<>() {
+                        @Override public Rect2i getArea() { return areas.get(index); }
+                        @Override public void accept(I dropped) { screen.setFilterItem(index, stack.get().getItem()); }
+                    });
+                }
+                return targets;
+            }
+            @Override public void onComplete() {}
+        });
         registration.addGuiContainerHandler(dev.micolash.jasm.client.ArchiveScreen.class, new IGuiContainerHandler<>() {
             @Override
             public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.ArchiveScreen screen) {

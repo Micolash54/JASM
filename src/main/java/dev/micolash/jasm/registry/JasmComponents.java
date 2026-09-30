@@ -84,5 +84,8 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<Integer>> TRAINING = COMPONENTS.registerComponentType(
             "training", b -> b.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT));
 
+    public static final Supplier<DataComponentType<dev.micolash.jasm.transfer.TransferFilters>> TRANSFER_FILTERS = COMPONENTS.registerComponentType(
+            "transfer_filters", b -> b.persistent(dev.micolash.jasm.transfer.TransferFilters.CODEC).networkSynchronized(dev.micolash.jasm.transfer.TransferFilters.STREAM_CODEC));
+
     private JasmComponents() {}
 }

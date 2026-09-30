@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "jasm:input_port",
+    "jasm:output_port",
+    "minecraft:blue_dye"
+  ],
+  "result": {
+    "id": "jasm:input_output_port"
+  }
+}

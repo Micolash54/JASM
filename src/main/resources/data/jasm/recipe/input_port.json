@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "jasm:thin_access_port",
+    "minecraft:hopper",
+    "jasm:link_chip",
+    "minecraft:green_dye"
+  ],
+  "result": {
+    "id": "jasm:input_port"
+  }
+}

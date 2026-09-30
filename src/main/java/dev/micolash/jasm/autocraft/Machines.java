@@ -105,6 +105,8 @@ public final class Machines {
      * whether it went in. The machine decides where each item goes, as with a hopper.
      */
     public static boolean push(AccessPortBlockEntity port, Direction side, List<ProcessingCard.Amount> set) {
+        int count = set.stream().mapToInt(ProcessingCard.Amount::count).sum();
+        if (!port.canSendBatch(count)) return false;
         ResourceHandler<ItemResource> inlet = inlet(port, side);
         if (inlet == null) {
             return false;
@@ -116,6 +118,7 @@ public final class Machines {
                 }
             }
             tx.commit();
+            port.transferred(count);
             return true;
         }
     }

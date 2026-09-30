@@ -50,5 +50,8 @@ public final class JasmMenus {
     public static final Supplier<MenuType<AccessPortMenu>> ACCESS_PORT = MENUS.register("access_port",
             () -> IMenuTypeExtension.create(AccessPortMenu::client));
 
+    public static final Supplier<MenuType<dev.micolash.jasm.transfer.TransferPortMenu>> TRANSFER_PORT = MENUS.register("transfer_port",
+            () -> IMenuTypeExtension.create(dev.micolash.jasm.transfer.TransferPortMenu::client));
+
     private JasmMenus() {}
 }

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GSG",
+    "SCS",
+    "GSG"
+  ],
+  "key": {
+    "G": "minecraft:gold_ingot",
+    "S": "minecraft:sugar",
+    "C": "jasm:link_chip"
+  },
+  "result": {
+    "id": "jasm:speed_upgrade"
+  }
+}

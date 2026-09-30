@@ -46,6 +46,7 @@ public final class JasmClient {
     static void registerModels(ModelEvent.RegisterStandalone event) {
         event.register(RecipeRackRenderer.CARD_MODEL, SimpleUnbakedStandaloneModel.simpleModelWrapper(RecipeRackRenderer.CARD_MODEL_ID));
         event.register(DataCableRenderer.PORT, SimpleUnbakedStandaloneModel.simpleModelWrapper(DataCableRenderer.PORT_ID));
+        DataCableRenderer.registerTransferModels(event);
         CraftingServerRenderer.registerModels(event);
         EncodingTerminalRenderer.registerModels(event);
         ChipWorkshopRenderer.registerModels(event);
@@ -65,5 +66,6 @@ public final class JasmClient {
         event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ACCESS_PORT.get(), AccessPortScreen::new);
+        event.register(JasmMenus.TRANSFER_PORT.get(), TransferPortScreen::new);
     }
 }

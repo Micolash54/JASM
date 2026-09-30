@@ -511,6 +511,7 @@ public final class Jobs {
                 }
             }
             boolean alone = port.lockedJobs().equals(Set.of(job.id));
+            if (port.transferBudget() <= 0) continue;
             for (Map.Entry<ItemResource, Long> held : port.intake().entrySet()) {
                 ItemResource key = held.getKey();
                 long wanted = here.stream().mapToLong(s -> s.wants(key)).sum();
@@ -709,7 +710,7 @@ public final class Jobs {
     }
 
     /** The Crafting Deck with this identity in the player's inventory. */
-    static ItemStack findDeck(ServerPlayer player, @Nullable UUID deckId) {
+    public static ItemStack findDeck(ServerPlayer player, @Nullable UUID deckId) {
         if (deckId == null) {
             return ItemStack.EMPTY;
         }
@@ -878,13 +879,13 @@ public final class Jobs {
     }
 
     /** An open Deck screen keeps working copies of the wafers; bring them up to date before and after a change. */
-    static void prepareOpenDeck(ServerPlayer player, ItemStack deck) {
+    public static void prepareOpenDeck(ServerPlayer player, ItemStack deck) {
         if (player.containerMenu instanceof DeckMenu menu && menu.deck() == deck) {
             menu.wafers().flush();
         }
     }
 
-    static void refreshOpenDeck(ServerPlayer player, ItemStack deck) {
+    public static void refreshOpenDeck(ServerPlayer player, ItemStack deck) {
         if (player.containerMenu instanceof DeckMenu menu && menu.deck() == deck) {
             menu.wafers().reload();
             DeckViewTracker.markDirty(menu);

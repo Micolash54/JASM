@@ -19,14 +19,24 @@ public class JasmButton extends Button {
     public record Icon(Identifier sprite, int width, int height) {}
 
     private final @Nullable Supplier<Icon> icon;
+    private final boolean wrap;
 
     private JasmButton(Builder builder, @Nullable Supplier<Icon> icon) {
+        this(builder, icon, false);
+    }
+
+    private JasmButton(Builder builder, @Nullable Supplier<Icon> icon, boolean wrap) {
         super(builder);
         this.icon = icon;
+        this.wrap = wrap;
     }
 
     public static JasmButton text(Component message, OnPress onPress, int x, int y, int width, int height) {
         return (JasmButton) Button.builder(message, onPress).bounds(x, y, width, height).build(b -> new JasmButton(b, null));
+    }
+
+    public static JasmButton wrappedText(Component message, OnPress onPress, int x, int y, int width, int height) {
+        return (JasmButton) Button.builder(message, onPress).bounds(x, y, width, height).build(b -> new JasmButton(b, null, true));
     }
 
     /** {@code icon} is asked again every frame, so a toggle can switch icons. */
@@ -45,6 +55,14 @@ public class JasmButton extends Button {
             int ix = getX() + (getWidth() - shown.width()) / 2;
             int iy = getY() + (getHeight() - shown.height()) / 2;
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, shown.sprite(), ix, iy, shown.width(), shown.height(), active ? 1.0F : 0.5F);
+        } else if (wrap) {
+            var font = net.minecraft.client.Minecraft.getInstance().font;
+            var lines = font.split(getMessage(), getWidth() - 8);
+            int y = getY() + (getHeight() - lines.size() * font.lineHeight) / 2;
+            for (var line : lines) {
+                graphics.text(font, line, getX() + (getWidth() - font.width(line)) / 2, y, active ? JasmGui.TEXT : JasmGui.MUTED, false);
+                y += font.lineHeight;
+            }
         } else {
             setFGColor(active ? JasmGui.TEXT : JasmGui.MUTED);
             extractDefaultLabel(graphics.textRendererForWidget(this, GuiGraphicsExtractor.HoveredTextEffects.NONE));

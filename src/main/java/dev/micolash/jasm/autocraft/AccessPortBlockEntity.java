@@ -15,6 +15,7 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.transfer.PortOperations;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
@@ -60,7 +61,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>While a job has sent a set of ingredients into one of its machines, that side is locked to the job and the port
  * takes in returns for the job. Full-block ports also accept ordinary items and forward them to a paired Deck.
- * Thin ports accept only processing returns. Automation cannot pull items out.
+ * Thin ports accept items through their mounted face. Automation cannot pull items out.
  */
 public class AccessPortBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     public static final int SLOTS = 9;
@@ -68,7 +69,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public static final int POWER_SLOT = SLOTS;
     public static final int DECK_IN = POWER_SLOT + 1;
     public static final int DECK_OUT = DECK_IN + 1;
-    private static final int INVENTORY_SIZE = DECK_OUT + 1;
+    public static final int SPEED_START = DECK_OUT + 1;
+    public static final int INVENTORY_SIZE = SPEED_START + PortOperations.UPGRADE_SLOTS;
     public static final int CAPACITY = 5_000;
     private static final int[] BUFFER = {0, 1, 2, 3, 4, 5, 6, 7};
     /** Ticks between checks that the jobs holding locks still exist. */
@@ -91,6 +93,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private String label = "";
     private @Nullable UUID destinationDeck;
     private @Nullable UUID pendingLinker;
+    private final PortOperations operations = new PortOperations();
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -144,6 +147,26 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return getItem(POWER_SLOT).is(JasmItems.POWER_UPGRADE.get());
     }
 
+    public int transferRate() {
+        int upgrades = 0;
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
+            if (getItem(SPEED_START + i).is(JasmItems.SPEED_UPGRADE.get())) upgrades++;
+        }
+        return PortOperations.itemsPerOperation(upgrades);
+    }
+
+    public int transferBudget() {
+        return level != null && running() && !networkBlocked() ? operations.available(level.getGameTime(), transferRate()) : 0;
+    }
+
+    public boolean canSendBatch(int count) {
+        return level != null && running() && !networkBlocked() && operations.canSendBatch(level.getGameTime(), transferRate(), count);
+    }
+
+    public void transferred(int count) {
+        if (level != null) operations.transferred(level.getGameTime(), count);
+    }
+
     public boolean acceptsOrdinaryItems() { return true; }
 
     public boolean defaultDeck() { return destinationDeck == null; }
@@ -152,7 +175,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return network.machines(EncodingTerminalBlockEntity.class).stream().map(EncodingTerminalBlockEntity::ensureId).toList();
     }
 
-    private AutocraftState.@Nullable Pairing destination(CableNetwork network) {
+    protected AutocraftState.@Nullable Pairing destination(CableNetwork network) {
         var state = AutocraftState.get(((ServerLevel) level).getServer());
         List<UUID> terminals = terminalIds(network);
         var pairing = destinationDeck == null ? state.pairedPlayer(terminals, owner()).orElse(null)
@@ -210,6 +233,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     /** Items a processing job still expects stay here for its server to collect first. */
     private void forwardItems() {
         if (!(level instanceof ServerLevel serverLevel) || !running() || networkBlocked()) return;
+        int budget = transferBudget();
+        if (budget <= 0) return;
         CableNetwork network = Networks.at(serverLevel, worldPosition);
         var pairing = network == null ? null : destination(network);
         if (pairing == null) return;
@@ -220,6 +245,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (deck.isEmpty() || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
         Set<ItemResource> expected = Jobs.expectedPortReturns(serverLevel, this);
         if (expected == null) return;
+        for (int i = 0; i < SLOTS; i++) {
+            if (!items.get(i).isEmpty() && expected.contains(ItemResource.of(items.get(i)))) return;
+        }
         var store = WaferStore.get(serverLevel.getServer());
         Jobs.prepareOpenDeck(player, deck);
         DeckStorage.checkAll(store, deck, player);
@@ -229,7 +257,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             ItemStack stack = items.get(i);
             if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack))) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
-        var accepted = DeckStorage.depositAmounts(store, deck, incoming, player);
+        var accepted = DeckStorage.depositAmounts(store, deck, incoming, player, budget);
+        transferred((int) accepted.values().stream().mapToLong(Long::longValue).sum());
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
             if (stack.isEmpty() || expected.contains(ItemResource.of(stack))) continue;
@@ -444,6 +473,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** Takes up to {@code most} of {@code key} out of the intake. Returns how many. */
     long take(ItemResource key, long most) {
+        most = Math.min(most, transferBudget());
         long taken = 0;
         for (int i = 0; i < SLOTS && taken < most; i++) {
             ItemStack stack = items.get(i);
@@ -454,6 +484,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             }
         }
         if (taken > 0) {
+            transferred((int) taken);
             setChanged();
         }
         return taken;
@@ -478,6 +509,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
+        if (slot >= SPEED_START && slot < INVENTORY_SIZE) return stack.is(JasmItems.SPEED_UPGRADE.get());
         if (slot == POWER_SLOT) return stack.is(JasmItems.POWER_UPGRADE.get());
         if (slot == DECK_IN) return DeckItem.isCrafting(stack);
         return slot >= 0 && slot < BUFFER_SLOTS;

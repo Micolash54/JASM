@@ -39,6 +39,10 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
     public static final DeferredItem<ThinAccessPortItem> THIN_ACCESS_PORT = ITEMS.registerItem("thin_access_port", ThinAccessPortItem::new);
+    public static final DeferredItem<dev.micolash.jasm.transfer.TransferPortItem> INPUT_PORT = ITEMS.registerItem("input_port", dev.micolash.jasm.transfer.TransferPortItem::new);
+    public static final DeferredItem<dev.micolash.jasm.transfer.TransferPortItem> OUTPUT_PORT = ITEMS.registerItem("output_port", dev.micolash.jasm.transfer.TransferPortItem::new);
+    public static final DeferredItem<dev.micolash.jasm.transfer.TransferPortItem> INPUT_OUTPUT_PORT = ITEMS.registerItem("input_output_port", dev.micolash.jasm.transfer.TransferPortItem::new);
+    public static final DeferredItem<dev.micolash.jasm.transfer.SpeedUpgradeItem> SPEED_UPGRADE = ITEMS.registerItem("speed_upgrade", dev.micolash.jasm.transfer.SpeedUpgradeItem::new);
     public static final DeferredItem<Item> POWER_UPGRADE = ITEMS.registerSimpleItem("power_upgrade");
     public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
     public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");

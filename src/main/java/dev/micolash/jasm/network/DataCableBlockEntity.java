@@ -3,6 +3,8 @@ package dev.micolash.jasm.network;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.transfer.TransferPortKind;
+import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import dev.micolash.jasm.registry.JasmItems;
 import java.util.EnumMap;
 import java.util.List;
@@ -31,7 +33,7 @@ import org.jspecify.annotations.Nullable;
 
 /** The independent Access Ports mounted on a cable's faces. */
 public class DataCableBlockEntity extends BlockEntity {
-    private final Map<Direction, AttachedPort> ports = new EnumMap<>(Direction.class);
+    private final Map<Direction, AccessPortBlockEntity> ports = new EnumMap<>(Direction.class);
 
     public DataCableBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.DATA_CABLE_ENTITY.get(), pos, state);
@@ -47,12 +49,12 @@ public class DataCableBlockEntity extends BlockEntity {
 
     /** The mounted part, rather than the cable, supplies this face's item input. */
     public @Nullable ResourceHandler<ItemResource> itemInput(@Nullable Direction side) {
-        AttachedPort port = side == null ? null : ports.get(side);
-        return port == null ? null : port.itemInput;
+        var port = side == null ? null : ports.get(side);
+        return port instanceof AttachedPort access ? access.itemInput : null;
     }
 
     public boolean attach(Direction side, ItemStack stack, Player player) {
-        if (level == null || !stack.is(JasmItems.THIN_ACCESS_PORT.get()) || ports.containsKey(side)) return false;
+        if (level == null || (!stack.is(JasmItems.THIN_ACCESS_PORT.get()) && TransferPortKind.of(stack) == null) || ports.containsKey(side)) return false;
         BlockPos next = worldPosition.relative(side);
         if (level.getBlockState(next).getBlock() instanceof DataCableBlock
                 || level.getBlockEntity(next) instanceof MachineBlockEntity
@@ -64,7 +66,7 @@ public class DataCableBlockEntity extends BlockEntity {
             if (owner != null && !owner.equals(player.getUUID())
                     && !MachineAccess.trustedBy(Networks.at(serverLevel, worldPosition), owner, player.getUUID())) return false;
         }
-        AttachedPort port = new AttachedPort(side);
+        AccessPortBlockEntity port = createPort(side, TransferPortKind.of(stack));
         port.setLevel(level);
         port.applyComponentsFromItemStack(stack);
         port.setOwner(player);
@@ -82,7 +84,7 @@ public class DataCableBlockEntity extends BlockEntity {
     }
 
     public boolean detach(Direction side, boolean drop) {
-        AttachedPort port = ports.remove(side);
+        AccessPortBlockEntity port = ports.remove(side);
         if (port == null) return false;
         if (level instanceof ServerLevel) {
             if (drop) Block.popResource(level, worldPosition, portItem(port));
@@ -96,7 +98,7 @@ public class DataCableBlockEntity extends BlockEntity {
     }
 
     public ItemStack portItem(AccessPortBlockEntity port) {
-        ItemStack item = new ItemStack(JasmItems.THIN_ACCESS_PORT.get());
+        ItemStack item = new ItemStack(port instanceof TransferPortBlockEntity transfer ? transfer.kind().item() : JasmItems.THIN_ACCESS_PORT.get());
         item.applyComponents(port.collectComponents());
         return item;
     }
@@ -105,7 +107,7 @@ public class DataCableBlockEntity extends BlockEntity {
         if (!(level instanceof ServerLevel serverLevel)) return;
         CableClaims claims = CableClaims.get(serverLevel);
         UUID owner = claims.owner(serverLevel, worldPosition);
-        for (AttachedPort port : ports.values()) {
+        for (AccessPortBlockEntity port : ports.values()) {
             if (owner != null) port.adoptOwner(owner, claims.ownerName(owner));
             port.setNetworkBlocked(claims.blocked(serverLevel, worldPosition));
         }
@@ -126,7 +128,10 @@ public class DataCableBlockEntity extends BlockEntity {
                 && level instanceof ServerLevel serverLevel) block.refreshConnections(serverLevel, pos);
         if (cable.ports.isEmpty()) return;
         cable.syncOwners();
-        for (AttachedPort port : cable.ports.values()) AccessPortBlockEntity.serverTick(level, pos, port.getBlockState(), port);
+        for (AccessPortBlockEntity port : cable.ports.values()) {
+            if (port instanceof TransferPortBlockEntity transfer) transfer.tickTransfer();
+            else AccessPortBlockEntity.serverTick(level, pos, port.getBlockState(), port);
+        }
     }
 
     @Override
@@ -156,6 +161,7 @@ public class DataCableBlockEntity extends BlockEntity {
         ports.forEach((side, port) -> {
             ValueOutput child = saved.addChild();
             child.store("side", Direction.CODEC, side);
+            if (port instanceof TransferPortBlockEntity transfer) child.putString("kind", transfer.kind().name());
             port.saveCustomOnly(child.child("port"));
         });
     }
@@ -167,7 +173,10 @@ public class DataCableBlockEntity extends BlockEntity {
         ports.clear();
         for (ValueInput child : input.childrenListOrEmpty("ports")) {
             child.read("side", Direction.CODEC).ifPresent(side -> {
-                AttachedPort port = new AttachedPort(side);
+                String kind = child.getStringOr("kind", "");
+                TransferPortKind parsed = null;
+                try { parsed = TransferPortKind.valueOf(kind); } catch (IllegalArgumentException ignored) {}
+                AccessPortBlockEntity port = createPort(side, parsed);
                 port.loadCustomOnly(child.childOrEmpty("port"));
                 if (level != null) port.setLevel(level);
                 ports.put(side, port);
@@ -183,6 +192,21 @@ public class DataCableBlockEntity extends BlockEntity {
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    private AccessPortBlockEntity createPort(Direction side, @Nullable TransferPortKind kind) {
+        return kind == null ? new AttachedPort(side) : new AttachedTransferPort(side, kind);
+    }
+
+    private final class AttachedTransferPort extends TransferPortBlockEntity {
+        private final Direction face;
+        AttachedTransferPort(Direction face, TransferPortKind kind) {
+            super(DataCableBlockEntity.this.worldPosition, JasmBlocks.ACCESS_PORT.get().defaultBlockState(), kind, face);
+            this.face = face;
+        }
+        @Override public void setChanged() { DataCableBlockEntity.this.setChanged(); }
+        @Override public boolean isRemoved() { return super.isRemoved() || DataCableBlockEntity.this.isRemoved() || ports.get(face) != this; }
+        @Override public boolean installed() { return !isRemoved(); }
     }
 
     private final class AttachedPort extends AccessPortBlockEntity {

@@ -3,6 +3,8 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.network.DeckLinkLayout;
+import dev.micolash.jasm.transfer.PortOperations;
+import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Button;
@@ -15,17 +17,17 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /** The port's status and name, player inventory, and a small upgrade panel on the left. */
 public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
-    private static final int WIDTH = 176;
+    private static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
     private static final int BAR_WIDTH = 50;
     private static final int BAR_X = WIDTH - 8 - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final int NAME_Y = 70;
     private static final int LIST_X = 8;
     private static final int LIST_Y = 30;
-    private static final int LIST_WIDTH = 148;
+    private static final int LIST_WIDTH = WIDTH - 28;
     private static final int ROW_HEIGHT = 18;
     private static final int ROWS = 2;
-    private static final int SCROLL_X = 160;
+    private static final int SCROLL_X = WIDTH - 16;
     private static final int HANDLE_HEIGHT = 12;
     private int scroll;
     private boolean draggingHandle;
@@ -35,6 +37,7 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
     public AccessPortScreen(AccessPortMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, menu.inventoryY() + 58 + 18 + 6);
         inventoryLabelY = menu.inventoryY() - 10;
+        inventoryLabelX = (WIDTH - 162) / 2;
     }
 
     @Override
@@ -50,20 +53,22 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
         addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.port.rename"), b -> rename(),
                 leftPos + WIDTH - 8 - 44, topPos + NAME_Y - 1, 44, 14));
         var layout = DeckLinkLayout.PORT;
-        resetDeck = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.reset_deck"),
+        resetDeck = addRenderableWidget(JasmButton.wrappedText(Component.translatable("screen.jasm.archive.reset_deck"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.RESET_DECK),
-                leftPos + layout.panelX() + 8, topPos + DeckLinkLayout.RESET_Y, layout.width() - 16, 18));
+                leftPos + layout.panelX() + 8, topPos + DeckLinkLayout.RESET_Y, layout.width() - 16, 22));
         resetDeck.active = menu.canResetDeck();
     }
 
     public net.minecraft.client.renderer.Rect2i upgradePanelArea() {
         return new net.minecraft.client.renderer.Rect2i(leftPos + AccessPortMenu.PANEL_X, topPos + menu.upgradePanelY(),
-                AccessPortMenu.PANEL_SIZE, AccessPortMenu.PANEL_SIZE);
+                AccessPortMenu.PANEL_WIDTH, AccessPortMenu.PANEL_HEIGHT);
     }
 
     public java.util.List<net.minecraft.client.renderer.Rect2i> extraAreas() {
         var areas = new java.util.ArrayList<net.minecraft.client.renderer.Rect2i>();
         areas.add(upgradePanelArea());
+        areas.add(new net.minecraft.client.renderer.Rect2i(leftPos + PortUpgradeLayout.POWER_PANEL_X, topPos + PortUpgradeLayout.POWER_PANEL_Y,
+                PortUpgradeLayout.POWER_PANEL_SIZE, PortUpgradeLayout.POWER_PANEL_SIZE));
         areas.add(new net.minecraft.client.renderer.Rect2i(leftPos + DeckLinkLayout.PORT.panelX(), topPos,
                 DeckLinkLayout.PORT.width(), DeckLinkLayout.PORT.height()));
         return areas;
@@ -71,11 +76,9 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
 
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
-        var panel = upgradePanelArea();
-        boolean inside = mouseX >= panel.getX() && mouseX < panel.getX() + panel.getWidth()
-                && mouseY >= panel.getY() && mouseY < panel.getY() + panel.getHeight();
-        boolean overLink = DeckLinkPanel.contains(mouseX, mouseY, left, top, DeckLinkLayout.PORT);
-        return !inside && !overLink && super.hasClickedOutside(mouseX, mouseY, left, top);
+        boolean inside = extraAreas().stream().anyMatch(panel -> mouseX >= panel.getX() && mouseX < panel.getX() + panel.getWidth()
+                && mouseY >= panel.getY() && mouseY < panel.getY() + panel.getHeight());
+        return !inside && super.hasClickedOutside(mouseX, mouseY, left, top);
     }
 
     private void rename() {
@@ -106,7 +109,9 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
         JasmGui.scrollBar(graphics, leftPos + SCROLL_X, topPos + LIST_Y, 8, ROWS * ROW_HEIGHT,
                 offset, HANDLE_HEIGHT, maxScroll() > 0);
         JasmGui.panel(graphics, leftPos + AccessPortMenu.PANEL_X, topPos + menu.upgradePanelY(),
-                AccessPortMenu.PANEL_SIZE, AccessPortMenu.PANEL_SIZE);
+                AccessPortMenu.PANEL_WIDTH, AccessPortMenu.PANEL_HEIGHT);
+        JasmGui.panel(graphics, leftPos + PortUpgradeLayout.POWER_PANEL_X, topPos + PortUpgradeLayout.POWER_PANEL_Y,
+                PortUpgradeLayout.POWER_PANEL_SIZE, PortUpgradeLayout.POWER_PANEL_SIZE);
         DeckLinkPanel.draw(graphics, font, leftPos, topPos, DeckLinkLayout.PORT);
         for (var slot : menu.slots) JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
         for (int row = 0; row < ROWS && scroll + row < menu.machines().size(); row++) {
@@ -135,8 +140,13 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
         if (hoveredSlot == menu.getSlot(AccessPortMenu.SLOT_DECK_IN) && !hoveredSlot.hasItem()) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.port.deck_hint"), 180), mouseX, mouseY);
         }
-        if (hoveredSlot == menu.getSlot(0) && !hoveredSlot.hasItem()) {
+        if (hoveredSlot == menu.getSlot(0)) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.port.power_hint"), 180), mouseX, mouseY);
+        }
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
+            if (hoveredSlot == menu.getSlot(AccessPortMenu.SLOT_SPEED + i)) {
+                graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.transfer.speed_hint"), mouseX, mouseY);
+            }
         }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),

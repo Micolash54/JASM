@@ -64,6 +64,10 @@ Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold 
 | ![Power Upgrade](images/recipes/power_upgrade.png) | **Power Upgrade** | 4 × Gold Ingot, 4 × Redstone, 1 × Link Chip |
 | ![Access Port](images/recipes/thin_access_port.png) | **Access Port** | 1 × Access Port |
 | ![Access Port](images/recipes/full_access_port.png) | **Access Port** | 1 × Access Port |
+| ![Input Port](images/recipes/input_port.png) | **Input Port** | 1 × Access Port, 1 × Hopper, 1 × Link Chip, 1 × Green Dye |
+| ![Output Port](images/recipes/output_port.png) | **Output Port** | 1 × Access Port, 1 × Dropper, 1 × Link Chip, 1 × Red Dye |
+| ![Input Output Port](images/recipes/input_output_port.png) | **Input Output Port** | 1 × Input Port, 1 × Output Port, 1 × Blue Dye |
+| ![Speed Upgrade](images/recipes/speed_upgrade.png) | **Speed Upgrade** | 4 × Gold Ingot, 4 × Sugar, 1 × Link Chip |
 | ![Data Cable](images/recipes/data_cable.png) | **Data Cable** | 6 × Iron Nugget, 2 × Redstone, 1 × Amethyst Shard |
 | ![Red Data Cable](images/recipes/red_data_cable.png) | **Red Data Cable** | 8 × Data Cable (any colour), 1 × Red Dye |
 

@@ -205,6 +205,11 @@ public final class DeckStorage {
 
     /** Fill wafers left to right, choosing each wafer's highest matching rows before other items in the batch. */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player) {
+        return depositAmounts(store, deck, items, player, Long.MAX_VALUE);
+    }
+
+    /** Same routing order, with a shared limit on the number of items moved. */
+    public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player, long limit) {
         var left = new java.util.LinkedHashMap<ItemResource, Long>();
         items.forEach((key, amount) -> {
             if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) left.put(key, amount);
@@ -221,6 +226,7 @@ public final class DeckStorage {
             order.removeIf(key -> settings.rank(key.getItem()) < 0);
             order.sort(java.util.Comparator.comparingInt(key -> settings.rank(key.getItem())));
             for (ItemResource key : order) {
+                if (limit <= 0) break;
                 long remaining = left.get(key);
                 if (remaining <= 0 || (record == null ? slot.room(key) : record.roomFor(key)) <= 0) continue;
                 if (record == null) {
@@ -228,8 +234,9 @@ public final class DeckStorage {
                     record = WaferValidator.format(store, blank, player);
                     wafers = wafers.with(i, blank);
                 }
-                long stored = store.insert(record, key, remaining, false, player);
+                long stored = store.insert(record, key, Math.min(remaining, limit), false, player);
                 if (stored > 0) {
+                    limit -= stored;
                     moved.merge(key, stored, Long::sum);
                     left.put(key, remaining - stored);
                 }
