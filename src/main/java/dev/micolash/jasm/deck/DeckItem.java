@@ -1,5 +1,8 @@
 package dev.micolash.jasm.deck;
 
+import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.archive.ArchiveBlockEntity;
+import dev.micolash.jasm.archive.ArchiveService;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
@@ -15,6 +18,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.Level;
 
@@ -62,6 +66,24 @@ public class DeckItem extends Item implements WaferHolderItem {
 
     public static int energy(ItemStack deck) {
         return deck.getOrDefault(JasmComponents.ENERGY.get(), 0);
+    }
+
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        if (context.getPlayer() == null || !context.isSecondaryUseActive()
+                || !(context.getLevel().getBlockEntity(context.getClickedPos()) instanceof ArchiveBlockEntity archive)) {
+            return InteractionResult.PASS;
+        }
+        if (context.getPlayer() instanceof ServerPlayer player) {
+            var backup = ArchiveService.backupDeck(WaferStore.get(player.level().getServer()), archive, player, context.getItemInHand());
+            if (backup.result() == ArchiveService.Result.OK) {
+                Notices.good(player, Component.translatable("message.jasm.archive.done.backup_deck", backup.backedUp(), backup.total()));
+            } else {
+                String key = backup.result() == ArchiveService.Result.NO_ACCESS ? "message.jasm.archive.deck_only" : backup.result().messageKey();
+                Notices.bad(player, Component.translatable(key));
+            }
+        }
+        return InteractionResult.SUCCESS;
     }
 
     /** Opens the Deck. Its wafers are activated first, so copies elsewhere stop working. */

@@ -2,7 +2,11 @@ package dev.micolash.jasm.archive;
 
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
+import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
+import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.JasmState;
@@ -15,6 +19,7 @@ import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.wafer.WaferValidator;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,6 +40,7 @@ public final class ArchiveService {
         OK,
         NOT_READY,
         NO_ACCESS,
+        WRONG_DECK,
         NO_WAFER,
         WAFER_LOCKED,
         ALREADY_LINKED,
@@ -56,7 +62,60 @@ public final class ArchiveService {
     /** One linked wafer as the Archive screen lists it. {@code readable} is false while its record can't be read. */
     public record Entry(long serial, String name, long used, int capacity, boolean readable) {}
 
+    /** Overall coverage of the held Deck, including backups made before this action. */
+    public record Backup(Result result, int backedUp, int total) {}
+
     private ArchiveService() {}
+
+    /** Back up wafers in Deck slot order without moving backups already on this network. */
+    public static Backup backupDeck(WaferStore store, ArchiveBlockEntity block, ServerPlayer player, ItemStack deck) {
+        Result access = access(block, player);
+        DeckWafers wafers = DeckItem.wafers(deck);
+        int total = wafers.count();
+        if (access != Result.OK) return new Backup(access, 0, total);
+        if (!(deck.getItem() instanceof DeckItem)) return new Backup(Result.WRONG_DECK, 0, total);
+        ArchiveRecord archive = block.record();
+        var network = Networks.at(player.level(), block.getBlockPos());
+        UUID deckId = deck.get(JasmComponents.DECK_ID.get());
+        if (archive.deck() == null && archive.defaultDeck()
+                && (network == null || network.machines(EncodingTerminalBlockEntity.class).isEmpty())) {
+            if (deckId == null) {
+                deckId = UUID.randomUUID();
+                deck.set(JasmComponents.DECK_ID.get(), deckId);
+            }
+            store.state().setArchiveDeck(archive, deckId, player.getUUID(), true);
+            store.state().saveNow(player.level().getServer());
+        }
+        if (deckId == null || !deckId.equals(archive.deck())) return new Backup(Result.WRONG_DECK, 0, total);
+
+        var archives = new HashSet<UUID>();
+        archives.add(archive.id());
+        if (network != null) {
+            for (var pos : network.machines()) {
+                if (player.level().getBlockEntity(pos) instanceof ArchiveBlockEntity other && other.archiveId() != null) {
+                    archives.add(other.archiveId());
+                }
+            }
+        }
+        int backedUp = 0;
+        DeckWafers updated = wafers;
+        for (DeckWafers.Entry entry : wafers.entries()) {
+            ItemStack wafer = entry.wafer().create();
+            if (!(wafer.getItem() instanceof WaferItem)) continue;
+            Verdict verdict = WaferValidator.validate(store, wafer, WaferValidator.Mode.PASSIVE, null);
+            if (verdict == Verdict.VALID || verdict == Verdict.VALID_AHEAD || verdict == Verdict.UNFORMATTED) {
+                WaferRecord record = WaferValidator.record(store, wafer).orElse(null);
+                if (record != null && archives.contains(record.archiveId())) {
+                    backedUp++;
+                } else if (link(store, block, player, wafer) == Result.OK) {
+                    backedUp++;
+                }
+            }
+            updated = updated.with(entry.slot(), wafer);
+        }
+        deck.set(JasmComponents.DECK_WAFERS.get(), updated);
+        return new Backup(Result.OK, backedUp, total);
+    }
 
     /**
      * The wafers linked to this Archive, oldest link first. Entries whose wafer has since been linked elsewhere, or
