@@ -3,160 +3,52 @@
   "textures": {
     "parts": "jasm:block/access_port",
     "pad": "jasm:block/access_port_pad",
+    "thin": "jasm:block/thin_access_port",
     "particle": "jasm:block/access_port"
   },
   "elements": [
     {
-      "name": "mount",
-      "from": [
-        5,
-        5,
-        7.5
-      ],
-      "to": [
-        11,
-        11,
-        10.5
-      ],
+      "name": "pad",
+      "from": [2, 2, 5.5],
+      "to": [14, 14, 6.5],
       "faces": {
-        "north": {
-          "uv": [
-            0,
-            10,
-            6,
-            12
-          ],
-          "texture": "#parts"
-        },
-        "east": {
-          "uv": [
-            0,
-            10,
-            6,
-            12
-          ],
-          "texture": "#parts"
-        },
-        "south": {
-          "uv": [
-            0,
-            10,
-            6,
-            12
-          ],
-          "texture": "#parts"
-        },
-        "west": {
-          "uv": [
-            0,
-            10,
-            6,
-            12
-          ],
-          "texture": "#parts"
-        },
-        "up": {
-          "uv": [
-            0,
-            10,
-            6,
-            12
-          ],
-          "texture": "#parts"
-        },
-        "down": {
-          "uv": [
-            0,
-            10,
-            6,
-            12
-          ],
-          "texture": "#parts"
-        }
+        "north": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "east": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "south": {"uv": [0, 0, 12, 12], "texture": "#thin"},
+        "west": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "up": {"uv": [8, 8, 9, 9], "texture": "#pad"},
+        "down": {"uv": [8, 8, 9, 9], "texture": "#pad"}
       }
     },
     {
-      "name": "panel",
-      "from": [
-        4,
-        4,
-        5.5
-      ],
-      "to": [
-        12,
-        12,
-        7.5
-      ],
+      "name": "body",
+      "from": [3, 3, 6.5],
+      "to": [13, 13, 8.5],
       "faces": {
-        "north": {
-          "uv": [
-            0,
-            0,
-            8,
-            8
-          ],
-          "texture": "#pad"
-        },
-        "east": {
-          "uv": [
-            8,
-            8,
-            9,
-            9
-          ],
-          "texture": "#pad"
-        },
-        "south": {
-          "uv": [
-            8,
-            0,
-            16,
-            8
-          ],
-          "texture": "#pad"
-        },
-        "west": {
-          "uv": [
-            8,
-            8,
-            9,
-            9
-          ],
-          "texture": "#pad"
-        },
-        "up": {
-          "uv": [
-            8,
-            8,
-            9,
-            9
-          ],
-          "texture": "#pad"
-        },
-        "down": {
-          "uv": [
-            8,
-            8,
-            9,
-            9
-          ],
-          "texture": "#pad"
-        }
+        "east": {"uv": [12, 0, 14, 10], "texture": "#thin"},
+        "south": {"uv": [0, 0, 10, 10], "texture": "#parts"},
+        "west": {"uv": [14, 0, 12, 10], "texture": "#thin"},
+        "up": {"uv": [0, 12, 10, 14], "texture": "#thin"},
+        "down": {"uv": [0, 14, 10, 16], "texture": "#thin"}
+      }
+    },
+    {
+      "name": "neck",
+      "from": [5, 5, 8.5],
+      "to": [11, 11, 10.5],
+      "faces": {
+        "east": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "south": {"uv": [10, 4, 16, 10], "texture": "#parts"},
+        "west": {"uv": [0, 10, 2, 16], "texture": "#parts"},
+        "up": {"uv": [0, 10, 6, 12], "texture": "#parts"},
+        "down": {"uv": [0, 10, 6, 12], "texture": "#parts"}
       }
     }
   ],
   "display": {
     "gui": {
-      "rotation": [
-        30,
-        -135,
-        0
-      ],
-      "scale": [
-        0.9,
-        0.9,
-        0.9
-      ]
+      "rotation": [30, -135, 0],
+      "scale": [0.9, 0.9, 0.9]
     }
   }
 }
