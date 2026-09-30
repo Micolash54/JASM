@@ -68,9 +68,11 @@ public abstract class MachineBlock extends BaseEntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity by, ItemStack itemStack) {
         super.setPlacedBy(level, pos, state, by, itemStack);
-        if (!level.isClientSide() && by instanceof Player player && level.getBlockEntity(pos) instanceof MachineBlockEntity machine
-                && machine.owner() == null) {
-            machine.setOwner(player);
+        if (level instanceof ServerLevel serverLevel && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) {
+            if (machine.owner() == null && by instanceof Player player) {
+                machine.setOwner(player);
+            }
+            Networks.placedMachine(serverLevel, pos);
         }
     }
 

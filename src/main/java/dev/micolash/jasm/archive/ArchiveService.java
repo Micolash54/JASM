@@ -232,7 +232,7 @@ public final class ArchiveService {
         if (block.record() == null) {
             return Result.NOT_READY;
         }
-        return MachineAccess.canUse(block, player) ? Result.OK : Result.NO_ACCESS;
+        return block.canBackup(player) ? Result.OK : Result.NO_ACCESS;
     }
 
     private static void spend(SimpleEnergyHandler energy, int amount) {

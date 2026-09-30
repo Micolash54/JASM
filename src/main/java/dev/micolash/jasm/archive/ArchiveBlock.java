@@ -28,9 +28,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recovery hardware. Anyone can break it, but only its owner can use it, and the players an Encoding Terminal of
- * theirs on the same network trusts. Cables join it to a network like the crafting blocks. Explosions and pistons
- * can't move it.
+ * Personal recovery hardware. The network owner chooses its Deck, and trusted players may view its backups.
+ * Cables join it to a network like the crafting blocks. Explosions and pistons can't move it.
  */
 public class ArchiveBlock extends BaseEntityBlock {
     /** The side with the drive bays, turned toward whoever placed it. */
@@ -81,6 +80,7 @@ public class ArchiveBlock extends BaseEntityBlock {
         super.setPlacedBy(level, pos, state, by, itemStack);
         if (level instanceof ServerLevel serverLevel && level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive) {
             ArchivePlacement.placed(archive, serverLevel, by instanceof Player player ? player : null);
+            Networks.placedMachine(serverLevel, pos);
         }
     }
 

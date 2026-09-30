@@ -4,10 +4,22 @@
     {
       "rolls": 1,
       "entries": [
-        { "type": "minecraft:item", "name": "jasm:creative_battery" }
+        {
+          "type": "minecraft:item",
+          "name": "jasm:creative_battery",
+          "modifier": {
+            "type": "minecraft:copy_components",
+            "include": [
+              "jasm:owner"
+            ],
+            "source": "block_entity"
+          }
+        }
       ],
       "conditions": [
-        { "condition": "minecraft:survives_explosion" }
+        {
+          "condition": "minecraft:survives_explosion"
+        }
       ]
     }
   ],

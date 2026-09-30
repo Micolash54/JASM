@@ -81,8 +81,8 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         CraftingJob.Phase phase = menu.phase();
-        cancel.active = phase == CraftingJob.Phase.CRAFTING;
-        collect.active = phase == CraftingJob.Phase.RETURNING;
+        cancel.active = menu.canControlJob() && phase == CraftingJob.Phase.CRAFTING;
+        collect.active = menu.canControlJob() && phase == CraftingJob.Phase.RETURNING;
         back.visible = menu.opensFromDeck();
         super.extractContents(graphics, mouseX, mouseY, a);
         // The last message (collected, cancelling...) over the bottom of the job panel for a few seconds.

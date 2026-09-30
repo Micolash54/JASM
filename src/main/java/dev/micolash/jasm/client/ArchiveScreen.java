@@ -40,6 +40,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
     private Button link;
     private Button unlink;
     private Button recover;
+    private Button resetDeck;
 
     public ArchiveScreen(ArchiveMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -60,6 +61,9 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         recover = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.recover"),
                 b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected)),
                 x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
+        resetDeck = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.reset_deck"),
+                b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.RESET_DECK)),
+                x + 32, y + ArchiveMenu.DECK_OUT_Y - 1, 112, 18));
         updateWidgets();
     }
 
@@ -77,9 +81,10 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         if (menu.view().entries().stream().noneMatch(e -> e.serial() == selected)) {
             selected = -1;
         }
-        link.active = !menu.waferSlots().getItem(ArchiveMenu.LINK_SLOT).isEmpty();
-        unlink.active = selected >= 0;
-        recover.active = selected >= 0 && !menu.waferSlots().getItem(ArchiveMenu.RECOVERY_SLOT).isEmpty();
+        link.active = menu.canBackup() && !menu.waferSlots().getItem(ArchiveMenu.LINK_SLOT).isEmpty();
+        unlink.active = menu.canBackup() && selected >= 0;
+        recover.active = menu.canBackup() && selected >= 0 && !menu.waferSlots().getItem(ArchiveMenu.RECOVERY_SLOT).isEmpty();
+        resetDeck.active = menu.canManageDeck() && !menu.defaultDeck();
     }
 
     private int maxScroll() {
@@ -98,6 +103,7 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
         JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_WIDTH + 2, ROWS * ROW_HEIGHT + 2);
+        graphics.text(font, "↓", x + ArchiveMenu.DECK_X + 5, y + ArchiveMenu.DECK_IN_Y + 19, JasmGui.SUBTEXT, false);
 
         drawScrollBar(graphics, x, y);
 
@@ -183,6 +189,12 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
         graphics.text(font, header, LIST_X, 20, JasmGui.SUBTEXT, false);
         if (menu.view().energy() == 0) {
             graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
+        }
+        String destination = !menu.deckLinked() ? "screen.jasm.archive.no_deck"
+                : menu.defaultDeck() ? "screen.jasm.archive.owner_deck" : "screen.jasm.archive.linked_deck";
+        graphics.text(font, Component.translatable(destination), 32, ArchiveMenu.DECK_IN_Y + 3, JasmGui.SUBTEXT, false);
+        if (menu.getSlot(ArchiveMenu.DECK_OUT).hasItem()) {
+            graphics.text(font, Component.translatable("screen.jasm.terminal.linked"), 150, ArchiveMenu.DECK_OUT_Y + 3, JasmGui.GOOD, false);
         }
     }
 

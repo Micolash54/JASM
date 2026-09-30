@@ -3,11 +3,17 @@ package dev.micolash.jasm.archive;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.autocraft.AutocraftState;
+import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -43,6 +49,19 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
     private @Nullable UUID archiveId;
     private @Nullable UUID ownerId;
     private String ownerName = "";
+    private boolean networkBlocked;
+    private final SimpleContainer deckSlots = new SimpleContainer(2) {
+        @Override
+        public void setChanged() {
+            ArchiveBlockEntity.this.setChanged();
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
+    };
+    private @Nullable UUID pendingLinker;
     /** Whether this block has been checked against its record since it was placed or loaded. */
     private boolean placementChecked;
     /**
@@ -71,6 +90,8 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
             ArchivePlacement.loaded(archive, (ServerLevel) level);
         }
         archive.drain();
+        archive.refreshDeckLink();
+        archive.processDeckLink();
     }
 
     /**
@@ -102,6 +123,177 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
 
     public String ownerName() {
         return ownerName;
+    }
+
+    public boolean networkBlocked() {
+        return networkBlocked;
+    }
+
+    public void setNetworkBlocked(boolean blocked) {
+        if (networkBlocked != blocked) {
+            networkBlocked = blocked;
+            setChanged();
+        }
+    }
+
+    public void adoptOwner(UUID owner, String name) {
+        ArchiveRecord record = record();
+        if (record == null || owner.equals(ownerId) || !(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        clearBackups();
+        var state = WaferStore.get(serverLevel.getServer()).state();
+        state.setArchiveOwner(record, owner, name);
+        state.setArchiveDeck(record, null, null, true);
+        state.setArchiveNetwork(record, null);
+        pendingLinker = null;
+        bind(record);
+        WaferStore.get(serverLevel.getServer()).state().saveNow(serverLevel.getServer());
+    }
+
+    public void clearBackups() {
+        ArchiveRecord record = record();
+        if (record == null || !(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        WaferStore store = WaferStore.get(serverLevel.getServer());
+        List<Long> linked = List.copyOf(record.linked());
+        store.state().discardArchiveLinks(record);
+        store.state().saveNow(serverLevel.getServer());
+        for (long serial : linked) {
+            store.bySerial(serial).filter(wafer -> record.id().equals(wafer.archiveId()))
+                    .ifPresent(wafer -> store.setLink(wafer, null, wafer.lastKnownName(), null));
+        }
+    }
+
+    public SimpleContainer deckSlots() {
+        return deckSlots;
+    }
+
+    public boolean canManageDeck(Player player) {
+        return ownerId != null && ownerId.equals(player.getUUID()) && MachineAccess.canUse(this, player);
+    }
+
+    public boolean canBackup(Player player) {
+        refreshDeckLink();
+        ArchiveRecord record = record();
+        return record != null && player.getUUID().equals(record.defaultDeck() ? record.owner() : record.deckPlayer())
+                && MachineAccess.canUse(this, player);
+    }
+
+    private List<UUID> terminalIds() {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return List.of();
+        }
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        return network == null ? List.of() : network.machines(EncodingTerminalBlockEntity.class).stream()
+                .map(EncodingTerminalBlockEntity::ensureId).toList();
+    }
+
+    /** Losing the physical Deck does not erase its registered player's recovery permission. */
+    public void refreshDeckLink() {
+        ArchiveRecord record = record();
+        if (record == null || !(level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        List<UUID> terminals = terminalIds();
+        if (terminals.isEmpty()) {
+            return;
+        }
+        var state = WaferStore.get(serverLevel.getServer()).state();
+        if (record.network() != null && !terminals.contains(record.network())) {
+            CableNetwork network = Networks.at(serverLevel, worldPosition);
+            var previous = AutocraftState.get(serverLevel.getServer()).terminal(record.network()).orElse(null);
+            if (network == null || !network.complete()
+                    || previous != null && previous.placement().dimension().equals(serverLevel.dimension())
+                        && !serverLevel.isLoaded(previous.placement().pos())) {
+                return;
+            }
+            clearBackups();
+            state.setArchiveDeck(record, null, null, true);
+        }
+        if (record.network() == null || !terminals.contains(record.network())) {
+            state.setArchiveNetwork(record, terminals.getFirst());
+            state.saveNow(serverLevel.getServer());
+        }
+        UUID player = record.defaultDeck() ? record.owner() : record.deckPlayer();
+        if (player == null) {
+            return;
+        }
+        AutocraftState.get(serverLevel.getServer()).pairedPlayer(terminals, player).ifPresent(pairing -> {
+            if (!pairing.deck().equals(record.deck()) || !player.equals(record.deckPlayer())) {
+                if (record.deckPlayer() != null && !player.equals(record.deckPlayer())) {
+                    clearBackups();
+                }
+                state.setArchiveDeck(record, pairing.deck(), player, record.defaultDeck());
+                state.saveNow(serverLevel.getServer());
+            }
+        });
+    }
+
+    public void queueDeckLink(Player player) {
+        refreshDeckLink();
+        if (canManageDeck(player) && deckSlots.getItem(0).getItem() instanceof DeckItem) {
+            pendingLinker = player.getUUID();
+            setChanged();
+            processDeckLink();
+        }
+    }
+
+    public void processDeckLink() {
+        if (!(level instanceof ServerLevel serverLevel) || pendingLinker == null || !deckSlots.getItem(1).isEmpty()) {
+            return;
+        }
+        ItemStack deck = deckSlots.getItem(0);
+        UUID id = deck.get(JasmComponents.DECK_ID.get());
+        ArchiveRecord record = record();
+        if (record == null || !pendingLinker.equals(record.owner()) || !(deck.getItem() instanceof DeckItem)) {
+            pendingLinker = null;
+            setChanged();
+            return;
+        }
+        if (id == null) {
+            id = UUID.randomUUID();
+            deck.set(JasmComponents.DECK_ID.get(), id);
+        }
+        var pairing = AutocraftState.get(serverLevel.getServer()).pairing(id).orElse(null);
+        List<UUID> terminals = terminalIds();
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        UUID linkedPlayer = pairing == null ? record.owner() : pairing.player();
+        boolean ownerDeck = linkedPlayer.equals(record.owner());
+        if (!ownerDeck && (!terminals.contains(pairing.terminal()) || network == null
+                || !MachineAccess.trustedBy(network, record.owner(), linkedPlayer))) {
+            pendingLinker = null;
+            setChanged();
+            return;
+        }
+        UUID previousPlayer = record.defaultDeck() ? record.owner() : record.deckPlayer();
+        if (previousPlayer != null && !previousPlayer.equals(linkedPlayer)) {
+            clearBackups();
+        }
+        var state = WaferStore.get(serverLevel.getServer()).state();
+        state.setArchiveDeck(record, id, linkedPlayer, ownerDeck);
+        state.saveNow(serverLevel.getServer());
+        deckSlots.setItem(0, ItemStack.EMPTY);
+        deckSlots.setItem(1, deck);
+        pendingLinker = null;
+        setChanged();
+    }
+
+    public boolean resetDeck(Player player) {
+        ArchiveRecord record = record();
+        if (!canManageDeck(player) || record == null || !(level instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+        if (record.deckPlayer() != null && !record.owner().equals(record.deckPlayer())) {
+            clearBackups();
+        }
+        var state = WaferStore.get(serverLevel.getServer()).state();
+        UUID keep = record.owner().equals(record.deckPlayer()) ? record.deck() : null;
+        state.setArchiveDeck(record, keep, keep == null ? null : record.owner(), true);
+        state.saveNow(serverLevel.getServer());
+        refreshDeckLink();
+        return true;
     }
 
     /** This block's record, if it has one and the store is open. */
@@ -164,6 +356,8 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
                 Containers.dropContents(level, pos, container);
                 container.clearContent();
             }
+            Containers.dropContents(level, pos, deckSlots);
+            deckSlots.clearContent();
         }
     }
 
@@ -173,6 +367,10 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         output.storeNullable("archive", UUIDUtil.CODEC, archiveId);
         output.storeNullable("owner", UUIDUtil.CODEC, ownerId);
         output.putString("owner_name", ownerName);
+        output.putBoolean("network_blocked", networkBlocked);
+        output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
+        output.store("deck_input", ItemStack.OPTIONAL_CODEC, deckSlots.getItem(0));
+        output.store("deck_output", ItemStack.OPTIONAL_CODEC, deckSlots.getItem(1));
         output.putInt("energy", energy.getAmountAsInt());
         ValueOutput.TypedOutputList<SavedSlots> saved = output.list("slots", SavedSlots.CODEC);
         slots.forEach((player, container) -> {
@@ -188,6 +386,10 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         archiveId = input.read("archive", UUIDUtil.CODEC).orElse(null);
         ownerId = input.read("owner", UUIDUtil.CODEC).orElse(null);
         ownerName = input.getStringOr("owner_name", "");
+        networkBlocked = input.getBooleanOr("network_blocked", false);
+        pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
+        deckSlots.setItem(0, input.read("deck_input", ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
+        deckSlots.setItem(1, input.read("deck_output", ItemStack.OPTIONAL_CODEC).orElse(ItemStack.EMPTY));
         energy.set(Math.clamp(input.getIntOr("energy", 0), 0, tier.energyBuffer()));
         slots.clear();
         for (SavedSlots saved : input.listOrEmpty("slots", SavedSlots.CODEC)) {

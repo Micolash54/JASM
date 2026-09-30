@@ -15,7 +15,8 @@ public final class ArchivePayloads {
     public enum Action {
         LINK,
         UNLINK,
-        RECOVER;
+        RECOVER,
+        RESET_DECK;
 
         static final StreamCodec<ByteBuf, Action> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Action::ordinal);
     }

@@ -17,8 +17,8 @@ import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A block of the crafting network: it belongs to the player who first placed it (mined and placed again, it still
- * does), holds some FE, and uses a flat amount every tick, busy or idle. Without enough for the tick it stops working
+ * A block of the crafting network: it adopts the network's owner, holds some FE, and uses a flat amount every tick,
+ * busy or idle. Without enough for the tick it stops working
  * until charged again.
  */
 public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
@@ -26,6 +26,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     private final int capacity;
     private @Nullable UUID owner;
     private String ownerName = "";
+    private boolean networkBlocked;
     /** Whether the last tick could be paid for. */
     private boolean running;
 
@@ -79,15 +80,42 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return ownerName;
     }
 
+    public boolean networkBlocked() {
+        return networkBlocked;
+    }
+
+    public void setNetworkBlocked(boolean blocked) {
+        if (networkBlocked != blocked) {
+            networkBlocked = blocked;
+            setChanged();
+        }
+    }
+
     public boolean isOwner(Player player) {
         return owner == null || owner.equals(player.getUUID());
     }
 
-    /** Set once, by whoever places the block. */
+    /** Set by placement or by the network this block joins. */
     public void setOwner(Player player) {
-        owner = player.getUUID();
-        ownerName = player.getPlainTextName();
+        adoptOwner(player.getUUID(), player.getPlainTextName());
+    }
+
+    public void adoptOwner(UUID id, String name) {
+        if (id.equals(owner)) {
+            return;
+        }
+        UUID previous = owner;
+        owner = id;
+        ownerName = name;
+        onOwnerChanged(previous);
         setChanged();
+        if (level instanceof ServerLevel serverLevel) {
+            CableClaims.get(serverLevel).rememberOwner(id, name);
+            Networks.ownerChanged(serverLevel, worldPosition);
+        }
+    }
+
+    protected void onOwnerChanged(@Nullable UUID previous) {
     }
 
     @Override
@@ -96,6 +124,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         output.putInt("energy", energy.getAmountAsInt());
         output.storeNullable("owner", UUIDUtil.CODEC, owner);
         output.putString("owner_name", ownerName);
+        output.putBoolean("network_blocked", networkBlocked);
         output.putBoolean("running", running);
     }
 
@@ -105,6 +134,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         energy.set(Math.clamp(input.getIntOr("energy", 0), 0, capacity));
         owner = input.read("owner", UUIDUtil.CODEC).orElse(null);
         ownerName = input.getStringOr("owner_name", "");
+        networkBlocked = input.getBooleanOr("network_blocked", false);
         running = input.getBooleanOr("running", false);
     }
 

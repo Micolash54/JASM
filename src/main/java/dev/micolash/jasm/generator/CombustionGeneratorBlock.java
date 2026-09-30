@@ -3,11 +3,9 @@ package dev.micolash.jasm.generator;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
+import dev.micolash.jasm.network.PowerSourceBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
@@ -20,11 +18,10 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
-import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
 /** Burns anything a furnace burns and turns it into FE for its neighbours and the item in its charging slot. One block per tier. */
-public class CombustionGeneratorBlock extends BaseEntityBlock {
+public class CombustionGeneratorBlock extends PowerSourceBlock {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     /** A fuel item is burning (or waiting, banked, for room in the buffer). */
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
@@ -59,14 +56,6 @@ public class CombustionGeneratorBlock extends BaseEntityBlock {
     @Override
     protected BlockState mirror(BlockState state, Mirror mirror) {
         return state.rotate(mirror.getRotation(state.getValue(FACING)));
-    }
-
-    @Override
-    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof CombustionGeneratorBlockEntity generator) {
-            player.openMenu(generator);
-        }
-        return InteractionResult.SUCCESS;
     }
 
     @Override

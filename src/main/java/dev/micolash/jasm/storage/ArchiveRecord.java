@@ -34,19 +34,29 @@ public final class ArchiveRecord {
                     UUIDUtil.CODEC.fieldOf("owner").forGetter(ArchiveRecord::owner),
                     Codec.STRING.fieldOf("owner_name").forGetter(ArchiveRecord::ownerName),
                     Placement.CODEC.optionalFieldOf("placement").forGetter(r -> Optional.ofNullable(r.placement)),
-                    Codec.LONG.listOf().optionalFieldOf("linked", List.of()).forGetter(r -> List.copyOf(r.linked)))
+                    Codec.LONG.listOf().optionalFieldOf("linked", List.of()).forGetter(r -> List.copyOf(r.linked)),
+                    Codec.LONG.listOf().optionalFieldOf("discarded", List.of()).forGetter(r -> List.copyOf(r.discarded)),
+                    UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(r -> Optional.ofNullable(r.deck)),
+                    UUIDUtil.CODEC.optionalFieldOf("deck_player").forGetter(r -> Optional.ofNullable(r.deckPlayer)),
+                    Codec.BOOL.optionalFieldOf("default_deck", true).forGetter(ArchiveRecord::defaultDeck),
+                    UUIDUtil.CODEC.optionalFieldOf("network").forGetter(r -> Optional.ofNullable(r.network)))
             .apply(i, ArchiveRecord::decode));
 
     private final UUID id;
     private ArchiveTier tier;
-    private final UUID owner;
-    private final String ownerName;
+    private UUID owner;
+    private String ownerName;
     private @Nullable Placement placement;
     /**
      * Serials of wafers linked here, oldest first. The wafer record's own link is what counts: an entry whose record
      * now points elsewhere is dropped when the list is read.
      */
     private final Set<Long> linked = new LinkedHashSet<>();
+    private final Set<Long> discarded = new LinkedHashSet<>();
+    private @Nullable UUID deck;
+    private @Nullable UUID deckPlayer;
+    private boolean defaultDeck = true;
+    private @Nullable UUID network;
 
     ArchiveRecord(UUID id, ArchiveTier tier, UUID owner, String ownerName) {
         this.id = id;
@@ -56,10 +66,15 @@ public final class ArchiveRecord {
     }
 
     private static ArchiveRecord decode(UUID id, ArchiveTier tier, UUID owner, String ownerName, Optional<Placement> placement,
-            List<Long> linked) {
+            List<Long> linked, List<Long> discarded, Optional<UUID> deck, Optional<UUID> deckPlayer, boolean defaultDeck, Optional<UUID> network) {
         ArchiveRecord record = new ArchiveRecord(id, tier, owner, ownerName);
         record.placement = placement.orElse(null);
         record.linked.addAll(linked);
+        record.discarded.addAll(discarded);
+        record.deck = deck.orElse(null);
+        record.deckPlayer = deckPlayer.orElse(null);
+        record.defaultDeck = defaultDeck;
+        record.network = network.orElse(null);
         return record;
     }
 
@@ -87,6 +102,46 @@ public final class ArchiveRecord {
         return Collections.unmodifiableSet(linked);
     }
 
+    public boolean discarded(long serial) {
+        return discarded.contains(serial);
+    }
+
+    public @Nullable UUID deck() {
+        return deck;
+    }
+
+    public @Nullable UUID deckPlayer() {
+        return deckPlayer;
+    }
+
+    public boolean defaultDeck() {
+        return defaultDeck;
+    }
+
+    public @Nullable UUID network() {
+        return network;
+    }
+
+    void setNetwork(@Nullable UUID network) {
+        this.network = network;
+    }
+
+    void setDeck(@Nullable UUID deck, @Nullable UUID player, boolean defaultDeck) {
+        this.deck = deck;
+        this.deckPlayer = player;
+        this.defaultDeck = defaultDeck;
+    }
+
+    void setOwner(UUID owner, String name) {
+        this.owner = owner;
+        this.ownerName = name;
+    }
+
+    void discardLinks() {
+        discarded.addAll(linked);
+        linked.clear();
+    }
+
     // --- package-private mutators, called only by JasmState ---
 
     void setTier(ArchiveTier tier) {
@@ -98,6 +153,7 @@ public final class ArchiveRecord {
     }
 
     boolean addLinked(long serial) {
+        discarded.remove(serial);
         return linked.add(serial);
     }
 

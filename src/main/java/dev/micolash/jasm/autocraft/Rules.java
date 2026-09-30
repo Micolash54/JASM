@@ -75,7 +75,9 @@ public final class Rules {
     /** One second of one Deck's rules. */
     public static void run(ServerPlayer player, ItemStack deck, long now) {
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
-        if (deckId == null || Jobs.terminalOf(player.level().getServer(), deck) == null) {
+        UUID terminalId = deck.get(JasmComponents.DECK_NETWORK.get());
+        if (deckId == null || terminalId == null || !AutocraftState.get(player.level().getServer()).isPaired(terminalId, player.getUUID(), deckId)
+                || Jobs.terminalOf(player.level().getServer(), deck) == null) {
             return;
         }
         List<CraftRule> rules = of(deck);

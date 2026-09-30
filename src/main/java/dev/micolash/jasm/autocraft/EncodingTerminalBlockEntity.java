@@ -48,8 +48,9 @@ import org.jspecify.annotations.Nullable;
 public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static final int CARD_IN = 0;
     public static final int CARD_OUT = 1;
-    public static final int PAIR = 2;
-    public static final int SLOTS = 3;
+    public static final int PAIR_IN = 2;
+    public static final int PAIR_OUT = 3;
+    public static final int SLOTS = 4;
     /** Cards the two piles out front can show between them. */
     public static final int PILE_CARDS = 16;
     public static final int CAPACITY = 10_000;
@@ -104,6 +105,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     /** The card piles and screen as last sent to players, packed by {@link #looks()}. */
     private int shownLooks;
     private @Nullable UUID terminalId;
+    private @Nullable UUID pendingPairer;
     private TrustList trust = TrustList.EMPTY;
 
     private final ContainerData data = new ContainerData() {
@@ -144,7 +146,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             terminal.claimPlace(serverLevel);
         }
         if (terminal.payForTick()) {
-            terminal.pairDeck();
+            terminal.processPairing();
         }
         int looks = terminal.looks();
         if (looks != terminal.shownLooks) {
@@ -192,27 +194,62 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         state.placeTerminal(id, here);
     }
 
-    /** A Crafting Deck in the pairing slot is paired with this terminal's network. */
-    private void pairDeck() {
-        ItemStack deck = items.get(PAIR);
-        if (!DeckItem.isCrafting(deck)) {
+    /** Remembers who inserted the Deck while it waits for the output slot. */
+    public void queuePair(Player player) {
+        if (!DeckItem.isCrafting(items.get(PAIR_IN)) || !MachineAccess.canUse(this, player)) {
             return;
         }
-        UUID id = ensureId();
-        if (!id.equals(deck.get(JasmComponents.DECK_NETWORK.get()))) {
-            deck.set(JasmComponents.DECK_NETWORK.get(), id);
-            setChanged();
-        }
-        if (!deck.has(JasmComponents.DECK_ID.get())) {
-            deck.set(JasmComponents.DECK_ID.get(), UUID.randomUUID());
-            setChanged();
+        pendingPairer = player.getUUID();
+        setChanged();
+        if (energy().getAmountAsInt() >= drainPerTick()) {
+            processPairing();
         }
     }
 
-    /** Whether the Deck in the pairing slot is paired with this terminal. */
+    /** Pair the waiting Deck when the player may use this network and its output slot is empty. */
+    public void processPairing() {
+        if (!(level instanceof ServerLevel serverLevel) || pendingPairer == null || !items.get(PAIR_OUT).isEmpty()) {
+            return;
+        }
+        ItemStack deck = items.get(PAIR_IN);
+        if (!DeckItem.isCrafting(deck)) {
+            pendingPairer = null;
+            return;
+        }
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        if (owner() == null || network == null || !pendingPairer.equals(owner())
+                && !MachineAccess.trustedBy(network, owner(), pendingPairer)) {
+            pendingPairer = null;
+            setChanged();
+            return;
+        }
+        UUID id = ensureId();
+        UUID deckId = deck.get(JasmComponents.DECK_ID.get());
+        if (deckId == null) {
+            deckId = UUID.randomUUID();
+            deck.set(JasmComponents.DECK_ID.get(), deckId);
+        }
+        List<UUID> connected = network.machines(EncodingTerminalBlockEntity.class).stream()
+                .map(EncodingTerminalBlockEntity::ensureId).toList();
+        AutocraftState state = AutocraftState.get(serverLevel.getServer());
+        state.placeTerminal(id, new ArchiveRecord.Placement(serverLevel.dimension(), worldPosition));
+        state.pair(id, pendingPairer, deckId, connected);
+        state.saveNow(serverLevel.getServer());
+        if (!id.equals(deck.get(JasmComponents.DECK_NETWORK.get()))) {
+            deck.set(JasmComponents.DECK_NETWORK.get(), id);
+        }
+        items.set(PAIR_IN, ItemStack.EMPTY);
+        items.set(PAIR_OUT, deck);
+        pendingPairer = null;
+        setChanged();
+    }
+
+    /** Whether the Deck in the output slot has been paired with this terminal. */
     public boolean deckPaired() {
-        ItemStack deck = items.get(PAIR);
-        return terminalId != null && terminalId.equals(deck.get(JasmComponents.DECK_NETWORK.get()));
+        ItemStack deck = items.get(PAIR_OUT);
+        UUID deckId = deck.get(JasmComponents.DECK_ID.get());
+        return terminalId != null && deckId != null && terminalId.equals(deck.get(JasmComponents.DECK_NETWORK.get()))
+                && level instanceof ServerLevel serverLevel && AutocraftState.get(serverLevel.getServer()).isActive(terminalId, deckId);
     }
 
     @Override
@@ -358,6 +395,18 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         setChanged();
     }
 
+    @Override
+    protected void onOwnerChanged(@Nullable UUID previous) {
+        if (previous != null) {
+            setTrust(TrustList.EMPTY);
+            if (terminalId != null && level instanceof ServerLevel serverLevel) {
+                AutocraftState state = AutocraftState.get(serverLevel.getServer());
+                state.unpairTerminal(terminalId);
+                state.saveNow(serverLevel.getServer());
+            }
+        }
+    }
+
     /** The owner, and everyone the owner trusts here or at another of their terminals on the network. */
     public boolean isAuthorized(Player player) {
         return MachineAccess.canUse(this, player);
@@ -465,7 +514,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static boolean accepts(int slot, ItemStack stack) {
         return switch (slot) {
             case CARD_IN -> stack.is(JasmItems.RECIPE_CARD.get()) || stack.is(JasmItems.FILLED_RECIPE_CARD.get());
-            case PAIR -> DeckItem.isCrafting(stack);
+            case PAIR_IN -> DeckItem.isCrafting(stack);
             default -> false;
         };
     }
@@ -515,6 +564,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         output.putIntArray("amounts", amounts.clone());
         output.store("selected_machines", Machines.At.CODEC.listOf(), List.copyOf(selected));
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
+        output.storeNullable("pending_pairer", UUIDUtil.CODEC, pendingPairer);
         output.store("trust", TrustList.CODEC, trust);
     }
 
@@ -542,6 +592,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         selected.clear();
         selected.addAll(input.read("selected_machines", Machines.At.CODEC.listOf()).orElse(List.of()));
         terminalId = input.read("terminal", UUIDUtil.CODEC).orElse(null);
+        pendingPairer = input.read("pending_pairer", UUIDUtil.CODEC).orElse(null);
         trust = input.read("trust", TrustList.CODEC).orElse(TrustList.EMPTY);
     }
 

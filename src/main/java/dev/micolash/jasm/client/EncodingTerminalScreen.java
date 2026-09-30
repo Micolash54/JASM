@@ -87,7 +87,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         super.init();
         encodeButton = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.terminal.encode"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_ENCODE),
-                leftPos + 108, topPos + 56, 48, 14));
+                leftPos + 108, topPos + 74, 60, 14));
         JasmButton clear = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.terminal.clear"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_CLEAR),
                 leftPos + EncodingTerminalMenu.GRID_X + 3 * 18 + 2, topPos + EncodingTerminalMenu.GRID_Y - 1, 11, 11);
@@ -492,6 +492,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         }
         // Card in, down to card out; grid across to what it makes.
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ARROW_DOWN, x + EncodingTerminalMenu.CARD_X + 3, y + 40, 9, 9);
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ARROW_DOWN, x + EncodingTerminalMenu.PAIR_X + 3, y + 40, 9, 9);
         int arrowX = menu.processing() ? EncodingTerminalMenu.OUTPUTS_X - 13 : 99;
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ARROW_RIGHT, x + arrowX, y + EncodingTerminalMenu.PREVIEW_Y + 3, 9, 9);
         JasmGui.bar(graphics, x + BAR_X, y + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
@@ -506,14 +507,6 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         accessButton.visible = menu.owner();
-        // In processing mode the column of outputs stands where the button was; the button moves right.
-        if (menu.processing()) {
-            encodeButton.setX(leftPos + 124);
-            encodeButton.setWidth(44);
-        } else {
-            encodeButton.setX(leftPos + 108);
-            encodeButton.setWidth(48);
-        }
         boolean over = trustWindow.contains(realMouseX, realMouseY);
         int mouseX = over ? -1000 : realMouseX;
         int mouseY = over ? -1000 : realMouseY;
@@ -540,7 +533,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
         }
-        Slot pair = menu.getSlot(EncodingTerminalMenu.SLOT_PAIR);
+        Slot pair = menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_IN);
         if (hoveredSlot == pair && !pair.hasItem() && menu.getCarried().isEmpty()) {
             graphics.setTooltipForNextFrame(font, List.of(Component.translatable("screen.jasm.terminal.pair_hint").getVisualOrderText()),
                     mouseX, mouseY);
@@ -613,9 +606,11 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             color = menu.message().equals("message.jasm.terminal.encoded") ? JasmGui.GOOD : JasmGui.BAD;
         } else if (!menu.running()) {
             text = Component.translatable("message.jasm.terminal.no_power");
-        } else if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR).hasItem()) {
-            text = Component.translatable(menu.paired() ? "screen.jasm.terminal.paired" : "screen.jasm.terminal.pairing");
-            color = menu.paired() ? JasmGui.GOOD : JasmGui.BAD;
+        } else if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_OUT).hasItem()) {
+            text = Component.translatable(menu.paired() ? "screen.jasm.terminal.linked" : "screen.jasm.terminal.relink");
+            color = menu.paired() ? JasmGui.GOOD : JasmGui.MUTED;
+        } else if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_IN).hasItem()) {
+            text = Component.translatable("screen.jasm.terminal.pairing");
         } else if (menu.processing()) {
             text = Component.translatable("screen.jasm.terminal.processing_hint");
             color = JasmGui.MUTED;

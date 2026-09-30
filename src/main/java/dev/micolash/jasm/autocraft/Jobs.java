@@ -65,10 +65,15 @@ public final class Jobs {
     /** The network a paired Crafting Deck belongs to, if its terminal stands in a loaded spot and has power. */
     public static @Nullable EncodingTerminalBlockEntity terminalOf(MinecraftServer server, ItemStack deck) {
         UUID id = deck.get(JasmComponents.DECK_NETWORK.get());
-        if (id == null) {
+        UUID deckId = deck.get(JasmComponents.DECK_ID.get());
+        if (id == null || deckId == null) {
             return null;
         }
-        Optional<AutocraftState.Terminal> entry = AutocraftState.get(server).terminal(id);
+        AutocraftState state = AutocraftState.get(server);
+        if (!state.isActive(id, deckId)) {
+            return null;
+        }
+        Optional<AutocraftState.Terminal> entry = state.terminal(id);
         if (entry.isEmpty()) {
             return null;
         }
@@ -139,6 +144,10 @@ public final class Jobs {
         if (terminal == null) {
             return new Preview(empty, List.of(), -1, deck.has(JasmComponents.DECK_NETWORK.get())
                     ? "message.jasm.craft.network_unreachable" : "message.jasm.craft.not_paired");
+        }
+        if (!AutocraftState.get(player.level().getServer()).isPaired(terminal.terminalId(), player.getUUID(),
+                deck.get(JasmComponents.DECK_ID.get()))) {
+            return new Preview(empty, List.of(), -1, "message.jasm.craft.no_access");
         }
         if (!MachineAccess.canUse(terminal, player)) {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.no_access");
@@ -677,11 +686,10 @@ public final class Jobs {
 
     // --- players ---
 
-    /** Stops a job: no new crafts; running ones finish; then everything left goes back. The requester or the server's users may. */
+    /** The requester stops future crafts; running ones finish and everything left goes back. */
     public static boolean cancel(ServerPlayer player, CraftingServerBlockEntity server) {
         CraftingJob job = server.job();
-        if (job == null || job.phase != CraftingJob.Phase.CRAFTING
-                || !(job.requester.equals(player.getUUID()) || MachineAccess.canUse(server, player))) {
+        if (job == null || job.phase != CraftingJob.Phase.CRAFTING || !job.requester.equals(player.getUUID())) {
             return false;
         }
         job.phase = CraftingJob.Phase.CANCELLING;
@@ -701,13 +709,12 @@ public final class Jobs {
 
     /**
      * Takes a finished job's results into the player's inventory at the server, for when the Deck is lost. The
-     * requester, and anyone who may use the server, may. Returns how many items came out.
+     * requester may collect. Returns how many items came out.
      */
     public static long collect(ServerPlayer player, CraftingServerBlockEntity server) {
         CraftingJob job = server.job();
         WaferStore store = WaferStore.get(player.level().getServer());
-        if (job == null || job.phase != CraftingJob.Phase.RETURNING
-                || !(job.requester.equals(player.getUUID()) || MachineAccess.canUse(server, player))) {
+        if (job == null || job.phase != CraftingJob.Phase.RETURNING || !job.requester.equals(player.getUUID())) {
             return 0;
         }
         WaferRecord record = record(store, job);

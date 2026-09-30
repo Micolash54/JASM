@@ -139,6 +139,26 @@ public final class JasmState extends SavedData {
         setDirty();
     }
 
+    public void setArchiveOwner(ArchiveRecord record, UUID owner, String name) {
+        record.setOwner(owner, name);
+        setDirty();
+    }
+
+    public void discardArchiveLinks(ArchiveRecord record) {
+        record.discardLinks();
+        setDirty();
+    }
+
+    public void setArchiveDeck(ArchiveRecord record, @Nullable UUID deck, @Nullable UUID player, boolean defaultDeck) {
+        record.setDeck(deck, player, defaultDeck);
+        setDirty();
+    }
+
+    public void setArchiveNetwork(ArchiveRecord record, @Nullable UUID network) {
+        record.setNetwork(network);
+        setDirty();
+    }
+
     public void addLinked(ArchiveRecord record, long serial) {
         if (record.addLinked(serial)) {
             setDirty();

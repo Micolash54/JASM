@@ -75,7 +75,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     /** Opened from a Crafting Deck: its identity and inventory slot. Null when opened at the block. */
     private final @Nullable UUID deckId;
     private final int deckSlot;
-    /** Tells the screen whether it was opened from a Deck (1) or not (0). */
+    /** Whether this was opened from a Deck, and whether the viewer owns the current job. */
     private final ContainerData remoteData;
     private final Player viewer;
     /** What the job waits on at a machine: on the server the line last sent, on the client the last received. */
@@ -110,9 +110,10 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         this.server = server;
         this.deckId = deckId;
         this.deckSlot = deckSlot;
-        this.remoteData = new SimpleContainerData(1);
+        this.remoteData = new SimpleContainerData(2);
         this.viewer = inventory.player;
         remoteData.set(0, deckId != null ? 1 : 0);
+        remoteData.set(1, server != null && server.job() != null && server.job().requester().equals(viewer.getUUID()) ? 1 : 0);
         for (int i = 0; i < CraftingServerBlockEntity.PROCESSOR_SLOTS; i++) {
             addSlot(new PartSlot(this, parts, i, PARTS_X, PARTS_Y + i * 18, EMPTY_PROCESSOR));
         }
@@ -135,6 +136,9 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     /** Sends the line saying what the job waits on at a machine whenever it changes. */
     @Override
     public void broadcastChanges() {
+        if (server != null) {
+            remoteData.set(1, server.job() != null && server.job().requester().equals(viewer.getUUID()) ? 1 : 0);
+        }
         super.broadcastChanges();
         if (server == null || !(viewer instanceof ServerPlayer player)) {
             return;
@@ -162,6 +166,10 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     /** Whether this screen was opened from a Crafting Deck, so it can go back to it. */
     public boolean opensFromDeck() {
         return remoteData.get(0) != 0;
+    }
+
+    public boolean canControlJob() {
+        return remoteData.get(1) != 0;
     }
 
     public int energy() {

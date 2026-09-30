@@ -193,6 +193,10 @@ public final class WaferStore {
     private void relinkIfMissing(WaferRecord record) {
         UUID archiveId = record.archiveId();
         ArchiveRecord archive = archiveId == null ? null : state.archive(archiveId).orElse(null);
+        if (archive != null && archive.discarded(record.serial())) {
+            setLink(record, null, record.lastKnownName(), null);
+            return;
+        }
         if (archive != null && !archive.linked().contains(record.serial())) {
             Jasm.LOGGER.info("Wafer #{} is linked to Archive {}, which had lost it from its list; adding it back", record.serial(), archiveId);
             state.addLinked(archive, record.serial());
@@ -226,7 +230,7 @@ public final class WaferStore {
                 if (record == null && onDisk.contains(serial)) {
                     record = load(serial).record();
                 }
-                if (record != null && archiveId.equals(record.archiveId())) {
+                if (record != null && archiveId.equals(record.archiveId()) && !archive.discarded(serial)) {
                     state.addLinked(archive, serial);
                     found++;
                 }

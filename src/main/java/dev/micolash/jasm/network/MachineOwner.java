@@ -8,7 +8,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
-/** Who a crafting-network block belongs to. Carried on the mined item, so it still belongs to them wherever it is placed. */
+/** The current owner, kept on the mined item until the block joins another network. */
 public record MachineOwner(UUID id, String name) {
     public static final Codec<MachineOwner> CODEC = RecordCodecBuilder.create(i -> i.group(
                     UUIDUtil.CODEC.fieldOf("id").forGetter(MachineOwner::id),

@@ -53,9 +53,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int CARD_OUT_Y = 54;
     public static final int PAIR_X = 152;
     public static final int PAIR_Y = 18;
-    public static final int INVENTORY_Y = 112;
+    public static final int PAIR_OUT_Y = 54;
+    public static final int INVENTORY_Y = 128;
     /** Where the terminal's messages show, under the grid. */
-    public static final int MESSAGE_Y = 76;
+    public static final int MESSAGE_Y = 92;
 
     /** Processing mode: the column of what the machine gives back, beside the grid. */
     public static final int OUTPUTS_X = 102;
@@ -63,8 +64,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
     public static final int SLOT_CARD_IN = 0;
     public static final int SLOT_CARD_OUT = 1;
-    public static final int SLOT_PAIR = 2;
-    public static final int SLOT_GHOST = 3;
+    public static final int SLOT_PAIR_IN = 2;
+    public static final int SLOT_PAIR_OUT = 3;
+    public static final int SLOT_GHOST = 4;
     public static final int SLOT_PREVIEW = SLOT_GHOST + 9;
     public static final int SLOT_OUTPUTS = SLOT_PREVIEW + 1;
     public static final int SLOT_INVENTORY = SLOT_OUTPUTS + ProcessingCard.OUTPUTS;
@@ -187,7 +189,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         this.player = inventory.player;
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_IN, CARD_X, CARD_IN_Y, EMPTY_CARD));
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_OUT, CARD_X, CARD_OUT_Y, null));
-        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR, PAIR_X, PAIR_Y, EMPTY_DECK));
+        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR_IN, PAIR_X, PAIR_Y, EMPTY_DECK));
+        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR_OUT, PAIR_X, PAIR_OUT_Y, null));
         for (int i = 0; i < 9; i++) {
             addSlot(new FakeSlot(ghost, i, GRID_X + (i % 3) * 18, GRID_Y + (i / 3) * 18));
         }
@@ -392,7 +395,16 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         if (slotIndex == SLOT_PREVIEW) {
             return;
         }
+        ItemStack before = container.getItem(EncodingTerminalBlockEntity.PAIR_IN).copy();
         super.clicked(slotIndex, buttonNum, input, player);
+        if (terminal != null && player instanceof ServerPlayer serverPlayer) {
+            if (!ItemStack.matches(before, container.getItem(EncodingTerminalBlockEntity.PAIR_IN))) {
+                terminal.queuePair(serverPlayer);
+            }
+            if (terminal.energy().getAmountAsInt() >= terminal.drainPerTick()) {
+                terminal.processPairing();
+            }
+        }
     }
 
     /**
@@ -555,7 +567,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         } else if (EncodingTerminalBlockEntity.accepts(EncodingTerminalBlockEntity.CARD_IN, stack)) {
             moved = moveItemStackTo(stack, SLOT_CARD_IN, SLOT_CARD_IN + 1, false);
         } else if (DeckItem.isCrafting(stack)) {
-            moved = moveItemStackTo(stack, SLOT_PAIR, SLOT_PAIR + 1, false);
+            moved = moveItemStackTo(stack, SLOT_PAIR_IN, SLOT_PAIR_IN + 1, false);
+            if (moved && terminal != null && player instanceof ServerPlayer serverPlayer) {
+                terminal.queuePair(serverPlayer);
+            }
         } else {
             moved = false;
         }
@@ -566,6 +581,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             clicked.setByPlayer(ItemStack.EMPTY);
         } else {
             clicked.setChanged();
+        }
+        if (terminal != null && terminal.energy().getAmountAsInt() >= terminal.drainPerTick()) {
+            terminal.processPairing();
         }
         return before;
     }
@@ -586,7 +604,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
         @Override
         public int getMaxStackSize() {
-            return getContainerSlot() == EncodingTerminalBlockEntity.PAIR ? 1 : super.getMaxStackSize();
+            return getContainerSlot() == EncodingTerminalBlockEntity.PAIR_IN || getContainerSlot() == EncodingTerminalBlockEntity.PAIR_OUT
+                    ? 1 : super.getMaxStackSize();
         }
 
         @Override

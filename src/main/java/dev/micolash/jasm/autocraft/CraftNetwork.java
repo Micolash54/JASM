@@ -150,8 +150,13 @@ public final class CraftNetwork {
             return null;
         }
         MinecraftServer server = player.level().getServer();
+        UUID terminalId = menu.deck().get(JasmComponents.DECK_NETWORK.get());
+        if (terminalId == null || !AutocraftState.get(server).isPaired(terminalId, player.getUUID(), deckId)) {
+            return null;
+        }
         for (AutocraftState.Job entry : AutocraftState.get(server).jobs()) {
-            if (entry.finished() || !entry.deck().map(deckId::equals).orElse(false) || !entry.server().pos().equals(payload.server())) {
+            if (entry.finished() || !entry.requester().equals(player.getUUID()) || !entry.deck().map(deckId::equals).orElse(false)
+                    || !entry.server().pos().equals(payload.server())) {
                 continue;
             }
             ServerLevel level = server.getLevel(entry.server().dimension());
@@ -308,9 +313,14 @@ public final class CraftNetwork {
     public static CraftPayloads.Status status(ServerPlayer player, DeckMenu menu) {
         ItemStack deck = menu.deck();
         MinecraftServer server = player.level().getServer();
-        List<CraftPayloads.JobView> jobs = jobsOf(server, deck);
+        List<CraftPayloads.JobView> jobs = jobsOf(server, player, deck);
         if (!deck.has(JasmComponents.DECK_NETWORK.get())) {
             return new CraftPayloads.Status(menu.containerId, 0, List.of(), jobs, Map.of());
+        }
+        UUID terminalId = deck.get(JasmComponents.DECK_NETWORK.get());
+        UUID deckId = deck.get(JasmComponents.DECK_ID.get());
+        if (terminalId == null || deckId == null || !AutocraftState.get(server).isPaired(terminalId, player.getUUID(), deckId)) {
+            return new CraftPayloads.Status(menu.containerId, 0, List.of(), List.of(), Map.of());
         }
         EncodingTerminalBlockEntity terminal = Jobs.terminalOf(server, deck);
         CableNetwork network = terminal == null ? null : Networks.at((ServerLevel) terminal.getLevel(), terminal.getBlockPos());
@@ -328,14 +338,14 @@ public final class CraftNetwork {
     }
 
     /** This Deck's jobs, on servers that are loaded and on its network. */
-    static List<CraftPayloads.JobView> jobsOf(MinecraftServer server, ItemStack deck) {
+    static List<CraftPayloads.JobView> jobsOf(MinecraftServer server, ServerPlayer player, ItemStack deck) {
         List<CraftPayloads.JobView> views = new ArrayList<>();
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
         if (deckId == null) {
             return views;
         }
         for (AutocraftState.Job entry : AutocraftState.get(server).jobs()) {
-            if (entry.finished() || !entry.deck().map(deckId::equals).orElse(false)) {
+            if (entry.finished() || !entry.requester().equals(player.getUUID()) || !entry.deck().map(deckId::equals).orElse(false)) {
                 continue;
             }
             ServerLevel level = server.getLevel(entry.server().dimension());

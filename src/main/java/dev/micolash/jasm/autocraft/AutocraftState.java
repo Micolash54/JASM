@@ -21,6 +21,14 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * disk straight away whenever a job starts or ends.
  */
 public final class AutocraftState extends SavedData {
+    public record Pairing(UUID terminal, UUID player, UUID deck) {
+        static final Codec<Pairing> CODEC = RecordCodecBuilder.create(i -> i.group(
+                        UUIDUtil.CODEC.fieldOf("terminal").forGetter(Pairing::terminal),
+                        UUIDUtil.CODEC.fieldOf("player").forGetter(Pairing::player),
+                        UUIDUtil.CODEC.fieldOf("deck").forGetter(Pairing::deck))
+                .apply(i, Pairing::new));
+    }
+
     public record Terminal(UUID id, ArchiveRecord.Placement placement) {
         static final Codec<Terminal> CODEC = RecordCodecBuilder.create(i -> i.group(
                         UUIDUtil.CODEC.fieldOf("id").forGetter(Terminal::id),
@@ -50,19 +58,22 @@ public final class AutocraftState extends SavedData {
 
     public static final Codec<AutocraftState> CODEC = RecordCodecBuilder.create(i -> i.group(
                     Terminal.CODEC.listOf().optionalFieldOf("terminals", List.of()).forGetter(s -> List.copyOf(s.terminals.values())),
-                    Job.CODEC.listOf().optionalFieldOf("jobs", List.of()).forGetter(s -> List.copyOf(s.jobs.values())))
+                    Job.CODEC.listOf().optionalFieldOf("jobs", List.of()).forGetter(s -> List.copyOf(s.jobs.values())),
+                    Pairing.CODEC.listOf().optionalFieldOf("pairings", List.of()).forGetter(s -> List.copyOf(s.pairings.values())))
             .apply(i, AutocraftState::new));
 
     public static final SavedDataType<AutocraftState> TYPE = new SavedDataType<>(Jasm.id("autocraft"), AutocraftState::new, CODEC);
 
     private final Map<UUID, Terminal> terminals = new LinkedHashMap<>();
     private final Map<UUID, Job> jobs = new LinkedHashMap<>();
+    private final Map<UUID, Pairing> pairings = new LinkedHashMap<>();
 
     public AutocraftState() {}
 
-    private AutocraftState(List<Terminal> terminals, List<Job> jobs) {
+    private AutocraftState(List<Terminal> terminals, List<Job> jobs, List<Pairing> pairings) {
         terminals.forEach(t -> this.terminals.put(t.id(), t));
         jobs.forEach(j -> this.jobs.put(j.id(), j));
+        pairings.forEach(p -> this.pairings.put(p.deck(), p));
     }
 
     public static AutocraftState get(MinecraftServer server) {
@@ -71,6 +82,53 @@ public final class AutocraftState extends SavedData {
 
     public Optional<Terminal> terminal(UUID id) {
         return Optional.ofNullable(terminals.get(id));
+    }
+
+    /** Registers one Deck for this player on the connected group of terminals. The same Deck cannot stay paired to another player. */
+    public void pair(UUID terminal, UUID player, UUID deck, List<UUID> connectedTerminals) {
+        pairings.values().removeIf(p -> p.deck().equals(deck)
+                || p.player().equals(player) && connectedTerminals.contains(p.terminal()));
+        pairings.put(deck, new Pairing(terminal, player, deck));
+        setDirty();
+    }
+
+    public boolean isPaired(UUID terminal, UUID player, UUID deck) {
+        Pairing pairing = pairings.get(deck);
+        return pairing != null && pairing.terminal().equals(terminal) && pairing.player().equals(player);
+    }
+
+    public boolean isActive(UUID terminal, UUID deck) {
+        Pairing pairing = pairings.get(deck);
+        return pairing != null && pairing.terminal().equals(terminal);
+    }
+
+    public Optional<UUID> pairedDeck(UUID terminal, UUID player) {
+        return pairings.values().stream()
+                .filter(p -> p.terminal().equals(terminal) && p.player().equals(player))
+                .map(Pairing::deck).findFirst();
+    }
+
+    public Optional<Pairing> pairing(UUID deck) {
+        return Optional.ofNullable(pairings.get(deck));
+    }
+
+    public Optional<Pairing> pairedPlayer(List<UUID> terminals, UUID player) {
+        return pairings.values().stream().filter(p -> p.player().equals(player) && terminals.contains(p.terminal())).findFirst();
+    }
+
+    /** A same-owner merge keeps each player's most recently registered Deck. */
+    public void mergePairings(List<UUID> terminals) {
+        Map<UUID, UUID> latest = new LinkedHashMap<>();
+        pairings.values().stream().filter(p -> terminals.contains(p.terminal())).forEach(p -> latest.put(p.player(), p.deck()));
+        if (pairings.values().removeIf(p -> terminals.contains(p.terminal()) && !p.deck().equals(latest.get(p.player())))) {
+            setDirty();
+        }
+    }
+
+    public void unpairTerminal(UUID terminal) {
+        if (pairings.values().removeIf(p -> p.terminal().equals(terminal))) {
+            setDirty();
+        }
     }
 
     public void placeTerminal(UUID id, ArchiveRecord.Placement placement) {

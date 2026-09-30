@@ -9,7 +9,8 @@
           "modifier": {
             "type": "minecraft:copy_components",
             "include": [
-              "jasm:energy"
+              "jasm:energy",
+              "jasm:owner"
             ],
             "source": "block_entity"
           },

@@ -3,6 +3,7 @@ package dev.micolash.jasm.archive;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
@@ -18,6 +19,9 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -36,7 +40,13 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     public static final int ROW_Y = 122;
     public static final int LINK_X = 8;
     public static final int RECOVERY_X = 118;
-    public static final int INVENTORY_Y = 152;
+    public static final int DECK_IN = 2;
+    public static final int DECK_OUT = 3;
+    public static final int DECK_X = 8;
+    public static final int DECK_IN_Y = 148;
+    public static final int DECK_OUT_Y = 178;
+    public static final int INVENTORY_Y = 212;
+    private static final int INVENTORY_START = 4;
     /** How often, in ticks, the server rebuilds the linked list to see whether it changed. */
     private static final int REFRESH_TICKS = 20;
     /** How often, in ticks, a changed charge is sent on its own. */
@@ -48,6 +58,8 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     private final ContainerLevelAccess access;
     private final @Nullable ArchiveBlockEntity archive;
     private final Container waferSlots;
+    private final Container deckSlots;
+    private final ContainerData permissions = new SimpleContainerData(1);
     private ArchivePayloads.State lastSent = ArchivePayloads.State.EMPTY;
     private int sinceRefresh = REFRESH_TICKS;
     /** Client side only: what the server has told this screen. */
@@ -72,8 +84,37 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         this.access = access;
         this.archive = archive;
         this.waferSlots = archive != null ? archive.slotsOf(player.getUUID()) : new SimpleContainer(2);
+        this.deckSlots = archive != null ? archive.deckSlots() : new SimpleContainer(2);
         addSlot(new WaferSlot(waferSlots, LINK_SLOT, LINK_X, ROW_Y));
         addSlot(new WaferSlot(waferSlots, RECOVERY_SLOT, RECOVERY_X, ROW_Y));
+        addSlot(new Slot(deckSlots, 0, DECK_X, DECK_IN_Y) {
+            @Override
+            public boolean mayPlace(ItemStack stack) {
+                return canManageDeck() && stack.getItem() instanceof DeckItem;
+            }
+
+            @Override
+            public boolean mayPickup(Player player) {
+                return canManageDeck();
+            }
+
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
+        });
+        addSlot(new Slot(deckSlots, 1, DECK_X, DECK_OUT_Y) {
+            @Override
+            public boolean mayPlace(ItemStack stack) {
+                return false;
+            }
+
+            @Override
+            public boolean mayPickup(Player player) {
+                return canManageDeck();
+            }
+        });
+        addDataSlots(permissions);
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
@@ -90,6 +131,22 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
 
     public Container waferSlots() {
         return waferSlots;
+    }
+
+    public boolean canBackup() {
+        return archive != null ? archive.canBackup(player) : (permissions.get(0) & 1) != 0;
+    }
+
+    public boolean canManageDeck() {
+        return archive != null ? archive.canManageDeck(player) : (permissions.get(0) & 2) != 0;
+    }
+
+    public boolean deckLinked() {
+        return (permissions.get(0) & 4) != 0;
+    }
+
+    public boolean defaultDeck() {
+        return (permissions.get(0) & 8) != 0;
     }
 
     public ArchivePayloads.State view() {
@@ -122,6 +179,7 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
             case LINK -> ArchiveService.link(store, archive, player, waferSlots.getItem(LINK_SLOT));
             case UNLINK -> ArchiveService.unlink(store, archive, player, request.serial());
             case RECOVER -> ArchiveService.recover(store, archive, player, request.serial(), waferSlots.getItem(RECOVERY_SLOT));
+            case RESET_DECK -> archive.resetDeck(player) ? ArchiveService.Result.OK : ArchiveService.Result.NO_ACCESS;
         };
         waferSlots.setChanged();
         feedback(player, request.action(), result);
@@ -133,6 +191,11 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         String key = result == ArchiveService.Result.OK
                 ? "message.jasm.archive.done." + action.name().toLowerCase(java.util.Locale.ROOT)
                 : result.messageKey();
+        if (result == ArchiveService.Result.NO_ACCESS) {
+            key = action == ArchivePayloads.Action.RESET_DECK ? "message.jasm.archive.owner_only"
+                    : archive.record() != null && !archive.record().defaultDeck() && archive.record().deckPlayer() == null ? "message.jasm.archive.no_deck"
+                    : "message.jasm.archive.deck_only";
+        }
         Notices.tell(player, Component.translatable(key), result == ArchiveService.Result.OK);
         sinceRefresh = REFRESH_TICKS;
         broadcastChanges();
@@ -141,6 +204,11 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     /** Also sends the screen's list and charge: the charge a few times a second when it moves, the list when it has changed. */
     @Override
     public void broadcastChanges() {
+        if (archive != null) {
+            ArchiveRecord record = archive.record();
+            permissions.set(0, (canBackup() ? 1 : 0) | (canManageDeck() ? 2 : 0)
+                    | (record != null && (record.defaultDeck() || record.deckPlayer() != null) ? 4 : 0) | (record != null && record.defaultDeck() ? 8 : 0));
+        }
         super.broadcastChanges();
         if (archive != null && player instanceof ServerPlayer serverPlayer) {
             boolean refresh = ++sinceRefresh >= REFRESH_TICKS;
@@ -186,10 +254,14 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         }
         ItemStack stack = clicked.getItem();
         ItemStack before = stack.copy();
-        int hotbar = 2 + 27;
-        boolean moved = index < 2
-                ? moveItemStackTo(stack, hotbar, hotbar + 9, false) || moveItemStackTo(stack, 2, hotbar, false)
-                : stack.getItem() instanceof WaferItem && moveItemStackTo(stack, 0, 2, false);
+        if (!clicked.mayPickup(player)) {
+            return ItemStack.EMPTY;
+        }
+        int hotbar = INVENTORY_START + 27;
+        boolean moved = index < INVENTORY_START
+                ? moveItemStackTo(stack, hotbar, hotbar + 9, false) || moveItemStackTo(stack, INVENTORY_START, hotbar, false)
+                : stack.getItem() instanceof DeckItem ? moveItemStackTo(stack, DECK_IN, DECK_OUT, false)
+                : stack.getItem() instanceof WaferItem && canBackup() && moveItemStackTo(stack, 0, 2, false);
         if (!moved) {
             return ItemStack.EMPTY;
         }
@@ -198,7 +270,25 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         } else {
             clicked.setChanged();
         }
+        if (archive != null) {
+            if (index >= INVENTORY_START && before.getItem() instanceof DeckItem) {
+                archive.queueDeckLink(player);
+            }
+            archive.processDeckLink();
+        }
         return before;
+    }
+
+    @Override
+    public void clicked(int slotIndex, int buttonNum, ContainerInput input, Player player) {
+        ItemStack before = deckSlots.getItem(0).copy();
+        super.clicked(slotIndex, buttonNum, input, player);
+        if (archive != null) {
+            if (!ItemStack.matches(before, deckSlots.getItem(0))) {
+                archive.queueDeckLink(player);
+            }
+            archive.processDeckLink();
+        }
     }
 
     @Override
@@ -211,7 +301,7 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         }
     }
 
-    private static final class WaferSlot extends Slot {
+    private final class WaferSlot extends Slot {
         WaferSlot(Container container, int index, int x, int y) {
             super(container, index, x, y);
         }
@@ -224,7 +314,7 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return stack.getItem() instanceof WaferItem;
+            return canBackup() && stack.getItem() instanceof WaferItem;
         }
 
         @Override

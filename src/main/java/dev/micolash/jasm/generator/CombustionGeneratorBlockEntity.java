@@ -3,6 +3,9 @@ package dev.micolash.jasm.generator;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.network.SourceOwnership;
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.EnumMap;
 import java.util.Map;
@@ -48,7 +51,9 @@ import org.jspecify.annotations.Nullable;
  * while the buffer has room, so fuel is never wasted: a full generator keeps its flame banked until power is used.
  * Every tick it pushes FE into touching blocks that take it and charges the item in its charging slot.
  */
-public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
+public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity implements NetworkPowerSource {
+    private final SourceOwnership ownership = new SourceOwnership(this);
+
     public static final int FUEL_SLOT = 0;
     public static final int CHARGE_SLOT = 1;
     private final GeneratorTier tier;
@@ -157,9 +162,19 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     }
 
     /** Up to the per-side limit into each touching block that takes FE. */
+    @Override
+    public SourceOwnership networkOwnership() {
+        return ownership;
+    }
+
     public void pushToNeighbours(ServerLevel level) {
+        Networks.at(level, worldPosition);
         int limit = tier.transferPerTick();
         for (Direction side : Direction.values()) {
+            BlockPos next = worldPosition.relative(side);
+            if (Networks.at(level, next) != null && !Networks.canConnect(level, worldPosition, next)) {
+                continue;
+            }
             if (energy.getAmountAsInt() <= 0) {
                 return;
             }
@@ -257,6 +272,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
+        ownership.save(output);
         ContainerHelper.saveAllItems(output, items);
         output.putInt("energy", energy.getAmountAsInt());
         output.putInt("burn_left", burnLeft);
@@ -266,6 +282,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+        ownership.load(input);
         items = NonNullList.withSize(getContainerSize(), ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         energy.set(Math.clamp(input.getIntOr("energy", 0), 0, tier.capacity()));
@@ -277,6 +294,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
+        ownership.collect(components);
         if (energy.getAmountAsInt() > 0) {
             components.set(JasmComponents.ENERGY.get(), energy.getAmountAsInt());
         }
@@ -285,6 +303,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
+        ownership.apply(components);
         energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, tier.capacity()));
     }
 
@@ -292,6 +311,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity {
     public void removeComponentsFromTag(ValueOutput output) {
         super.removeComponentsFromTag(output);
         output.discard("energy");
+        output.discard("network_owner");
     }
 
     /**
