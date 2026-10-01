@@ -91,6 +91,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private final Map<Direction, Lock> locks = new EnumMap<>(Direction.class);
     /** A name the player gave the port; empty for the machines' own names. */
     private String label = "";
+    private boolean blockingMode;
     private @Nullable UUID destinationDeck;
     private @Nullable UUID pendingLinker;
     private final PortOperations operations = new PortOperations();
@@ -105,6 +106,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_LOCKED -> locks.size();
                 case AccessPortMenu.DATA_DEFAULT_DECK -> defaultDeck() ? 1 : 0;
                 case AccessPortMenu.DATA_LINKED -> deckLinked() ? 1 : 0;
+                case AccessPortMenu.DATA_BLOCKING -> blockingMode ? 1 : 0;
                 default -> 0;
             };
         }
@@ -463,6 +465,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return label;
     }
 
+    public boolean blockingMode() { return blockingMode; }
+
+    public void setBlockingMode(boolean enabled) {
+        blockingMode = enabled;
+        setChanged();
+    }
+
     public void setLabel(String label) {
         String cleaned = label.strip();
         this.label = cleaned.length() > AccessPortMenu.MAX_NAME ? cleaned.substring(0, AccessPortMenu.MAX_NAME) : cleaned;
@@ -585,6 +594,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         locks.forEach((side, lock) -> saved.add(new SavedLock(side, lock.job(), lock.step())));
         output.store("locks", SavedLock.CODEC.listOf(), saved);
         output.putString("label", label);
+        output.putBoolean("blocking_mode", blockingMode);
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
     }
@@ -597,6 +607,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         locks.clear();
         input.read("locks", SavedLock.CODEC.listOf()).orElse(List.of()).forEach(l -> locks.put(l.side(), new Lock(l.job(), l.step())));
         label = input.getStringOr("label", "");
+        blockingMode = input.getBooleanOr("blocking_mode", false);
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
     }

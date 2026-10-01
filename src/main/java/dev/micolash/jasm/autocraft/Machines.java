@@ -111,6 +111,7 @@ public final class Machines {
         if (inlet == null) {
             return false;
         }
+        if (port.blockingMode() && containsIngredient(inlet, set)) return false;
         try (Transaction tx = Transaction.openRoot()) {
             for (ProcessingCard.Amount amount : set) {
                 if (inlet.insert(amount.item(), amount.count(), tx) != amount.count()) {
@@ -121,6 +122,14 @@ public final class Machines {
             port.transferred(count);
             return true;
         }
+    }
+
+    private static boolean containsIngredient(ResourceHandler<ItemResource> inlet, List<ProcessingCard.Amount> set) {
+        for (int slot = 0; slot < inlet.size(); slot++) {
+            ItemResource held = inlet.getResource(slot);
+            if (!held.isEmpty() && set.stream().anyMatch(amount -> amount.item().getItem() == held.getItem())) return true;
+        }
+        return false;
     }
 
     /** The name of the block at {@code pos}, as a player would call it. */

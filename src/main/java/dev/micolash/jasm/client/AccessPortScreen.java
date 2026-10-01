@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.autocraft.AccessPortMenu;
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.network.DeckLinkLayout;
 import dev.micolash.jasm.transfer.PortOperations;
@@ -29,10 +30,15 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
     private static final int ROWS = 2;
     private static final int SCROLL_X = WIDTH - 16;
     private static final int HANDLE_HEIGHT = 12;
+    private static final int BLOCKING_PANEL_X = WIDTH + 4;
+    private static final int BLOCKING_PANEL_SIZE = 28;
+    private static final JasmButton.Icon BLOCKING_ON = new JasmButton.Icon(Jasm.id("icon_blocking_on"), 12, 12);
+    private static final JasmButton.Icon BLOCKING_OFF = new JasmButton.Icon(Jasm.id("icon_blocking_off"), 12, 12);
     private int scroll;
     private boolean draggingHandle;
     private EditBox name;
     private Button resetDeck;
+    private Button blocking;
 
     public AccessPortScreen(AccessPortMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, menu.inventoryY() + 58 + 18 + 6);
@@ -44,7 +50,7 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
     protected void init() {
         super.init();
         int panelX = DeckLinkLayout.PORT.panelX();
-        leftPos = (width - WIDTH + panelX) / 2 - panelX;
+        leftPos = (width - WIDTH + panelX - 4 - BLOCKING_PANEL_SIZE) / 2 - panelX;
         name = new EditBox(font, leftPos + 8, topPos + NAME_Y, WIDTH - 16 - 48, 12, Component.translatable("screen.jasm.port.name"));
         name.setMaxLength(AccessPortMenu.MAX_NAME);
         name.setValue(menu.label());
@@ -57,6 +63,10 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.RESET_DECK),
                 leftPos + layout.panelX() + 8, topPos + DeckLinkLayout.RESET_Y, layout.width() - 16, 22));
         resetDeck.active = menu.canResetDeck();
+        blocking = addRenderableWidget(JasmButton.icon(() -> menu.blockingMode() ? BLOCKING_ON : BLOCKING_OFF, blockingLabel(),
+                b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.TOGGLE_BLOCKING),
+                leftPos + BLOCKING_PANEL_X + 4, topPos + 4, 20, 20));
+        blocking.setTooltip(blockingTooltip());
     }
 
     public net.minecraft.client.renderer.Rect2i upgradePanelArea() {
@@ -71,6 +81,8 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
                 PortUpgradeLayout.POWER_PANEL_SIZE, PortUpgradeLayout.POWER_PANEL_SIZE));
         areas.add(new net.minecraft.client.renderer.Rect2i(leftPos + DeckLinkLayout.PORT.panelX(), topPos,
                 DeckLinkLayout.PORT.width(), DeckLinkLayout.PORT.height()));
+        areas.add(new net.minecraft.client.renderer.Rect2i(leftPos + BLOCKING_PANEL_X, topPos,
+                BLOCKING_PANEL_SIZE, BLOCKING_PANEL_SIZE));
         return areas;
     }
 
@@ -84,6 +96,16 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
     private void rename() {
         ClientPacketDistributor.sendToServer(new CraftPayloads.PortName(menu.containerId, name.getValue().strip()));
         name.setFocused(false);
+    }
+
+    private Component blockingLabel() {
+        return Component.translatable("screen.jasm.port.blocking", Component.translatable(menu.blockingMode()
+                ? "screen.jasm.port.blocking_on" : "screen.jasm.port.blocking_off"));
+    }
+
+    private net.minecraft.client.gui.components.Tooltip blockingTooltip() {
+        return net.minecraft.client.gui.components.Tooltip.create(blockingLabel().copy().append("\n")
+                .append(Component.translatable("screen.jasm.port.blocking_hint")));
     }
 
     @Override
@@ -103,6 +125,7 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractBackground(graphics, mouseX, mouseY, a);
         JasmGui.panel(graphics, leftPos, topPos, imageWidth, imageHeight);
+        JasmGui.panel(graphics, leftPos + BLOCKING_PANEL_X, topPos, BLOCKING_PANEL_SIZE, BLOCKING_PANEL_SIZE);
         JasmGui.inset(graphics, leftPos + LIST_X, topPos + LIST_Y, LIST_WIDTH, ROWS * ROW_HEIGHT);
         scroll = Math.clamp(scroll, 0, maxScroll());
         int offset = maxScroll() == 0 ? 0 : Math.round((ROWS * ROW_HEIGHT - HANDLE_HEIGHT) * scroll / (float) maxScroll());
@@ -132,6 +155,10 @@ public class AccessPortScreen extends AbstractContainerScreen<AccessPortMenu> {
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractContents(graphics, mouseX, mouseY, a);
         if (resetDeck != null) resetDeck.active = menu.canResetDeck();
+        if (blocking != null && !blocking.getMessage().equals(blockingLabel())) {
+            blocking.setMessage(blockingLabel());
+            blocking.setTooltip(blockingTooltip());
+        }
         if (mouseX >= leftPos + LIST_X && mouseX < leftPos + LIST_X + LIST_WIDTH
                 && mouseY >= topPos + LIST_Y && mouseY < topPos + LIST_Y + ROWS * ROW_HEIGHT) {
             int index = scroll + (mouseY - topPos - LIST_Y) / ROW_HEIGHT;

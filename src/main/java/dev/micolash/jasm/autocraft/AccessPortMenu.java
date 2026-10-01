@@ -47,6 +47,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
     public static final int SLOT_DECK_OUT = SLOT_DECK_IN + 1;
     public static final int SLOT_SPEED = SLOT_DECK_OUT + 1;
     public static final int RESET_DECK = 0;
+    public static final int TOGGLE_BLOCKING = 1;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -54,7 +55,8 @@ public class AccessPortMenu extends AbstractContainerMenu {
     static final int DATA_LOCKED = 3;
     static final int DATA_DEFAULT_DECK = 4;
     static final int DATA_LINKED = 5;
-    static final int DATA_COUNT = 6;
+    static final int DATA_BLOCKING = 6;
+    static final int DATA_COUNT = 7;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -130,6 +132,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
     public int upgradePanelY() { return PANEL_Y; }
     public boolean defaultDeck() { return data.get(DATA_DEFAULT_DECK) != 0; }
     public boolean deckLinked() { return data.get(DATA_LINKED) != 0; }
+    public boolean blockingMode() { return data.get(DATA_BLOCKING) != 0; }
     public boolean canResetDeck() { return !defaultDeck() && getSlot(SLOT_DECK_IN).getItem().isEmpty(); }
     public int rate() {
         int upgrades = 0;
@@ -139,7 +142,13 @@ public class AccessPortMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
-        return id == RESET_DECK && port != null && stillValid(player) && port.resetDeck(player);
+        if (port == null || !stillValid(player)) return false;
+        if (id == RESET_DECK) return port.resetDeck(player);
+        if (id == TOGGLE_BLOCKING) {
+            port.setBlockingMode(!port.blockingMode());
+            return true;
+        }
+        return false;
     }
 
     @Override

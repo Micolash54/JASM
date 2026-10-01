@@ -30,7 +30,8 @@ final class DeckLinkPanel {
     static void message(GuiGraphicsExtractor graphics, Font font, Component text, int color, DeckLinkLayout layout) {
         var lines = font.split(text, layout.width() - 16);
         for (int i = 0; i < Math.min(3, lines.size()); i++) {
-            graphics.text(font, lines.get(i), layout.panelX() + 8, DeckLinkLayout.MESSAGE_Y + 9 * i, color, false);
+            graphics.text(font, lines.get(i), layout.panelX() + (layout.width() - font.width(lines.get(i))) / 2,
+                    DeckLinkLayout.MESSAGE_Y + 9 * i, color, false);
         }
     }
 }

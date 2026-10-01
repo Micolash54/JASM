@@ -200,14 +200,15 @@ public class ArchiveScreen extends AbstractContainerScreen<ArchiveMenu> {
             graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
         }
         if (!menu.view().linkedPlayer().isEmpty()) {
-            graphics.text(font, Component.translatable("screen.jasm.archive.linked_player"),
-                    LINK_PANEL.panelX() + 8, DeckLinkLayout.MESSAGE_Y,
-                    menu.getSlot(ArchiveMenu.DECK_OUT).hasItem() ? JasmGui.GOOD : JasmGui.SUBTEXT, false);
+            Component linked = Component.translatable("screen.jasm.archive.linked_player");
+            graphics.text(font, linked, LINK_PANEL.panelX() + (LINK_PANEL.width() - font.width(linked)) / 2,
+                    DeckLinkLayout.MESSAGE_Y, menu.getSlot(ArchiveMenu.DECK_OUT).hasItem() ? JasmGui.GOOD : JasmGui.SUBTEXT, false);
             String playerName = menu.view().linkedPlayer();
             int room = LINK_PANEL.width() - 16;
             String shown = font.width(playerName) <= room ? playerName
                     : font.plainSubstrByWidth(playerName, room - font.width("...")) + "...";
-            graphics.text(font, shown, LINK_PANEL.panelX() + 8, DeckLinkLayout.MESSAGE_Y + 10, JasmGui.MUTED, false);
+            graphics.text(font, shown, LINK_PANEL.panelX() + (LINK_PANEL.width() - font.width(shown)) / 2,
+                    DeckLinkLayout.MESSAGE_Y + 10, JasmGui.MUTED, false);
         } else {
             DeckLinkPanel.message(graphics, font, Component.translatable("screen.jasm.archive.no_deck"), JasmGui.SUBTEXT, LINK_PANEL);
         }
