@@ -44,6 +44,7 @@ public final class JasmItems {
     public static final DeferredItem<dev.micolash.jasm.transfer.TransferPortItem> INPUT_OUTPUT_PORT = ITEMS.registerItem("input_output_port", dev.micolash.jasm.transfer.TransferPortItem::new);
     public static final DeferredItem<dev.micolash.jasm.transfer.SpeedUpgradeItem> SPEED_UPGRADE = ITEMS.registerItem("speed_upgrade", dev.micolash.jasm.transfer.SpeedUpgradeItem::new);
     public static final DeferredItem<Item> POWER_UPGRADE = ITEMS.registerSimpleItem("power_upgrade");
+    public static final DeferredItem<Item> DIMENSION_UPGRADE = ITEMS.registerSimpleItem("dimension_upgrade");
     public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
     public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");
     public static final DeferredItem<Item> CRYSTAL_DUST = ITEMS.registerSimpleItem("crystal_dust");

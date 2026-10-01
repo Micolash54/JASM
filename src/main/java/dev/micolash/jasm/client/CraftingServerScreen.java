@@ -152,6 +152,7 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
             case 5 -> Component.translatable("screen.jasm.server.pause.no_network");
             case 6 -> Component.translatable("screen.jasm.server.pause.machine_busy");
             case 7 -> Component.translatable("screen.jasm.server.pause.no_machine");
+            case 8 -> Component.translatable("screen.jasm.server.pause.dimension_upgrade");
             default -> phase == CraftingJob.Phase.RETURNING ? Component.empty()
                     : menu.waiting() != null ? menu.waiting()
                     : Component.translatable("screen.jasm.server.active", menu.active());

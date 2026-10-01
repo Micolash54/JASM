@@ -99,7 +99,8 @@ final class TerminalDeckList {
                 int sy = y + row * 18;
                 ItemStack stack = entry.key().toStack(1);
                 graphics.item(stack, sx, sy);
-                graphics.itemDecorations(font, stack, sx, sy, GridEntries.abbreviate(entry.count()));
+                graphics.itemDecorations(font, stack, sx, sy, "");
+                JasmGui.itemCount(graphics, font, GridEntries.abbreviate(entry.count()), sx, sy);
                 if (entry == hovered) {
                     graphics.fill(sx, sy, sx + 16, sy + 16, JasmGui.HOVER);
                 }

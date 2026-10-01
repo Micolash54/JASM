@@ -50,6 +50,14 @@ A Deck with a crafting grid. Made from a Deck of the same tier, or upgraded from
 | ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck_from_deck.png) | **Ultimate Crafting Deck** | 1 × Advanced Logic Chip, 1 × Crafting Table, 1 × Advanced Link Chip, 1 × Fletching Table, 1 × Ultimate Deck, 1 × Smithing Table, 2 × Redstone, 1 × Cartography Table |
 | ![Ultimate Crafting Deck](images/recipes/ultimate_crafting_deck.png) | **Ultimate Crafting Deck** | 4 × Blaze Rod, 1 × Advanced Logic Chip, 2 × Redstone, 1 × Elite Crafting Deck, 1 × Advanced Link Chip |
 
+## Dimension Upgrade
+
+Decks work in the Overworld by default. Install a Dimension Upgrade in the Deck's upgrade slot to use it in any dimension. The same limit applies to linked ports, crafting jobs and rules, including networks in other dimensions.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Dimension Upgrade](images/recipes/dimension_upgrade.png) | **Dimension Upgrade** | 2 × Advanced Memory Chip, 4 × Ender Eye, 2 × Advanced Logic Chip, 1 × Advanced Link Chip |
+
 ## Autocrafting
 
 Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold them for the network; Crafting Servers run the jobs. Data Cables join it all and carry power. Eight cables around any dye give eight cables of that colour. A Filled Recipe Card crafted on its own turns back into an Empty Recipe Card.

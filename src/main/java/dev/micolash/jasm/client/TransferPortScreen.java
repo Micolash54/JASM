@@ -37,8 +37,8 @@ public final class TransferPortScreen extends AbstractContainerScreen<TransferPo
         editors.clear();
         boolean combined = menu.kind() == TransferPortKind.INPUT_OUTPUT;
         int rows = combined ? 1 : 2;
-        if (menu.kind().imports()) createEditor(false, rows, 24);
-        if (menu.kind().exports()) createEditor(true, rows, combined ? 144 : 24);
+        if (menu.kind().exports()) createEditor(true, rows, 24);
+        if (menu.kind().imports()) createEditor(false, rows, combined ? 144 : 24);
         reset = addRenderableWidget(JasmButton.wrappedText(Component.translatable("screen.jasm.port.reset_deck"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, 0), leftPos + DeckLinkLayout.PORT.panelX() + 8,
                 topPos + DeckLinkLayout.RESET_Y, DeckLinkLayout.PORT.width() - 16, 22));

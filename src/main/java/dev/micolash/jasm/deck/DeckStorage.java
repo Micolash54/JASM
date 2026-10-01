@@ -120,6 +120,7 @@ public final class DeckStorage {
     }
 
     private static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, boolean tell) {
+        if (!checkDimension(deck, player, tell)) return 0;
         if (source.isEmpty()) {
             return 0;
         }
@@ -159,6 +160,7 @@ public final class DeckStorage {
      * deposit. Returns false if there is no wafer there, or it can't be used right now.
      */
     public static boolean configure(WaferStore store, ItemStack deck, int slot, WaferSettings settings, ServerPlayer player) {
+        if (!checkDimension(deck, player, true)) return false;
         List<SlotView> views = views(store, deck, player);
         if (slot < 0 || slot >= views.size() || !views.get(slot).usable()) {
             return false;
@@ -182,6 +184,7 @@ public final class DeckStorage {
      * crafting job), without needing the Deck's charge. Returns how many were stored; items wafers refuse store none.
      */
     public static long depositAmount(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        if (!DeckItem.worksIn(deck, player.level())) return 0;
         if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
         }
@@ -210,6 +213,7 @@ public final class DeckStorage {
 
     /** Same routing order, with a shared limit on the number of items moved. */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player, long limit) {
+        if (!DeckItem.worksIn(deck, player.level())) return Map.of();
         var left = new java.util.LinkedHashMap<ItemResource, Long>();
         items.forEach((key, amount) -> {
             if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) left.put(key, amount);
@@ -248,6 +252,7 @@ public final class DeckStorage {
 
     /** How many of {@code key}, up to {@code amount}, the Deck's wafers would take. Changes nothing. */
     public static long room(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        if (!DeckItem.worksIn(deck, player.level())) return 0;
         if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
         }
@@ -277,6 +282,7 @@ public final class DeckStorage {
 
     private static List<ItemStack> withdraw(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
             boolean tell) {
+        if (!checkDimension(deck, player, tell)) return List.of();
         if (amount <= 0 || key.isEmpty()) {
             return List.of();
         }
@@ -396,6 +402,12 @@ public final class DeckStorage {
         if (tell) {
             Notices.bad(player, Component.translatable("message.jasm.deck.no_power"));
         }
+        return false;
+    }
+
+    private static boolean checkDimension(ItemStack deck, ServerPlayer player, boolean tell) {
+        if (DeckItem.worksIn(deck, player.level())) return true;
+        if (tell) Notices.bad(player, Component.translatable("message.jasm.deck.dimension_upgrade"));
         return false;
     }
 }

@@ -37,6 +37,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     private static final int WIDTH = 176;
     private static final int HEIGHT = EncodingTerminalMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 40;
+    private static final int ENCODE_WIDTH = 52;
     private static final JasmButton.Icon ACCESS = new JasmButton.Icon(Jasm.id("icon/access"), 7, 7);
     private static final JasmButton.Icon MACHINES = new JasmButton.Icon(Jasm.id("icon/machines"), 7, 7);
     private TrustWindow trustWindow;
@@ -92,7 +93,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         leftPos = (width - WIDTH - LINK_PANEL.width() - 2 - (panelOpen ? PANEL_W + 2 : 0)) / 2 + LINK_PANEL.width() + 2;
         encodeButton = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.terminal.encode"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_ENCODE),
-                leftPos + 114, topPos + 74, 60, 14));
+                leftPos + EncodingTerminalMenu.PREVIEW_X + 8 - ENCODE_WIDTH / 2, topPos + 74, ENCODE_WIDTH, 14));
         JasmButton clear = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.terminal.clear"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_CLEAR),
                 leftPos + EncodingTerminalMenu.GRID_X + 3 * 18 + 2, topPos + EncodingTerminalMenu.GRID_Y - 1, 11, 11);

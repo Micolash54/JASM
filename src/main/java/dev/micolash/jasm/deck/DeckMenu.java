@@ -3,6 +3,7 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.registry.JasmMenus;
+import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferItem;
@@ -56,6 +57,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     public static final int CRAFT_WIDTH = SIDE_PAD * 2 + 3 * 18;
     public static final int CRAFT_RESULT_Y = SIDE_PAD + 1 + 3 * 18 + 14;
     public static final int CRAFT_HEIGHT = CRAFT_RESULT_Y + 16 + SIDE_PAD + 1;
+    public static final int UPGRADE_SIZE = SIDE_PAD * 2 + 18;
 
     private final Notices.Shown notices = new Notices.Shown();
     private final Player player;
@@ -71,6 +73,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /** First grid slot and the result slot in {@link #slots}; -1 on a normal Deck. */
     private final int gridStart;
     private final int resultSlot;
+    private final DeckUpgradeContainer upgrade;
+    private final int upgradeSlot;
     /** While the grid is being filled in one go, the result is worked out once at the end. */
     private boolean placing;
     /** Client side only: what the server has told this screen. */
@@ -120,6 +124,13 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             gridStart = -1;
             resultSlot = -1;
         }
+        upgrade = new DeckUpgradeContainer(deck, this, !player.level().isClientSide());
+        upgradeSlot = slots.size();
+        addSlot(new Slot(upgrade, 0, upgradeX() + SIDE_PAD + 1, upgradeY() + SIDE_PAD + 1) {
+            @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
+            @Override public int getMaxStackSize() { return 1; }
+            @Override public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+        });
     }
 
     /** Client side: the server tells which inventory slot holds the Deck. */
@@ -189,6 +200,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         return waferSlots;
     }
 
+    public int upgradeSlot() { return upgradeSlot; }
+    public int upgradeX() { return sideWidth() - UPGRADE_SIZE; }
+    public int upgradeY() { return sideHeight() + SIDE_GAP; }
+    public boolean dimensionAllowed() { return DeckItem.worksIn(player.getInventory().getItem(deckSlot), player.level()); }
+
     public DeckWaferContainer wafers() {
         return wafers;
     }
@@ -223,6 +239,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /** The Deck's own slot can't be clicked, and number keys or the off-hand key can't swap it away. */
     @Override
     public void clicked(int slotIndex, int buttonNum, ContainerInput input, Player player) {
+        if (!dimensionAllowed() && gridStart >= 0 && slotIndex >= gridStart && slotIndex <= resultSlot) return;
         if (slotIndex >= 0 && slotIndex < slots.size() && slots.get(slotIndex) instanceof LockedSlot) {
             return;
         }
@@ -245,6 +262,17 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return ItemStack.EMPTY;
         }
         ItemStack stack = slot.getItem();
+        if (index == upgradeSlot) {
+            moveItemStackTo(stack, waferSlots, waferSlots + 36, false);
+            slot.setChanged();
+            return ItemStack.EMPTY;
+        }
+        if (stack.is(JasmItems.DIMENSION_UPGRADE.get()) && index >= waferSlots && index < waferSlots + 36) {
+            moveItemStackTo(stack, upgradeSlot, upgradeSlot + 1, false);
+            slot.setChanged();
+            return ItemStack.EMPTY;
+        }
+        if (!dimensionAllowed() && index >= waferSlots && !(index < waferSlots + 36 && stack.getItem() instanceof WaferItem)) return ItemStack.EMPTY;
         if (index == resultSlot) {
             return craftIntoInventory(player, slot);
         }
@@ -315,6 +343,15 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /** The grid changed: work out what it makes now. */
     @Override
     public void slotsChanged(Container container) {
+        if (container == upgrade && player instanceof ServerPlayer serverPlayer) {
+            if (dimensionAllowed()) {
+                wafers.flush();
+                DeckStorage.activate(WaferStore.get(serverPlayer.level().getServer()), deck, serverPlayer);
+                wafers.reload();
+            }
+            if (grid != null) updateResult(serverPlayer, null);
+            DeckViewTracker.markDirty(this);
+        }
         if (container == grid && !placing && player instanceof ServerPlayer serverPlayer) {
             updateResult(serverPlayer, null);
         }
@@ -329,7 +366,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** What the grid makes, as a crafting table would work it out. */
     private ItemStack craft(ServerPlayer player, @Nullable RecipeHolder<CraftingRecipe> hint) {
-        if (grid == null) {
+        if (grid == null || !dimensionAllowed()) {
             return ItemStack.EMPTY;
         }
         ServerLevel level = player.level();
@@ -376,7 +413,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Puts everything in the grid back on the wafers. What doesn't fit stays in the grid. */
     public void returnGrid(ServerPlayer player) {
-        if (grid == null) {
+        if (grid == null || !dimensionAllowed()) {
             return;
         }
         placing = true;
@@ -410,7 +447,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
      * picking the item there is most of. Slots with nothing to take stay empty.
      */
     public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max) {
-        if (grid == null || wanted.size() > DeckGridContainer.SIZE) {
+        if (grid == null || !dimensionAllowed() || wanted.size() > DeckGridContainer.SIZE) {
             return;
         }
         returnGrid(player);
@@ -502,6 +539,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     public void broadcastChanges() {
         if (!player.level().isClientSide()) {
             wafers.flush();
+            upgrade.flush();
             if (grid != null) {
                 grid.flush();
             }
@@ -521,6 +559,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                 returnGrid(serverPlayer);
             }
             wafers.flush();
+            upgrade.flush();
             if (grid != null) {
                 grid.flush();
             }
@@ -551,21 +590,28 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     /** A crafting grid slot: anything but wafers and Decks. */
-    private static final class GridSlot extends Slot {
+    private final class GridSlot extends Slot {
         GridSlot(DeckGridContainer container, int index, int x, int y) {
             super(container, index, x, y);
         }
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return allowedInGrid(stack);
+            return dimensionAllowed() && allowedInGrid(stack);
         }
+
+        @Override public boolean mayPickup(Player player) { return dimensionAllowed(); }
     }
 
     /** Taking the result refills the grid from the wafers. */
     private final class GridResultSlot extends ResultSlot {
         GridResultSlot(Player player, DeckGridContainer grid, ResultContainer result, int x, int y) {
             super(player, grid, result, 0, x, y);
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return dimensionAllowed() && super.mayPickup(player);
         }
 
         @Override

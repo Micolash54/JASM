@@ -40,6 +40,10 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<ItemContainerContents>> DECK_GRID = COMPONENTS.registerComponentType(
             "deck_grid", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
 
+    /** The upgrade installed in a Deck. */
+    public static final Supplier<DataComponentType<ItemContainerContents>> DECK_UPGRADE = COMPONENTS.registerComponentType(
+            "deck_upgrade", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
     /** A Filled Recipe Card's recipe. */
     public static final Supplier<DataComponentType<RecipeCard>> RECIPE_CARD = COMPONENTS.registerComponentType(
             "recipe_card", b -> b.persistent(RecipeCard.CODEC).networkSynchronized(RecipeCard.STREAM_CODEC));

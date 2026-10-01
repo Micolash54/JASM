@@ -74,15 +74,21 @@ public final class Rules {
 
     /** One second of one Deck's rules. */
     public static void run(ServerPlayer player, ItemStack deck, long now) {
+        var terminal = Jobs.terminalOf(player.level().getServer(), deck);
+        if (!DeckItem.worksIn(deck, player.level()) || terminal != null && !DeckItem.worksIn(deck, terminal.getLevel())) {
+            of(deck).stream().filter(CraftRule::enabled).forEach(rule -> STALLED.put(rule.id(), "message.jasm.deck.dimension_upgrade"));
+            return;
+        }
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
         UUID terminalId = deck.get(JasmComponents.DECK_NETWORK.get());
         if (deckId == null || terminalId == null || !AutocraftState.get(player.level().getServer()).isPaired(terminalId, player.getUUID(), deckId)
-                || Jobs.terminalOf(player.level().getServer(), deck) == null) {
+                || terminal == null) {
             return;
         }
         List<CraftRule> rules = of(deck);
         for (int r = 0; r < Math.min(rules.size(), limit(deck)); r++) {
             CraftRule rule = rules.get(r);
+            if ("message.jasm.deck.dimension_upgrade".equals(STALLED.get(rule.id()))) STALLED.remove(rule.id());
             if (!rule.enabled() || rule.item().isEmpty()) {
                 STALLED.remove(rule.id());
                 continue;

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "MEL",
+    "EAE",
+    "LEM"
+  ],
+  "key": {
+    "M": "jasm:advanced_memory_chip",
+    "L": "jasm:advanced_logic_chip",
+    "A": "jasm:advanced_link_chip",
+    "E": "minecraft:ender_eye"
+  },
+  "result": {
+    "id": "jasm:dimension_upgrade"
+  }
+}

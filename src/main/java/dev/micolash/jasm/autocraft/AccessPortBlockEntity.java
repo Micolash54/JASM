@@ -244,7 +244,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (player == null) return;
         ItemStack deck = Jobs.findDeck(player, pairing.deck());
         if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
-        if (deck.isEmpty() || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
+        if (deck.isEmpty() || !DeckItem.worksIn(deck, player.level())
+                || !DeckItem.worksIn(deck, serverLevel)
+                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
         Set<ItemResource> expected = Jobs.expectedPortReturns(serverLevel, this);
         if (expected == null) return;
         for (int i = 0; i < SLOTS; i++) {

@@ -4,11 +4,13 @@ import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveService;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -20,6 +22,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 
 /**
@@ -68,6 +71,19 @@ public class DeckItem extends Item implements WaferHolderItem {
         return deck.getOrDefault(JasmComponents.ENERGY.get(), 0);
     }
 
+    public static boolean hasDimensionUpgrade(ItemStack deck) {
+        ItemContainerContents contents = deck.getOrDefault(JasmComponents.DECK_UPGRADE.get(), ItemContainerContents.EMPTY);
+        return contents.getSlots() > 0 && contents.getStackInSlot(0).is(JasmItems.DIMENSION_UPGRADE.get());
+    }
+
+    public static boolean worksIn(ItemStack deck, Level level) {
+        return worksIn(deck, level.dimension());
+    }
+
+    public static boolean worksIn(ItemStack deck, ResourceKey<Level> dimension) {
+        return dimension.equals(Level.OVERWORLD) || hasDimensionUpgrade(deck);
+    }
+
     @Override
     public InteractionResult useOn(UseOnContext context) {
         if (context.getPlayer() == null || !context.isSecondaryUseActive()
@@ -75,6 +91,10 @@ public class DeckItem extends Item implements WaferHolderItem {
             return InteractionResult.PASS;
         }
         if (context.getPlayer() instanceof ServerPlayer player) {
+            if (!worksIn(context.getItemInHand(), player.level())) {
+                Notices.bad(player, Component.translatable("message.jasm.deck.dimension_upgrade"));
+                return InteractionResult.SUCCESS;
+            }
             var backup = ArchiveService.backupDeck(WaferStore.get(player.level().getServer()), archive, player, context.getItemInHand());
             if (backup.result() == ArchiveService.Result.OK) {
                 Notices.good(player, Component.translatable("message.jasm.archive.done.backup_deck", backup.backedUp(), backup.total()));
@@ -101,7 +121,7 @@ public class DeckItem extends Item implements WaferHolderItem {
         if (!(deck.getItem() instanceof DeckItem)) {
             return;
         }
-        DeckStorage.activate(WaferStore.get(player.level().getServer()), deck, player);
+        if (worksIn(deck, player.level())) DeckStorage.activate(WaferStore.get(player.level().getServer()), deck, player);
         player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new DeckMenu(id, inventory, slot), deck.getHoverName()),
                 buf -> buf.writeVarInt(slot));
     }

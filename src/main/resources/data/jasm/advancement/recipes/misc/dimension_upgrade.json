@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:dimension_upgrade"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_advanced_link_chip": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:advanced_link_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_advanced_link_chip"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:dimension_upgrade"
+    ]
+  }
+}

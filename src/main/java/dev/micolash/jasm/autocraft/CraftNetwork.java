@@ -80,7 +80,8 @@ public final class CraftNetwork {
     // --- server ---
 
     private static @Nullable DeckMenu craftingMenu(ServerPlayer player, int containerId) {
-        if (player.containerMenu instanceof DeckMenu menu && menu.containerId == containerId && menu.stillValid(player) && menu.isCrafting()) {
+        if (player.containerMenu instanceof DeckMenu menu && menu.containerId == containerId && menu.stillValid(player)
+                && menu.isCrafting() && menu.dimensionAllowed()) {
             return menu;
         }
         return null;

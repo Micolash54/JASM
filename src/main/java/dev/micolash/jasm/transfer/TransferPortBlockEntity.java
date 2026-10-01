@@ -3,6 +3,7 @@ package dev.micolash.jasm.transfer;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.autocraft.Machines;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -67,7 +68,9 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         if (player == null) return;
         ItemStack deck = Jobs.findDeck(player, pairing.deck());
         if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
-        if (deck.isEmpty() || !DeckStorage.hasPower(deck) || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
+        if (deck.isEmpty() || !DeckStorage.hasPower(deck) || !DeckItem.worksIn(deck, player.level())
+                || !DeckItem.worksIn(deck, world)
+                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
         var inventory = Machines.inlet(world, worldPosition.relative(face), face.getOpposite());
         if (inventory == null) return;
         Jobs.prepareOpenDeck(player, deck);

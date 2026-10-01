@@ -124,7 +124,7 @@ public final class DeckNetwork {
     /** Puts a Crafting Deck's grid back on its wafers. */
     public static boolean clearGrid(ServerPlayer player, DeckPayloads.ClearGrid payload) {
         DeckMenu menu = openMenu(player, payload.containerId());
-        if (menu == null || !menu.isCrafting() || !allow(player)) {
+        if (menu == null || !menu.isCrafting() || !menu.dimensionAllowed() || !allow(player)) {
             return false;
         }
         menu.returnGrid(player);
@@ -135,7 +135,7 @@ public final class DeckNetwork {
     /** Fills a Crafting Deck's grid for a recipe, from its wafers and the player's inventory. */
     public static boolean fillGrid(ServerPlayer player, DeckPayloads.FillGrid payload) {
         DeckMenu menu = openMenu(player, payload.containerId());
-        if (menu == null || !menu.isCrafting() || !allow(player)) {
+        if (menu == null || !menu.isCrafting() || !menu.dimensionAllowed() || !allow(player)) {
             return false;
         }
         menu.fillGrid(player, payload.slots(), payload.max());

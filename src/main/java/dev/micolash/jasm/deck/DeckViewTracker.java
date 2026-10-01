@@ -68,7 +68,7 @@ public final class DeckViewTracker {
         }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (player.containerMenu instanceof DeckMenu menu && menu.stillValid(player)) {
-                DeckStorage.drain(menu.deck());
+                if (menu.dimensionAllowed()) DeckStorage.drain(menu.deck());
                 sync(store, player, menu);
             }
         }

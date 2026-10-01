@@ -141,6 +141,7 @@ public final class Jobs {
         if (!DeckItem.isCrafting(deck)) {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.not_crafting_deck");
         }
+        if (!DeckItem.worksIn(deck, player.level())) return new Preview(empty, List.of(), -1, "message.jasm.deck.dimension_upgrade");
         EncodingTerminalBlockEntity terminal = terminalOf(player.level().getServer(), deck);
         if (terminal == null) {
             return new Preview(empty, List.of(), -1, deck.has(JasmComponents.DECK_NETWORK.get())
@@ -157,6 +158,7 @@ public final class Jobs {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.network_unreachable");
         }
         ServerLevel level = (ServerLevel) terminal.getLevel();
+        if (!DeckItem.worksIn(deck, level)) return new Preview(empty, List.of(), -1, "message.jasm.deck.dimension_upgrade");
         CableNetwork network = Networks.at(level, terminal.getBlockPos());
         if (network == null) {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.network_unreachable");
@@ -311,7 +313,12 @@ public final class Jobs {
         boolean missingCard = false;
         // A machine that can't be used right now: the job waits for it rather than giving up.
         String machineBlocked = "";
-        if (job.phase == CraftingJob.Phase.CRAFTING) {
+        ServerPlayer requester = level.getServer().getPlayerList().getPlayer(job.requester);
+        ItemStack requesterDeck = requester == null ? ItemStack.EMPTY : findDeck(requester, job.deck);
+        boolean dimensionBlocked = !requesterDeck.isEmpty()
+                && (!DeckItem.worksIn(requesterDeck, requester.level()) || !DeckItem.worksIn(requesterDeck, level));
+        if (job.phase == CraftingJob.Phase.CRAFTING && dimensionBlocked) machineBlocked = "dimension_upgrade";
+        if (job.phase == CraftingJob.Phase.CRAFTING && !dimensionBlocked) {
             int free = server.parallel() - job.running.size() - job.sent.size();
             Map<ItemResource, Long> reserved = reserved(job);
             for (int i = 0; i < job.steps.size() && free > 0; i++) {
@@ -633,7 +640,8 @@ public final class Jobs {
         if (available <= 0) return false;
         ServerPlayer player = level.getServer().getPlayerList().getPlayer(job.requester);
         ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
-        if (deck.isEmpty() || !onDeckNetwork(deck, level, server.getBlockPos())) return false;
+        if (deck.isEmpty() || !DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)
+                || !onDeckNetwork(deck, level, server.getBlockPos())) return false;
         Map<ItemResource, Long> products = Map.of(target, available);
         return (job.toPlayer ? moveToInventory(player, record, store, products) : moveToDeck(player, deck, record, store, products)) > 0;
     }
@@ -684,6 +692,10 @@ public final class Jobs {
         ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
         if (deck.isEmpty()) {
             job.pause = "waiting_player";
+            return;
+        }
+        if (!DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)) {
+            job.pause = "dimension_upgrade";
             return;
         }
         if (!onDeckNetwork(deck, level, server.getBlockPos())) {
@@ -922,6 +934,7 @@ public final class Jobs {
             case "no_network" -> 5;
             case "machine_busy" -> 6;
             case "no_machine" -> 7;
+            case "dimension_upgrade" -> 8;
             default -> 0;
         };
     }

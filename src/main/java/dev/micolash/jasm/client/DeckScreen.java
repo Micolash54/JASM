@@ -466,6 +466,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         int x = leftPos;
         int y = topPos;
         JasmGui.panel(graphics, x, y, menu.sideWidth(), menu.sideHeight());
+        JasmGui.panel(graphics, x + menu.upgradeX(), y + menu.upgradeY(), DeckMenu.UPGRADE_SIZE, DeckMenu.UPGRADE_SIZE);
         JasmGui.panel(graphics, x + mainX, y, MAIN_WIDTH, imageHeight);
         if (menu.isCrafting()) {
             int cx = x + menu.craftX();
@@ -520,6 +521,12 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         rebuildIfNeeded();
+        if (!menu.dimensionAllowed()) {
+            closeSettings();
+            craftWindow.close();
+            ruleWindow.close();
+            jobsWindow.close();
+        }
         if (filterWindow.isOpen() && !(filterWindow.selected() < menu.view().slots().size() && menu.view().slots().get(filterWindow.selected()).present())) {
             closeSettings();
         }
@@ -529,6 +536,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         int mouseX = overWindow ? -1000 : realMouseX;
         int mouseY = overWindow ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
+        if (hoveredSlot != null && hoveredSlot.index == menu.upgradeSlot()) {
+            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.deck.dimension_slot"), mouseX, mouseY);
+        }
         drawGrid(graphics, mouseX, mouseY);
         // The last message lies over the bottom of the grid for a few seconds, under any open window.
         Component notice = menu.notices().current(minecraft.level.getGameTime());
@@ -555,6 +565,20 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private void drawGrid(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (!menu.dimensionAllowed()) {
+            JasmGui.interference(graphics, leftPos + gridX - 1, topPos + gridY - 1, COLUMNS * 18, rows * 18);
+            var lines = font.split(Component.translatable("message.jasm.deck.dimension_upgrade"), COLUMNS * 18 - 12);
+            int top = topPos + gridY + rows * 9 - lines.size() * font.lineHeight / 2;
+            int textWidth = lines.stream().mapToInt(font::width).max().orElse(0);
+            int textLeft = leftPos + gridX + (COLUMNS * 18 - textWidth) / 2;
+            graphics.fill(textLeft - 4, top - 4, textLeft + textWidth + 4,
+                    top + lines.size() * font.lineHeight + 3, JasmGui.SHADE);
+            for (int i = 0; i < lines.size(); i++) {
+                graphics.text(font, lines.get(i), leftPos + gridX + (COLUMNS * 18 - font.width(lines.get(i))) / 2,
+                        top + i * font.lineHeight, JasmGui.BAD, true);
+            }
+            return;
+        }
         int x = leftPos;
         int y = topPos;
         if (tab == Tab.RULES) {
@@ -573,8 +597,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 int sy = y + gridY + row * 18;
                 ItemStack stack = entry.key().toStack(1);
                 graphics.item(stack, sx, sy);
-                graphics.itemDecorations(font, stack, sx, sy,
-                        entry.count() <= 0 || tab == Tab.CRAFT ? "" : GridEntries.abbreviate(entry.count()));
+                graphics.itemDecorations(font, stack, sx, sy, "");
+                JasmGui.itemCount(graphics, font,
+                        entry.count() <= 0 || tab == Tab.CRAFT ? "" : GridEntries.abbreviate(entry.count()), sx, sy);
                 if (tab == Tab.CRAFT) {
                     graphics.nextStratum();
                     graphics.text(font, "+", sx + 17 - font.width("+"), sy + 9, JasmGui.ACCENT, true);
@@ -690,6 +715,8 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (inWindow(mouseX, mouseY)) {
             return false;
         }
+        if (mouseX >= left + menu.upgradeX() && mouseX < left + menu.upgradeX() + DeckMenu.UPGRADE_SIZE
+                && mouseY >= top + menu.upgradeY() && mouseY < top + menu.upgradeY() + DeckMenu.UPGRADE_SIZE) return false;
         boolean belowSide = mouseX < left + mainX && mouseY >= top + menu.sideHeight();
         boolean belowCraft = menu.isCrafting() && mouseX >= left + menu.craftX() && mouseY >= top + DeckMenu.CRAFT_HEIGHT;
         return belowSide || belowCraft || super.hasClickedOutside(mouseX, mouseY, left, top);
@@ -701,6 +728,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
      */
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (!menu.dimensionAllowed() && inGrid(event.x(), event.y())) return true;
         boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
         // Right-click on the size button steps back a size.
         if (right && sizeButton.isMouseOver(event.x(), event.y()) && !inWindow(event.x(), event.y())) {

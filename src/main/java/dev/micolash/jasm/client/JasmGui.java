@@ -25,10 +25,12 @@ public final class JasmGui {
     public static final int HOVER = 0x30FFFFFF;
     public static final int SHADE = 0xB011111B;
     private static final int NOTICE = 0xE811111B;
+    private static final float ITEM_COUNT_SCALE = 0.7F;
 
     private static final Identifier PANEL = Jasm.id("panel");
     private static final Identifier SLOT = Jasm.id("slot");
     private static final Identifier INSET = Jasm.id("inset");
+    private static final Identifier INTERFERENCE = Jasm.id("dimensional_interference");
     private static final Identifier BAR_FILL = Jasm.id("bar_fill");
     private static final Identifier HANDLE = Jasm.id("scroll_handle");
     private static final Identifier HANDLE_DISABLED = Jasm.id("scroll_handle_disabled");
@@ -44,9 +46,26 @@ public final class JasmGui {
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, SLOT, itemX - 1, itemY - 1, 18, 18);
     }
 
+    /** Smaller counts anchored to the bottom right of a Deck item. */
+    public static void itemCount(GuiGraphicsExtractor graphics, Font font, String count, int itemX, int itemY) {
+        if (count.isEmpty()) return;
+        graphics.nextStratum();
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(itemX + 17, itemY + 16);
+        graphics.pose().scale(ITEM_COUNT_SCALE, ITEM_COUNT_SCALE);
+        graphics.text(font, count, -font.width(count), -font.lineHeight + 1, 0xFFFFFFFF, true);
+        graphics.pose().popMatrix();
+    }
+
     /** A recessed well: the item grid, the wafer list, bar and scroll tracks. */
     public static void inset(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, INSET, x, y, width, height);
+    }
+
+    /** Animated static inside the usual recessed frame. */
+    public static void interference(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
+        inset(graphics, x, y, width, height);
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, INTERFERENCE, x + 1, y + 1, width - 2, height - 2);
     }
 
     /** A charge bar: a well with a fill {@code fraction} of the way across. */

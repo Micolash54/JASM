@@ -266,7 +266,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private void sendDeck(ServerPlayer player) {
         ItemStack deck = viewersDeck(player);
         WaferStore store = WaferStore.ifOpen(player.level().getServer());
-        Map<ItemResource, Long> now = deck.isEmpty() || store == null ? Map.of() : DeckStorage.contents(store, deck);
+        Map<ItemResource, Long> now = deck.isEmpty() || store == null || !DeckItem.worksIn(deck, player.level())
+                ? Map.of() : DeckStorage.contents(store, deck);
         boolean found = !deck.isEmpty();
         if (deckSent != null && found == deckFoundSent && now.equals(deckSent)) {
             return;
