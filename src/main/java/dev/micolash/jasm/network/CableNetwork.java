@@ -80,10 +80,9 @@ public final class CableNetwork {
     }
 
     /**
-     * Moves power along, once per game tick however often it is asked. Machines with spare charge feed the cables they
-     * touch when another machine needs it more. Then the cables next to a machine or port that wants power hand it
-     * over, and every cable further out refills its neighbour one step closer, working outwards from where the power
-     * is wanted. That way power crosses a long line in one tick instead of creeping one cable at a time.
+     * Moves power along, once per game tick however often it is asked. Nearly full machines with spare charge feed the
+     * cables they touch when another machine needs it more. Then each cable next to a machine or port that wants power
+     * pulls it from the nearest cables that hold some and hands it over, so power crosses a long line in one tick.
      */
     void tick() {
         long now = level.getGameTime();
@@ -147,45 +146,85 @@ public final class CableNetwork {
         if (wants.isEmpty()) {
             return;
         }
-        // Steps from each cable to the nearest one where power is wanted.
-        Map<DataCableBlockEntity, Integer> steps = new HashMap<>();
-        List<List<DataCableBlockEntity>> rings = new ArrayList<>();
-        rings.add(new ArrayList<>(wants.keySet()));
-        wants.keySet().forEach(cable -> steps.put(cable, 0));
-        for (int ring = 0; ring < rings.size(); ring++) {
-            List<DataCableBlockEntity> next = new ArrayList<>();
-            for (DataCableBlockEntity cable : rings.get(ring)) {
-                for (DataCableBlockEntity neighbour : neighbours(cable, loaded)) {
-                    if (steps.putIfAbsent(neighbour, ring + 1) == null) next.add(neighbour);
-                }
-            }
-            if (!next.isEmpty()) rings.add(next);
+        // Each cable next to something that wants power pulls it from the nearest cables that hold some, along the
+        // shortest open path. Every hop carries at most the slower cable's rate per tick, shared by everything that
+        // crosses it, so a slow stretch slows only the power that goes through it. Whoever starts goes round.
+        Map<Hop, Integer> used = new HashMap<>();
+        List<DataCableBlockEntity> order = new ArrayList<>(wants.keySet());
+        java.util.Collections.rotate(order, (int) Math.floorMod(now, (long) order.size()));
+        Map<DataCableBlockEntity, Integer> wanted = new HashMap<>();
+        for (DataCableBlockEntity cable : order) {
+            long room = 0;
+            for (EnergyHandler target : wants.get(cable)) room += target.getCapacityAsLong() - target.getAmountAsLong();
+            wanted.put(cable, (int) Math.min(Math.min(room, (long) cable.tier().rate() * wants.get(cable).size()), cable.energy().getCapacityAsInt()));
         }
-        // Hand power to the blocks that want it, each an equal part up to the cable's rate; whoever starts goes round.
-        for (var entry : wants.entrySet()) {
-            DataCableBlockEntity cable = entry.getKey();
-            List<EnergyHandler> targets = entry.getValue();
-            int share = Math.max(1, Math.min(cable.tier().rate(), cable.energy().getAmountAsInt() / targets.size()));
-            int start = (int) Math.floorMod(now, (long) targets.size());
-            for (int i = 0; i < targets.size() && cable.energy().getAmountAsInt() > 0; i++) {
-                transfer(cable.energy(), targets.get((start + i) % targets.size()), share);
-            }
+        // When power is short, everyone gets an equal part first; then whoever still has room takes the rest.
+        int part = (int) Math.max(1, Math.min(Integer.MAX_VALUE, stored() / order.size()));
+        for (DataCableBlockEntity cable : order) {
+            pull(cable, Math.min(wanted.get(cable), part) - cable.energy().getAmountAsInt(), loaded, used);
+            handOver(cable, wants.get(cable));
         }
-        // Then refill outwards: each cable tops up its neighbours one step closer, at the slower cable's rate.
-        for (int ring = 1; ring < rings.size(); ring++) {
-            for (DataCableBlockEntity cable : rings.get(ring)) {
-                List<DataCableBlockEntity> closer = new ArrayList<>();
-                for (DataCableBlockEntity neighbour : neighbours(cable, loaded)) {
-                    if (steps.get(neighbour) == ring - 1) closer.add(neighbour);
-                }
-                for (int i = 0; i < closer.size() && cable.energy().getAmountAsInt() > 0; i++) {
-                    DataCableBlockEntity neighbour = closer.get(i);
-                    int share = Math.max(1, cable.energy().getAmountAsInt() / (closer.size() - i));
-                    transfer(cable.energy(), neighbour.energy(), Math.min(share, Math.min(cable.tier().rate(), neighbour.tier().rate())));
-                }
-            }
+        for (DataCableBlockEntity cable : order) {
+            pull(cable, wanted.get(cable) - cable.energy().getAmountAsInt(), loaded, used);
+            handOver(cable, wants.get(cable));
         }
         shareAdjacentPower();
+    }
+
+    /** Hands a cable's power to what it feeds, each an equal part up to the cable's rate. */
+    private static void handOver(DataCableBlockEntity cable, List<EnergyHandler> targets) {
+        int share = Math.max(1, Math.min(cable.tier().rate(), cable.energy().getAmountAsInt() / targets.size()));
+        for (int i = 0; i < targets.size() && cable.energy().getAmountAsInt() > 0; i++) {
+            transfer(cable.energy(), targets.get(i), share);
+        }
+    }
+
+    /** Brings up to {@code amount} into {@code cable} from the nearest cables holding power, hop by hop within each hop's rate. */
+    private void pull(DataCableBlockEntity cable, int amount, Map<BlockPos, DataCableBlockEntity> loaded, Map<Hop, Integer> used) {
+        if (amount <= 0) {
+            return;
+        }
+        Map<DataCableBlockEntity, DataCableBlockEntity> towards = new HashMap<>();
+        java.util.ArrayDeque<DataCableBlockEntity> queue = new java.util.ArrayDeque<>();
+        towards.put(cable, cable);
+        queue.add(cable);
+        while (!queue.isEmpty() && amount > 0) {
+            DataCableBlockEntity at = queue.poll();
+            if (at != cable && at.energy().getAmountAsInt() > 0) {
+                int room = at.energy().getAmountAsInt();
+                for (DataCableBlockEntity step = at; step != cable; step = towards.get(step)) {
+                    room = Math.min(room, left(step, towards.get(step), used));
+                }
+                int moved = Math.min(amount, room);
+                if (moved > 0) {
+                    transfer(at.energy(), cable.energy(), moved);
+                    for (DataCableBlockEntity step = at; step != cable; step = towards.get(step)) {
+                        used.merge(edge(step, towards.get(step)), moved, Integer::sum);
+                    }
+                    amount -= moved;
+                }
+            }
+            for (DataCableBlockEntity next : neighbours(at, loaded)) {
+                if (!towards.containsKey(next) && left(next, at, used) > 0) {
+                    towards.put(next, at);
+                    queue.add(next);
+                }
+            }
+        }
+    }
+
+    /** What the hop between two touching cables can still carry this tick. */
+    private static int left(DataCableBlockEntity a, DataCableBlockEntity b, Map<Hop, Integer> used) {
+        return Math.min(a.tier().rate(), b.tier().rate()) - used.getOrDefault(edge(a, b), 0);
+    }
+
+    /** The hop between two touching cables, the same in both directions. */
+    private record Hop(long low, long high) {}
+
+    private static Hop edge(DataCableBlockEntity a, DataCableBlockEntity b) {
+        long x = a.getBlockPos().asLong();
+        long y = b.getBlockPos().asLong();
+        return new Hop(Math.min(x, y), Math.max(x, y));
     }
 
     /** The cables this one passes power to: touching, on this network, and not behind a port. */
