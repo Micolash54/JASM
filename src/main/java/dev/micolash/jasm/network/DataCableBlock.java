@@ -14,7 +14,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -40,24 +39,21 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
-/**
- * A Data Cable, undyed or in one of the 16 dye colours. Cables of the same colour join; an undyed cable joins every
- * colour; any cable joins a JASM network block.
- */
+/** A Data Cable in one of three tiers. Any two cables join, and any cable joins a JASM network block. */
 public class DataCableBlock extends PipeBlock implements EntityBlock {
     public static final BooleanProperty HAS_PORTS = BooleanProperty.create("has_ports");
     /** False for a space that only holds thin ports, placed without a cable. It stays off the network until a cable fills it. */
     public static final BooleanProperty CORE = BooleanProperty.create("core");
-    private final @Nullable DyeColor color;
+    private final CableTier tier;
 
     @Override
     protected MapCodec<DataCableBlock> codec() {
-        return simpleCodec(properties -> new DataCableBlock(properties, color));
+        return simpleCodec(properties -> new DataCableBlock(properties, tier));
     }
 
-    public DataCableBlock(BlockBehaviour.Properties properties, @Nullable DyeColor color) {
+    public DataCableBlock(BlockBehaviour.Properties properties, CableTier tier) {
         super(6.0F, properties);
-        this.color = color;
+        this.tier = tier;
         registerDefaultState(stateDefinition.any().setValue(NORTH, false).setValue(EAST, false).setValue(SOUTH, false)
                 .setValue(WEST, false).setValue(UP, false).setValue(DOWN, false).setValue(HAS_PORTS, false).setValue(CORE, true));
     }
@@ -232,13 +228,8 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         return new ItemStack(this);
     }
 
-    public @Nullable DyeColor color() {
-        return color;
-    }
-
-    /** Whether two cables carry data between them: same colour, or either one undyed. */
-    public static boolean compatible(@Nullable DyeColor a, @Nullable DyeColor b) {
-        return a == null || b == null || a == b;
+    public CableTier tier() {
+        return tier;
     }
 
     @Override
@@ -271,8 +262,8 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
                     || level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity)) {
             return Networks.canConnect(serverLevel, own, neighbourPos);
         }
-        if (neighbour.getBlock() instanceof DataCableBlock other) {
-            return compatible(color, other.color);
+        if (neighbour.getBlock() instanceof DataCableBlock) {
+            return true;
         }
         if (neighbour.getBlock() instanceof MachineBlock) {
             return true;

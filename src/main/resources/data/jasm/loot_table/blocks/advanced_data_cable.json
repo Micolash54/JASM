@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "jasm:advanced_data_cable"
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        },
+        {
+          "condition": "minecraft:block_state_property",
+          "block": "jasm:advanced_data_cable",
+          "properties": {
+            "core": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jasm:blocks/advanced_data_cable"
+}

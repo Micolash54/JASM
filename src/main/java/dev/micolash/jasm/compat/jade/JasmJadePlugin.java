@@ -28,6 +28,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(ArchiveInfo.INSTANCE, ArchiveBlockEntity.class);
         registration.registerBlockDataProvider(GeneratorInfo.INSTANCE, CombustionGeneratorBlockEntity.class);
         registration.registerEnergyStorage(InfiniteEnergy.INSTANCE, CreativeBatteryBlockEntity.class);
+        registration.registerEnergyStorage(CableEnergy.INSTANCE, dev.micolash.jasm.network.DataCableBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, dev.micolash.jasm.network.DataCableBlockEntity.class);
         registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);
@@ -39,6 +40,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(ArchiveInfo.Client.INSTANCE, ArchiveBlock.class);
         registration.registerBlockComponent(GeneratorInfo.Client.INSTANCE, CombustionGeneratorBlock.class);
         registration.registerEnergyStorageClient(InfiniteEnergy.INSTANCE);
+        registration.registerEnergyStorageClient(CableEnergy.INSTANCE);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, dev.micolash.jasm.network.DataCableBlock.class);
         registration.registerBlockComponent(WorkshopInfo.Client.INSTANCE, ChipWorkshopBlock.class);

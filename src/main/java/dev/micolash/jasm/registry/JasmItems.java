@@ -22,6 +22,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -111,6 +112,9 @@ public final class JasmItems {
             GENERATORS.put(tier, ITEMS.registerSimpleBlockItem(JasmBlocks.generator(tier)));
         }
         JasmBlocks.cables().forEach(cable -> CABLES.add(ITEMS.registerSimpleBlockItem(cable)));
+        for (DyeColor color : DyeColor.values()) {
+            ITEMS.addAlias(Jasm.id(color.getSerializedName() + "_data_cable"), Jasm.id("data_cable"));
+        }
         for (ProcessorTier tier : ProcessorTier.values()) {
             PROCESSORS.put(tier, ITEMS.registerItem(tier.registryName(), p -> ServerPartItem.processor(p, tier), p -> p.stacksTo(16)));
         }

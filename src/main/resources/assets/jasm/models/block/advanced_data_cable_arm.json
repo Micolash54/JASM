@@ -1,0 +1,6 @@
+{
+  "parent": "jasm:block/cable_arm_template",
+  "textures": {
+    "cable": "jasm:block/advanced_data_cable"
+  }
+}

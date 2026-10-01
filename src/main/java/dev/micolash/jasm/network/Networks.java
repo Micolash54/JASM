@@ -16,7 +16,6 @@ import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -40,8 +39,6 @@ public final class Networks {
     private final ServerLevel level;
     private final Map<BlockPos, CableNetwork> byPos = new HashMap<>();
     private final Set<CableNetwork> all = new LinkedHashSet<>();
-    /** Power held by networks that were thrown away, by one of their blocks, until a new network picks it up. */
-    private final Map<BlockPos, Integer> leftover = new HashMap<>();
 
     private Networks(ServerLevel level) {
         this.level = level;
@@ -263,14 +260,6 @@ public final class Networks {
     }
 
     private void clear() {
-        // Power not yet picked up from an earlier change stays waiting too, however often things change meanwhile.
-        for (CableNetwork network : all) {
-            int energy = network.buffer().getAmountAsInt();
-            if (energy > 0 && !network.cables().isEmpty()) {
-                leftover.merge(network.cables().iterator().next(), energy, Integer::sum);
-            }
-        }
-        leftover.keySet().removeIf(pos -> level.isLoaded(pos) && !(level.getBlockState(pos).getBlock() instanceof DataCableBlock));
         all.clear();
         byPos.clear();
     }
@@ -321,14 +310,7 @@ public final class Networks {
                 }
             }
         }
-        int energy = 0;
-        for (BlockPos cable : cables) {
-            Integer held = leftover.remove(cable);
-            if (held != null) {
-                energy += held;
-            }
-        }
-        CableNetwork network = new CableNetwork(level, cables, machines, energy, complete && queue.isEmpty());
+        CableNetwork network = new CableNetwork(level, cables, machines, complete && queue.isEmpty());
         all.add(network);
         cables.forEach(p -> byPos.put(p, network));
         machines.forEach(p -> byPos.put(p, network));
@@ -355,9 +337,7 @@ public final class Networks {
         boolean fromCable = from.getBlock() instanceof DataCableBlock;
         boolean toCable = to.getBlock() instanceof DataCableBlock;
         if (fromCable && toCable) {
-            DyeColor a = ((DataCableBlock) from.getBlock()).color();
-            DyeColor b = ((DataCableBlock) to.getBlock()).color();
-            return DataCableBlock.compatible(a, b);
+            return true;
         }
         return toCable || isBlock(toPos);
     }

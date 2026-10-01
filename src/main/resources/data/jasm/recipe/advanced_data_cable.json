@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "jasm:data_cable",
+    "L": "jasm:link_chip"
+  },
+  "pattern": [
+    "CCC",
+    "CLC",
+    "CCC"
+  ],
+  "result": {
+    "id": "jasm:advanced_data_cable",
+    "count": 8
+  }
+}

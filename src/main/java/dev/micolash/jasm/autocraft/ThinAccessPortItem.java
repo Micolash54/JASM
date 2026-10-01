@@ -47,7 +47,7 @@ public class ThinAccessPortItem extends Item {
             return InteractionResult.FAIL;
         }
         if (level.isClientSide()) return InteractionResult.SUCCESS;
-        BlockState host = JasmBlocks.cable(null).get().defaultBlockState().setValue(DataCableBlock.CORE, false);
+        BlockState host = JasmBlocks.cable(dev.micolash.jasm.network.CableTier.BASIC).get().defaultBlockState().setValue(DataCableBlock.CORE, false);
         if (!level.setBlock(pos, host, Block.UPDATE_ALL) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity cable)) {
             return InteractionResult.FAIL;
         }

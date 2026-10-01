@@ -1,7 +1,5 @@
 # Recipes
 
-These recipes are for JASM 0.5.0 on Minecraft 26.1.2 with NeoForge. See the [requirements](../README.md#requirements) for loader and optional mod versions.
-
 The first tier of every item is made from vanilla items. From there on, recipes use JASM's own chips: hand-made Logic and Memory Chips first, then Link Chips, then Advanced chips from the Chip Workshop. Every higher tier needs the tier below it, and nothing it holds is lost on the way up.
 
 ## Capacity Wafers
@@ -62,7 +60,7 @@ Decks work in the Overworld by default. Install a Dimension Upgrade in the Deck'
 
 ## Autocrafting
 
-Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold them for the network; Crafting Servers run the jobs. Data Cables join it all and carry power. Eight cables around any dye give eight cables of that colour. A Filled Recipe Card crafted on its own turns back into an Empty Recipe Card.
+Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold them for the network; Crafting Servers run the jobs. Data Cables join it all and carry power. Eight cables around a Link Chip make eight Advanced Data Cables (10,000 FE/t), and eight Advanced around an Advanced Link Chip make eight Elite (50,000 FE/t). Each cable passes power on at its own speed, so a slower cable only slows the power that goes through it. A Filled Recipe Card crafted on its own turns back into an Empty Recipe Card.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
@@ -79,7 +77,8 @@ Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold 
 | ![Input Output Port](images/recipes/input_output_port.png) | **Input Output Port** | 1 × Input Port, 1 × Output Port, 1 × Blue Dye |
 | ![Speed Upgrade](images/recipes/speed_upgrade.png) | **Speed Upgrade** | 4 × Gold Ingot, 4 × Sugar, 1 × Link Chip |
 | ![Data Cable](images/recipes/data_cable.png) | **Data Cable** | 6 × Iron Nugget, 2 × Redstone, 1 × Amethyst Shard |
-| ![Red Data Cable](images/recipes/red_data_cable.png) | **Red Data Cable** | 8 × Data Cable (any colour), 1 × Red Dye |
+| ![Advanced Data Cable](images/recipes/advanced_data_cable.png) | **Advanced Data Cable** | 8 × Data Cable, 1 × Link Chip |
+| ![Elite Data Cable](images/recipes/elite_data_cable.png) | **Elite Data Cable** | 8 × Advanced Data Cable, 1 × Advanced Link Chip |
 
 ## Processors and Storage Modules
 

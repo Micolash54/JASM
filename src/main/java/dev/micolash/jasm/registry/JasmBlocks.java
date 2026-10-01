@@ -22,6 +22,7 @@ import dev.micolash.jasm.crystal.SeededAmethystBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
+import dev.micolash.jasm.network.CableTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.station.BitlingStationBlock;
@@ -29,10 +30,8 @@ import dev.micolash.jasm.station.BitlingStationBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopBlock;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import net.minecraft.core.registries.Registries;
@@ -47,7 +46,6 @@ import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.material.PushReaction;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredRegister;
-import org.jspecify.annotations.Nullable;
 
 public final class JasmBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(Jasm.MODID);
@@ -171,14 +169,15 @@ public final class JasmBlocks {
     public static final Supplier<BlockEntityType<DataCableBlockEntity>> DATA_CABLE_ENTITY = BLOCK_ENTITIES.register(
             "data_cable", () -> new BlockEntityType<>(DataCableBlockEntity::new, cables().stream().map(DeferredBlock::get).toArray(Block[]::new)));
 
-    /** Undyed first, then one per dye colour. */
-    private static final Map<Optional<DyeColor>, DeferredBlock<DataCableBlock>> CABLES = new LinkedHashMap<>();
+    private static final Map<CableTier, DeferredBlock<DataCableBlock>> CABLES = new EnumMap<>(CableTier.class);
 
     static {
-        CABLES.put(Optional.empty(), BLOCKS.registerBlock("data_cable", p -> new DataCableBlock(p, null), JasmBlocks::cableProperties));
+        for (CableTier tier : CableTier.values()) {
+            CABLES.put(tier, BLOCKS.registerBlock(tier.registryName(), p -> new DataCableBlock(p, tier), JasmBlocks::cableProperties));
+        }
+        // Dyed cables were removed: those in saved worlds become plain Data Cables.
         for (DyeColor color : DyeColor.values()) {
-            CABLES.put(Optional.of(color), BLOCKS.registerBlock(color.getSerializedName() + "_data_cable", p -> new DataCableBlock(p, color),
-                    JasmBlocks::cableProperties));
+            BLOCKS.addAlias(Jasm.id(color.getSerializedName() + "_data_cable"), Jasm.id("data_cable"));
         }
     }
 
@@ -186,9 +185,8 @@ public final class JasmBlocks {
         return p.mapColor(MapColor.COLOR_GRAY).strength(0.5F).sound(SoundType.METAL).noOcclusion().dynamicShape();
     }
 
-    /** The cable of {@code color}, or the undyed one for null. */
-    public static DeferredBlock<DataCableBlock> cable(@Nullable DyeColor color) {
-        return CABLES.get(Optional.ofNullable(color));
+    public static DeferredBlock<DataCableBlock> cable(CableTier tier) {
+        return CABLES.get(tier);
     }
 
     public static List<DeferredBlock<DataCableBlock>> cables() {

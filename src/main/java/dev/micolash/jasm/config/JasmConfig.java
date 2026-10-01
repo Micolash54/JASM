@@ -88,11 +88,14 @@ public final class JasmConfig {
             .comment("Seconds a rule that couldn't start waits before trying again")
             .defineInRange("ruleRetrySeconds", 5, 1, 3_600);
     public static final ModConfigSpec.IntValue CABLE_RATE = BUILDER
-            .comment("FE a Data Cable network moves into or out of each block it touches, per tick")
+            .comment("FE a Data Cable network moves into or out of each block it touches, per tick. Between two cables, the slower one sets the rate")
             .defineInRange("cableRate", 1_000, 1, Integer.MAX_VALUE);
-    public static final ModConfigSpec.IntValue CABLE_BUFFER = BUILDER
-            .comment("FE each Data Cable holds while passing it on")
-            .defineInRange("cableBuffer", 1_000, 1, 1_000_000);
+    public static final ModConfigSpec.IntValue ADVANCED_CABLE_RATE = BUILDER
+            .comment("Advanced Data Cable transfer rate, FE per tick")
+            .defineInRange("advancedCableRate", 10_000, 1, Integer.MAX_VALUE);
+    public static final ModConfigSpec.IntValue ELITE_CABLE_RATE = BUILDER
+            .comment("Elite Data Cable transfer rate, FE per tick")
+            .defineInRange("eliteCableRate", 50_000, 1, Integer.MAX_VALUE);
 
     static {
         BUILDER.pop().push("chips");

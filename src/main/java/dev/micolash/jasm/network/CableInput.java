@@ -1,13 +1,11 @@
 package dev.micolash.jasm.network;
 
-import dev.micolash.jasm.config.JasmConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.neoforged.neoforge.transfer.energy.EmptyEnergyHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 
-/** What a generator touching a cable sees: room in the cable's network, up to the cable rate per push. */
+/** What a generator touching a cable sees: room in that cable, up to its rate per push. Nothing comes back out. */
 final class CableInput implements EnergyHandler {
     private final ServerLevel level;
     private final BlockPos pos;
@@ -17,24 +15,26 @@ final class CableInput implements EnergyHandler {
         this.pos = pos;
     }
 
-    private EnergyHandler buffer() {
-        CableNetwork network = Networks.at(level, pos);
-        return network == null ? EmptyEnergyHandler.INSTANCE : network.buffer();
+    private DataCableBlockEntity cable() {
+        return level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? cable : null;
     }
 
     @Override
     public long getAmountAsLong() {
-        return buffer().getAmountAsLong();
+        var cable = cable();
+        return cable == null ? 0 : cable.energy().getAmountAsLong();
     }
 
     @Override
     public long getCapacityAsLong() {
-        return buffer().getCapacityAsLong();
+        var cable = cable();
+        return cable == null ? 0 : cable.energy().getCapacityAsLong();
     }
 
     @Override
     public int insert(int amount, TransactionContext transaction) {
-        return buffer().insert(Math.min(amount, JasmConfig.CABLE_RATE.getAsInt()), transaction);
+        var cable = cable();
+        return cable == null ? 0 : cable.energy().insert(Math.min(amount, cable.tier().rate()), transaction);
     }
 
     @Override
