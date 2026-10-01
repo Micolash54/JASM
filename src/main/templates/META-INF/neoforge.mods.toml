@@ -63,7 +63,7 @@ Just Another Storage Mod: portable, recoverable digital storage.
     # Optional field describing why the dependency is required or why it is incompatible
     # reason="..."
     # The version range of the dependency
-    versionRange="[${neo_version},)" #mandatory
+    versionRange="${neo_version_range}" #mandatory
     # An ordering relationship for the dependency.
     # BEFORE - This mod is loaded BEFORE the dependency
     # AFTER - This mod is loaded AFTER the dependency
@@ -84,14 +84,14 @@ Just Another Storage Mod: portable, recoverable digital storage.
 [[dependencies.${mod_id}]]
     modId="jei"
     type="optional"
-    versionRange="[29.43.0.106]"
+    versionRange="[29.37.0.99,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="jade"
     type="optional"
-    versionRange="[26.1.10+neoforge]"
+    versionRange="[26.1.10+neoforge,)"
     ordering="NONE"
     side="BOTH"
 
