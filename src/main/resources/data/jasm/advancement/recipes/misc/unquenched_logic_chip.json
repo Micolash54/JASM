@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:unquenched_logic_chip"
+        "recipe": "jasm:unquenched_logic_chip"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

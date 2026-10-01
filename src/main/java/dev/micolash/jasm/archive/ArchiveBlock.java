@@ -1,5 +1,6 @@
 package dev.micolash.jasm.archive;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -36,6 +37,11 @@ public class ArchiveBlock extends BaseEntityBlock {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
 
     private final ArchiveTier tier;
+
+    @Override
+    protected MapCodec<ArchiveBlock> codec() {
+        return simpleCodec(properties -> new ArchiveBlock(properties, tier));
+    }
 
     public ArchiveBlock(BlockBehaviour.Properties properties, ArchiveTier tier) {
         super(properties);

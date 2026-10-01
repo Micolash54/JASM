@@ -23,7 +23,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -86,8 +86,8 @@ public class CraftingServerRenderer implements BlockEntityRenderer<CraftingServe
         // the block behind.
         Level level = server.getLevel();
         if (level != null) {
-            state.lightCoords = LightCoordsUtil.getLightCoords(level, server.getBlockPos().relative(state.facing));
-            state.backLight = LightCoordsUtil.getLightCoords(level, server.getBlockPos().relative(state.facing.getOpposite()));
+            state.lightCoords = LevelRenderer.getLightCoords(level, server.getBlockPos().relative(state.facing));
+            state.backLight = LevelRenderer.getLightCoords(level, server.getBlockPos().relative(state.facing.getOpposite()));
         }
     }
 
@@ -96,7 +96,7 @@ public class CraftingServerRenderer implements BlockEntityRenderer<CraftingServe
         ModelManager models = Minecraft.getInstance().getModelManager();
         poseStack.pushPose();
         poseStack.translate(0.5F, 0.5F, 0.5F);
-        poseStack.rotateDegrees(Axis.YP, 180 - state.facing.toYRot());
+        poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.facing.toYRot()));
         poseStack.translate(-0.5F, -0.5F, -0.5F);
         for (int row = 0; row < ROWS; row++) {
             ProcessorTier processor = state.processors[row];

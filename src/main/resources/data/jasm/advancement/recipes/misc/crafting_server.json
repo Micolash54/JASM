@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:crafting_server"
+        "recipe": "jasm:crafting_server"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:elite_processor"
+        "recipe": "jasm:elite_processor"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

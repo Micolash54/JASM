@@ -6,15 +6,17 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "modifier": {
-            "type": "minecraft:copy_components",
-            "include": [
-              "jasm:archive_identity",
-              "jasm:energy"
-            ],
-            "source": "block_entity"
-          },
-          "name": "jasm:ultimate_archive"
+          "name": "jasm:ultimate_archive",
+          "functions": [
+            {
+              "include": [
+                "jasm:archive_identity",
+                "jasm:energy"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
         }
       ]
     }

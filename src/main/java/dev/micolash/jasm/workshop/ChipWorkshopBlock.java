@@ -1,5 +1,6 @@
 package dev.micolash.jasm.workshop;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -17,6 +18,11 @@ import org.jspecify.annotations.Nullable;
 /** The Chip Workshop, where a Bitling makes chips. */
 public class ChipWorkshopBlock extends MachineBlock {
     public static final EnumProperty<WorkshopStatus> STATUS = EnumProperty.create("status", WorkshopStatus.class);
+
+    @Override
+    protected MapCodec<ChipWorkshopBlock> codec() {
+        return simpleCodec(ChipWorkshopBlock::new);
+    }
 
     public ChipWorkshopBlock(BlockBehaviour.Properties properties) {
         super(properties);

@@ -1,5 +1,7 @@
 # Recipes
 
+These recipes are for JASM 0.5.0 on Minecraft 26.1.2 with NeoForge. See the [requirements](../README.md#requirements) for loader and optional mod versions.
+
 The first tier of every item is made from vanilla items. From there on, recipes use JASM's own chips: hand-made Logic and Memory Chips first, then Link Chips, then Advanced chips from the Chip Workshop. Every higher tier needs the tier below it, and nothing it holds is lost on the way up.
 
 ## Capacity Wafers

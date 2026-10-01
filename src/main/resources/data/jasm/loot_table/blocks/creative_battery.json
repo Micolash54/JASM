@@ -7,13 +7,15 @@
         {
           "type": "minecraft:item",
           "name": "jasm:creative_battery",
-          "modifier": {
-            "type": "minecraft:copy_components",
-            "include": [
-              "jasm:owner"
-            ],
-            "source": "block_entity"
-          }
+          "functions": [
+            {
+              "include": [
+                "jasm:owner"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
         }
       ],
       "conditions": [

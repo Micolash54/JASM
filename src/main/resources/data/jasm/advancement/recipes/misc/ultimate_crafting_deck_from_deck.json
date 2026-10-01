@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:ultimate_crafting_deck_from_deck"
+        "recipe": "jasm:ultimate_crafting_deck_from_deck"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

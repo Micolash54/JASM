@@ -22,6 +22,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -72,7 +73,7 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
         state.inUse = terminal.shownInUse();
         // The terminal is solid, so its own spot is dark: light the cards from the block in front of it.
         if (terminal.getLevel() != null) {
-            state.lightCoords = LightCoordsUtil.getLightCoords(terminal.getLevel(), terminal.getBlockPos().relative(state.facing));
+            state.lightCoords = LevelRenderer.getLightCoords(terminal.getLevel(), terminal.getBlockPos().relative(state.facing));
         }
     }
 
@@ -84,7 +85,7 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
         ModelManager models = Minecraft.getInstance().getModelManager();
         poseStack.pushPose();
         poseStack.translate(0.5F, 0.5F, 0.5F);
-        poseStack.rotateDegrees(Axis.YP, 180 - state.facing.toYRot());
+        poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.facing.toYRot()));
         poseStack.translate(-0.5F, -0.5F, -0.5F);
         for (int i = 0; i < state.cards; i++) {
             int pile = i / PILE_HEIGHT;

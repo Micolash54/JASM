@@ -1,5 +1,6 @@
 package dev.micolash.jasm.crystal;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -13,6 +14,11 @@ import org.jspecify.annotations.Nullable;
 
 /** The Crystal Foundry: Crystal Seeds in, Blank Chips out. */
 public class CrystalFoundryBlock extends MachineBlock {
+    @Override
+    protected MapCodec<CrystalFoundryBlock> codec() {
+        return simpleCodec(CrystalFoundryBlock::new);
+    }
+
     public CrystalFoundryBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }

@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:storage_module_16k"
+        "recipe": "jasm:storage_module_16k"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

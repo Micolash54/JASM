@@ -1,5 +1,6 @@
 package dev.micolash.jasm.station;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -20,6 +21,11 @@ public class BitlingStationBlock extends MachineBlock {
     /** How high the pad is, in blocks: the Bitling stands on top of it. */
     public static final double PAD_HEIGHT = 4 / 16.0;
     private static final VoxelShape SHAPE = Shapes.box(0, 0, 0, 1, PAD_HEIGHT, 1);
+
+    @Override
+    protected MapCodec<BitlingStationBlock> codec() {
+        return simpleCodec(BitlingStationBlock::new);
+    }
 
     public BitlingStationBlock(BlockBehaviour.Properties properties) {
         super(properties);

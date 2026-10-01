@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:advanced_processor"
+        "recipe": "jasm:advanced_processor"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

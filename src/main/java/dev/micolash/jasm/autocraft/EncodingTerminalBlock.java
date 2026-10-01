@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -13,6 +14,11 @@ import org.jspecify.annotations.Nullable;
 
 /** The Encoding Terminal. Only its owner and the players they trust can open it. */
 public class EncodingTerminalBlock extends MachineBlock {
+    @Override
+    protected MapCodec<EncodingTerminalBlock> codec() {
+        return simpleCodec(EncodingTerminalBlock::new);
+    }
+
     public EncodingTerminalBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }

@@ -40,14 +40,20 @@ Every item except the Creative Battery is craftable in survival. The first tier 
 
 ## Requirements
 
-- Minecraft 26.3
-- NeoForge 26.3.0.16-beta
+- Minecraft 26.1.2
+- NeoForge 26.1.2.112
+
+The current release is JASM 0.5.0 for Minecraft 26.1.2. Development for 26.3 is paused, and its older releases are archived.
+
+Supported optional versions: JEI 29.43.0.106 and Jade 26.1.10+neoforge.
 
 Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed, you get all recipes, info pages and a fuel page for the generators, the Deck's grid works with JEI's recipe keys, and JEI's "+" fills the Crafting Deck's grid and the Encoding Terminal. With [Jade](https://www.curseforge.com/minecraft/mc-mods/jade), looking at an Archive, generator, crafting block, Chip Workshop or Crystal Foundry shows its details.
 
 ## Installing
 
-Download the latest jar from [Releases](https://github.com/Micolash54/JASM/releases) and put it in your `mods` folder.
+Download `jasm-mc26.1.2-neoforge-0.5.0.jar` from [Releases](https://github.com/Micolash54/JASM/releases) and put it in your `mods` folder.
+
+Use a Minecraft 26.1.2 world. Downgrading a 26.3 save is not supported.
 
 ## License
 

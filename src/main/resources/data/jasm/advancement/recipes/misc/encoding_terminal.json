@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:encoding_terminal"
+        "recipe": "jasm:encoding_terminal"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

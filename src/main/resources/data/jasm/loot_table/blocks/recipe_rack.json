@@ -6,15 +6,17 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "modifier": {
-            "type": "minecraft:copy_components",
-            "include": [
-              "jasm:energy",
-              "jasm:owner"
-            ],
-            "source": "block_entity"
-          },
-          "name": "jasm:recipe_rack"
+          "name": "jasm:recipe_rack",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy",
+                "jasm:owner"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
         }
       ],
       "conditions": [

@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:type_wafer_16"
+        "recipe": "jasm:type_wafer_16"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

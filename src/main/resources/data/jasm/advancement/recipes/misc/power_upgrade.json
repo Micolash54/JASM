@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:power_upgrade"
+        "recipe": "jasm:power_upgrade"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

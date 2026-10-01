@@ -1,5 +1,7 @@
 # Crystals, chips and Bitlings
 
+This guide is for JASM 0.5.0 on Minecraft 26.1.2 with NeoForge. See the [requirements](../README.md#requirements) for loader and optional mod versions.
+
 JASM's recipes are made from its own chips. This page shows how to get them, from your first hand-made chip to a Workshop run by a fully grown Byteling. The exact recipes are on the [recipes page](recipes.md).
 
 ## Growing Data Crystals

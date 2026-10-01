@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:basic_deck"
+        "recipe": "jasm:basic_deck"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

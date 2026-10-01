@@ -17,7 +17,6 @@ import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Prediction;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -456,7 +455,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             if (!left.isEmpty()) {
                 // Something that couldn't go back to the wafers is in the way; move it to the inventory.
                 grid.setItem(i, ItemStack.EMPTY);
-                player.getInventory().placeItemBackInInventory(left, Prediction.SERVER_ONLY);
+                player.getInventory().placeItemBackInInventory(left);
             }
         }
         WaferStore store = WaferStore.get(player.level().getServer());

@@ -140,9 +140,9 @@ public final class BitlingAnimations {
         float[] pivot = bone.pivot();
         poseStack.translate(v[0] / 16, v[1] / 16, v[2] / 16);
         poseStack.translate(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
-        poseStack.rotateDegrees(Axis.ZP, v[5]);
-        poseStack.rotateDegrees(Axis.YP, v[4]);
-        poseStack.rotateDegrees(Axis.XP, v[3]);
+        poseStack.mulPose(Axis.ZP.rotationDegrees(v[5]));
+        poseStack.mulPose(Axis.YP.rotationDegrees(v[4]));
+        poseStack.mulPose(Axis.XP.rotationDegrees(v[3]));
         // A part shrunk to nothing, like the chip before it is picked up, is simply not there.
         poseStack.scale(Math.max(v[6], 1e-4F), Math.max(v[7], 1e-4F), Math.max(v[8], 1e-4F));
         poseStack.translate(-pivot[0] / 16, -pivot[1] / 16, -pivot[2] / 16);

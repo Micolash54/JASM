@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:dimension_upgrade"
+        "recipe": "jasm:dimension_upgrade"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

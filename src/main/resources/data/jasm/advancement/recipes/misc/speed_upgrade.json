@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:speed_upgrade"
+        "recipe": "jasm:speed_upgrade"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

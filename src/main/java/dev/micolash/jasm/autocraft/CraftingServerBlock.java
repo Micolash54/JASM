@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -14,8 +15,13 @@ import org.jspecify.annotations.Nullable;
 
 /** The Crafting Server. Pistons can't move it, so a running job never ends up somewhere else. */
 public class CraftingServerBlock extends MachineBlock {
+    @Override
+    protected MapCodec<CraftingServerBlock> codec() {
+        return simpleCodec(CraftingServerBlock::new);
+    }
+
     public CraftingServerBlock(BlockBehaviour.Properties properties) {
-        super(properties.pushReaction(PushReaction.IMMOVEABLE));
+        super(properties.pushReaction(PushReaction.BLOCK));
     }
 
     @Override

@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.renderer.block.dispatch.SingleVariant;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
@@ -58,7 +59,7 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
             state.cableParts = List.copyOf(parts);
         }
         if (breakProgress != null && minecraft.level != null) {
-            var progresses = minecraft.level.destructionProgress().get(cable.getBlockPos().asLong());
+            var progresses = minecraft.levelRenderer.destructionProgress.get(cable.getBlockPos().asLong());
             if (progresses != null && !progresses.isEmpty()
                     && minecraft.level.getEntity(progresses.last().getId()) instanceof net.minecraft.world.entity.player.Player player) {
                 state.breakingPort = DataCableBlock.selectedPort(minecraft.level, cable.getBlockPos(), player);
@@ -76,7 +77,9 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
         collector.submitBlockModel(poses, Sheets.cutoutBlockItemSheet(), state.cableParts, BlockModelRenderState.EMPTY_TINTS,
                 state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
         if (state.breakProgress != null && state.breakingPort == null) {
-            collector.submitBreakingBlockModel(poses, state.cableParts, state.breakProgress.progress(), false);
+            for (var part : state.cableParts) {
+                collector.submitBreakingBlockModel(poses, new SingleVariant(part), 0, state.breakProgress.progress());
+            }
         }
 
         for (Direction side : Direction.values()) {
@@ -88,17 +91,17 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
             poses.translate(0.5F, 0.5F, 0.5F);
             switch (side) {
                 case NORTH -> {}
-                case SOUTH -> poses.rotateDegrees(Axis.YP, 180);
-                case EAST -> poses.rotateDegrees(Axis.YP, -90);
-                case WEST -> poses.rotateDegrees(Axis.YP, 90);
-                case UP -> poses.rotateDegrees(Axis.XP, 90);
-                case DOWN -> poses.rotateDegrees(Axis.XP, -90);
+                case SOUTH -> poses.mulPose(Axis.YP.rotationDegrees(180));
+                case EAST -> poses.mulPose(Axis.YP.rotationDegrees(-90));
+                case WEST -> poses.mulPose(Axis.YP.rotationDegrees(90));
+                case UP -> poses.mulPose(Axis.XP.rotationDegrees(90));
+                case DOWN -> poses.mulPose(Axis.XP.rotationDegrees(-90));
             }
             poses.translate(-0.5F, -0.5F, -0.5F);
             collector.submitBlockModel(poses, Sheets.cutoutBlockItemSheet(), List.of(model), BlockModelRenderState.EMPTY_TINTS,
                     state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
             if (state.breakProgress != null && state.breakingPort == side) {
-                collector.submitBreakingBlockModel(poses, List.of(model), state.breakProgress.progress(), false);
+                collector.submitBreakingBlockModel(poses, new SingleVariant(model), 0, state.breakProgress.progress());
             }
             poses.popPose();
         }

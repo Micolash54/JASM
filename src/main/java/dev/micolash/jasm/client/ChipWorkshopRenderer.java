@@ -25,7 +25,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -102,7 +102,7 @@ public class ChipWorkshopRenderer implements BlockEntityRenderer<ChipWorkshopBlo
             long offset = workshop.getBlockPos().asLong() * 7919L;
             state.seconds = ((level.getGameTime() + Math.floorMod(offset, 2000L)) + partialTicks) / 20F;
             // The room is open to the front, so it takes the light of the block in front.
-            state.lightCoords = LightCoordsUtil.getLightCoords(level, workshop.getBlockPos().relative(state.facing));
+            state.lightCoords = LevelRenderer.getLightCoords(level, workshop.getBlockPos().relative(state.facing));
         }
     }
 
@@ -120,7 +120,7 @@ public class ChipWorkshopRenderer implements BlockEntityRenderer<ChipWorkshopBlo
         ModelManager models = Minecraft.getInstance().getModelManager();
         poseStack.pushPose();
         poseStack.translate(0.5F, 0.5F, 0.5F);
-        poseStack.rotateDegrees(Axis.YP, 180 - state.facing.toYRot());
+        poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.facing.toYRot()));
         poseStack.translate(-0.5F, -0.5F, -0.5F);
         poseStack.translate(SPOT_X / 16, SPOT_Y / 16, SPOT_Z / 16);
         poseStack.scale(SCALE, SCALE, SCALE);

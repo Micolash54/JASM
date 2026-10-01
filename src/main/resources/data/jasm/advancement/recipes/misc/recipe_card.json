@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:recipe_card"
+        "recipe": "jasm:recipe_card"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -13,6 +14,11 @@ import org.jspecify.annotations.Nullable;
 
 /** The Recipe Rack: 16 Filled Recipe Cards for its network. */
 public class RecipeRackBlock extends MachineBlock {
+    @Override
+    protected MapCodec<RecipeRackBlock> codec() {
+        return simpleCodec(RecipeRackBlock::new);
+    }
+
     public RecipeRackBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }

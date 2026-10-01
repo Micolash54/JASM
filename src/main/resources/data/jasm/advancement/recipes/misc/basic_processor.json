@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:basic_processor"
+        "recipe": "jasm:basic_processor"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

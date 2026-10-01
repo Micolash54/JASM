@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:basic_archive"
+        "recipe": "jasm:basic_archive"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

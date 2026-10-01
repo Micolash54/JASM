@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:capacity_wafer_basic"
+        "recipe": "jasm:capacity_wafer_basic"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

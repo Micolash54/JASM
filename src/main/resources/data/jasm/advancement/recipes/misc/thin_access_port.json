@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:thin_access_port"
+        "recipe": "jasm:thin_access_port"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

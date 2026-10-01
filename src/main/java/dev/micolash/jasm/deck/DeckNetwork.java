@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Prediction;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -74,7 +73,7 @@ public final class DeckNetwork {
                 moved += stack.getCount();
                 if (payload.mode() == DeckPayloads.ExtractMode.TO_INVENTORY) {
                     // Room was counted first; anything that still does not fit is dropped at the player's feet, never lost.
-                    player.getInventory().placeItemBackInInventory(stack, Prediction.SERVER_ONLY);
+                    player.getInventory().placeItemBackInInventory(stack);
                 } else if (menu.getCarried().isEmpty()) {
                     menu.setCarried(stack);
                 } else {

@@ -15,6 +15,7 @@ import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
 /** The generator's menu: fuel slot, charging slot, then the player's inventory (27 slots) and hotbar (9). */
@@ -37,6 +38,7 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
     private static final Identifier EMPTY_FUEL = Jasm.id("container/empty_fuel");
     private static final Identifier EMPTY_BOLT = Jasm.id("container/empty_bolt");
 
+    private final Level level;
     private final Container container;
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -46,6 +48,7 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
     public CombustionGeneratorMenu(int containerId, Inventory inventory, Container container, ContainerData data, ContainerLevelAccess access,
             @Nullable Block block) {
         super(JasmMenus.COMBUSTION_GENERATOR.get(), containerId);
+        this.level = inventory.player.level();
         this.container = container;
         this.data = data;
         this.access = access;
@@ -68,7 +71,7 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
         this(containerId, inventory, new SimpleContainer(2) {
             @Override
             public boolean canPlaceItem(int slot, ItemStack stack) {
-                return CombustionGeneratorBlockEntity.accepts(slot, stack);
+                return CombustionGeneratorBlockEntity.accepts(slot, stack, inventory.player.level());
             }
         }, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null);
     }
@@ -120,7 +123,7 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
         boolean moved;
         if (index < 2) {
             moved = moveItemStackTo(stack, 29, 38, false) || moveItemStackTo(stack, 2, 29, false);
-        } else if (CombustionGeneratorBlockEntity.isFuel(stack)) {
+        } else if (CombustionGeneratorBlockEntity.isFuel(stack, level)) {
             moved = moveItemStackTo(stack, 0, 1, false);
         } else {
             moved = CreativeBatteryMenu.canCharge(stack) && moveItemStackTo(stack, 1, 2, false);

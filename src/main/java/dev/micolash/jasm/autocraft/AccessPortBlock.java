@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
@@ -57,6 +58,11 @@ public class AccessPortBlock extends BaseEntityBlock {
             NECKS.put(side, facing(side, 5, 5, 0, 11, 11, 3));
             PADS.put(side, Shapes.or(facing(side, 5, 5, 1, 11, 11, 3), facing(side, 4, 4, 0, 12, 12, 1)));
         }
+    }
+
+    @Override
+    protected MapCodec<AccessPortBlock> codec() {
+        return simpleCodec(AccessPortBlock::new);
     }
 
     public AccessPortBlock(BlockBehaviour.Properties properties) {

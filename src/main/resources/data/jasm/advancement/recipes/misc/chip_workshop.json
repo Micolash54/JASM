@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:chip_workshop"
+        "recipe": "jasm:chip_workshop"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

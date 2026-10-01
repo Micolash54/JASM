@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:lime_data_cable"
+        "recipe": "jasm:lime_data_cable"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

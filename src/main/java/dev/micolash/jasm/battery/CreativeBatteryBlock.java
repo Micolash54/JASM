@@ -1,5 +1,6 @@
 package dev.micolash.jasm.battery;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -13,6 +14,11 @@ import org.jspecify.annotations.Nullable;
 
 /** Unlimited power for creative worlds: feeds every touching block that takes FE and charges the item in its slot. */
 public class CreativeBatteryBlock extends PowerSourceBlock {
+    @Override
+    protected MapCodec<CreativeBatteryBlock> codec() {
+        return simpleCodec(CreativeBatteryBlock::new);
+    }
+
     public CreativeBatteryBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }

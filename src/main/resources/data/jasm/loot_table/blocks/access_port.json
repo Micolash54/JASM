@@ -6,16 +6,18 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "modifier": {
-            "type": "minecraft:copy_components",
-            "include": [
-              "jasm:energy",
-              "jasm:owner",
-              "minecraft:custom_name"
-            ],
-            "source": "block_entity"
-          },
-          "name": "jasm:access_port"
+          "name": "jasm:access_port",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy",
+                "jasm:owner",
+                "minecraft:custom_name"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
         }
       ],
       "conditions": [

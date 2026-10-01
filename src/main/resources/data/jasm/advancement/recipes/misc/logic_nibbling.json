@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:logic_nibbling"
+        "recipe": "jasm:logic_nibbling"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

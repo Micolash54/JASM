@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:blank_chip"
+        "recipe": "jasm:blank_chip"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

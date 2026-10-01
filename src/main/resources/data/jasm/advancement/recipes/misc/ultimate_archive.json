@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:ultimate_archive"
+        "recipe": "jasm:ultimate_archive"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

@@ -84,14 +84,14 @@ Just Another Storage Mod: portable, recoverable digital storage.
 [[dependencies.${mod_id}]]
     modId="jei"
     type="optional"
-    versionRange="[31.7,)"
+    versionRange="[29.43.0.106]"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
     modId="jade"
     type="optional"
-    versionRange="[26.3,)"
+    versionRange="[26.1.10+neoforge]"
     ordering="NONE"
     side="BOTH"
 

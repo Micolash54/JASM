@@ -71,7 +71,7 @@ public final class JasmBlocks {
     static {
         for (ArchiveTier tier : ArchiveTier.values()) {
             ARCHIVES.put(tier, BLOCKS.registerBlock(tier.registryName(), p -> new ArchiveBlock(p, tier),
-                    p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).strength(3.0F, 3_600_000.0F).pushReaction(PushReaction.IMMOVEABLE).sound(SoundType.METAL)));
+                    p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).strength(3.0F, 3_600_000.0F).pushReaction(PushReaction.BLOCK).sound(SoundType.METAL)));
         }
     }
 
@@ -159,13 +159,13 @@ public final class JasmBlocks {
 
     private static BlockBehaviour.Properties seededProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.COLOR_PURPLE).randomTicks().strength(1.5F).sound(SoundType.AMETHYST).requiresCorrectToolForDrops()
-                .pushReaction(PushReaction.POPPED);
+                .pushReaction(PushReaction.DESTROY);
     }
 
     // Same as vanilla's buds, which swap the medium and large sounds too.
     private static BlockBehaviour.Properties budProperties(BlockBehaviour.Properties p, SoundType sound, int light) {
         return p.mapColor(MapColor.COLOR_PURPLE).forceSolidOn().noOcclusion().sound(sound).strength(1.5F).lightLevel(state -> light)
-                .pushReaction(PushReaction.POPPED);
+                .pushReaction(PushReaction.DESTROY);
     }
 
     public static final Supplier<BlockEntityType<DataCableBlockEntity>> DATA_CABLE_ENTITY = BLOCK_ENTITIES.register(

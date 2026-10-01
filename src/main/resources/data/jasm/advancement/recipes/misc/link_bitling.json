@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:link_bitling"
+        "recipe": "jasm:link_bitling"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

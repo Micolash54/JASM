@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:elite_deck"
+        "recipe": "jasm:elite_deck"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

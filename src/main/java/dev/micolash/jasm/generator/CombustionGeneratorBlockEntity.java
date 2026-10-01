@@ -14,7 +14,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
@@ -25,13 +24,12 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
-import net.minecraft.world.item.component.CookingFuel;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.minecraft.world.level.storage.loot.providers.number.ints.ResolvableInt;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.DelegatingResourceHandler;
@@ -144,7 +142,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     /** How long this item burns here, in ticks: its furnace burn time, sped up by the tier. */
     public int burnDuration(ServerLevel level, ItemStack fuel) {
         return fuel.isEmpty() ? 0
-                : tier.burnTicks(ResolvableInt.getFromItem(fuel, DataComponents.COOKING_FUEL, CookingFuel::burnTime, getLootContext(level, fuel), 0));
+                : tier.burnTicks(fuel.getBurnTime(RecipeType.SMELTING, level.fuelValues()));
     }
 
     /** Uses up one fuel item, leaving what a furnace leaves (a lava bucket leaves its bucket). */
@@ -226,13 +224,13 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
         return burnLeft;
     }
 
-    public static boolean isFuel(ItemStack stack) {
-        return stack.has(DataComponents.COOKING_FUEL);
+    public static boolean isFuel(ItemStack stack, Level level) {
+        return !stack.isEmpty() && level != null && stack.getBurnTime(RecipeType.SMELTING, level.fuelValues()) > 0;
     }
 
     /** Which items each slot takes: anything a furnace burns, and items that store FE. */
-    public static boolean accepts(int slot, ItemStack stack) {
-        return slot == FUEL_SLOT ? isFuel(stack) : CreativeBatteryMenu.canCharge(stack);
+    public static boolean accepts(int slot, ItemStack stack, Level level) {
+        return slot == FUEL_SLOT ? isFuel(stack, level) : CreativeBatteryMenu.canCharge(stack);
     }
 
     // --- container ---
@@ -254,7 +252,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return accepts(slot, stack);
+        return accepts(slot, stack, level);
     }
 
     @Override
@@ -325,7 +323,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
 
         @Override
         public int insert(int index, ItemResource resource, int amount, TransactionContext transaction) {
-            if (!accepts(index, resource.toStack(1))) {
+            if (!accepts(index, resource.toStack(1), level)) {
                 return 0;
             }
             if (index == CHARGE_SLOT) {
@@ -338,14 +336,14 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
         @Override
         public int insert(ItemResource resource, int amount, TransactionContext transaction) {
             ItemStack one = resource.toStack(1);
-            int index = isFuel(one) ? FUEL_SLOT : CreativeBatteryMenu.canCharge(one) ? CHARGE_SLOT : -1;
+            int index = isFuel(one, level) ? FUEL_SLOT : CreativeBatteryMenu.canCharge(one) ? CHARGE_SLOT : -1;
             return index < 0 ? 0 : insert(index, resource, amount, transaction);
         }
 
         @Override
         public int extract(int index, ItemResource resource, int amount, TransactionContext transaction) {
             ItemStack stack = items.get(index);
-            boolean allowed = index == FUEL_SLOT ? !isFuel(stack) : CreativeBatteryBlockEntity.isFull(stack, transaction);
+            boolean allowed = index == FUEL_SLOT ? !isFuel(stack, level) : CreativeBatteryBlockEntity.isFull(stack, transaction);
             return allowed ? super.extract(index, resource, amount, transaction) : 0;
         }
 

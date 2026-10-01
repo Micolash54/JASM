@@ -179,7 +179,7 @@ public class StationBitlingRenderer extends EntityRenderer<StationBitling, Stati
 
         ModelManager models = Minecraft.getInstance().getModelManager();
         poseStack.pushPose();
-        poseStack.rotateDegrees(Axis.YP, 180 - state.bodyYaw);
+        poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.bodyYaw));
         poseStack.scale(SCALE, SCALE, SCALE);
         poseStack.translate(-FEET_X / 16, 0, -FEET_Z / 16);
         for (String part : ChipWorkshopRenderer.PARTS) {

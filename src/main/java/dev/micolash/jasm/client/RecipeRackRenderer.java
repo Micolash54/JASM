@@ -19,7 +19,7 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 import org.jspecify.annotations.Nullable;
@@ -55,7 +55,7 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         }
         // The rack is solid, so its own spot is dark: light the cards from the block in front of it.
         if (rack.getLevel() != null) {
-            state.lightCoords = LightCoordsUtil.getLightCoords(rack.getLevel(), rack.getBlockPos().relative(state.facing));
+            state.lightCoords = LevelRenderer.getLightCoords(rack.getLevel(), rack.getBlockPos().relative(state.facing));
         }
     }
 
@@ -71,7 +71,7 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         List<BlockStateModelPart> parts = List.of(card);
         poseStack.pushPose();
         poseStack.translate(0.5F, 0.5F, 0.5F);
-        poseStack.rotateDegrees(Axis.YP, 180 - state.facing.toYRot());
+        poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.facing.toYRot()));
         poseStack.translate(-0.5F, -0.5F, -0.5F);
         for (int slot = 0; slot < RecipeRackBlockEntity.SLOTS; slot++) {
             if ((state.cards & (1 << slot)) == 0) {

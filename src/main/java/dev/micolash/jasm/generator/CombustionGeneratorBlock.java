@@ -1,5 +1,6 @@
 package dev.micolash.jasm.generator;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -27,6 +28,11 @@ public class CombustionGeneratorBlock extends PowerSourceBlock {
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
 
     private final GeneratorTier tier;
+
+    @Override
+    protected MapCodec<CombustionGeneratorBlock> codec() {
+        return simpleCodec(properties -> new CombustionGeneratorBlock(properties, tier));
+    }
 
     public CombustionGeneratorBlock(BlockBehaviour.Properties properties, GeneratorTier tier) {
         super(properties);

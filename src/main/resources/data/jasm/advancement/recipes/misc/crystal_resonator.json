@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:crystal_resonator"
+        "recipe": "jasm:crystal_resonator"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

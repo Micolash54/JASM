@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:output_port"
+        "recipe": "jasm:output_port"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

@@ -1,5 +1,6 @@
 package dev.micolash.jasm.network;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -44,6 +45,11 @@ import org.jspecify.annotations.Nullable;
 public class DataCableBlock extends PipeBlock implements EntityBlock {
     public static final BooleanProperty HAS_PORTS = BooleanProperty.create("has_ports");
     private final @Nullable DyeColor color;
+
+    @Override
+    protected MapCodec<DataCableBlock> codec() {
+        return simpleCodec(properties -> new DataCableBlock(properties, color));
+    }
 
     public DataCableBlock(BlockBehaviour.Properties properties, @Nullable DyeColor color) {
         super(6.0F, properties);

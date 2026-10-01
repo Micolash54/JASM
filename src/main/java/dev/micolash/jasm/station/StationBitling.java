@@ -163,7 +163,7 @@ public class StationBitling extends PathfinderMob {
     }
 
     /** Walks like any mob, but turns a little at a time, and turns on the spot before setting off another way. */
-    private static final class TurningMoveControl extends MoveControl<StationBitling> {
+    private static final class TurningMoveControl extends MoveControl {
         TurningMoveControl(StationBitling mob) {
             super(mob);
         }

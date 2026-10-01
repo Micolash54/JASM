@@ -75,7 +75,7 @@ public class CrystalFoundryRenderer implements BlockEntityRenderer<CrystalFoundr
         float size = SMALLEST + (LARGEST - SMALLEST) * state.growth;
         poseStack.pushPose();
         poseStack.translate(0.5F, 0.5F, 0.5F);
-        poseStack.rotateDegrees(Axis.YP, 180 - state.facing.toYRot());
+        poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.facing.toYRot()));
         poseStack.translate(-0.5F, -0.5F, -0.5F);
         poseStack.translate(PAD_X / 16, PAD_Y / 16, PAD_Z / 16);
         poseStack.scale(size, size, size);

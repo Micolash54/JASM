@@ -6,15 +6,17 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "modifier": {
-            "type": "minecraft:copy_components",
-            "include": [
-              "jasm:energy",
-              "jasm:owner"
-            ],
-            "source": "block_entity"
-          },
-          "name": "jasm:crystal_foundry"
+          "name": "jasm:crystal_foundry",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy",
+                "jasm:owner"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
         }
       ],
       "conditions": [

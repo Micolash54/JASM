@@ -1,5 +1,6 @@
 package dev.micolash.jasm.crystal;
 
+import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -16,6 +17,11 @@ import org.jspecify.annotations.Nullable;
 
 /** The Crystal Resonator: with power, it makes every Seeded Amethyst it touches grow faster. It has no screen. */
 public class ResonatorBlock extends MachineBlock {
+    @Override
+    protected MapCodec<ResonatorBlock> codec() {
+        return simpleCodec(ResonatorBlock::new);
+    }
+
     public ResonatorBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }

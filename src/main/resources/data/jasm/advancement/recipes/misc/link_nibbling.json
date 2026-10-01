@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:link_nibbling"
+        "recipe": "jasm:link_nibbling"
       },
       "trigger": "minecraft:recipe_unlocked"
     },

@@ -3,7 +3,7 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipes": "jasm:crystal_seed_from_dust"
+        "recipe": "jasm:crystal_seed_from_dust"
       },
       "trigger": "minecraft:recipe_unlocked"
     },
