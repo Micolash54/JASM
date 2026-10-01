@@ -14,7 +14,8 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-version = mod_version
+// The mod version, then the Minecraft version it is built for: 0.5.1+mc26.1.2
+version = "${mod_version}+mc${minecraft_version}"
 group = mod_group_id
 
 sourceSets.main.resources {
@@ -51,7 +52,7 @@ repositories {
 }
 
 base {
-    archivesName = "${mod_id}-mc${minecraft_version}-neoforge"
+    archivesName = mod_id
 }
 
 // Minecraft 26.1.2 uses Java 25.
@@ -169,7 +170,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
-            mod_version            : mod_version,
+            mod_version            : version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

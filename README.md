@@ -43,7 +43,7 @@ Every item except the Creative Battery is craftable in survival. The first tier 
 - Minecraft 26.1.2
 - NeoForge 26.1.2.109 or newer
 
-The current release is JASM 0.5.0 for Minecraft 26.1.2. Development for 26.3 is paused, and its older releases are archived.
+The current release is JASM 0.5.1 for Minecraft 26.1.2. Development for 26.3 is paused, and its older releases are archived.
 
 Optional minimum versions: JEI 29.37.0.99 and Jade 26.1.10+neoforge, using their Minecraft 26.1.2 builds.
 
@@ -51,7 +51,7 @@ Optional: with [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) installed
 
 ## Installing
 
-Download `jasm-mc26.1.2-neoforge-0.5.0.jar` from [Releases](https://github.com/Micolash54/JASM/releases) and put it in your `mods` folder.
+Download `jasm-0.5.1+mc26.1.2.jar` from [Releases](https://github.com/Micolash54/JASM/releases) and put it in your `mods` folder.
 
 Use a Minecraft 26.1.2 world. Downgrading a 26.3 save is not supported.
 

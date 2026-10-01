@@ -280,7 +280,7 @@
   "jei.jasm.info.recipe_card.1": "Holds one crafting recipe for autocrafting. Write it at an Encoding Terminal: set the recipe in the grid, put an Empty or Filled card in, and press Encode.",
   "jei.jasm.info.recipe_card.2": "A Filled card alone in a crafting grid turns back into an Empty one.",
   "jei.jasm.info.encoding_terminal.1": "Writes recipes onto Recipe Cards. Click items into its grid: they are only examples and are never used up.",
-  "jei.jasm.info.encoding_terminal.2": "It pairs one Crafting Deck per player with its network. Put a Deck in the upper link slot, then retrieve it below. Pairing another replaces that player's previous Deck. Trusted players share recipes but use their own stored items. It needs power.",
+  "jei.jasm.info.encoding_terminal.2": "It pairs one Crafting Deck per player with its network. Open the Deck Link window with the side key, put a Deck in its left slot, then take it from the right. Pairing another replaces that player's previous Deck. Trusted players share recipes but use their own stored items. It needs power.",
   "jei.jasm.info.recipe_rack.1": "Holds 16 Filled Recipe Cards. Every Crafting Server on the same network can use them.",
   "jei.jasm.info.recipe_rack.2": "It needs power: without it, the network can't see its cards.",
   "jei.jasm.info.data_cable.1": "Joins crafting blocks into one network, and carries power between them from anything that makes it.",
