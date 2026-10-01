@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:input_output_port"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_input_port": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:input_port"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_output_port": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:output_port"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_input_port",
+      "has_output_port"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:input_output_port"
+    ]
+  }
+}

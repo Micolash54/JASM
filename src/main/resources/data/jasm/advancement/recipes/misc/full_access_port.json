@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipes": "jasm:full_access_port"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_thin_access_port": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:thin_access_port"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_thin_access_port"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:full_access_port"
+    ]
+  }
+}
