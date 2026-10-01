@@ -25,7 +25,8 @@ public final class TransferPortMenu extends AbstractContainerMenu {
     public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
     public static final int LINK_IN = PortOperations.UPGRADE_SLOTS;
     public static final int LINK_OUT = LINK_IN + 1;
-    public static final int INVENTORY_START = LINK_OUT + 1;
+    public static final int POWER = LINK_OUT + 1;
+    public static final int INVENTORY_START = POWER + 1;
     private final @Nullable TransferPortBlockEntity port;
     private final ContainerData data;
     private final TransferPortKind kind;
@@ -55,6 +56,11 @@ public final class TransferPortMenu extends AbstractContainerMenu {
         });
         addSlot(new Slot(contents, AccessPortBlockEntity.DECK_OUT, DeckLinkLayout.PORT.slotX(), DeckLinkLayout.OUTPUT_Y) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
+        });
+        addSlot(new Slot(contents, AccessPortBlockEntity.POWER_SLOT, PortUpgradeLayout.POWER_X, PortUpgradeLayout.POWER_Y) {
+            @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
+            @Override public int getMaxStackSize() { return 1; }
+            @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
         int ix = (WIDTH - 162) / 2;
         for (int row = 0; row < 3; row++) for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, 9 + row * 9 + col, ix + col * 18, inventoryY() + row * 18));
@@ -103,6 +109,7 @@ public final class TransferPortMenu extends AbstractContainerMenu {
             }
             if (!moved) return ItemStack.EMPTY;
         }
+        else if (stack.is(JasmItems.POWER_UPGRADE.get())) { if (!moveItemStackTo(stack, POWER, POWER + 1, false)) return ItemStack.EMPTY; }
         else if (DeckItem.isCrafting(stack)) { if (!moveItemStackTo(stack, LINK_IN, LINK_IN + 1, false)) return ItemStack.EMPTY; }
         else return ItemStack.EMPTY;
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY); else slot.setChanged();

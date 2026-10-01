@@ -73,9 +73,10 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
 
     @Override
     public void submit(State state, PoseStack poses, SubmitNodeCollector collector, CameraRenderState camera) {
-        if (state.cableParts.isEmpty()) return;
-        collector.submitBlockModel(poses, Sheets.cutoutBlockItemSheet(), state.cableParts, BlockModelRenderState.EMPTY_TINTS,
-                state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+        if (!state.cableParts.isEmpty()) {
+            collector.submitBlockModel(poses, Sheets.cutoutBlockItemSheet(), state.cableParts, BlockModelRenderState.EMPTY_TINTS,
+                    state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+        }
         if (state.breakProgress != null && state.breakingPort == null) {
             for (var part : state.cableParts) {
                 collector.submitBreakingBlockModel(poses, new SingleVariant(part), 0, state.breakProgress.progress());

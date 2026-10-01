@@ -13,6 +13,9 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue DECK_MAX_OPS_PER_TICK = BUILDER
             .comment("Deck grid operations accepted per player per tick; excess requests are dropped")
             .defineInRange("maxOpsPerTick", 20, 1, 1_000);
+    public static final ModConfigSpec.IntValue DECK_ENERGY_PER_ITEM = BUILDER
+            .comment("FE a Deck uses for each item that goes into or out of its wafers")
+            .defineInRange("energyPerItem", 1, 0, 1_000);
 
     static {
         BUILDER.pop().push("archive");

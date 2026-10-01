@@ -3,6 +3,9 @@
     {
       "apply": {
         "model": "jasm:block/light_blue_data_cable_core"
+      },
+      "when": {
+        "core": "true"
       }
     },
     {

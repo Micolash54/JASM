@@ -122,6 +122,7 @@ final class JobsWindow {
             case 6 -> Component.translatable("screen.jasm.server.pause.machine_busy");
             case 7 -> Component.translatable("screen.jasm.server.pause.no_machine");
             case 8 -> Component.translatable("screen.jasm.server.pause.dimension_upgrade");
+            case 9 -> Component.translatable("screen.jasm.server.pause.deck_charge");
             default -> job.phase() == 0 && job.waiting().isPresent() ? job.waiting().get() : switch (job.phase()) {
                 case 0 -> Component.translatable("screen.jasm.server.crafting", Math.round(job.progress() / 10F));
                 case 1 -> Component.translatable("screen.jasm.server.cancelling");

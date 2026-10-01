@@ -84,9 +84,7 @@ public class CreativeBatteryMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return stillValid(access, player, JasmBlocks.CREATIVE_BATTERY.get()) && access.evaluate((level, pos) ->
-                !(level.getBlockEntity(pos) instanceof CreativeBatteryBlockEntity battery)
-                        || battery.networkOwnership().canUse(player)).orElse(true);
+        return stillValid(access, player, JasmBlocks.CREATIVE_BATTERY.get());
     }
 
     /**

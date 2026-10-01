@@ -54,7 +54,7 @@ public final class TransferPortScreen extends AbstractContainerScreen<TransferPo
                 ItemStack.EMPTY, leftPos + 8, topPos + top, width, height);
         editors.add(editor);
     }
-    public List<Rect2i> extraAreas() { return List.of(new Rect2i(leftPos + DeckLinkLayout.PORT.panelX(), topPos, DeckLinkLayout.PORT.width(), DeckLinkLayout.PORT.height()), new Rect2i(leftPos + PortUpgradeLayout.PANEL_X, topPos + PortUpgradeLayout.PANEL_Y, PortUpgradeLayout.PANEL_WIDTH, PortUpgradeLayout.SPEED_PANEL_HEIGHT)); }
+    public List<Rect2i> extraAreas() { return List.of(new Rect2i(leftPos + DeckLinkLayout.PORT.panelX(), topPos, DeckLinkLayout.PORT.width(), DeckLinkLayout.PORT.height()), new Rect2i(leftPos + PortUpgradeLayout.PANEL_X, topPos + PortUpgradeLayout.PANEL_Y, PortUpgradeLayout.PANEL_WIDTH, PortUpgradeLayout.SPEED_PANEL_HEIGHT), new Rect2i(leftPos + PortUpgradeLayout.POWER_PANEL_X, topPos + PortUpgradeLayout.POWER_PANEL_Y, PortUpgradeLayout.POWER_PANEL_SIZE, PortUpgradeLayout.POWER_PANEL_SIZE)); }
     @Override protected boolean hasClickedOutside(double x, double y, int left, int top) {
         boolean overPanel = extraAreas().stream().anyMatch(area -> x >= area.getX() && x < area.getX() + area.getWidth() && y >= area.getY() && y < area.getY() + area.getHeight());
         return !overPanel && super.hasClickedOutside(x, y, left, top);
@@ -69,6 +69,7 @@ public final class TransferPortScreen extends AbstractContainerScreen<TransferPo
             graphics.fill(leftPos + 8, topPos + 140, leftPos + imageWidth - 8, topPos + 141, JasmGui.SELECTED);
         }
         JasmGui.panel(graphics, leftPos + PortUpgradeLayout.PANEL_X, topPos + PortUpgradeLayout.PANEL_Y, PortUpgradeLayout.PANEL_WIDTH, PortUpgradeLayout.SPEED_PANEL_HEIGHT);
+        JasmGui.panel(graphics, leftPos + PortUpgradeLayout.POWER_PANEL_X, topPos + PortUpgradeLayout.POWER_PANEL_Y, PortUpgradeLayout.POWER_PANEL_SIZE, PortUpgradeLayout.POWER_PANEL_SIZE);
         for (var slot : menu.slots) JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
     }
     @Override protected void extractLabels(GuiGraphicsExtractor graphics, int mx, int my) {
@@ -83,6 +84,9 @@ public final class TransferPortScreen extends AbstractContainerScreen<TransferPo
         for (var editor : editors) editor.draw(graphics, mx, my, a, width, height);
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
             if (hoveredSlot == menu.getSlot(i)) graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.transfer.speed_hint"), mx, my);
+        }
+        if (hoveredSlot == menu.getSlot(TransferPortMenu.POWER)) {
+            graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.port.power_hint"), 180), mx, my);
         }
     }
     @Override public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {

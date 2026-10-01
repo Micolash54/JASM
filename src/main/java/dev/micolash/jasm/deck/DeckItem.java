@@ -3,18 +3,25 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveService;
+import dev.micolash.jasm.autocraft.AutocraftState;
+import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
+import java.util.UUID;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -24,6 +31,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The handheld reader. Carries wafers and a battery; right-click opens it. A Crafting Deck also has a 3×3 crafting
@@ -67,8 +75,10 @@ public class DeckItem extends Item implements WaferHolderItem {
         return deck.getOrDefault(JasmComponents.DECK_WAFERS.get(), DeckWafers.EMPTY);
     }
 
+    /** The charge, never above the battery (Decks from before the smaller batteries can hold more). */
     public static int energy(ItemStack deck) {
-        return deck.getOrDefault(JasmComponents.ENERGY.get(), 0);
+        int energy = deck.getOrDefault(JasmComponents.ENERGY.get(), 0);
+        return deck.getItem() instanceof DeckItem item ? Math.min(energy, item.tier().battery()) : energy;
     }
 
     public static boolean hasDimensionUpgrade(ItemStack deck) {
@@ -131,6 +141,33 @@ public class DeckItem extends Item implements WaferHolderItem {
         wafers(holder).forEach(action);
     }
 
+    /** A new Crafting Deck links itself to the network of the Encoding Terminal its maker used last. */
+    @Override
+    public void onCraftedBy(ItemStack stack, Player player) {
+        super.onCraftedBy(stack, player);
+        if (!isCrafting(stack) || !(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+        MinecraftServer server = level.getServer();
+        AutocraftState.get(server).lastTerminal(player.getUUID())
+                .map(id -> Jobs.terminalById(server, id))
+                .ifPresent(terminal -> terminal.pair(player.getUUID(), stack));
+    }
+
+    /** A Deck that another Deck replaced at its terminal forgets the link, so its tooltip stays true. */
+    @Override
+    public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, @Nullable EquipmentSlot slot) {
+        super.inventoryTick(stack, level, owner, slot);
+        UUID terminal = stack.get(JasmComponents.DECK_NETWORK.get());
+        if (terminal == null || level.getGameTime() % 20 != 0) {
+            return;
+        }
+        UUID deckId = stack.get(JasmComponents.DECK_ID.get());
+        if (deckId == null || !AutocraftState.get(level.getServer()).isActive(terminal, deckId)) {
+            stack.remove(JasmComponents.DECK_NETWORK.get());
+        }
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder,
             TooltipFlag flag) {
@@ -138,5 +175,10 @@ public class DeckItem extends Item implements WaferHolderItem {
                 .withStyle(ChatFormatting.GRAY));
         builder.accept(Component.translatable("tooltip.jasm.deck.energy", String.format("%,d", energy(stack)),
                 String.format("%,d", tier.battery())).withStyle(ChatFormatting.GRAY));
+        if (isCrafting(stack)) {
+            boolean linked = stack.has(JasmComponents.DECK_NETWORK.get());
+            builder.accept(Component.translatable(linked ? "tooltip.jasm.deck.linked" : "tooltip.jasm.deck.not_linked")
+                    .withStyle(linked ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
+        }
     }
 }

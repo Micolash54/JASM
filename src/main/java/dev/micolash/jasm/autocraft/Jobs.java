@@ -69,11 +69,15 @@ public final class Jobs {
         if (id == null || deckId == null) {
             return null;
         }
-        AutocraftState state = AutocraftState.get(server);
-        if (!state.isActive(id, deckId)) {
+        if (!AutocraftState.get(server).isActive(id, deckId)) {
             return null;
         }
-        Optional<AutocraftState.Terminal> entry = state.terminal(id);
+        return terminalById(server, id);
+    }
+
+    /** The Encoding Terminal with this identity, if it stands in a loaded spot. */
+    public static @Nullable EncodingTerminalBlockEntity terminalById(MinecraftServer server, UUID id) {
+        Optional<AutocraftState.Terminal> entry = AutocraftState.get(server).terminal(id);
         if (entry.isEmpty()) {
             return null;
         }
@@ -711,12 +715,16 @@ public final class Jobs {
             }
             return;
         }
+        if (!DeckStorage.hasPower(deck)) {
+            job.pause = "deck_charge";
+            return;
+        }
         moveToDeck(player, deck, record, store, new LinkedHashMap<>(record.contents()));
         if (record.contents().isEmpty()) {
             finish(level, server, job);
         } else {
             // The Deck's screen shows it: a banner, and the job in its list.
-            job.pause = "waiting_space";
+            job.pause = DeckStorage.hasPower(deck) ? "waiting_space" : "deck_charge";
         }
     }
 
@@ -934,6 +942,7 @@ public final class Jobs {
             case "machine_busy" -> 6;
             case "no_machine" -> 7;
             case "dimension_upgrade" -> 8;
+            case "deck_charge" -> 9;
             default -> 0;
         };
     }

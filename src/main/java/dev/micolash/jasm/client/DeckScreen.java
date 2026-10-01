@@ -57,6 +57,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     /** The Rules tab lists taller rows, two lines of text each: five fit where the grid shows six. */
     private static final int RULE_ROW = 21;
     private static final int CHARGE_WIDTH = 60;
+    private static final int LINK_SIZE = 5;
     private static final int SCROLL_WIDTH = 10;
     private static final int HANDLE_HEIGHT = 15;
 
@@ -516,6 +517,21 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private void drawCharge(GuiGraphicsExtractor graphics, int x, int y) {
         int bx = x + mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH;
         JasmGui.bar(graphics, bx - 1, y + statusY, CHARGE_WIDTH + 2, 7, menu.view().energy() / (double) tier().battery());
+        if (menu.isCrafting()) {
+            // The link light: green linked, yellow linked but out of reach, grey not linked.
+            int lx = x + linkX();
+            int colour = switch (menu.view().network()) {
+                case 2 -> JasmGui.GOOD;
+                case 1 -> JasmGui.WARN;
+                default -> JasmGui.MUTED;
+            };
+            graphics.fill(lx, y + statusY + 1, lx + LINK_SIZE, y + statusY + 1 + LINK_SIZE, colour);
+        }
+    }
+
+    /** Left edge of the link light, just before the charge bar. */
+    private int linkX() {
+        return mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH - 4 - LINK_SIZE;
     }
 
     @Override
@@ -622,6 +638,15 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             graphics.setTooltipForNextFrame(font, Component.translatable("tooltip.jasm.deck.energy",
                     String.format("%,d", menu.view().energy()), String.format("%,d", tier().battery())), mouseX, mouseY);
         }
+        int linkLeft = x + linkX();
+        if (menu.isCrafting() && mouseX >= linkLeft - 1 && mouseX < linkLeft + LINK_SIZE + 1 && mouseY >= y + statusY && mouseY < y + statusY + 7) {
+            String key = switch (menu.view().network()) {
+                case 2 -> "screen.jasm.deck.link.linked";
+                case 1 -> "screen.jasm.deck.link.unreachable";
+                default -> "screen.jasm.deck.link.not_linked";
+            };
+            graphics.setTooltipForNextFrame(font, font.split(Component.translatable(key), 180), mouseX, mouseY);
+        }
         if (menu.isCrafting() && tab == Tab.CRAFT && menu.view().network() < 2 && hasPower()) {
             graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + rows * 18 - 1, JasmGui.SHADE);
             Component text = Component.translatable(menu.view().network() == 0 ? "screen.jasm.craft.not_paired" : "screen.jasm.craft.unreachable");
@@ -677,7 +702,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (types > 0) {
             // Type Wafers: types used, right-aligned before the charge bar, when there is room for both.
             Component typeStatus = Component.translatable("screen.jasm.deck.types", typesUsed, types);
-            int right = mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH - 5;
+            int right = (menu.isCrafting() ? linkX() : mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH) - 5;
             if (mainX + 8 + font.width(status) + 6 + font.width(typeStatus) <= right) {
                 graphics.text(font, typeStatus, right - font.width(typeStatus), statusY, typesUsed >= types ? JasmGui.BAD : JasmGui.SUBTEXT, false);
             }

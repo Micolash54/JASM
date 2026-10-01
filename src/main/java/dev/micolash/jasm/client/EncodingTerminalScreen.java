@@ -210,13 +210,29 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
 
     /**
      * Does to ghost slot {@code slot} what a click with a real stack does: left puts the copy in (with its count in
-     * processing mode), right clears the slot. Once per slot for each press, so a drag goes over each slot once.
+     * processing mode), right puts in just one, or one more of the same item in processing mode. Once per slot for
+     * each press, so a drag goes over each slot once.
      */
     private void placeGhost(int slot, boolean right) {
         if (placed.add(slot)) {
-            ItemStack example = right ? ItemStack.EMPTY : ghostHeld.copy();
+            ItemStack example = ghostHeld.copy();
+            if (right) {
+                ItemStack there = ghostItem(slot);
+                boolean more = menu.processing() && ItemStack.isSameItemSameComponents(there, ghostHeld);
+                example = ghostHeld.copyWithCount(more ? Math.min(menu.amount(slot) + 1, ghostHeld.getMaxStackSize()) : 1);
+            }
             ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(menu.containerId, slot, List.of(example)));
         }
+    }
+
+    /** What ghost slot {@code index} (0-8 the grid, 9-11 the outputs) shows now. */
+    private ItemStack ghostItem(int index) {
+        for (Slot slot : menu.slots) {
+            if (processingSlot(slot) == index) {
+                return slot.getItem();
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     // --- the machine panel ---
@@ -361,7 +377,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     /**
      * The Deck list clicks like a chest, except that what comes out is a copy and nothing leaves the Deck. Left takes
      * a stack, right half of one, Shift does nothing. Holding a copy, right lets go of it and left swaps it for what is
-     * under the mouse (or just lets go over an empty cell).
+     * under the mouse (or just lets go over an empty cell). In the grid, left puts the copy in and right puts in one.
      */
     private void clickDeckList(net.minecraft.client.input.MouseButtonEvent event, boolean left, boolean right) {
         if (event.hasShiftDown() || !(left || right) || !menu.getCarried().isEmpty()) {

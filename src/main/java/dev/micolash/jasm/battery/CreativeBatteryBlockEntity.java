@@ -3,13 +3,9 @@ package dev.micolash.jasm.battery;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.NetworkPowerSource;
-import dev.micolash.jasm.network.SourceOwnership;
-import dev.micolash.jasm.network.Networks;
 import java.util.EnumMap;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.component.DataComponentGetter;
-import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -43,7 +39,6 @@ import org.jspecify.annotations.Nullable;
  * that item. Hoppers and pipes may put in any item that stores FE, and may only take it out once it is full.
  */
 public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvider, NetworkPowerSource {
-    private final SourceOwnership ownership = new SourceOwnership(this);
     private final SimpleContainer slot = CreativeBatteryMenu.chargingSlot(this::setChanged);
     private final ResourceHandler<ItemResource> slotHandler = VanillaContainerWrapper.of(slot);
     private final ResourceHandler<ItemResource> automation = new AutomationSlot();
@@ -59,22 +54,12 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     }
 
     /** One tick of output: up to the per-side limit into each touching block that takes FE. */
-    @Override
-    public SourceOwnership networkOwnership() {
-        return ownership;
-    }
-
     public void pushToNeighbours(ServerLevel level) {
-        Networks.at(level, worldPosition);
         int amount = JasmConfig.BATTERY_PUSH_PER_FACE_PER_TICK.getAsInt();
         if (amount <= 0) {
             return;
         }
         for (Direction side : Direction.values()) {
-            BlockPos next = worldPosition.relative(side);
-            if (Networks.at(level, next) != null && !Networks.canConnect(level, worldPosition, next)) {
-                continue;
-            }
             EnergyHandler target = neighbours
                     .computeIfAbsent(side, s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
                     .getCapability();
@@ -132,7 +117,6 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        ownership.save(output);
         ItemStack stack = slot.getItem(0);
         if (!stack.isEmpty()) {
             output.store("charging", ItemStack.CODEC, stack);
@@ -142,26 +126,7 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        ownership.load(input);
         slot.setItem(0, input.read("charging", ItemStack.CODEC).orElse(ItemStack.EMPTY));
-    }
-
-    @Override
-    protected void collectImplicitComponents(DataComponentMap.Builder components) {
-        super.collectImplicitComponents(components);
-        ownership.collect(components);
-    }
-
-    @Override
-    protected void applyImplicitComponents(DataComponentGetter components) {
-        super.applyImplicitComponents(components);
-        ownership.apply(components);
-    }
-
-    @Override
-    public void removeComponentsFromTag(ValueOutput output) {
-        super.removeComponentsFromTag(output);
-        output.discard("network_owner");
     }
 
     /** Breaking the block (or replacing it) drops the item being charged. */

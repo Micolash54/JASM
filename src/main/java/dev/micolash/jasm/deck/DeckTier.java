@@ -1,31 +1,24 @@
 package dev.micolash.jasm.deck;
 
 /**
- * Deck tiers: how many wafers they carry, how much charge their battery holds (FE), and how much it uses each tick
- * while its screen is open. A full battery lasts about 17 / 42 / 42 / 69 / 104 minutes of open screen.
+ * Deck tiers: how many wafers they carry and how much charge their battery holds (FE). Each item moved in or out
+ * costs the same on every tier ({@code energyPerItem} in the config).
  */
 public enum DeckTier {
-    STARTER("starter_deck", 1, 20_000, 1),
-    BASIC("basic_deck", 3, 50_000, 1),
-    ADVANCED("advanced_deck", 6, 100_000, 2),
-    ELITE("elite_deck", 12, 250_000, 3),
-    ULTIMATE("ultimate_deck", 24, 500_000, 4);
+    STARTER("starter_deck", 1, 10_000),
+    BASIC("basic_deck", 3, 25_000),
+    ADVANCED("advanced_deck", 6, 50_000),
+    ELITE("elite_deck", 12, 125_000),
+    ULTIMATE("ultimate_deck", 24, 250_000);
 
     private final String registryName;
     private final int slots;
     private final int battery;
-    private final int drainPerTick;
 
-    DeckTier(String registryName, int slots, int battery, int drainPerTick) {
+    DeckTier(String registryName, int slots, int battery) {
         this.registryName = registryName;
         this.slots = slots;
         this.battery = battery;
-        this.drainPerTick = drainPerTick;
-    }
-
-    /** FE used each tick while the Deck's screen is open. */
-    public int drainPerTick() {
-        return drainPerTick;
     }
 
     public String registryName() {

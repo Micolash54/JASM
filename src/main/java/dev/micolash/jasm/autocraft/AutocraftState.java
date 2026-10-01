@@ -59,7 +59,9 @@ public final class AutocraftState extends SavedData {
     public static final Codec<AutocraftState> CODEC = RecordCodecBuilder.create(i -> i.group(
                     Terminal.CODEC.listOf().optionalFieldOf("terminals", List.of()).forGetter(s -> List.copyOf(s.terminals.values())),
                     Job.CODEC.listOf().optionalFieldOf("jobs", List.of()).forGetter(s -> List.copyOf(s.jobs.values())),
-                    Pairing.CODEC.listOf().optionalFieldOf("pairings", List.of()).forGetter(s -> List.copyOf(s.pairings.values())))
+                    Pairing.CODEC.listOf().optionalFieldOf("pairings", List.of()).forGetter(s -> List.copyOf(s.pairings.values())),
+                    Codec.unboundedMap(UUIDUtil.STRING_CODEC, UUIDUtil.CODEC).optionalFieldOf("last_terminals", Map.of())
+                            .forGetter(s -> Map.copyOf(s.lastTerminals)))
             .apply(i, AutocraftState::new));
 
     public static final SavedDataType<AutocraftState> TYPE = new SavedDataType<>(Jasm.id("autocraft"), AutocraftState::new, CODEC);
@@ -67,13 +69,26 @@ public final class AutocraftState extends SavedData {
     private final Map<UUID, Terminal> terminals = new LinkedHashMap<>();
     private final Map<UUID, Job> jobs = new LinkedHashMap<>();
     private final Map<UUID, Pairing> pairings = new LinkedHashMap<>();
+    /** The Encoding Terminal each player used last: a newly crafted Crafting Deck links there. */
+    private final Map<UUID, UUID> lastTerminals = new LinkedHashMap<>();
 
     public AutocraftState() {}
 
-    private AutocraftState(List<Terminal> terminals, List<Job> jobs, List<Pairing> pairings) {
+    private AutocraftState(List<Terminal> terminals, List<Job> jobs, List<Pairing> pairings, Map<UUID, UUID> lastTerminals) {
         terminals.forEach(t -> this.terminals.put(t.id(), t));
         jobs.forEach(j -> this.jobs.put(j.id(), j));
         pairings.forEach(p -> this.pairings.put(p.deck(), p));
+        this.lastTerminals.putAll(lastTerminals);
+    }
+
+    public void usedTerminal(UUID player, UUID terminal) {
+        if (!terminal.equals(lastTerminals.put(player, terminal))) {
+            setDirty();
+        }
+    }
+
+    public Optional<UUID> lastTerminal(UUID player) {
+        return Optional.ofNullable(lastTerminals.get(player));
     }
 
     public static AutocraftState get(MinecraftServer server) {

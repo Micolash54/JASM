@@ -286,7 +286,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     protected boolean canPowerSide(Direction side) { return true; }
 
     /** The upgrade sends spare charge to nearby machines, even without a crafting job. */
-    private void sendPower() {
+    protected void sendPower() {
         if (level == null || networkBlocked() || !hasPowerUpgrade()) return;
         for (Direction side : Direction.values()) {
             int available = energy.getAmountAsInt() - drainPerTick();

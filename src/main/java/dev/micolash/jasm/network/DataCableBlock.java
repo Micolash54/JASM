@@ -10,8 +10,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -44,6 +46,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class DataCableBlock extends PipeBlock implements EntityBlock {
     public static final BooleanProperty HAS_PORTS = BooleanProperty.create("has_ports");
+    /** False for a space that only holds thin ports, placed without a cable. It stays off the network until a cable fills it. */
+    public static final BooleanProperty CORE = BooleanProperty.create("core");
     private final @Nullable DyeColor color;
 
     @Override
@@ -55,7 +59,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         super(6.0F, properties);
         this.color = color;
         registerDefaultState(stateDefinition.any().setValue(NORTH, false).setValue(EAST, false).setValue(SOUTH, false)
-                .setValue(WEST, false).setValue(UP, false).setValue(DOWN, false).setValue(HAS_PORTS, false));
+                .setValue(WEST, false).setValue(UP, false).setValue(DOWN, false).setValue(HAS_PORTS, false).setValue(CORE, true));
     }
 
     @Override
@@ -84,11 +88,67 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
             CollisionContext context) {
-        var shape = super.getShape(state, level, pos, context);
+        var shape = state.getValue(CORE) ? super.getShape(state, level, pos, context) : Shapes.empty();
         if (level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
             for (Direction side : Direction.values()) if (cable.port(side) != null) shape = Shapes.or(shape, portShape(side));
         }
         return shape;
+    }
+
+    /** Whether this is a space holding only thin ports, without a cable of its own. */
+    public static boolean coreless(BlockState state) {
+        return state.getBlock() instanceof DataCableBlock && !state.getValue(CORE);
+    }
+
+    /** A cable used on a cable-less port space fills it in: the ports stay, and it carries data like any cable. */
+    @Override
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
+            InteractionHand hand, BlockHitResult hit) {
+        if (state.getValue(CORE) || !isCable(stack)) {
+            return InteractionResult.TRY_WITH_EMPTY_HAND;
+        }
+        return fill(level, pos, stack, player) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+    }
+
+    public static boolean isCable(ItemStack stack) {
+        return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof DataCableBlock;
+    }
+
+    /** Puts the held cable into the port space at {@code pos}. Returns false if the player may not. */
+    public static boolean fill(Level level, BlockPos pos, ItemStack stack, Player player) {
+        BlockState state = level.getBlockState(pos);
+        if (!coreless(state) || !(stack.getItem() instanceof BlockItem item) || !(item.getBlock() instanceof DataCableBlock cable)) {
+            return false;
+        }
+        if (!(level instanceof ServerLevel serverLevel) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity host)) {
+            return true;
+        }
+        host.syncOwners();
+        if (!host.ports().isEmpty() && !MachineAccess.canUse(host.ports().getFirst(), player)) {
+            return false;
+        }
+        BlockState filled = cable.defaultBlockState().setValue(HAS_PORTS, state.getValue(HAS_PORTS)).setValue(CORE, true);
+        if (state.is(cable)) {
+            level.setBlock(pos, state.setValue(CORE, true), Block.UPDATE_ALL);
+        } else {
+            host.replaceBlock(filled);
+        }
+        Networks.invalidate(serverLevel);
+        refreshConnectionsAround(serverLevel, pos);
+        if (!player.getAbilities().instabuild) stack.shrink(1);
+        var sound = filled.getSoundType(level, pos, player);
+        level.playSound(null, pos, sound.getPlaceSound(), net.minecraft.sounds.SoundSource.BLOCKS,
+                (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);
+        return true;
+    }
+
+    /** Recomputes the arms of this cable and the cables next to it. */
+    public static void refreshConnectionsAround(ServerLevel level, BlockPos pos) {
+        if (level.getBlockState(pos).getBlock() instanceof DataCableBlock cable) cable.refreshConnections(level, pos);
+        for (Direction side : Direction.values()) {
+            BlockPos next = pos.relative(side);
+            if (level.getBlockState(next).getBlock() instanceof DataCableBlock cable) cable.refreshConnections(level, next);
+        }
     }
 
     public static @Nullable Direction hitPort(DataCableBlockEntity cable, Vec3 hit) {
@@ -183,7 +243,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN, HAS_PORTS);
+        builder.add(NORTH, EAST, SOUTH, WEST, UP, DOWN, HAS_PORTS, CORE);
     }
 
     @Override
@@ -205,10 +265,10 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
     private boolean connects(BlockGetter level, BlockPos neighbourPos, BlockState neighbour, Direction direction) {
         BlockPos own = neighbourPos.relative(direction.getOpposite());
         if (level.getBlockEntity(own) instanceof DataCableBlockEntity host && host.port(direction) != null) return false;
+        if (coreless(level.getBlockState(own)) || coreless(neighbour)) return false;
         if (level instanceof ServerLevel serverLevel && level.getBlockState(own).getBlock() instanceof DataCableBlock
                 && (neighbour.getBlock() instanceof DataCableBlock || level.getBlockEntity(neighbourPos) instanceof MachineBlockEntity
-                    || level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity
-                    || level.getBlockEntity(neighbourPos) instanceof NetworkPowerSource)) {
+                    || level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity)) {
             return Networks.canConnect(serverLevel, own, neighbourPos);
         }
         if (neighbour.getBlock() instanceof DataCableBlock other) {

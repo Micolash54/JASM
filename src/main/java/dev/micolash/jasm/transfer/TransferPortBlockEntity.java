@@ -43,10 +43,10 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     public TransferFilters filters() { return filters; }
     public void setFilters(TransferFilters filters) { this.filters = filters; setChanged(); }
     @Override public boolean hasMachine(Direction side) { return false; }
-    @Override public boolean hasPowerUpgrade() { return false; }
+    @Override protected boolean canPowerSide(Direction side) { return side == face; }
     @Override public int[] getSlotsForFace(Direction side) { return new int[0]; }
     @Override public boolean canPlaceItem(int slot, ItemStack stack) {
-        return (slot == DECK_IN || slot >= SPEED_START) && super.canPlaceItem(slot, stack);
+        return (slot == DECK_IN || slot == POWER_SLOT || slot >= SPEED_START) && super.canPlaceItem(slot, stack);
     }
     @Override public Component getDisplayName() { return label().isEmpty() ? Component.translatable("item.jasm." + kind.id()) : Component.literal(label()); }
     @Override protected AbstractContainerMenu createMenu(int id, Inventory inventory) { return new TransferPortMenu(id, inventory, this); }
@@ -57,6 +57,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
 
     public void tickTransfer() {
         payForTick();
+        sendPower();
         processDeckLink();
         if (!(level instanceof ServerLevel world) || !running() || networkBlocked()) return;
         int budget = transferBudget();
@@ -76,6 +77,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         Jobs.prepareOpenDeck(player, deck);
         var store = WaferStore.get(world.getServer());
         DeckStorage.checkAll(store, deck, player);
+        budget = (int) Math.min(budget, DeckStorage.affordable(deck));
         // Output takes the shared allowance first. Neither filter list disables the other direction.
         if (kind.exports() && !filters.output().rules().isEmpty()) {
             var contents = DeckStorage.contents(store, deck);

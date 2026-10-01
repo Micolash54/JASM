@@ -1,6 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.DepositRouter;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -107,8 +108,8 @@ public final class DeckStorage {
     }
 
     /**
-     * Stores as much of {@code source} as fits and the charge allows, shrinking {@code source} by the amount
-     * stored. Returns the amount stored. If the charge cannot pay for the whole move, nothing moves.
+     * Stores as much of {@code source} as fits and the charge pays for, shrinking {@code source} by the amount
+     * stored. Returns the amount stored.
      */
     public static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player) {
         return deposit(store, deck, source, player, true);
@@ -133,11 +134,10 @@ public final class DeckStorage {
         }
         List<SlotView> views = views(store, deck, player);
         ItemResource key = ItemResource.of(source);
-        List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, source.getCount());
-        long planned = plan.stream().mapToLong(DepositRouter.Allocation::amount).sum();
-        if (planned == 0 || !canAfford(deck, player, tell)) {
+        if (DepositRouter.planDeposit(views, key, source.getCount()).isEmpty() || !canAfford(deck, player, tell)) {
             return 0;
         }
+        List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, Math.min(source.getCount(), affordable(deck)));
         DeckWafers wafers = DeckItem.wafers(deck);
         long moved = 0;
         for (DepositRouter.Allocation allocation : plan) {
@@ -152,6 +152,7 @@ public final class DeckStorage {
         }
         deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
         source.shrink((int) moved);
+        pay(deck, moved);
         return moved;
     }
 
@@ -180,12 +181,16 @@ public final class DeckStorage {
     }
 
     /**
-     * Stores up to {@code amount} of {@code key} on the Deck's wafers, straight from somewhere else in the store (a
-     * crafting job), without needing the Deck's charge. Returns how many were stored; items wafers refuse store none.
+     * Stores up to {@code amount} of {@code key} on the Deck's wafers, straight from somewhere else (a port), as far
+     * as the charge pays for. Returns how many were stored; items wafers refuse store none.
      */
     public static long depositAmount(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
         if (!DeckItem.worksIn(deck, player.level())) return 0;
         if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
+            return 0;
+        }
+        amount = Math.min(amount, affordable(deck));
+        if (amount <= 0) {
             return 0;
         }
         List<SlotView> views = views(store, deck, player);
@@ -203,6 +208,7 @@ public final class DeckStorage {
             moved += store.insert(record, key, allocation.amount(), false, player);
         }
         deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
+        pay(deck, moved);
         return moved;
     }
 
@@ -211,9 +217,11 @@ public final class DeckStorage {
         return depositAmounts(store, deck, items, player, Long.MAX_VALUE);
     }
 
-    /** Same routing order, with a shared limit on the number of items moved. */
+    /** Same routing order, with a shared limit on the number of items moved. The charge limits it too. */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player, long limit) {
         if (!DeckItem.worksIn(deck, player.level())) return Map.of();
+        limit = Math.min(limit, affordable(deck));
+        long paid = limit;
         var left = new java.util.LinkedHashMap<ItemResource, Long>();
         items.forEach((key, amount) -> {
             if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) left.put(key, amount);
@@ -247,6 +255,7 @@ public final class DeckStorage {
             }
         }
         deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
+        pay(deck, paid - limit);
         return moved;
     }
 
@@ -287,15 +296,15 @@ public final class DeckStorage {
             return List.of();
         }
         List<SlotView> views = views(store, deck, player);
-        List<DepositRouter.Allocation> plan = DepositRouter.planWithdraw(views, key, amount);
-        long planned = plan.stream().mapToLong(DepositRouter.Allocation::amount).sum();
-        if (planned == 0 || !canAfford(deck, player, tell)) {
+        if (DepositRouter.planWithdraw(views, key, amount).isEmpty() || !canAfford(deck, player, tell)) {
             return List.of();
         }
+        List<DepositRouter.Allocation> plan = DepositRouter.planWithdraw(views, key, Math.min(amount, affordable(deck)));
         long taken = 0;
         for (DepositRouter.Allocation allocation : plan) {
             taken += store.extract(views.get(allocation.slot()).record(), key, allocation.amount(), false, player);
         }
+        pay(deck, taken);
         List<ItemStack> stacks = new ArrayList<>();
         int max = key.getMaxStackSize();
         while (taken > 0) {
@@ -348,18 +357,22 @@ public final class DeckStorage {
         return status;
     }
 
-    /** Browsing and moving items only need the battery not to be empty; the Deck pays per tick while open. */
+    /** Whether the battery pays for at least one item. Browsing is free. */
     public static boolean hasPower(ItemStack deck) {
-        return DeckItem.energy(deck) > 0;
+        return affordable(deck) > 0;
     }
 
-    /** One tick of an open Deck: its battery runs down by the tier's drain. */
-    public static void drain(ItemStack deck) {
-        if (deck.getItem() instanceof DeckItem item && item.tier().drainPerTick() > 0) {
-            int energy = DeckItem.energy(deck);
-            if (energy > 0) {
-                deck.set(JasmComponents.ENERGY.get(), Math.max(0, energy - item.tier().drainPerTick()));
-            }
+    /** How many items the charge pays for right now. */
+    public static long affordable(ItemStack deck) {
+        int cost = JasmConfig.DECK_ENERGY_PER_ITEM.getAsInt();
+        return cost <= 0 ? Long.MAX_VALUE : DeckItem.energy(deck) / cost;
+    }
+
+    /** Takes the charge for {@code items} moved in or out. */
+    private static void pay(ItemStack deck, long items) {
+        long cost = items * JasmConfig.DECK_ENERGY_PER_ITEM.getAsInt();
+        if (cost > 0) {
+            deck.set(JasmComponents.ENERGY.get(), (int) Math.max(0, DeckItem.energy(deck) - cost));
         }
     }
 

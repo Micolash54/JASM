@@ -178,13 +178,6 @@ public final class Networks {
             }
             return archive.ownerId();
         }
-        if (level.getBlockEntity(pos) instanceof NetworkPowerSource source) {
-            UUID owner = source.networkOwnership().owner();
-            if (owner != null) {
-                CableClaims.get(level).rememberOwner(owner, source.networkOwnership().name());
-            }
-            return owner;
-        }
         return null;
     }
 
@@ -217,9 +210,6 @@ public final class Networks {
             if (level.getBlockEntity(next) instanceof ArchiveBlockEntity archive) {
                 return archive.ownerName();
             }
-            if (level.getBlockEntity(next) instanceof NetworkPowerSource source) {
-                return source.networkOwnership().name();
-            }
             for (Direction side : Direction.values()) {
                 BlockPos more = next.relative(side);
                 if (!seen.contains(more) && isMember(more) && joins(level.getBlockState(next), level.getBlockState(more), next, more)) {
@@ -235,8 +225,6 @@ public final class Networks {
             machine.adoptOwner(owner, name);
         } else if (level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive) {
             archive.adoptOwner(owner, name);
-        } else if (level.getBlockEntity(pos) instanceof NetworkPowerSource source) {
-            source.networkOwnership().adopt(owner, name);
         }
     }
 
@@ -245,8 +233,6 @@ public final class Networks {
             machine.setNetworkBlocked(blocked);
         } else if (level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive) {
             archive.setNetworkBlocked(blocked);
-        } else if (level.getBlockEntity(pos) instanceof NetworkPowerSource source) {
-            source.networkOwnership().setBlocked(blocked);
         }
     }
 
@@ -355,10 +341,9 @@ public final class Networks {
         return level.isLoaded(pos) && (level.getBlockState(pos).getBlock() instanceof DataCableBlock || isBlock(pos));
     }
 
-    /** A block of the network that isn't a cable: a machine, Archive or power source. */
+    /** A block of the network that isn't a cable: a machine or Archive. */
     private boolean isBlock(BlockPos pos) {
-        return level.getBlockEntity(pos) instanceof MachineBlockEntity || level.getBlockEntity(pos) instanceof ArchiveBlockEntity
-                || level.getBlockEntity(pos) instanceof NetworkPowerSource;
+        return level.getBlockEntity(pos) instanceof MachineBlockEntity || level.getBlockEntity(pos) instanceof ArchiveBlockEntity;
     }
 
     /** Whether data passes between two touching blocks. */
@@ -366,6 +351,7 @@ public final class Networks {
         Direction face = Direction.getApproximateNearest(toPos.getX() - fromPos.getX(), toPos.getY() - fromPos.getY(), toPos.getZ() - fromPos.getZ());
         if (level.getBlockEntity(fromPos) instanceof DataCableBlockEntity cable && cable.port(face) != null
                 || level.getBlockEntity(toPos) instanceof DataCableBlockEntity other && other.port(face.getOpposite()) != null) return false;
+        if (DataCableBlock.coreless(from) || DataCableBlock.coreless(to)) return false;
         boolean fromCable = from.getBlock() instanceof DataCableBlock;
         boolean toCable = to.getBlock() instanceof DataCableBlock;
         if (fromCable && toCable) {
@@ -474,8 +460,6 @@ public final class Networks {
     }
 
     private boolean ownerCompatible(BlockPos from, BlockPos to) {
-        initializeSources(from);
-        initializeSources(to);
         CableClaims claims = CableClaims.get(level);
         if (level.getBlockState(from).getBlock() instanceof DataCableBlock && claims.blocked(level, from)
                 || level.getBlockState(to).getBlock() instanceof DataCableBlock && claims.blocked(level, to)) {
@@ -489,48 +473,9 @@ public final class Networks {
         return a == null || b == null || a.equals(b);
     }
 
-    /** Older power sources had no owner. Resolve a touching group before allowing data through it. */
-    private void initializeSources(BlockPos start) {
-        if (!(level.getBlockEntity(start) instanceof NetworkPowerSource source)
-                || source.networkOwnership().owner() != null || source.networkOwnership().blocked()) {
-            return;
-        }
-        Set<BlockPos> group = new HashSet<>();
-        Set<UUID> owners = new HashSet<>();
-        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        queue.add(start);
-        while (!queue.isEmpty() && group.size() < MAX_BLOCKS) {
-            BlockPos pos = queue.poll();
-            if (!group.add(pos)) {
-                continue;
-            }
-            for (Direction side : Direction.values()) {
-                BlockPos next = pos.relative(side);
-                if (!isMember(next) || contestedMachine(next) || CableClaims.get(level).blocked(level, next)
-                        || !joins(level.getBlockState(pos), level.getBlockState(next), pos, next)) {
-                    continue;
-                }
-                UUID owner = ownerAt(next);
-                if (owner != null) {
-                    owners.add(owner);
-                } else if (level.getBlockEntity(next) instanceof NetworkPowerSource && !group.contains(next)) {
-                    queue.add(next);
-                }
-            }
-        }
-        if (owners.size() > 1 || !queue.isEmpty()) {
-            group.forEach(pos -> setBlocked(pos, true));
-        } else if (owners.size() == 1) {
-            UUID owner = owners.iterator().next();
-            String name = nameFor(owner, start);
-            group.forEach(pos -> adopt(pos, owner, name));
-        }
-    }
-
     private boolean contestedMachine(BlockPos pos) {
         return level.getBlockEntity(pos) instanceof MachineBlockEntity machine && machine.networkBlocked()
-                || level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive && archive.networkBlocked()
-                || level.getBlockEntity(pos) instanceof NetworkPowerSource source && source.networkOwnership().blocked();
+                || level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive && archive.networkBlocked();
     }
 
     private boolean refreshBlocked(BlockPos pos) {

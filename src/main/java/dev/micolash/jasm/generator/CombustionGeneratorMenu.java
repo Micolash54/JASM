@@ -103,9 +103,7 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return block == null || stillValid(access, player, block) && access.evaluate((level, pos) ->
-                !(level.getBlockEntity(pos) instanceof CombustionGeneratorBlockEntity generator)
-                        || generator.networkOwnership().canUse(player)).orElse(true);
+        return block == null || stillValid(access, player, block);
     }
 
     /**

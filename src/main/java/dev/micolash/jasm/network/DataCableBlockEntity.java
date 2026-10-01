@@ -33,6 +33,10 @@ import org.jspecify.annotations.Nullable;
 
 /** The independent Access Ports mounted on a cable's faces. */
 public class DataCableBlockEntity extends BlockEntity {
+    /** Set while the block goes away, so detaching the last port doesn't remove it a second time. */
+    private boolean removing;
+    /** Set while the block is swapped for another cable: the ports move with it. */
+    private boolean moving;
     private final Map<Direction, AccessPortBlockEntity> ports = new EnumMap<>(Direction.class);
 
     public DataCableBlockEntity(BlockPos pos, BlockState state) {
@@ -86,6 +90,15 @@ public class DataCableBlockEntity extends BlockEntity {
     public boolean detach(Direction side, boolean drop) {
         AccessPortBlockEntity port = ports.remove(side);
         if (port == null) return false;
+        if (ports.isEmpty() && !removing && DataCableBlock.coreless(getBlockState()) && level instanceof ServerLevel serverLevel) {
+            // The last port of a space without a cable takes the space with it.
+            if (drop) Block.popResource(level, worldPosition, portItem(port));
+            Containers.dropContents(level, worldPosition, port);
+            port.onChunkUnloaded();
+            port.setRemoved();
+            serverLevel.removeBlock(worldPosition, false);
+            return true;
+        }
         if (level instanceof ServerLevel) {
             if (drop) Block.popResource(level, worldPosition, portItem(port));
             Containers.dropContents(level, worldPosition, port);
@@ -148,10 +161,25 @@ public class DataCableBlockEntity extends BlockEntity {
 
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
-        if (level instanceof ServerLevel) {
+        if (level instanceof ServerLevel && !moving) {
+            removing = true;
             for (Direction side : List.copyOf(ports.keySet())) detach(side, true);
         }
         super.preRemoveSideEffects(pos, state);
+    }
+
+    /** Swaps the block for another cable (a dyed one, say), keeping the ports and everything in them. */
+    public void replaceBlock(BlockState state) {
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        var saved = saveCustomOnly(serverLevel.registryAccess());
+        moving = true;
+        ports.values().forEach(AccessPortBlockEntity::setRemoved);
+        serverLevel.setBlock(worldPosition, state, Block.UPDATE_ALL);
+        if (serverLevel.getBlockEntity(worldPosition) instanceof DataCableBlockEntity replaced) {
+            replaced.loadCustomOnly(net.minecraft.world.level.storage.TagValueInput.create(
+                    net.minecraft.util.ProblemReporter.DISCARDING, serverLevel.registryAccess(), saved));
+            replaced.changed();
+        }
     }
 
     @Override
