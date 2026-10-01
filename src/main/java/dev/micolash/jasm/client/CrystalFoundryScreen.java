@@ -4,7 +4,6 @@ import dev.micolash.jasm.crystal.CrystalFoundryBlockEntity;
 import dev.micolash.jasm.crystal.CrystalFoundryMenu;
 import dev.micolash.jasm.registry.JasmItems;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -14,7 +13,7 @@ import net.minecraft.world.item.ItemStack;
  * The Foundry screen: the seed slot, the crystal it is growing with the progress under it and how many crystals the
  * seed has made so far, the output grid, and the power across the full width.
  */
-public class CrystalFoundryScreen extends AbstractContainerScreen<CrystalFoundryMenu> {
+public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = CrystalFoundryMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int CRYSTAL_X = 68;
@@ -47,7 +46,6 @@ public class CrystalFoundryScreen extends AbstractContainerScreen<CrystalFoundry
             graphics.item(crystal, x + CRYSTAL_X, y + CRYSTAL_Y);
         }
         JasmGui.bar(graphics, x + PROGRESS_X, y + PROGRESS_Y, PROGRESS_WIDTH, 5, menu.growing() ? menu.progress() : 0);
-        JasmGui.bar(graphics, x + POWER_X, y + CrystalFoundryMenu.ROW_Y, POWER_WIDTH, ROW_HEIGHT, menu.energy() / (double) CrystalFoundryBlockEntity.CAPACITY);
     }
 
     @Override
@@ -66,6 +64,7 @@ public class CrystalFoundryScreen extends AbstractContainerScreen<CrystalFoundry
         graphics.text(font, count, PROGRESS_X + (PROGRESS_WIDTH - font.width(count)) / 2, COUNT_Y, color, false);
         Component power = Component.translatable("screen.jasm.workshop.power_amount", String.format("%,d", menu.energy()),
                 String.format("%,d", CrystalFoundryBlockEntity.CAPACITY));
-        graphics.text(font, power, POWER_X + (POWER_WIDTH - font.width(power)) / 2, CrystalFoundryMenu.ROW_Y + 2, JasmGui.TEXT, true);
+        JasmGui.labelledBar(graphics, font, power, POWER_X, CrystalFoundryMenu.ROW_Y, POWER_WIDTH, ROW_HEIGHT,
+                menu.energy() / (double) CrystalFoundryBlockEntity.CAPACITY);
     }
 }

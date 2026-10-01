@@ -2,8 +2,8 @@ package dev.micolash.jasm.archive;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.network.DeckLinkLayout;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
@@ -37,15 +37,13 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     public static final int LINK_SLOT = 0;
     private static final Identifier EMPTY_LINK = Jasm.id("container/empty_link");
     private static final Identifier EMPTY_BLANK = Jasm.id("container/empty_blank");
+    private static final Identifier EMPTY_DECK = Jasm.id("container/empty_deck");
     public static final int RECOVERY_SLOT = 1;
     public static final int ROW_Y = 122;
     public static final int LINK_X = 8;
     public static final int RECOVERY_X = 118;
     public static final int DECK_IN = 2;
     public static final int DECK_OUT = 3;
-    public static final int DECK_X = DeckLinkLayout.ARCHIVE.slotX();
-    public static final int DECK_IN_Y = DeckLinkLayout.INPUT_Y;
-    public static final int DECK_OUT_Y = DeckLinkLayout.OUTPUT_Y;
     public static final int INVENTORY_X = 20;
     public static final int INVENTORY_Y = 160;
     private static final int INVENTORY_START = 4;
@@ -64,6 +62,8 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     private final ContainerData permissions = new SimpleContainerData(1);
     private ArchivePayloads.State lastSent = ArchivePayloads.State.EMPTY;
     private int sinceRefresh = REFRESH_TICKS;
+    /** Client side: where the Deck Link window lies over the screen. */
+    private final LinkWindowCover linkCover = new LinkWindowCover();
     /** Client side only: what the server has told this screen. */
     private ArchivePayloads.State view = ArchivePayloads.State.EMPTY;
 
@@ -89,7 +89,17 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         this.deckSlots = archive != null ? archive.deckSlots() : new SimpleContainer(2);
         addSlot(new WaferSlot(waferSlots, LINK_SLOT, LINK_X, ROW_Y));
         addSlot(new WaferSlot(waferSlots, RECOVERY_SLOT, RECOVERY_X, ROW_Y));
-        addSlot(new Slot(deckSlots, 0, DECK_X, DECK_IN_Y) {
+        addSlot(new Slot(deckSlots, 0, 0, 0) {
+            @Override
+            public boolean isActive() {
+                return archive != null || linkCover.open();
+            }
+
+            @Override
+            public Identifier getNoItemIcon() {
+                return EMPTY_DECK;
+            }
+
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return canManageDeck() && stack.getItem() instanceof DeckItem;
@@ -105,7 +115,12 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
                 return 1;
             }
         });
-        addSlot(new Slot(deckSlots, 1, DECK_X, DECK_OUT_Y) {
+        addSlot(new Slot(deckSlots, 1, 0, 0) {
+            @Override
+            public boolean isActive() {
+                return archive != null || linkCover.open();
+            }
+
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
@@ -149,6 +164,10 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
 
     public boolean defaultDeck() {
         return (permissions.get(0) & 8) != 0;
+    }
+
+    public LinkWindowCover linkCover() {
+        return linkCover;
     }
 
     public ArchivePayloads.State view() {
@@ -247,15 +266,8 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
         var online = server.getPlayerList().getPlayer(id);
         if (online != null) return online.getName().getString();
         if (id.equals(record.owner())) return record.ownerName();
-        var cached = server.services().nameToIdCache().get(id);
-        if (cached.isPresent()) return cached.get().name();
-        var network = dev.micolash.jasm.network.Networks.at((net.minecraft.server.level.ServerLevel) archive.getLevel(), archive.getBlockPos());
-        if (network != null) {
-            for (var terminal : network.machines(dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity.class)) {
-                for (var entry : terminal.trust().entries()) if (entry.id().equals(id)) return entry.name();
-            }
-        }
-        return "";
+        return dev.micolash.jasm.network.PlayerNames.of(server, id,
+                dev.micolash.jasm.network.Networks.at((net.minecraft.server.level.ServerLevel) archive.getLevel(), archive.getBlockPos()));
     }
 
     private ArchivePayloads.State withEnergy(ArchivePayloads.State state, int energy) {
@@ -324,6 +336,11 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     private final class WaferSlot extends Slot {
         WaferSlot(Container container, int index, int x, int y) {
             super(container, index, x, y);
+        }
+
+        @Override
+        public boolean isActive() {
+            return !linkCover.covers(this);
         }
 
         /** Shows a faint linked wafer or blank wafer while empty, so each slot says what it is for. */

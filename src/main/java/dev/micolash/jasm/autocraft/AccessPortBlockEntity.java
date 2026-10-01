@@ -11,6 +11,7 @@ import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.network.PlayerNames;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
@@ -223,6 +224,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         destinationDeck = null;
         setChanged();
         return true;
+    }
+
+    /** Whose Deck the port delivers to: the owner's, or the player whose Deck was linked in its place. */
+    public String linkedPlayerName() {
+        if (destinationDeck == null || !(level instanceof ServerLevel serverLevel)) return ownerName();
+        var pairing = AutocraftState.get(serverLevel.getServer()).pairing(destinationDeck).orElse(null);
+        return pairing == null ? "" : PlayerNames.of(serverLevel.getServer(), pairing.player(), Networks.at(serverLevel, worldPosition));
     }
 
     public boolean deckLinked() {

@@ -1,22 +1,39 @@
 package dev.micolash.jasm.transfer;
 
-/** The four speed slots and the Access Port's separate power slot. */
+/**
+ * The ports' right-hand column, just past the main panel like the Deck's tabs: the side keys at the top, then a line,
+ * then the four speed slots one above the other and the power slot under them.
+ */
 public final class PortUpgradeLayout {
     public static final int MAIN_WIDTH = 234;
-    public static final int SPEED_X = -78;
-    public static final int Y = 160;
-    public static final int PANEL_X = SPEED_X - 6;
-    public static final int PANEL_Y = Y - 6;
-    public static final int PANEL_WIDTH = 82;
-    public static final int SPEED_PANEL_HEIGHT = 28;
-    public static final int POWER_PANEL_Y = PANEL_Y + SPEED_PANEL_HEIGHT + 6;
-    public static final int POWER_PANEL_SIZE = 28;
-    public static final int POWER_PANEL_X = PANEL_X + PANEL_WIDTH - POWER_PANEL_SIZE;
-    public static final int POWER_X = POWER_PANEL_X + 6;
-    public static final int POWER_Y = POWER_PANEL_Y + 6;
+    /** Left edge of the side keys. */
+    public static final int KEY_X = MAIN_WIDTH;
+    public static final int SLOT_X = KEY_X + 2;
+    private static final int KEY_Y = 29;
+    private static final int KEY_STEP = 21;
 
     private PortUpgradeLayout() {}
 
-    public static int x(int slot) { return SPEED_X + slot * 18; }
-    public static int y(int slot) { return Y; }
+    /** Just under the last of {@code keys} side keys. */
+    private static int keysBottom(int keys) {
+        return KEY_Y + keys * KEY_STEP + 1;
+    }
+
+    /** Where the line between the keys and the slots runs. */
+    public static int dividerY(int keys) {
+        return keysBottom(keys) + 3;
+    }
+
+    public static int speedY(int keys, int slot) {
+        return keysBottom(keys) + 10 + slot * 18;
+    }
+
+    public static int powerY(int keys) {
+        return speedY(keys, PortOperations.UPGRADE_SLOTS) + 4;
+    }
+
+    /** The column as a frame rectangle {x, y, width, height}, tucked under the main panel's edge. */
+    public static int[] column(int keys) {
+        return new int[] {KEY_X - 14, KEY_Y - 4, 38, powerY(keys) + 17 + 5 - (KEY_Y - 4)};
+    }
 }

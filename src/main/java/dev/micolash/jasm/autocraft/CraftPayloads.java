@@ -272,6 +272,17 @@ public final class CraftPayloads {
         @Override public Type<PortMachines> type() { return TYPE; }
     }
 
+    /** Server → client: whose Deck the open port delivers to. */
+    public record PortLinkedPlayer(int containerId, String name) implements CustomPacketPayload {
+        public static final Type<PortLinkedPlayer> TYPE = new Type<>(Jasm.id("port_linked_player"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortLinkedPlayer> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortLinkedPlayer::containerId,
+                ByteBufCodecs.stringUtf8(64), PortLinkedPlayer::name,
+                PortLinkedPlayer::new);
+
+        @Override public Type<PortLinkedPlayer> type() { return TYPE; }
+    }
+
     /** Client → server: rename the open Access Port; empty goes back to the machine's name. */
     public record PortName(int containerId, String name) implements CustomPacketPayload {
         public static final Type<PortName> TYPE = new Type<>(Jasm.id("port_name"));

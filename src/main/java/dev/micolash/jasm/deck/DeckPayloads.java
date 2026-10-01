@@ -94,11 +94,12 @@ public final class DeckPayloads {
         }
     }
 
-    /** Client → server: put the Crafting Deck's grid back on its wafers. */
-    public record ClearGrid(int containerId) implements CustomPacketPayload {
+    /** Client → server: empty the Crafting Deck's grid onto its wafers, or into the player's inventory. */
+    public record ClearGrid(int containerId, boolean toInventory) implements CustomPacketPayload {
         public static final Type<ClearGrid> TYPE = new Type<>(Jasm.id("deck_clear_grid"));
         public static final StreamCodec<RegistryFriendlyByteBuf, ClearGrid> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, ClearGrid::containerId,
+                ByteBufCodecs.BOOL, ClearGrid::toInventory,
                 ClearGrid::new);
 
         @Override

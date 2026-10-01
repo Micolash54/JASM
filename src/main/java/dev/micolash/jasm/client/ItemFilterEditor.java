@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferSettings.Filter;
@@ -89,31 +90,35 @@ class ItemFilterEditor {
         int shrink = WIDTH - editorWidth;
         this.rowButtons = new Button[rows][5];
         this.font = font;
-        text = new EditBox(font, 0, 0, 236 - shrink, 14, label("value"));
+        text = new JasmField(font, 0, 0, 236 - shrink, 14, label("value"));
         text.setMaxLength(256);
         text.setResponder(value -> { icons.clear(); update(); });
         if (movable) place(JasmButton.icon(() -> CLOSE, label("close"), b -> close(), 0, 0, 11, 11), WIDTH - 16, 5);
+        // The kind and allow/deny keys share one width, just enough for the longest word either can show.
+        int keyWidth = Math.max(font.width(label("allow")), font.width(label("deny")));
+        for (Mode m : Mode.values()) keyWidth = Math.max(keyWidth, font.width(label(m.getSerializedName())));
+        keyWidth += 16;
         modeButton = place(JasmButton.text(Component.empty(), b -> {
             mode = Mode.values()[(mode.ordinal() + 1) % Mode.values().length];
             setItem(ghost);
-        }, 0, 0, 74, 14), 8, slotY - 22);
-        action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, 42, 14), 86, slotY - 22);
-        confirm = place(JasmButton.icon(() -> CHECK, label("add"), b -> add(), 0, 0, 16, 16), 274 - shrink, slotY);
+        }, 0, 0, keyWidth, 16), 8, slotY - 24);
+        action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, keyWidth, 16), 10 + keyWidth, slotY - 24);
+        confirm = place(JasmButton.icon(() -> CHECK, label("add"), b -> add(), 0, 0, 17, 17), 274 - shrink, slotY - 1);
         confirm.setTooltip(Tooltip.create(label("add")));
-        int controlsX = compact ? 10 : 166 - shrink;
+        int controlsX = compact ? 10 : 163 - shrink;
         int toggleWidth = Math.max(Math.max(font.width(label("allow")), font.width(label("deny"))),
                 Math.max(font.width(label("on")), font.width(label("off")))) + 10;
         int actionWidth = compact ? toggleWidth : 38;
         int enabledWidth = compact ? toggleWidth : 28;
-        int arrowsX = compact ? editorWidth - 57 : controlsX + 70;
+        int arrowsX = compact ? editorWidth - 60 : controlsX + 70;
         for (int row = 0; row < rows; row++) {
             final int visible = row;
             int py = listY + row * rowHeight + (compact ? 22 : 4);
-            rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 14), controlsX, py);
-            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 14), controlsX + actionWidth + 2, py);
-            rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 12, 14), arrowsX, py);
-            rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 12, 14), arrowsX + 14, py);
-            rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 12, 14), arrowsX + 28, py);
+            rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 15), controlsX, py);
+            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 15), controlsX + actionWidth + 2, py);
+            rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 15), arrowsX, py);
+            rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 13, 15), arrowsX + 15, py);
+            rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 13, 15), arrowsX + 30, py);
         }
     }
 
@@ -166,7 +171,7 @@ class ItemFilterEditor {
     private void update() {
         if (modeButton == null) return;
         modeButton.setMessage(label(mode.getSerializedName()));
-        action.setMessage(label(allow ? "allow" : "deny"));
+        action.setMessage(JasmGui.state(label(allow ? "allow" : "deny"), allow));
         if (confirm != null) confirm.active = tagChoices.isEmpty() && candidate().valid();
         for (int row = 0; row < rows; row++) {
             int at = scroll + row;
@@ -174,8 +179,8 @@ class ItemFilterEditor {
             for (Button button : rowButtons[row]) if (button != null) button.visible = visible;
             if (!visible) continue;
             Filter rule = draft.rules().get(at);
-            rowButtons[row][0].setMessage(label(rule.allow() ? "allow" : "deny"));
-            rowButtons[row][1].setMessage(label(rule.enabled() ? "on" : "off"));
+            rowButtons[row][0].setMessage(JasmGui.state(label(rule.allow() ? "allow" : "deny"), rule.allow()));
+            rowButtons[row][1].setMessage(JasmGui.state(label(rule.enabled() ? "on" : "off"), rule.enabled()));
             rowButtons[row][2].active = at > 0;
             rowButtons[row][3].active = at + 1 < draft.rules().size();
         }
@@ -234,15 +239,15 @@ class ItemFilterEditor {
         if (!isOpen()) return;
         fit(width, screenHeight);
         update();
+        if (grabX >= 0 || grabbable(mx, my)) graphics.requestCursor(CursorTypes.RESIZE_ALL);
         if (movable) {
-            graphics.fill(x + 3, y + 3, x + editorWidth + 3, y + height + 3, 0x6E000000);
-            JasmGui.panel(graphics, x, y, editorWidth, height);
+            JasmGui.window(graphics, x, y, editorWidth, height);
             graphics.item(windowIcon, x + 6, y + 4);
             graphics.text(font, title, x + 26, y + 8, JasmGui.TEXT, false);
             graphics.text(font, suffix, x + editorWidth - 23 - font.width(suffix), y + 8, JasmGui.MUTED, false);
-            graphics.fill(x + 4, y + 22, x + editorWidth - 4, y + 23, JasmGui.SELECTED);
+            JasmGui.divider(graphics, x + 4, y + 21, editorWidth - 8);
             graphics.text(font, label(tagChoices.isEmpty() ? "rules" : "choose_tag"), x + 8, y + 26, JasmGui.SUBTEXT, false);
-            graphics.fill(x + 7, y + slotY - 28, x + editorWidth - 7, y + slotY - 27, JasmGui.SELECTED);
+            JasmGui.divider(graphics, x + 7, y + slotY - 29, editorWidth - 14);
         } else {
             graphics.text(font, tagChoices.isEmpty() ? title : label("choose_tag"), x + 7, y + 3, JasmGui.SUBTEXT, false);
         }
@@ -303,8 +308,14 @@ class ItemFilterEditor {
         }
         text.setFocused(text.isMouseOver(event.x(), event.y()));
         if (text.isFocused()) { tagChoices = List.of(); text.mouseClicked(event, doubleClick); }
-        else if (movable && event.button() == InputConstants.MOUSE_BUTTON_LEFT && event.y() < y + 22) { grabX = (int) event.x() - x; grabY = (int) event.y() - y; }
+        else if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && grabbable(event.x(), event.y())) { grabX = (int) event.x() - x; grabY = (int) event.y() - y; }
         return true;
+    }
+    /** A movable window can be picked up by any empty spot, not just its title bar; the rule list and the field don't count. */
+    private boolean grabbable(double mx, double my) {
+        if (!movable || !contains(mx, my) || text.isMouseOver(mx, my) || slotArea().contains((int) mx, (int) my)) return false;
+        for (Placed placed : buttons) if (placed.button().visible && placed.button().isMouseOver(mx, my)) return false;
+        return my < y + listY - 1 || my >= y + listY + rows * rowHeight + 1;
     }
     private int scrollX() { return editorWidth - (movable ? 18 : 10); }
 

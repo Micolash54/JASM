@@ -24,7 +24,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -32,6 +32,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
@@ -41,40 +42,55 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Deck screen: wafer slots in a side panel on the left; in the main panel, charge and wafer status, a
- * searchable, scrollable grid of everything on the Deck's wafers, and the player's inventory. A Crafting Deck adds a
- * panel on the right with its 3×3 crafting grid. Right-clicking a wafer opens its ordered filters in a
- * window on top, which can be dragged by its title bar.
+ * The Deck screen: wafer slots in a side panel on the left; in the main panel, search and sorting, charge and wafer
+ * status, a scrollable grid of everything on the Deck's wafers, and the player's inventory, with the scroll bar in a
+ * column on the right. A Crafting Deck adds a box under the grid with the player, their armour and off-hand, and the
+ * 3×3 crafting grid, and a column of tab buttons. Right-clicking a wafer opens its ordered filters in a window on top.
  */
-public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
+public class DeckScreen extends JasmScreen<DeckMenu> {
     /** Width of the main panel; the side panels add to it. */
     private static final int MAIN_WIDTH = DeckMenu.MAIN_WIDTH;
-    private static final int COLUMNS = 9;
+    private static final int COLUMNS = 10;
     /** Grid rows at the smallest size; the other sizes share out the room the game window has left. */
     private static final int SMALL_ROWS = 6;
     /** Room kept free above and below the screen at the largest size. */
     private static final int MARGIN = 16;
     /** The Rules tab lists taller rows, two lines of text each: five fit where the grid shows six. */
     private static final int RULE_ROW = 21;
-    private static final int CHARGE_WIDTH = 60;
-    private static final int LINK_SIZE = 5;
-    private static final int SCROLL_WIDTH = 10;
-    private static final int HANDLE_HEIGHT = 15;
+    private static final int CHARGE_WIDTH = 76;
+    private static final int LINK_SIZE = 6;
+    /** The scroll track sits in its own column right of the grid, from just under the search row to the grid's end. */
+    private static final int TRACK_Y = 31;
+    private static final int HANDLE_HEIGHT = 18;
+    /** The search row along the top: the field, then the sort and size keys. */
+    private static final int KEY = 16;
+    private static final int KEY_Y = 5;
+    /** The tab keys down the right-hand column, sharing their outlines. */
+    private static final int TAB_WIDTH = 21;
+    private static final int TAB_HEIGHT = 22;
+    private static final int TAB_Y = 29;
 
-    private static final JasmButton.Icon SORT_NAME = new JasmButton.Icon(Jasm.id("icon/sort_name"), 7, 5);
+    private static final JasmButton.Icon SORT_NAME = new JasmButton.Icon(Jasm.id("icon/sort_name"), 8, 5);
     private static final JasmButton.Icon SORT_AMOUNT = new JasmButton.Icon(Jasm.id("icon/sort_amount"), 7, 5);
-    private static final JasmButton.Icon ARROW_UP = new JasmButton.Icon(Jasm.id("icon/arrow_up"), 5, 3);
-    private static final JasmButton.Icon ARROW_DOWN = new JasmButton.Icon(Jasm.id("icon/arrow_down"), 5, 3);
-    private static final JasmButton.Icon ARROW_LEFT = new JasmButton.Icon(Jasm.id("icon/arrow_left"), 3, 5);
-    private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow");
+    private static final JasmButton.Icon UP = new JasmButton.Icon(Jasm.id("icon/triangle_up"), 6, 4);
+    private static final JasmButton.Icon DOWN = new JasmButton.Icon(Jasm.id("icon/triangle_down"), 6, 4);
+    private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow_wide");
     private static final Identifier CRAFTABLE = Jasm.id("icon/craftable");
-    private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 8, 8);
+    private static final JasmButton.Icon[] TAB_ICONS = {
+            new JasmButton.Icon(Jasm.id("icon/tab_items"), 11, 10), new JasmButton.Icon(Jasm.id("icon/tab_craft"), 11, 11),
+            new JasmButton.Icon(Jasm.id("icon/tab_rules"), 11, 11)};
+    private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 11, 13);
     private static final JasmButton.Icon[] SIZE_ICONS = {
-            new JasmButton.Icon(Jasm.id("icon/size_small"), 7, 8), new JasmButton.Icon(Jasm.id("icon/size_medium"), 7, 8),
-            new JasmButton.Icon(Jasm.id("icon/size_tall"), 7, 8), new JasmButton.Icon(Jasm.id("icon/size_full"), 7, 8)};
+            new JasmButton.Icon(Jasm.id("icon/size_small"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_medium"), 8, 7),
+            new JasmButton.Icon(Jasm.id("icon/size_tall"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_full"), 8, 7)};
     private static final Identifier RULE_ON = Jasm.id("icon/rule_on");
     private static final Identifier RULE_WAITING = Jasm.id("icon/rule_waiting");
     private static final Identifier RULE_OFF = Jasm.id("icon/rule_off");
+    private static final int WELL = 0xFF1E1E2E;
+    private static final int WELL_LIGHT = 0xFF585B70;
+    private static final int WELL_CORNER = 0xFF45475A;
+    private static final int BOX = 0xFF313244;
+    private static final int BOX_SHADE = 0xFF181825;
 
     private EditBox search;
     private GridEntries.Sort sort = GridEntries.Sort.NAME;
@@ -84,14 +100,14 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     private String builtQuery = "";
     private List<GridEntries.Entry<ItemResource>> visible = List.of();
     private boolean draggingHandle;
-    /** Left edge of the main panel, and the grid and scroll bar inside it. */
+    /** Left edge of the main panel, and the grid and scroll track inside it. */
     private final int mainX;
     private final int gridX;
-    private final int scrollX;
-    /** Grid rows at the chosen size; grid and status line sit just above the inventory. */
+    private final int trackX;
+    private final int gridY = DeckMenu.GRID_Y;
+    private final int statusY = 24;
+    /** Grid rows at the chosen size. */
     private int rows = SMALL_ROWS;
-    private int gridY;
-    private int statusY;
     private Button sizeButton;
     private WaferFilterWindow filterWindow;
 
@@ -100,19 +116,18 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     private Tab tab = Tab.ITEMS;
     private Tab builtTab = Tab.ITEMS;
-    private final List<Button> tabs = new ArrayList<>();
+    private final List<JasmButton> tabs = new ArrayList<>();
     private CraftRequestWindow craftWindow;
     private RuleWindow ruleWindow;
     private JobsWindow jobsWindow;
     private @Nullable Button jobsButton;
 
     public DeckScreen(DeckMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, menu.screenWidth(), menu.inventoryY() + 58 + 18 + 6);
+        super(menu, inventory, title, menu.screenWidth(), menu.screenHeight());
         this.mainX = menu.mainX();
-        this.gridX = mainX + 8;
-        this.scrollX = gridX + COLUMNS * 18 + 3;
-        this.titleLabelX = mainX + 8;
-        this.inventoryLabelX = mainX + 8;
+        this.gridX = mainX + 12;
+        this.trackX = mainX + 203;
+        this.inventoryLabelX = mainX + 21;
     }
 
     /**
@@ -120,19 +135,18 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
      * the two between split the difference.
      */
     private int rowsFor(JasmClientConfig.DeckSize size) {
-        int fixed = DeckMenu.INVENTORY_Y + 58 + 18 + 6 - SMALL_ROWS * 18;
+        int fixed = menu.screenHeight() - menu.rows() * 18;
         int most = Math.max(SMALL_ROWS, (height - 2 * MARGIN - fixed) / 18);
         return SMALL_ROWS + (most - SMALL_ROWS) * size.ordinal() / (JasmClientConfig.DeckSize.values().length - 1);
     }
 
-    /** Sizes the screen to the chosen grid height, moving the inventory down under the grid. */
+    /** Sizes the screen to the chosen grid height, moving everything under the grid down. */
     private void layout() {
         rows = rowsFor(JasmClientConfig.deckSize());
-        menu.moveInventory(DeckMenu.INVENTORY_Y + (rows - SMALL_ROWS) * 18);
-        imageHeight = menu.inventoryY() + 58 + 18 + 6;
-        inventoryLabelY = menu.inventoryY() - 10;
-        gridY = menu.inventoryY() - 12 - rows * 18;
-        statusY = gridY - 11;
+        menu.layout(rows);
+        imageHeight = menu.screenHeight();
+        inventoryLabelY = menu.wellBottom() + 4;
+        frame = null;
         scrollRow = Math.min(scrollRow, maxScroll());
     }
 
@@ -140,8 +154,9 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         return rows * 18 / RULE_ROW;
     }
 
-    private int scrollHeight() {
-        return rows * 18 - 2;
+    /** Height of the scroll track, which runs down beside the grid. */
+    private int trackHeight() {
+        return menu.gridEnd() - TRACK_Y;
     }
 
     /** Steps to the next size, or back one; the screen is laid out again around the new grid. */
@@ -163,24 +178,26 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         super.init();
         // The search text stays when the screen is laid out again for a new size or window.
         String query = search == null ? "" : search.getValue();
-        search = new EditBox(font, leftPos + mainX + SEARCH_X, topPos + 4, 51, 12, Component.translatable("screen.jasm.deck.search"));
+        search = new JasmField(font, leftPos + mainX + 5, topPos + 6, 145, 14, Component.translatable("screen.jasm.deck.search"));
         search.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         search.setMaxLength(64);
         search.setValue(query);
         search.setResponder(text -> scrollRow = 0);
         addRenderableWidget(search);
+        // The three keys right of the search field share their outlines.
+        int keyX = leftPos + mainX + 152;
         addRenderableWidget(JasmButton.icon(() -> sort == GridEntries.Sort.NAME ? SORT_NAME : SORT_AMOUNT, sortLabel(), b -> {
             sort = sort == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME;
             b.setMessage(sortLabel());
             builtVersion = -1;
-        }, leftPos + mainX + 140, topPos + 3, 14, 14));
-        addRenderableWidget(JasmButton.icon(() -> ascending ? ARROW_UP : ARROW_DOWN, directionLabel(), b -> {
+        }, keyX, topPos + KEY_Y, KEY, KEY));
+        addRenderableWidget(JasmButton.icon(() -> ascending ? UP : DOWN, directionLabel(), b -> {
             ascending = !ascending;
             b.setMessage(directionLabel());
             builtVersion = -1;
-        }, leftPos + mainX + 155, topPos + 3, 14, 14));
+        }, keyX + KEY - 1, topPos + KEY_Y, KEY, KEY));
         sizeButton = JasmButton.icon(() -> SIZE_ICONS[JasmClientConfig.deckSize().ordinal()], sizeLabel(), b -> changeSize(false),
-                leftPos + mainX + 170, topPos + 3, 14, 14);
+                keyX + 2 * (KEY - 1), topPos + KEY_Y, KEY, KEY);
         sizeButton.setTooltip(Tooltip.create(Component.empty().append(sizeLabel()).append("\n")
                 .append(Component.translatable("screen.jasm.deck.size_hint").withStyle(ChatFormatting.GRAY))));
         addRenderableWidget(sizeButton);
@@ -190,44 +207,50 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         jobsWindow = new JobsWindow(menu, font);
         jobsButton = null;
         if (menu.isCrafting()) {
-            // The tabs take the title's place: a Crafting Deck's name shows in its tooltip anyway.
+            int tabX = leftPos + mainX + 217;
             for (Tab t : Tab.values()) {
-                String name = t.name().toLowerCase(java.util.Locale.ROOT);
-                JasmButton.Icon icon = new JasmButton.Icon(Jasm.id("icon/tab_" + name), 8, 8);
-                Component label = Component.translatable("screen.jasm.deck.tab." + name);
-                Button button = JasmButton.icon(() -> icon, label, b -> {
+                Component label = Component.translatable("screen.jasm.deck.tab." + t.name().toLowerCase(java.util.Locale.ROOT));
+                JasmButton.Icon icon = TAB_ICONS[t.ordinal()];
+                JasmButton button = JasmButton.icon(() -> icon, label, b -> {
+                    jobsWindow.close();
                     tab = t;
                     scrollRow = 0;
                     builtVersion = -1;
                     updateTabs();
-                }, leftPos + mainX + 5 + t.ordinal() * 19, topPos + 3, 18, 14);
+                }, tabX, topPos + TAB_Y + t.ordinal() * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
                 button.setTooltip(Tooltip.create(label));
                 tabs.add(addRenderableWidget(button));
             }
-            // On the Craft tab: the list of this Deck's jobs.
-            jobsButton = JasmButton.icon(() -> JOBS, Component.translatable("screen.jasm.jobs.button"), b -> openJobs(),
-                    leftPos + mainX + 5 + Tab.values().length * 19 + 3, topPos + 3, 18, 14);
+            // The job list is the last tab: it can be opened from any of the others.
+            jobsButton = JasmButton.icon(() -> JOBS, Component.translatable("screen.jasm.jobs.button"),
+                    b -> { if (jobsWindow.isOpen()) jobsWindow.close(); else openJobs(); updateTabs(); },
+                    tabX, topPos + TAB_Y + Tab.values().length * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
             jobsButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.jobs.button")));
             addRenderableWidget(jobsButton);
             updateTabs();
-            Button clear = JasmButton.icon(() -> ARROW_LEFT, Component.translatable("screen.jasm.deck.clear_grid"),
-                    b -> ClientPacketDistributor.sendToServer(new DeckPayloads.ClearGrid(menu.containerId)),
-                    leftPos + menu.craftX() + DeckMenu.SIDE_PAD + 1, topPos + DeckMenu.CRAFT_RESULT_Y + 1, 14, 14);
-            clear.setTooltip(Tooltip.create(Component.translatable("screen.jasm.deck.clear_grid")));
-            addRenderableWidget(clear);
+            // Beside the crafting grid: send what is in it back to the Deck, or down to the inventory.
+            int keysX = leftPos + mainX + 154;
+            int gridTop = topPos + menu.craftY() + 12;
+            Button toDeck = JasmButton.icon(() -> UP, Component.translatable("screen.jasm.deck.grid_to_deck"),
+                    b -> ClientPacketDistributor.sendToServer(new DeckPayloads.ClearGrid(menu.containerId, false)), keysX, gridTop, 14, 14);
+            toDeck.setTooltip(Tooltip.create(Component.translatable("screen.jasm.deck.grid_to_deck")));
+            addRenderableWidget(toDeck);
+            Button toInventory = JasmButton.icon(() -> DOWN, Component.translatable("screen.jasm.deck.grid_to_inventory"),
+                    b -> ClientPacketDistributor.sendToServer(new DeckPayloads.ClearGrid(menu.containerId, true)), keysX, gridTop + 38, 14, 14);
+            toInventory.setTooltip(Tooltip.create(Component.translatable("screen.jasm.deck.grid_to_inventory")));
+            addRenderableWidget(toInventory);
         }
 
         if (filterWindow == null) filterWindow = new WaferFilterWindow(menu, font);
     }
 
-    /** The open tab's button is greyed out, so it reads as the one selected. */
+    /** The open tab's button stays pressed in; while the job list is open, its button is the pressed one. */
     private void updateTabs() {
+        boolean jobs = jobsWindow != null && jobsWindow.isOpen();
         for (int i = 0; i < tabs.size(); i++) {
-            tabs.get(i).active = i != tab.ordinal();
+            tabs.get(i).setSelected(!jobs && i == tab.ordinal());
         }
-        if (jobsButton != null) {
-            jobsButton.visible = tab == Tab.CRAFT;
-        }
+        if (jobsButton instanceof JasmButton button) button.setLatched(jobs);
     }
 
     /** The job list covers the main panel; other windows close. */
@@ -319,8 +342,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     // --- wafer settings ---
-
-    private static final int SEARCH_X = 86;
 
     private boolean inWindow(double mouseX, double mouseY) {
         return filterWindow != null && filterWindow.contains(mouseX, mouseY);
@@ -466,47 +487,89 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, menu.sideWidth(), menu.sideHeight());
-        JasmGui.panel(graphics, x + menu.upgradeX(), y + menu.upgradeY(), DeckMenu.UPGRADE_SIZE, DeckMenu.UPGRADE_SIZE);
-        JasmGui.panel(graphics, x + mainX, y, MAIN_WIDTH, imageHeight);
+        frame().draw(graphics, x, y);
+        // A line between the wafers and the Dimension Upgrade slot under them.
+        JasmGui.divider(graphics, x + 3, y + DeckMenu.SIDE_TOP + 9 + menu.sideRows() * 18, mainX - 5);
+        drawWell(graphics, x + mainX + 5, y + 33, 194, menu.wellBottom() - 33 + 1);
         if (menu.isCrafting()) {
-            int cx = x + menu.craftX();
-            JasmGui.panel(graphics, cx, y, DeckMenu.CRAFT_WIDTH, DeckMenu.CRAFT_HEIGHT);
-            // An arrow from the grid down to the result.
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CRAFT_ARROW, cx + DeckMenu.SIDE_PAD + 1 + 18 + 4,
-                    y + DeckMenu.SIDE_PAD + 1 + 3 * 18 + 2, 9, 9);
+            int bx = x + mainX + 7;
+            int by = y + menu.craftY();
+            graphics.fill(bx, by, bx + 189, by + 76, BOX);
+            graphics.fill(bx + 189, by, bx + 190, by + 77, BOX_SHADE);
+            graphics.fill(bx, by + 76, bx + 189, by + 77, BOX_SHADE);
+            // The player in a dark window between their armour and off-hand, turning to follow the mouse.
+            int px = x + mainX + 28;
+            int py = by + 2;
+            drawSlotWell(graphics, px, py, 40, 72);
+            InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, px + 1, py + 1, px + 39, py + 71, 30, 0.0625F,
+                    mouseX, mouseY, minecraft.player);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CRAFT_ARROW, x + mainX + 157, by + 33, 9, 10);
         }
         for (Slot slot : menu.slots) {
-            JasmGui.slot(graphics, x + slot.x, y + slot.y);
+            if (slot.isActive()) JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
         drawCharge(graphics, x, y);
         if (filterWindow != null && filterWindow.isOpen() && filterWindow.selected() < menu.slots.size()) {
             Slot wafer = menu.slots.get(filterWindow.selected());
             graphics.outline(x + wafer.x - 1, y + wafer.y - 1, 18, 18, JasmGui.ACCENT);
         }
-        JasmGui.inset(graphics, x + gridX - 1, y + gridY - 1, COLUMNS * 18, rows * 18);
-        drawScrollBar(graphics, x, y);
+        JasmGui.track(graphics, x + trackX, y + TRACK_Y, trackHeight(), handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
     }
 
-    /** A track beside the grid with a handle; the handle is greyed out when everything fits without scrolling. */
-    private void drawScrollBar(GuiGraphicsExtractor graphics, int x, int y) {
-        JasmGui.scrollBar(graphics, x + scrollX, y + gridY - 1, SCROLL_WIDTH, scrollHeight() + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
+    /** The grid's well: dark, with a light edge right and below; the crafting box sits inside it. */
+    private static void drawWell(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, WELL);
+        graphics.fill(x + width - 1, y + 1, x + width, y + height, WELL_LIGHT);
+        graphics.fill(x + 1, y + height - 1, x + width, y + height, WELL_LIGHT);
+        graphics.fill(x + width - 1, y, x + width, y + 1, WELL_CORNER);
+        graphics.fill(x, y + height - 1, x + 1, y + height, WELL_CORNER);
     }
+
+    /** A slot's frame stretched to any size, filled with the panel's outline colour so the player stands out. */
+    private static void drawSlotWell(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
+        graphics.fill(x, y, x + width, y + height, BOX_SHADE);
+        graphics.fill(x + 1, y + 1, x + width, y + height, WELL_LIGHT);
+        graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, 0xFF11111B);
+        graphics.fill(x + width - 1, y, x + width, y + 1, WELL_CORNER);
+        graphics.fill(x, y + height - 1, x + 1, y + height, WELL_CORNER);
+    }
+
+    private JasmFrame frame;
+
+    /**
+     * The panels as one shape: the wafers on the left, the main panel with its wider search row, the scroll column on
+     * the right and, on a Crafting Deck, the tab column. Rebuilt when the grid changes height.
+     */
+    private JasmFrame frame() {
+        if (frame == null) {
+            List<int[]> rects = new ArrayList<>(List.of(
+                    new int[] {mainX - 3, 0, DeckMenu.MAIN_WIDTH + 5, 31},
+                    new int[] {mainX, 0, DeckMenu.MAIN_WIDTH, imageHeight},
+                    new int[] {0, DeckMenu.SIDE_TOP, mainX, menu.sideRows() * 18 + 38},
+                    new int[] {mainX + 190, 25, 28, menu.gridEnd() - 18}));
+            if (menu.isCrafting()) rects.add(new int[] {mainX + 190, 25, 51, 94});
+            panels = rects;
+            frame = JasmFrame.rounded(rects.toArray(int[][]::new));
+        }
+        return frame;
+    }
+
+    private List<int[]> panels = List.of();
 
     private int handleOffset() {
-        int travel = scrollHeight() - HANDLE_HEIGHT;
+        int travel = trackHeight() - HANDLE_HEIGHT;
         return maxScroll() == 0 ? 0 : Math.round(travel * scrollRow / (float) maxScroll());
     }
 
     private boolean onScrollBar(double mouseX, double mouseY) {
-        return mouseX >= leftPos + scrollX && mouseX < leftPos + scrollX + SCROLL_WIDTH
-                && mouseY >= topPos + gridY - 1 && mouseY < topPos + gridY + scrollHeight() + 1;
+        return mouseX >= leftPos + trackX - 1 && mouseX < leftPos + trackX + 11
+                && mouseY >= topPos + TRACK_Y && mouseY < topPos + TRACK_Y + trackHeight();
     }
 
     /** Scrolls so the handle's middle sits under the mouse. */
     private void scrollToMouse(double mouseY) {
-        float travel = scrollHeight() - HANDLE_HEIGHT;
-        float along = (float) (mouseY - (topPos + gridY) - HANDLE_HEIGHT / 2.0) / travel;
+        float travel = trackHeight() - HANDLE_HEIGHT;
+        float along = (float) (mouseY - (topPos + TRACK_Y) - HANDLE_HEIGHT / 2.0) / travel;
         scrollRow = Math.max(0, Math.min(maxScroll(), Math.round(along * maxScroll())));
     }
 
@@ -515,8 +578,13 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
     }
 
     private void drawCharge(GuiGraphicsExtractor graphics, int x, int y) {
-        int bx = x + mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH;
-        JasmGui.bar(graphics, bx - 1, y + statusY, CHARGE_WIDTH + 2, 7, menu.view().energy() / (double) tier().battery());
+        int bx = x + mainX + 123;
+        int by = y + 23;
+        double charge = Math.clamp(menu.view().energy() / (double) tier().battery(), 0.0, 1.0);
+        graphics.fill(bx, by, bx + CHARGE_WIDTH, by + 8, BOX_SHADE);
+        graphics.fill(bx + 1, by + 1, bx + CHARGE_WIDTH - 1, by + 7, WELL);
+        int filled = (int) Math.round((CHARGE_WIDTH - 2) * charge);
+        if (filled > 0) JasmGui.barFill(graphics, bx + 1, by + 1, filled, 6);
         if (menu.isCrafting()) {
             // The link light: green linked, yellow linked but out of reach, grey not linked.
             int lx = x + linkX();
@@ -525,13 +593,34 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
                 case 1 -> JasmGui.WARN;
                 default -> JasmGui.MUTED;
             };
-            graphics.fill(lx, y + statusY + 1, lx + LINK_SIZE, y + statusY + 1 + LINK_SIZE, colour);
+            graphics.fill(lx, y + statusY, lx + LINK_SIZE, y + statusY + LINK_SIZE, colour);
         }
+    }
+
+    /** Over the charge bar or the link light: the charge and, on a Crafting Deck, whether it is linked. */
+    private void chargeTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        int left = leftPos + (menu.isCrafting() ? linkX() - 1 : mainX + 123);
+        int right = leftPos + mainX + 123 + CHARGE_WIDTH;
+        if (mouseX < left || mouseX >= right || mouseY < topPos + 22 || mouseY >= topPos + 32) return;
+        List<FormattedCharSequence> lines = new ArrayList<>();
+        lines.add(Component.translatable("tooltip.jasm.deck.energy",
+                String.format("%,d", menu.view().energy()), String.format("%,d", tier().battery())).getVisualOrderText());
+        if (menu.isCrafting()) {
+            int network = menu.view().network();
+            String key = switch (network) {
+                case 2 -> "screen.jasm.deck.link.linked";
+                case 1 -> "screen.jasm.deck.link.unreachable";
+                default -> "screen.jasm.deck.link.not_linked";
+            };
+            int colour = network == 2 ? JasmGui.GOOD : network == 1 ? JasmGui.WARN : JasmGui.MUTED;
+            lines.addAll(font.split(Component.translatable(key).withColor(colour & 0xFFFFFF), 180));
+        }
+        graphics.setTooltipForNextFrame(font, lines, mouseX, mouseY);
     }
 
     /** Left edge of the link light, just before the charge bar. */
     private int linkX() {
-        return mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH - 4 - LINK_SIZE;
+        return mainX + 114;
     }
 
     @Override
@@ -556,6 +645,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.deck.dimension_slot"), mouseX, mouseY);
         }
         drawGrid(graphics, mouseX, mouseY);
+        chargeTooltip(graphics, mouseX, mouseY);
         // The last message lies over the bottom of the grid for a few seconds, under any open window.
         Component notice = menu.notices().current(minecraft.level.getGameTime());
         if (notice != null) {
@@ -633,20 +723,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             Component text = Component.translatable("screen.jasm.deck.no_power");
             graphics.text(font, text, x + gridX + (COLUMNS * 18 - font.width(text)) / 2, y + gridY + rows * 9 - 4, JasmGui.BAD, true);
         }
-        int barLeft = x + mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH;
-        if (mouseX >= barLeft && mouseX < barLeft + CHARGE_WIDTH && mouseY >= y + statusY && mouseY < y + statusY + 7) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("tooltip.jasm.deck.energy",
-                    String.format("%,d", menu.view().energy()), String.format("%,d", tier().battery())), mouseX, mouseY);
-        }
-        int linkLeft = x + linkX();
-        if (menu.isCrafting() && mouseX >= linkLeft - 1 && mouseX < linkLeft + LINK_SIZE + 1 && mouseY >= y + statusY && mouseY < y + statusY + 7) {
-            String key = switch (menu.view().network()) {
-                case 2 -> "screen.jasm.deck.link.linked";
-                case 1 -> "screen.jasm.deck.link.unreachable";
-                default -> "screen.jasm.deck.link.not_linked";
-            };
-            graphics.setTooltipForNextFrame(font, font.split(Component.translatable(key), 180), mouseX, mouseY);
-        }
         if (menu.isCrafting() && tab == Tab.CRAFT && menu.view().network() < 2 && hasPower()) {
             graphics.fill(x + gridX - 1, y + gridY - 1, x + gridX + COLUMNS * 18 - 1, y + gridY + rows * 18 - 1, JasmGui.SHADE);
             Component text = Component.translatable(menu.view().network() == 0 ? "screen.jasm.craft.not_paired" : "screen.jasm.craft.unreachable");
@@ -668,15 +744,6 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
-        // Long names are cut short so they never run under the search box.
-        int room = SEARCH_X - 8 - 3;
-        String name = title.getString();
-        if (font.width(name) > room) {
-            name = font.plainSubstrByWidth(name, room - font.width("...")) + "...";
-        }
-        if (!menu.isCrafting()) {
-            graphics.text(font, name, titleLabelX, titleLabelY, JasmGui.TEXT, false);
-        }
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         long used = 0;
         long capacity = 0;
@@ -693,17 +760,17 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
         if (menu.view().jobs().stream().anyMatch(job -> job.pause() == 4)) {
             // A job's results are waiting for room: say so until they are delivered.
             Component banner = Component.translatable("screen.jasm.craft.banner_full");
-            graphics.text(font, banner, mainX + 8, statusY, JasmGui.BAD, false);
+            graphics.text(font, banner, mainX + 6, statusY, JasmGui.BAD, false);
             return;
         }
         // Items from missing mods still take up space; the usage turns red and each wafer's tooltip says how many.
         Component status = Component.translatable("screen.jasm.deck.usage", GridEntries.abbreviate(used), GridEntries.abbreviate(capacity));
-        graphics.text(font, status, mainX + 8, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
+        graphics.text(font, status, mainX + 6, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
         if (types > 0) {
             // Type Wafers: types used, right-aligned before the charge bar, when there is room for both.
             Component typeStatus = Component.translatable("screen.jasm.deck.types", typesUsed, types);
-            int right = (menu.isCrafting() ? linkX() : mainX + MAIN_WIDTH - 8 - CHARGE_WIDTH) - 5;
-            if (mainX + 8 + font.width(status) + 6 + font.width(typeStatus) <= right) {
+            int right = (menu.isCrafting() ? linkX() : mainX + 123) - 5;
+            if (mainX + 6 + font.width(status) + 6 + font.width(typeStatus) <= right) {
                 graphics.text(font, typeStatus, right - font.width(typeStatus), statusY, typesUsed >= types ? JasmGui.BAD : JasmGui.SUBTEXT, false);
             }
         }
@@ -734,17 +801,17 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
 
     // --- input ---
 
-    /** Below the side panel is outside the screen, so items dropped there fall out as usual. */
+    /** Only the panels count as the screen: items dropped anywhere else fall out as usual. */
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
         if (inWindow(mouseX, mouseY)) {
             return false;
         }
-        if (mouseX >= left + menu.upgradeX() && mouseX < left + menu.upgradeX() + DeckMenu.UPGRADE_SIZE
-                && mouseY >= top + menu.upgradeY() && mouseY < top + menu.upgradeY() + DeckMenu.UPGRADE_SIZE) return false;
-        boolean belowSide = mouseX < left + mainX && mouseY >= top + menu.sideHeight();
-        boolean belowCraft = menu.isCrafting() && mouseX >= left + menu.craftX() && mouseY >= top + DeckMenu.CRAFT_HEIGHT;
-        return belowSide || belowCraft || super.hasClickedOutside(mouseX, mouseY, left, top);
+        frame();
+        for (int[] r : panels) {
+            if (mouseX >= left + r[0] && mouseX < left + r[0] + r[2] && mouseY >= top + r[1] && mouseY < top + r[1] + r[3]) return false;
+        }
+        return true;
     }
 
     /**
@@ -839,6 +906,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             return true;
         }
         if (filterWindow.isOpen() && filterWindow.mouseDragged(event, width, height)) return true;
+        if (ruleWindow.isOpen() && ruleWindow.mouseDragged(event, width, height)) return true;
         if (draggingHandle) {
             scrollToMouse(event.y());
             return true;
@@ -853,6 +921,7 @@ public class DeckScreen extends AbstractContainerScreen<DeckMenu> {
             return true;
         }
         if (filterWindow.isOpen() && filterWindow.mouseReleased(event)) return true;
+        if (ruleWindow.mouseReleased()) return true;
         if (draggingHandle) {
             draggingHandle = false;
             return true;

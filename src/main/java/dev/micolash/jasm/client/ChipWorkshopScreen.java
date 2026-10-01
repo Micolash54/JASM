@@ -7,7 +7,6 @@ import dev.micolash.jasm.workshop.ChipWorkshopMenu;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.RandomSource;
@@ -21,7 +20,8 @@ import org.jspecify.annotations.Nullable;
  * inventory. The critter's panel hangs off its left side: slot, name, status, a speech bubble, the Byteling's
  * standard/Advanced switch, then its training and battery bars.
  */
-public class ChipWorkshopScreen extends AbstractContainerScreen<ChipWorkshopMenu> {
+public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
+    private JasmFrame frame;
     private static final int SIDE = ChipWorkshopMenu.SIDE_WIDTH;
     private static final int MAIN_X = ChipWorkshopMenu.MAIN_X;
     private static final int WIDTH = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
@@ -154,8 +154,8 @@ public class ChipWorkshopScreen extends AbstractContainerScreen<ChipWorkshopMenu
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, SIDE, imageHeight);
-        JasmGui.panel(graphics, x + MAIN_X, y, ChipWorkshopMenu.MAIN_WIDTH, imageHeight);
+        if (frame == null) frame = JasmFrame.rounded(new int[] {0, 0, SIDE, imageHeight}, new int[] {MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight});
+        frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }

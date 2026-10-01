@@ -21,7 +21,9 @@ import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.ResultSlot;
 import net.minecraft.world.inventory.Slot;
@@ -30,6 +32,8 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -38,25 +42,27 @@ import org.jspecify.annotations.Nullable;
  * the 3×3 grid and its result. The Deck itself stays locked in its slot while open, and the menu closes if that
  * exact Deck leaves the slot.
  *
- * <p>The wafer slots sit in a side panel on the left, up to {@link #SIDE_ROWS} per column; the main panel (grid and
- * inventory) starts at {@link #mainX()}; a Crafting Deck's grid sits in a panel on the right at {@link #craftX()}.
+ * <p>The wafer slots sit in a side panel on the left, up to {@link #SIDE_ROWS} per column; the main panel starts at
+ * {@link #mainX()} with the item grid at the top and the inventory at the bottom. A Crafting Deck has a box between
+ * them with the player's armour and off-hand, the 3×3 grid and its result; those slots come last.
  */
 public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
-    /** Top of the inventory with the smallest grid; a taller grid on the client moves it down. */
-    public static final int INVENTORY_Y = 150;
     /** Width of the main panel. */
-    public static final int MAIN_WIDTH = 190;
+    public static final int MAIN_WIDTH = 204;
     /** Most wafer slots in one column of the side panel. */
     public static final int SIDE_ROWS = 8;
-    /** Padding inside the side panels, and the gap between them and the main panel. */
-    public static final int SIDE_PAD = 7;
-    public static final int SIDE_GAP = 2;
-    /** The crafting panel: the grid at the top, the result below it. */
-    public static final int CRAFT_WIDTH = SIDE_PAD * 2 + 3 * 18;
-    public static final int CRAFT_RESULT_Y = SIDE_PAD + 1 + 3 * 18 + 14;
-    public static final int CRAFT_HEIGHT = CRAFT_RESULT_Y + 16 + SIDE_PAD + 1;
-    public static final int UPGRADE_SIZE = SIDE_PAD * 2 + 18;
+    /** Top edge of the wafer panel, just under the search row. */
+    public static final int SIDE_TOP = 19;
+    /** Item grid rows at the smallest size, which is what the server lays out; the client may show more. */
+    public static final int MIN_ROWS = 6;
+    /** Top of the first item row in the grid. */
+    public static final int GRID_Y = 38;
+    /** The crafting box under the grid, with its border and the gap below it. */
+    public static final int CRAFT_BOX = 78;
+    private static final EquipmentSlot[] ARMOR = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
+    private static final Identifier[] ARMOR_ICONS = {Jasm.id("container/empty_helmet"), Jasm.id("container/empty_chestplate"),
+            Jasm.id("container/empty_leggings"), Jasm.id("container/empty_boots")};
 
     private final Notices.Shown notices = new Notices.Shown();
     private final Player player;
@@ -64,7 +70,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private final ItemStack deck;
     private final DeckWaferContainer wafers;
     private final int waferSlots;
-    private int inventoryY;
+    private int rows = MIN_ROWS;
     private final int sideColumns;
     private final int sideRows;
     private final @Nullable DeckGridContainer grid;
@@ -74,6 +80,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private final int resultSlot;
     private final DeckUpgradeContainer upgrade;
     private final int upgradeSlot;
+    /** The four armour slots, head first, then the off-hand; -1 on a normal Deck. */
+    private final int armorStart;
     /** While the grid is being filled in one go, the result is worked out once at the end. */
     private boolean placing;
     /** Client side only: what the server has told this screen. */
@@ -87,34 +95,27 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         this.deck = inventory.getItem(deckSlot);
         this.wafers = new DeckWaferContainer(deck, player);
         this.waferSlots = wafers.getContainerSize();
-        this.inventoryY = INVENTORY_Y;
         this.sideColumns = Math.max(1, (waferSlots + SIDE_ROWS - 1) / SIDE_ROWS);
         this.sideRows = Math.max(1, (waferSlots + sideColumns - 1) / sideColumns);
 
         // Wafers fill the side panel column by column, top to bottom.
         for (int i = 0; i < waferSlots; i++) {
-            addSlot(new WaferSlot(wafers, i, SIDE_PAD + 1 + (i / sideRows) * 18, SIDE_PAD + 1 + (i % sideRows) * 18));
+            addSlot(new WaferSlot(wafers, i, 5 + (i / sideRows) * 18, SIDE_TOP + 7 + (i % sideRows) * 18));
         }
         int x = mainX();
-        for (int row = 0; row < 3; row++) {
-            for (int column = 0; column < 9; column++) {
-                int index = 9 + row * 9 + column;
-                addSlot(playerSlot(inventory, index, x + 8 + column * 18, inventoryY + row * 18));
-            }
-        }
-        for (int column = 0; column < 9; column++) {
-            addSlot(playerSlot(inventory, column, x + 8 + column * 18, inventoryY + 58));
+        for (int i = 0; i < 36; i++) {
+            int index = i < 27 ? 9 + i : i - 27;
+            addSlot(playerSlot(inventory, index, x + 21 + index % 9 * 18, 0));
         }
 
         if (DeckItem.isCrafting(deck)) {
             grid = new DeckGridContainer(deck, this, !player.level().isClientSide());
             gridStart = slots.size();
-            int cx = craftX() + SIDE_PAD + 1;
             for (int i = 0; i < DeckGridContainer.SIZE; i++) {
-                addSlot(new GridSlot(grid, i, cx + (i % 3) * 18, SIDE_PAD + 1 + (i / 3) * 18));
+                addSlot(new GridSlot(grid, i, x + 99 + i % 3 * 18, 0));
             }
             resultSlot = slots.size();
-            addSlot(new GridResultSlot(player, grid, result, cx + 18, CRAFT_RESULT_Y));
+            addSlot(new GridResultSlot(player, grid, result, x + 172, 0));
             if (player instanceof ServerPlayer serverPlayer) {
                 result.setItem(0, craft(serverPlayer, null));
             }
@@ -125,11 +126,24 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         upgrade = new DeckUpgradeContainer(deck, this, !player.level().isClientSide());
         upgradeSlot = slots.size();
-        addSlot(new Slot(upgrade, 0, upgradeX() + SIDE_PAD + 1, upgradeY() + SIDE_PAD + 1) {
+        addSlot(new Slot(upgrade, 0, mainX() - 21, SIDE_TOP + 15 + sideRows * 18) {
             @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
+        if (grid != null) {
+            armorStart = slots.size();
+            for (int i = 0; i < ARMOR.length; i++) {
+                int index = 39 - i;
+                addSlot(index == deckSlot ? new LockedSlot(inventory, index, x + 10, 0)
+                        : new ArmorSlot(inventory, player, ARMOR[i], index, ARMOR_ICONS[i], x + 10));
+            }
+            addSlot(deckSlot == Inventory.SLOT_OFFHAND ? new LockedSlot(inventory, Inventory.SLOT_OFFHAND, x + 70, 0)
+                    : new OffhandSlot(inventory, player, x + 70));
+        } else {
+            armorStart = -1;
+        }
+        layout(MIN_ROWS);
     }
 
     /** Client side: the server tells which inventory slot holds the Deck. */
@@ -149,50 +163,73 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         return deckSlot;
     }
 
+    /** Item grid rows shown. */
+    public int rows() {
+        return rows;
+    }
+
+    /** First row under the item grid's last row of items. */
+    public int gridEnd() {
+        return GRID_Y + rows * 18 + 2;
+    }
+
+    /** Top of the crafting box, right under the item grid. */
+    public int craftY() {
+        return gridEnd();
+    }
+
+    /** The light bottom edge of the grid's well, which takes in the crafting box on a Crafting Deck. */
+    public int wellBottom() {
+        return isCrafting() ? gridEnd() + CRAFT_BOX : gridEnd();
+    }
+
     /** Top of the player's inventory in this Deck's screen. */
     public int inventoryY() {
-        return inventoryY;
+        return wellBottom() + 14;
+    }
+
+    /** Height of the whole screen. */
+    public int screenHeight() {
+        return inventoryY() + 82;
     }
 
     /**
-     * Client side: moves the inventory slots so they sit at {@code y}, for a taller grid. Only the screen cares where
-     * slots are drawn, so the server keeps its own.
+     * Lays the slots out around an item grid {@code rows} tall. The server keeps the smallest size; a taller grid on the
+     * client moves everything under it down, and only the screen cares where slots are drawn.
      */
-    public void moveInventory(int y) {
-        if (y == inventoryY) {
-            return;
-        }
-        inventoryY = y;
+    public void layout(int rows) {
+        this.rows = rows;
+        int y = inventoryY();
         for (int i = waferSlots; i < waferSlots + 36; i++) {
             Slot slot = slots.get(i);
             int index = slot.getContainerSlot();
             slot.y = index < 9 ? y + 58 : y + (index - 9) / 9 * 18;
         }
+        if (grid != null) {
+            for (int i = 0; i < DeckGridContainer.SIZE; i++) {
+                slots.get(gridStart + i).y = craftY() + 12 + i / 3 * 18;
+            }
+            slots.get(resultSlot).y = craftY() + 30;
+            for (int i = 0; i < ARMOR.length; i++) {
+                slots.get(armorStart + i).y = craftY() + 3 + i * 18;
+            }
+            slots.get(armorStart + ARMOR.length).y = craftY() + 57;
+        }
     }
 
-    /** Width of the wafer side panel. */
-    public int sideWidth() {
-        return SIDE_PAD * 2 + sideColumns * 18;
+    /** Wafer rows in the side panel. */
+    public int sideRows() {
+        return sideRows;
     }
 
-    /** Height of the wafer side panel. */
-    public int sideHeight() {
-        return SIDE_PAD * 2 + sideRows * 18;
-    }
-
-    /** Where the main panel starts, right of the side panel. */
+    /** Where the main panel starts, right of the wafer panel. */
     public int mainX() {
-        return sideWidth() + SIDE_GAP;
+        return 8 + sideColumns * 18;
     }
 
-    /** Where the crafting panel starts, right of the main panel. */
-    public int craftX() {
-        return mainX() + MAIN_WIDTH + SIDE_GAP;
-    }
-
-    /** Width of the whole screen. */
+    /** Width of the whole screen: the main panel with the scroll bar column, and the tab column on a Crafting Deck. */
     public int screenWidth() {
-        return isCrafting() ? craftX() + CRAFT_WIDTH : mainX() + MAIN_WIDTH;
+        return mainX() + (isCrafting() ? 241 : 218);
     }
 
     public int waferSlots() {
@@ -200,8 +237,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     public int upgradeSlot() { return upgradeSlot; }
-    public int upgradeX() { return sideWidth() - UPGRADE_SIZE; }
-    public int upgradeY() { return sideHeight() + SIDE_GAP; }
+    /** The first armour slot's index in {@link #slots}, the off-hand four after it; -1 on a normal Deck. */
+    public int armorStart() { return armorStart; }
     public boolean dimensionAllowed() { return DeckItem.worksIn(player.getInventory().getItem(deckSlot), player.level()); }
 
     public DeckWaferContainer wafers() {
@@ -261,6 +298,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return ItemStack.EMPTY;
         }
         ItemStack stack = slot.getItem();
+        if (armorStart >= 0 && index >= armorStart && index <= armorStart + ARMOR.length) {
+            moveItemStackTo(stack, waferSlots, waferSlots + 36, false);
+            slot.setChanged();
+            return ItemStack.EMPTY;
+        }
         if (index == upgradeSlot) {
             moveItemStackTo(stack, waferSlots, waferSlots + 36, false);
             slot.setChanged();
@@ -437,6 +479,23 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         placing = false;
         wafers.reload();
+        updateResult(player, null);
+    }
+
+    /** Moves everything in the grid into the player's inventory. What doesn't fit stays in the grid. */
+    public void gridToInventory(ServerPlayer player) {
+        if (grid == null) {
+            return;
+        }
+        placing = true;
+        for (int i = 0; i < DeckGridContainer.SIZE; i++) {
+            ItemStack stack = grid.getItem(i).copy();
+            if (stack.isEmpty()) continue;
+            // Through the inventory slots rather than Inventory.add, which in creative throws away what doesn't fit.
+            moveItemStackTo(stack, waferSlots, waferSlots + 36, false);
+            grid.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack);
+        }
+        placing = false;
         updateResult(player, null);
     }
 
@@ -624,6 +683,57 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                 refill(serverPlayer, before);
             }
         }
+    }
+
+    /** One armour piece, as in the player's own inventory. */
+    private static final class ArmorSlot extends Slot {
+        private final Player owner;
+        private final EquipmentSlot equipment;
+        private final Identifier icon;
+
+        ArmorSlot(Inventory inventory, Player owner, EquipmentSlot equipment, int index, Identifier icon, int x) {
+            super(inventory, index, x, 0);
+            this.owner = owner;
+            this.equipment = equipment;
+            this.icon = icon;
+        }
+
+        @Override
+        public void setByPlayer(ItemStack stack, ItemStack previous) {
+            owner.onEquipItem(equipment, previous, stack);
+            super.setByPlayer(stack, previous);
+        }
+
+        @Override public int getMaxStackSize() { return 1; }
+        @Override public boolean mayPlace(ItemStack stack) { return stack.canEquip(equipment, owner); }
+        @Override public boolean isActive() { return owner.canUseSlot(equipment); }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            ItemStack stack = getItem();
+            return (stack.isEmpty() || player.isCreative() || !EnchantmentHelper.has(stack, EnchantmentEffectComponents.PREVENT_ARMOR_CHANGE))
+                    && super.mayPickup(player);
+        }
+
+        @Override public Identifier getNoItemIcon() { return icon; }
+    }
+
+    /** The off-hand, as in the player's own inventory. */
+    private static final class OffhandSlot extends Slot {
+        private final Player owner;
+
+        OffhandSlot(Inventory inventory, Player owner, int x) {
+            super(inventory, Inventory.SLOT_OFFHAND, x, 0);
+            this.owner = owner;
+        }
+
+        @Override
+        public void setByPlayer(ItemStack stack, ItemStack previous) {
+            owner.onEquipItem(EquipmentSlot.OFFHAND, previous, stack);
+            super.setByPlayer(stack, previous);
+        }
+
+        @Override public Identifier getNoItemIcon() { return Jasm.id("container/empty_shield"); }
     }
 
     /** The slot holding the open Deck. */

@@ -2,14 +2,13 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 
 /** The Creative Battery screen: the charging slot with a charge bar under it, and the player's inventory. */
-public class CreativeBatteryScreen extends AbstractContainerScreen<CreativeBatteryMenu> {
+public class CreativeBatteryScreen extends JasmScreen<CreativeBatteryMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = CreativeBatteryMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 80;
@@ -31,8 +30,10 @@ public class CreativeBatteryScreen extends AbstractContainerScreen<CreativeBatte
         }
         int bx = x + (imageWidth - BAR_WIDTH) / 2;
         EnergyHandler battery = CreativeBatteryMenu.batteryOf(menu.charging());
-        double fraction = battery == null || battery.getCapacityAsLong() <= 0 ? 0 : battery.getAmountAsLong() / (double) battery.getCapacityAsLong();
-        JasmGui.bar(graphics, bx - 1, y + BAR_Y, BAR_WIDTH + 2, 7, fraction);
+        // The bar only shows with something to charge; an empty one read as a broken battery.
+        if (battery != null && battery.getCapacityAsLong() > 0) {
+            JasmGui.bar(graphics, bx - 1, y + BAR_Y, BAR_WIDTH + 2, 7, battery.getAmountAsLong() / (double) battery.getCapacityAsLong());
+        }
     }
 
     @Override

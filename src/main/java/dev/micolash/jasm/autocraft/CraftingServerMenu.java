@@ -38,7 +38,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     public static final int PARTS_X = 8;
     public static final int PARTS_Y = 8;
     /** The main panel, right of the side panel. */
-    public static final int MAIN_X = SIDE_WIDTH + 2;
+    /** The main panel joins the side panel, overlapping it a little so the two read as one. */
+    public static final int MAIN_X = SIDE_WIDTH - 3;
     public static final int MAIN_WIDTH = 176;
     public static final int JOB_X = MAIN_X + 12;
     public static final int JOB_Y = 22;

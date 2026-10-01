@@ -3,7 +3,6 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -12,7 +11,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 
 /** The generator screen: fuel slot and flame, the charge bar, then the charging slot, with the status above and the charge below. */
-public class CombustionGeneratorScreen extends AbstractContainerScreen<CombustionGeneratorMenu> {
+public class CombustionGeneratorScreen extends JasmScreen<CombustionGeneratorMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = CombustionGeneratorMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final Identifier FLAME = Jasm.id("icon/flame");

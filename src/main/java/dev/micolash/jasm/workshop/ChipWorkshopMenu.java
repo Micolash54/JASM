@@ -18,7 +18,8 @@ import org.jspecify.annotations.Nullable;
 public class ChipWorkshopMenu extends AbstractContainerMenu {
     /** The critter's own panel on the left; the Workshop's main panel starts at {@link #MAIN_X}. */
     public static final int SIDE_WIDTH = 152;
-    public static final int MAIN_X = SIDE_WIDTH + 2;
+    /** The main panel joins the side panel, overlapping it a little so the two read as one. */
+    public static final int MAIN_X = SIDE_WIDTH - 3;
     public static final int MAIN_WIDTH = 176;
     public static final int CRITTER_X = (SIDE_WIDTH - 16) / 2;
     public static final int CRITTER_Y = 20;

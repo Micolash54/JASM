@@ -1,7 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.network.DeckLinkLayout;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmMenus;
@@ -33,15 +33,13 @@ import org.jspecify.annotations.Nullable;
 /** The port's upgrades, item buffer, Deck link, status and player inventory. */
 public class AccessPortMenu extends AbstractContainerMenu {
     public static final int MAX_NAME = 32;
-    public static final int POWER_X = PortUpgradeLayout.POWER_X;
-    public static final int POWER_Y = PortUpgradeLayout.POWER_Y;
-    public static final int INVENTORY_Y = 136;
-    public static final int PANEL_X = PortUpgradeLayout.PANEL_X;
-    public static final int PANEL_Y = PortUpgradeLayout.PANEL_Y;
-    public static final int PANEL_WIDTH = PortUpgradeLayout.PANEL_WIDTH;
-    public static final int PANEL_HEIGHT = PortUpgradeLayout.SPEED_PANEL_HEIGHT;
-    public static final int BUFFER_X = (PortUpgradeLayout.MAIN_WIDTH - 8 * 18) / 2;
-    public static final int BUFFER_Y = 100;
+    public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
+    /** As tall as the Input Port: the inventory sits at the same height. */
+    public static final int INVENTORY_Y = 180;
+    /** Side keys in the right-hand column: the Deck Link and blocking mode. */
+    public static final int SIDE_KEYS = 2;
+    public static final int BUFFER_X = (WIDTH - 8 * 18) / 2;
+    public static final int BUFFER_Y = 140;
     public static final int SLOT_BUFFER = 1;
     public static final int SLOT_DECK_IN = SLOT_BUFFER + AccessPortBlockEntity.BUFFER_SLOTS;
     public static final int SLOT_DECK_OUT = SLOT_DECK_IN + 1;
@@ -56,7 +54,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
     static final int DATA_DEFAULT_DECK = 4;
     static final int DATA_LINKED = 5;
     static final int DATA_BLOCKING = 6;
-    static final int DATA_COUNT = 7;
+    public static final int DATA_COUNT = 7;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -67,6 +65,11 @@ public class AccessPortMenu extends AbstractContainerMenu {
     private final Player player;
     private final int inventoryStart;
     private final int hotbarStart;
+    /** Client side: where the Deck Link window lies over the screen. */
+    private final LinkWindowCover linkCover = new LinkWindowCover();
+    private String linkedPlayer = "";
+    /** Server side: the name last sent, so it goes again only when it changes. */
+    private final String[] lastPlayer = {null};
 
     /** Server side. */
     public AccessPortMenu(int containerId, Inventory inventory, AccessPortBlockEntity port, ContainerLevelAccess access) {
@@ -94,24 +97,29 @@ public class AccessPortMenu extends AbstractContainerMenu {
         this.hotbarStart = inventoryStart + 27;
         addDataSlots(data);
         var container = port == null ? new SimpleContainer(AccessPortBlockEntity.INVENTORY_SIZE) : port;
-        addSlot(new Slot(container, AccessPortBlockEntity.POWER_SLOT, POWER_X, powerY()) {
+        addSlot(new Slot(container, AccessPortBlockEntity.POWER_SLOT, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.powerY(SIDE_KEYS)) {
+            @Override public boolean isActive() { return !linkCover.covers(this); }
             @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
         for (int col = 0; col < AccessPortBlockEntity.BUFFER_SLOTS; col++) {
-            addSlot(new Slot(container, col, BUFFER_X + col * 18, BUFFER_Y));
+            addSlot(new Slot(container, col, BUFFER_X + col * 18, BUFFER_Y) {
+                @Override public boolean isActive() { return !linkCover.covers(this); }
+            });
         }
-        addSlot(new Slot(container, AccessPortBlockEntity.DECK_IN, DeckLinkLayout.PORT.slotX(), DeckLinkLayout.INPUT_Y) {
+        addSlot(new Slot(container, AccessPortBlockEntity.DECK_IN, 0, 0) {
+            @Override public boolean isActive() { return port != null || linkCover.open(); }
             @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isCrafting(stack); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
         });
-        addSlot(new Slot(container, AccessPortBlockEntity.DECK_OUT, DeckLinkLayout.PORT.slotX(), DeckLinkLayout.OUTPUT_Y) {
+        addSlot(new Slot(container, AccessPortBlockEntity.DECK_OUT, 0, 0) {
+            @Override public boolean isActive() { return port != null || linkCover.open(); }
             @Override public boolean mayPlace(ItemStack stack) { return false; }
         });
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
-            addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.x(i), PortUpgradeLayout.y(i)) {
+            addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
                 @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.SPEED_UPGRADE.get()); }
                 @Override public int getMaxStackSize() { return 1; }
                 @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
@@ -119,17 +127,16 @@ public class AccessPortMenu extends AbstractContainerMenu {
         }
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + col, (PortUpgradeLayout.MAIN_WIDTH - 162) / 2 + col * 18, inventoryY() + row * 18));
+                addSlot(new Slot(inventory, 9 + row * 9 + col, (WIDTH - 162) / 2 + col * 18, inventoryY() + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inventory, col, (PortUpgradeLayout.MAIN_WIDTH - 162) / 2 + col * 18, inventoryY() + 58));
+            addSlot(new Slot(inventory, col, (WIDTH - 162) / 2 + col * 18, inventoryY() + 58));
         }
     }
 
     public int inventoryY() { return INVENTORY_Y; }
-    public int powerY() { return POWER_Y; }
-    public int upgradePanelY() { return PANEL_Y; }
+    public LinkWindowCover linkCover() { return linkCover; }
     public boolean defaultDeck() { return data.get(DATA_DEFAULT_DECK) != 0; }
     public boolean deckLinked() { return data.get(DATA_LINKED) != 0; }
     public boolean blockingMode() { return data.get(DATA_BLOCKING) != 0; }
@@ -188,10 +195,25 @@ public class AccessPortMenu extends AbstractContainerMenu {
 
     public void setMachines(List<MachineView> machines) { this.machines = List.copyOf(machines); }
 
+    /** Whose Deck the port delivers to; on the client, what the server last said. */
+    public String linkedPlayer() { return linkedPlayer; }
+
+    public void setLinkedPlayer(String name) { linkedPlayer = name; }
+
+    /** Sends whose Deck the port delivers to whenever it changes, for the Deck Link window. */
+    public static void sendLinkedPlayer(ServerPlayer player, int containerId, AccessPortBlockEntity port, String[] last) {
+        String now = port.linkedPlayerName();
+        if (!now.equals(last[0]) && player.connection.hasChannel(CraftPayloads.PortLinkedPlayer.TYPE)) {
+            last[0] = now;
+            PacketDistributor.sendToPlayer(player, new CraftPayloads.PortLinkedPlayer(containerId, now));
+        }
+    }
+
     @Override
     public void broadcastChanges() {
         super.broadcastChanges();
         if (port == null || !(player instanceof ServerPlayer serverPlayer) || serverPlayer.level().getGameTime() % 10 != 0) return;
+        sendLinkedPlayer(serverPlayer, containerId, port, lastPlayer);
         List<MachineView> now = connectedMachines(port);
         boolean same = now.size() == machines.size();
         for (int i = 0; same && i < now.size(); i++) {

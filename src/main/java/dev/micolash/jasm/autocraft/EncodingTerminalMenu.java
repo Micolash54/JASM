@@ -6,7 +6,7 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.TrustList;
-import dev.micolash.jasm.network.DeckLinkLayout;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
@@ -52,9 +52,6 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int CARD_X = 24;
     public static final int CARD_IN_Y = 18;
     public static final int CARD_OUT_Y = 54;
-    public static final int PAIR_X = DeckLinkLayout.TERMINAL.slotX();
-    public static final int PAIR_Y = DeckLinkLayout.INPUT_Y;
-    public static final int PAIR_OUT_Y = DeckLinkLayout.OUTPUT_Y;
     public static final int INVENTORY_Y = 128;
     /** Where the terminal's messages show, under the grid. */
     public static final int MESSAGE_Y = 92;
@@ -157,6 +154,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private List<DeckPayloads.Entry> deckItems = List.of();
     private boolean deckFound;
     private int deckVersion;
+    /** Client side: where the Deck Link window lies over the screen. */
+    private final LinkWindowCover linkCover = new LinkWindowCover();
     /** Client side: the Deck list shows in place of the inventory, whose slots are then hidden. */
     private boolean deckTab;
     /** Most machines listed. */
@@ -190,8 +189,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         this.player = inventory.player;
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_IN, CARD_X, CARD_IN_Y, EMPTY_CARD));
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_OUT, CARD_X, CARD_OUT_Y, null));
-        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR_IN, PAIR_X, PAIR_Y, EMPTY_DECK));
-        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR_OUT, PAIR_X, PAIR_OUT_Y, null));
+        // The pairing slots sit in the Deck Link window, which places them.
+        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR_IN, 0, 0, EMPTY_DECK));
+        addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.PAIR_OUT, 0, 0, null));
         for (int i = 0; i < 9; i++) {
             addSlot(new FakeSlot(ghost, i, GRID_X + (i % 3) * 18, GRID_Y + (i / 3) * 18));
         }
@@ -590,13 +590,27 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         return before;
     }
 
+    public LinkWindowCover linkCover() {
+        return linkCover;
+    }
+
     /** A slot that only takes what the terminal accepts there, with a faint picture while empty. */
-    private static final class MachineSlot extends Slot {
+    private final class MachineSlot extends Slot {
         private final @Nullable Identifier icon;
 
         MachineSlot(Container container, int index, int x, int y, @Nullable Identifier icon) {
             super(container, index, x, y);
             this.icon = icon;
+        }
+
+        private boolean pairing() {
+            return getContainerSlot() == EncodingTerminalBlockEntity.PAIR_IN || getContainerSlot() == EncodingTerminalBlockEntity.PAIR_OUT;
+        }
+
+        /** On the client the pairing slots work only while the Deck Link window is open; card slots under it don't. */
+        @Override
+        public boolean isActive() {
+            return pairing() ? terminal != null || linkCover.open() : !linkCover.covers(this);
         }
 
         @Override
@@ -606,8 +620,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
         @Override
         public int getMaxStackSize() {
-            return getContainerSlot() == EncodingTerminalBlockEntity.PAIR_IN || getContainerSlot() == EncodingTerminalBlockEntity.PAIR_OUT
-                    ? 1 : super.getMaxStackSize();
+            return pairing() ? 1 : super.getMaxStackSize();
         }
 
         @Override

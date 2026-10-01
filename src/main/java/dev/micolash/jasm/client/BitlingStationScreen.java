@@ -5,7 +5,6 @@ import dev.micolash.jasm.station.BitlingStationBlockEntity;
 import dev.micolash.jasm.station.BitlingStationMenu;
 import dev.micolash.jasm.station.StationStatus;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -16,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
  * The Bitling Station screen: the critter slot with its name and what it is doing, its battery, and the slider for how
  * far it may roam.
  */
-public class BitlingStationScreen extends AbstractContainerScreen<BitlingStationMenu> {
+public class BitlingStationScreen extends JasmScreen<BitlingStationMenu> {
     private static final int WIDTH = BitlingStationMenu.WIDTH;
     private static final int HEIGHT = BitlingStationMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int PAD = 8;
@@ -30,7 +29,7 @@ public class BitlingStationScreen extends AbstractContainerScreen<BitlingStation
     private static final int RADIUS_LABEL_Y = 82;
     private static final int SLIDER_Y = 92;
     private static final int SLIDER_WIDTH = WIDTH - 2 * PAD;
-    private static final int HANDLE_WIDTH = 6;
+    private static final int HANDLE_WIDTH = 8;
 
     private boolean dragging;
     private int shownRadius = -1;
@@ -112,9 +111,8 @@ public class BitlingStationScreen extends AbstractContainerScreen<BitlingStation
         JasmGui.inset(graphics, x + TEXT_X, y + STATUS_Y, WIDTH - TEXT_X - PAD, STATUS_HEIGHT);
         int battery = menu.battery();
         JasmGui.bar(graphics, x + PAD, y + BATTERY_Y, SLIDER_WIDTH, BAR_HEIGHT, hasCritter() && battery > 0 ? menu.critterEnergy() / (double) battery : 0);
-        JasmGui.inset(graphics, x + PAD, y + SLIDER_Y, SLIDER_WIDTH, BAR_HEIGHT);
-        int handleX = (int) Math.round((SLIDER_WIDTH - HANDLE_WIDTH) * radiusFraction());
-        JasmGui.scrollBar(graphics, x + PAD + handleX, y + SLIDER_Y - 2, HANDLE_WIDTH, BAR_HEIGHT + 4, 0, BAR_HEIGHT + 2 - 2, true);
+        JasmGui.slider(graphics, x + PAD, y + SLIDER_Y, SLIDER_WIDTH, BAR_HEIGHT, HANDLE_WIDTH, radiusFraction(),
+                overSlider(mouseX, mouseY), dragging);
     }
 
     @Override

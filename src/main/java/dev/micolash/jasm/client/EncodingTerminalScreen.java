@@ -1,6 +1,5 @@
 package dev.micolash.jasm.client;
 
-import dev.micolash.jasm.network.DeckLinkLayout;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
@@ -16,7 +15,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
@@ -25,21 +23,24 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Encoding Terminal screen: card in and out, the ghost grid and what it makes, with the charge along the top.
- * Deck linking sits in the left panel. The right panel lists the machines a card can be written for: the
- * Crafting Server first (ordinary crafting cards), then every Access Port. With a port chosen, the grid takes amounts
- * and what the machine gives back goes in a column of three beside it.
+ * Side keys on the right open the Deck Link window for pairing Decks and, for the owner, the access list. The panel on
+ * the left lists the machines a card can be written for: the Crafting Server first (ordinary crafting cards), then
+ * every Access Port. With a port chosen, the grid takes amounts and what the machine gives back goes in a column of
+ * three beside it.
  */
-public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerminalMenu> {
-    private static final DeckLinkLayout LINK_PANEL = DeckLinkLayout.TERMINAL;
+public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
+    private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
+    private JasmButton linkKey;
+    private @Nullable DeckLinkWindow linkWindow;
     private static final int WIDTH = 176;
     private static final int HEIGHT = EncodingTerminalMenu.INVENTORY_Y + 58 + 18 + 6;
-    private static final int BAR_WIDTH = 40;
+    private static final int BAR_WIDTH = 60;
     private static final int ENCODE_WIDTH = 52;
     private static final JasmButton.Icon ACCESS = new JasmButton.Icon(Jasm.id("icon/access"), 7, 7);
-    private static final JasmButton.Icon MACHINES = new JasmButton.Icon(Jasm.id("icon/machines"), 7, 7);
     private TrustWindow trustWindow;
     private JasmButton accessButton;
     private JasmButton encodeButton;
@@ -49,14 +50,20 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     private static final Identifier ARROW_RIGHT = Jasm.id("icon/craft_arrow_right");
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final int MESSAGE_TICKS = 80;
-    /** The machine panel, to the right of the terminal. */
-    private static final int PANEL_X = WIDTH + 2;
-    private static final int PANEL_W = 128;
+    /** The machine panel, left of the terminal: a list with a scroll bar beside it. */
+    private static final int PANEL_W = 140;
+    private static final int PANEL_X = -PANEL_W - 3;
+    private static final int LIST_X = 8;
     private static final int LIST_Y = 18;
+    private static final int LIST_W = PANEL_W - 22;
+    private static final int SCROLL_X = PANEL_W - 9;
     private static final int ROW_H = 18;
     private static final int ROWS = (HEIGHT - LIST_Y - 8) / ROW_H;
-    /** Whether the machine panel is open; kept while the game runs. */
-    private static boolean panelOpen = true;
+    private static final int HANDLE_HEIGHT = 15;
+    /** Side keys on the right: the Deck Link, then the access list. */
+    private static final int KEY_X = WIDTH;
+    private boolean draggingHandle;
+    private JasmFrame frame;
     /** Whether the Deck tab shows in place of the inventory; kept while the game runs. */
     private static boolean showDeck;
     /** The sheet under the inventory or the Deck list, and the tabs along its top. */
@@ -89,8 +96,17 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     @Override
     protected void init() {
         super.init();
-        if (width < WIDTH + LINK_PANEL.width() + 2 + PANEL_W + 2 + 8) panelOpen = false;
-        leftPos = (width - WIDTH - LINK_PANEL.width() - 2 - (panelOpen ? PANEL_W + 2 : 0)) / 2 + LINK_PANEL.width() + 2;
+        frame = JasmFrame.rounded(new int[] {0, 0, imageWidth, imageHeight}, new int[] {PANEL_X, 0, PANEL_W + 6, imageHeight},
+                JasmGui.sideStrip(KEY_X, 2));
+        Component linkLabel = Component.translatable("screen.jasm.deck_link");
+        linkKey = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
+                leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        linkKey.setTooltip(Tooltip.create(linkLabel));
+        if (linkWindow == null) {
+            linkWindow = new DeckLinkWindow(font, menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_IN),
+                    menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_OUT), menu.linkCover(), null, () -> {});
+        }
+        linkKey.setLatched(linkWindow.isOpen());
         encodeButton = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.terminal.encode"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_ENCODE),
                 leftPos + EncodingTerminalMenu.PREVIEW_X + 8 - ENCODE_WIDTH / 2, topPos + 74, ENCODE_WIDTH, 14));
@@ -101,19 +117,33 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         addRenderableWidget(clear);
         trustWindow = new TrustWindow(menu, font);
         accessButton = JasmButton.icon(() -> ACCESS, Component.translatable("screen.jasm.terminal.access"),
-                b -> trustWindow.toggle(leftPos + 8, topPos + 14), leftPos + BAR_X - 15, topPos + 4, 11, 11);
+                b -> trustWindow.toggle(leftPos + 8, topPos + 14), leftPos + KEY_X, topPos + JasmGui.sideKeyY(1),
+                JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT);
         accessButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.access_hint")));
         addRenderableWidget(accessButton);
-        JasmButton machines = JasmButton.icon(() -> MACHINES, Component.translatable("screen.jasm.terminal.machines"),
-                b -> { panelOpen = !panelOpen; rebuildWidgets(); }, leftPos + BAR_X - 28, topPos + 4, 11, 11);
-        machines.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.machines_hint")));
-        addRenderableWidget(machines);
-        deckSearch = new EditBox(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP - 1, 58, 11, Component.translatable("screen.jasm.deck.search"));
+        deckSearch = new JasmField(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP - 1, 58, 11, Component.translatable("screen.jasm.deck.search"));
         deckSearch.setHint(Component.translatable("screen.jasm.deck.search").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
         deckSearch.setMaxLength(64);
         addRenderableWidget(deckSearch);
         deckList = new TerminalDeckList(menu, font, deckSearch, leftPos + 8, topPos + EncodingTerminalMenu.INVENTORY_Y);
         showDeckTab(showDeck);
+    }
+
+    private void toggleLink() {
+        linkWindow.toggle(leftPos + KEY_X, topPos);
+        linkKey.setLatched(linkWindow.isOpen());
+    }
+
+    /** What the Deck Link window says: whether the Deck in it is paired, or how to pair one. */
+    private Component linkStatus() {
+        if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_OUT).hasItem()) {
+            return menu.paired() ? Component.translatable("screen.jasm.terminal.linked").withColor(JasmGui.GOOD & 0xFFFFFF)
+                    : Component.translatable("screen.jasm.terminal.relink");
+        }
+        if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_IN).hasItem()) {
+            return Component.translatable("screen.jasm.terminal.pairing");
+        }
+        return Component.translatable("screen.jasm.terminal.pair_hint");
     }
 
     // --- the inventory and Deck tabs ---
@@ -240,18 +270,41 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     /** The panels that extend beyond the main screen. */
     public List<Rect2i> sidePanelAreas() {
         var areas = new ArrayList<Rect2i>();
-        areas.add(new Rect2i(leftPos + LINK_PANEL.panelX(), topPos, LINK_PANEL.width(), LINK_PANEL.height()));
-        panelArea().ifPresent(areas::add);
+        areas.add(panelArea());
+        int[] strip = JasmGui.sideStrip(KEY_X, 2);
+        areas.add(new Rect2i(leftPos + strip[0], topPos + strip[1], strip[2], strip[3]));
+        if (linkWindow != null) linkWindow.area().ifPresent(areas::add);
+        if (trustWindow != null) trustWindow.area().ifPresent(areas::add);
         return areas;
     }
 
-    /** Where the machine panel sits on screen, while it is open. */
-    public Optional<Rect2i> panelArea() {
-        return panelOpen ? Optional.of(new Rect2i(leftPos + PANEL_X, topPos, PANEL_W, imageHeight)) : Optional.empty();
+    /** Where the machine panel sits on screen. */
+    public Rect2i panelArea() {
+        return new Rect2i(leftPos + PANEL_X, topPos, PANEL_W + 3, imageHeight);
     }
 
     private boolean inPanel(double x, double y) {
-        return panelOpen && x >= leftPos + PANEL_X && x < leftPos + PANEL_X + PANEL_W && y >= topPos && y < topPos + imageHeight;
+        return x >= leftPos + PANEL_X && x < leftPos && y >= topPos && y < topPos + imageHeight;
+    }
+
+    private int maxScroll() {
+        return Math.max(0, rows() - ROWS);
+    }
+
+    private int handleOffset() {
+        int max = maxScroll();
+        return max == 0 ? 0 : Math.round((ROWS * ROW_H - HANDLE_HEIGHT) * (scroll / (float) max));
+    }
+
+    private boolean onScrollBar(double mouseX, double mouseY) {
+        double rx = mouseX - leftPos - PANEL_X - SCROLL_X;
+        double ry = mouseY - topPos - LIST_Y;
+        return rx >= -1 && rx < 9 && ry >= 0 && ry < ROWS * ROW_H;
+    }
+
+    private void scrollToMouse(double mouseY) {
+        double offset = mouseY - topPos - LIST_Y - HANDLE_HEIGHT / 2.0;
+        scroll = (int) Math.round(Math.clamp(offset / (ROWS * ROW_H - HANDLE_HEIGHT), 0.0, 1.0) * maxScroll());
     }
 
     /** Rows of the list: the Crafting Server, then the machines. */
@@ -261,9 +314,9 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
 
     /** The list row under the mouse, or -1. */
     private int rowAt(double x, double y) {
-        int left = leftPos + PANEL_X + 4;
+        int left = leftPos + PANEL_X + LIST_X;
         int top = topPos + LIST_Y;
-        if (!panelOpen || x < left || x >= left + PANEL_W - 8 || y < top || y >= top + ROWS * ROW_H) {
+        if (x < left || x >= left + LIST_W || y < top || y >= top + ROWS * ROW_H) {
             return -1;
         }
         int row = scroll + (int) ((y - top) / ROW_H);
@@ -273,10 +326,10 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     private void drawPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         int x = leftPos + PANEL_X;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, PANEL_W, imageHeight);
-        graphics.text(font, Component.translatable("screen.jasm.terminal.machines"), x + 6, y + 6, JasmGui.TEXT, false);
-        JasmGui.inset(graphics, x + 3, y + LIST_Y - 1, PANEL_W - 6, ROWS * ROW_H + 2);
-        scroll = Math.clamp(scroll, 0, Math.max(0, rows() - ROWS));
+        graphics.text(font, Component.translatable("screen.jasm.terminal.machines"), x + LIST_X, y + 6, JasmGui.TEXT, false);
+        JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_W + 2, ROWS * ROW_H + 2);
+        scroll = Math.clamp(scroll, 0, maxScroll());
+        JasmGui.scrollBar(graphics, x + SCROLL_X, y + LIST_Y - 1, 8, ROWS * ROW_H + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
         int hovered = rowAt(mouseX, mouseY);
         for (int i = 0; i < ROWS && scroll + i < rows(); i++) {
             int row = scroll + i;
@@ -298,13 +351,13 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
                 icon = view.icon();
             }
             if (chosen) {
-                graphics.fill(x + 4, ry, x + PANEL_W - 4, ry + ROW_H, JasmGui.SELECTED);
+                graphics.fill(x + LIST_X, ry, x + LIST_X + LIST_W, ry + ROW_H, JasmGui.SELECTED);
             }
             if (row == hovered) {
-                graphics.fill(x + 4, ry, x + PANEL_W - 4, ry + ROW_H, JasmGui.HOVER);
+                graphics.fill(x + LIST_X, ry, x + LIST_X + LIST_W, ry + ROW_H, JasmGui.HOVER);
             }
             // A tick box: filled when chosen.
-            int bx = x + 7;
+            int bx = x + LIST_X + 3;
             int by = ry + 6;
             graphics.fill(bx, by, bx + 6, by + 6, JasmGui.MUTED);
             graphics.fill(bx + 1, by + 1, bx + 5, by + 5, chosen ? JasmGui.GOOD : JasmGui.SHADE);
@@ -313,13 +366,9 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
                 graphics.item(icon, bx + 9, ry + 1);
             }
             int textX = bx + 27;
-            int room = x + PANEL_W - 6 - textX;
+            int room = x + LIST_X + LIST_W - 3 - textX;
             String shown = font.width(name) > room ? font.plainSubstrByWidth(name, room - font.width("...")) + "..." : name;
             graphics.text(font, shown, textX, ry + 5, color, false);
-        }
-        if (rows() > ROWS) {
-            String more = (scroll + ROWS) + "/" + rows();
-            graphics.text(font, more, x + PANEL_W - 6 - font.width(more), y + 6, JasmGui.MUTED, false);
         }
     }
 
@@ -333,8 +382,16 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
 
     @Override
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        if (linkWindow.contains(event.x(), event.y())) {
+            return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
+        }
         if (trustWindow.contains(event.x(), event.y())) {
             return trustWindow.mouseClicked(event, doubleClick);
+        }
+        if (onScrollBar(event.x(), event.y()) && maxScroll() > 0) {
+            draggingHandle = true;
+            scrollToMouse(event.y());
+            return true;
         }
         if (inPanel(event.x(), event.y())) {
             int row = rowAt(event.x(), event.y());
@@ -398,6 +455,13 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     /** Holding a copy, dragging over ghost slots does to each what a click there would. On the Deck list's scroll bar it scrolls. */
     @Override
     public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double dx, double dy) {
+        if (linkWindow.mouseDragged(event, width, height) || trustWindow.mouseDragged(event, width, height)) {
+            return true;
+        }
+        if (draggingHandle) {
+            scrollToMouse(event.y());
+            return true;
+        }
         if (showDeck && deckList.mouseDragged(event.y())) {
             return true;
         }
@@ -414,6 +478,13 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
 
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        if (linkWindow.mouseReleased() | trustWindow.mouseReleased()) {
+            return true;
+        }
+        if (draggingHandle) {
+            draggingHandle = false;
+            return true;
+        }
         if (deckList.mouseReleased()) {
             return true;
         }
@@ -424,10 +495,11 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         return super.mouseReleased(event);
     }
 
-    /** The panel sits outside the terminal, but clicking it doesn't throw the held item away. */
+    /** The side panels sit outside the terminal, but clicking them doesn't throw the held item away. */
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
-        return !inPanel(mouseX, mouseY) && !DeckLinkPanel.contains(mouseX, mouseY, leftPos, topPos, LINK_PANEL) && super.hasClickedOutside(mouseX, mouseY, left, top);
+        boolean inside = sidePanelAreas().stream().anyMatch(area -> area.contains((int) mouseX, (int) mouseY));
+        return !inside && super.hasClickedOutside(mouseX, mouseY, left, top);
     }
 
     /** Processing slot (0-8 the grid, 9-11 the outputs) of a slot of the menu, or -1. */
@@ -444,11 +516,14 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
     /** Over the machine list it scrolls; over a filled processing slot it changes the amount (by 10 with Shift). */
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
+        if (linkWindow.contains(x, y)) {
+            return true;
+        }
         if (trustWindow.contains(x, y)) {
             return trustWindow.mouseScrolled(scrollY);
         }
         if (inPanel(x, y)) {
-            scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, Math.max(0, rows() - ROWS));
+            scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, maxScroll());
             return true;
         }
         if (showDeck && deckList.contains(x, y)) {
@@ -469,6 +544,11 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
 
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (linkWindow.isOpen() && event.isEscape()) {
+            linkWindow.close();
+            linkKey.setLatched(false);
+            return true;
+        }
         if (trustWindow.isOpen() && trustWindow.keyPressed(event)) {
             return true;
         }
@@ -513,11 +593,11 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
-        DeckLinkPanel.draw(graphics, font, x, y, LINK_PANEL);
+        frame.draw(graphics, x, y);
         drawSheet(graphics, mouseX, mouseY);
+        // The Deck Link window draws its own two slots.
         for (Slot slot : menu.slots) {
-            if (slot.isActive()) {
+            if (slot.isActive() && slot.index != EncodingTerminalMenu.SLOT_PAIR_IN && slot.index != EncodingTerminalMenu.SLOT_PAIR_OUT) {
                 JasmGui.slot(graphics, x + slot.x, y + slot.y);
             }
         }
@@ -529,15 +609,16 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         if (showDeck) {
             deckList.drawBackground(graphics);
         }
-        if (panelOpen) {
-            drawPanel(graphics, mouseX, mouseY);
-        }
+        drawPanel(graphics, mouseX, mouseY);
     }
 
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
-        accessButton.visible = menu.owner();
-        boolean over = trustWindow.contains(realMouseX, realMouseY);
+        accessButton.active = menu.owner();
+        accessButton.setLatched(trustWindow.isOpen());
+        linkWindow.sync(leftPos, topPos);
+        // Under the windows nothing lights up or shows a tooltip, except the Deck Link window's own slots.
+        boolean over = trustWindow.contains(realMouseX, realMouseY) || linkWindow.hidesMouse(realMouseX, realMouseY);
         int mouseX = over ? -1000 : realMouseX;
         int mouseY = over ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
@@ -559,6 +640,10 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
             graphics.nextStratum();
             trustWindow.draw(graphics, realMouseX, realMouseY, a);
         }
+        if (linkWindow.isOpen()) {
+            graphics.nextStratum();
+            linkWindow.draw(graphics, realMouseX, realMouseY, a, linkStatus());
+        }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
@@ -571,7 +656,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         if (menu.processing() && hoveredSlot != null && !hoveredSlot.hasItem() && processingSlot(hoveredSlot) >= 9 && menu.getCarried().isEmpty()) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.output_hint"), 160), mouseX, mouseY);
         }
-        int row = rowAt(realMouseX, realMouseY);
+        int row = rowAt(mouseX, mouseY);
         if (row > 0) {
             EncodingTerminalMenu.MachineView view = menu.machines().get(row - 1);
             graphics.setTooltipForNextFrame(font, List.of(
@@ -650,7 +735,7 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
-        int room = BAR_X - 34 - titleLabelX;
+        int room = BAR_X - 6 - titleLabelX;
         String name = title.getString();
         if (font.width(name) > room) {
             name = font.plainSubstrByWidth(name, room - font.width("...")) + "...";
@@ -658,11 +743,5 @@ public class EncodingTerminalScreen extends AbstractContainerScreen<EncodingTerm
         graphics.text(font, name, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         drawTabLabels(graphics, xm, ym);
         drawMessage(graphics);
-        if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_OUT).hasItem()) {
-            DeckLinkPanel.message(graphics, font, Component.translatable(menu.paired() ? "screen.jasm.terminal.linked" : "screen.jasm.terminal.relink"),
-                    menu.paired() ? JasmGui.GOOD : JasmGui.MUTED, LINK_PANEL);
-        } else if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_IN).hasItem()) {
-            DeckLinkPanel.message(graphics, font, Component.translatable("screen.jasm.terminal.pairing"), JasmGui.SUBTEXT, LINK_PANEL);
-        }
     }
 }

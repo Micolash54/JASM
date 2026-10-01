@@ -70,6 +70,7 @@ public final class CraftNetwork {
                         (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
                 .playToClient(CraftPayloads.TerminalMachines.TYPE, CraftPayloads.TerminalMachines.STREAM_CODEC, CraftNetwork::onTerminalMachines)
                 .playToClient(CraftPayloads.PortMachines.TYPE, CraftPayloads.PortMachines.STREAM_CODEC, CraftNetwork::onPortMachines)
+                .playToClient(CraftPayloads.PortLinkedPlayer.TYPE, CraftPayloads.PortLinkedPlayer.STREAM_CODEC, CraftNetwork::onPortLinkedPlayer)
                 .playToClient(CraftPayloads.TerminalDeck.TYPE, CraftPayloads.TerminalDeck.STREAM_CODEC, CraftNetwork::onTerminalDeck)
                 .playToClient(CraftPayloads.ServerWaiting.TYPE, CraftPayloads.ServerWaiting.STREAM_CODEC, CraftNetwork::onServerWaiting)
                 .playToClient(CraftPayloads.TrustView.TYPE, CraftPayloads.TrustView.STREAM_CODEC, CraftNetwork::onTrustView)
@@ -259,6 +260,13 @@ public final class CraftNetwork {
         if (context.player().containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()) {
             menu.setMachines(payload.machines());
         }
+    }
+
+    private static void onPortLinkedPlayer(CraftPayloads.PortLinkedPlayer payload, IPayloadContext context) {
+        var open = context.player().containerMenu;
+        if (open.containerId != payload.containerId()) return;
+        if (open instanceof AccessPortMenu menu) menu.setLinkedPlayer(payload.name());
+        if (open instanceof dev.micolash.jasm.transfer.TransferPortMenu menu) menu.setLinkedPlayer(payload.name());
     }
 
     private static void onTerminalDeck(CraftPayloads.TerminalDeck payload, IPayloadContext context) {

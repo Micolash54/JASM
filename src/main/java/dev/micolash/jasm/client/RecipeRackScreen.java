@@ -2,13 +2,12 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 
 /** The Recipe Rack screen: a 4 × 4 grid of card slots under the title and charge bar, like the front of the block. */
-public class RecipeRackScreen extends AbstractContainerScreen<RecipeRackMenu> {
+public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = RecipeRackMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 50;

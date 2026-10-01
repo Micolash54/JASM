@@ -6,7 +6,6 @@ import dev.micolash.jasm.core.GridEntries;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
@@ -19,7 +18,7 @@ import org.jspecify.annotations.Nullable;
  * the main panel, the job (what it makes, how far along, what holds it up) with buttons to cancel it or collect its
  * results, and the player's inventory. Opened from a Crafting Deck, it also has a button back to the Deck.
  */
-public class CraftingServerScreen extends AbstractContainerScreen<CraftingServerMenu> {
+public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int MAIN_X = CraftingServerMenu.MAIN_X;
     private static final int MAIN_WIDTH = CraftingServerMenu.MAIN_WIDTH;
     private static final int WIDTH = MAIN_X + MAIN_WIDTH;
@@ -36,6 +35,7 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
     private Button cancel;
     private Button collect;
     private Button back;
+    private JasmFrame frame;
 
     public CraftingServerScreen(CraftingServerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -64,8 +64,9 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, CraftingServerMenu.SIDE_WIDTH, CraftingServerMenu.SIDE_HEIGHT);
-        JasmGui.panel(graphics, x + MAIN_X, y, MAIN_WIDTH, imageHeight);
+        if (frame == null) frame = JasmFrame.rounded(new int[] {0, 0, CraftingServerMenu.SIDE_WIDTH, CraftingServerMenu.SIDE_HEIGHT},
+                new int[] {MAIN_X, 0, MAIN_WIDTH, imageHeight});
+        frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             if (slot.index != CraftingServerMenu.SLOT_SHOWN) {
                 JasmGui.slot(graphics, x + slot.x, y + slot.y);
@@ -95,13 +96,14 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
         }
-        Component processors = processors();
-        if (processors != null) {
+        if (menu.phase() == CraftingJob.Phase.CRAFTING) {
             int right = leftPos + PANEL_X + 4 + PANEL_W - 8;
             int top = topPos + CraftingServerMenu.JOB_Y + 20;
-            if (mouseX >= right - font.width(processors) && mouseX < right && mouseY >= top - 1 && mouseY < top + 9) {
-                graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.server.processors_hint"), 170),
-                        mouseX, mouseY);
+            if (mouseX >= right - pipsWidth() && mouseX < right && mouseY >= top - 1 && mouseY < top + 9) {
+                List<FormattedCharSequence> tip = new java.util.ArrayList<>();
+                tip.add(Component.translatable("screen.jasm.server.processors", menu.active(), menu.parallel()).getVisualOrderText());
+                tip.addAll(font.split(Component.translatable("screen.jasm.server.processors_hint"), 170));
+                graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
             }
         }
     }
@@ -134,13 +136,11 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
             case CANCELLING -> Component.translatable("screen.jasm.server.cancelling");
             case RETURNING -> Component.translatable("screen.jasm.server.returning");
         };
-        Component processors = processors();
         int stateRoom = room;
-        if (processors != null) {
-            // How many Processors are in use, on the right: all of them busy is why other machines wait.
-            int width = font.width(processors);
-            graphics.text(font, processors, tx + room - width, CraftingServerMenu.JOB_Y + 20,
-                    menu.active() >= menu.parallel() ? JasmGui.TEXT : JasmGui.MUTED, false);
+        if (phase == CraftingJob.Phase.CRAFTING) {
+            // A light per Processor on the right, lit while it works: all of them lit is why other machines wait.
+            int width = pipsWidth();
+            pips(graphics, tx + room - width, CraftingServerMenu.JOB_Y + 21);
             stateRoom = room - width - 6;
         }
         graphics.text(font, trim(state.getString(), stateRoom), tx, CraftingServerMenu.JOB_Y + 20, JasmGui.SUBTEXT, false);
@@ -165,10 +165,23 @@ public class CraftingServerScreen extends AbstractContainerScreen<CraftingServer
         }
     }
 
-    /** "Processors: 1/2" while the job crafts; null otherwise. */
-    private @Nullable Component processors() {
-        return menu.phase() == CraftingJob.Phase.CRAFTING
-                ? Component.translatable("screen.jasm.server.processors", menu.active(), menu.parallel()) : null;
+    private static final int PIP = 3;
+    private static final int MAX_PIPS = 12;
+
+    private int pipsWidth() {
+        return Math.min(menu.parallel(), MAX_PIPS) * (PIP + 1) - 1;
+    }
+
+    /** One small light per Processor slot that can work, green while in use; past twelve it reads as a count. */
+    private void pips(GuiGraphicsExtractor graphics, int x, int y) {
+        int count = Math.min(menu.parallel(), MAX_PIPS);
+        int lit = menu.parallel() <= MAX_PIPS ? menu.active() : Math.round(menu.active() * MAX_PIPS / (float) menu.parallel());
+        for (int i = 0; i < count; i++) {
+            int px = x + i * (PIP + 1);
+            graphics.fill(px, y, px + PIP, y + 7, 0xFF11111B);
+            graphics.fill(px, y, px + PIP, y + 1, 0xFF45475A);
+            if (i < lit) graphics.fill(px, y + 1, px + PIP, y + 7, JasmGui.GOOD);
+        }
     }
 
     private String trim(String text, int room) {

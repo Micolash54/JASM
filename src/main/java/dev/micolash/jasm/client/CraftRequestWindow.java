@@ -30,7 +30,6 @@ import org.jspecify.annotations.Nullable;
  * it, and (worked out by the server) a scrollable list of what it makes, takes, crafts on the way and is missing.
  */
 final class CraftRequestWindow {
-    private static final int SHADOW = 0x6E000000;
     /** Darker than the Deck underneath, so the window stands out, but lighter than the list's frame so its edges show. */
     private static final int BACKGROUND = 0xFF2A2B3D;
     private static final int SCROLL_GAP = 3;
@@ -66,12 +65,12 @@ final class CraftRequestWindow {
     CraftRequestWindow(DeckMenu menu, Font font) {
         this.menu = menu;
         this.font = font;
-        amount = new EditBox(font, 0, 0, 50, 12, Component.translatable("screen.jasm.craft.amount"));
+        amount = new JasmField(font, 0, 0, 50, 12, Component.translatable("screen.jasm.craft.amount"));
         amount.setMaxLength(7);
         amount.setResponder(s -> askIn = 6);
         place(JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11), 16, 5, true);
-        place(JasmButton.text(Component.literal("-"), b -> step(-1), 0, 0, 14, 14), 58, 26, false);
-        place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 14, 14), 128, 26, false);
+        place(JasmButton.text(Component.literal("-"), b -> step(-1), 0, 0, 15, 14), 58, 26, false);
+        place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 15, 14), 127, 26, false);
         next = place(JasmButton.text(Component.translatable("screen.jasm.craft.next_server"), b -> nextServer(), 0, 0, 34, 14), 41, 43, true);
         craft = place(JasmButton.text(Component.translatable("screen.jasm.craft.start"), b -> start(), 0, 0, 44, 14), 51, -20, true);
     }
@@ -230,7 +229,6 @@ final class CraftRequestWindow {
         }
         amount.setPosition(x + 75, y + 27);
 
-        graphics.fill(x + 3, y + 3, x + width + 3, y + height + 3, SHADOW);
         JasmGui.panel(graphics, x, y, width, height);
         graphics.fill(x + 3, y + 3, x + width - 3, y + height - 3, BACKGROUND);
         ItemStack shown = target.toStack(1);

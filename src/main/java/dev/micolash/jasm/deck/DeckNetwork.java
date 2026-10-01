@@ -120,13 +120,14 @@ public final class DeckNetwork {
         return done;
     }
 
-    /** Puts a Crafting Deck's grid back on its wafers. */
+    /** Empties a Crafting Deck's grid onto its wafers or into the inventory. */
     public static boolean clearGrid(ServerPlayer player, DeckPayloads.ClearGrid payload) {
         DeckMenu menu = openMenu(player, payload.containerId());
         if (menu == null || !menu.isCrafting() || !menu.dimensionAllowed() || !allow(player)) {
             return false;
         }
-        menu.returnGrid(player);
+        if (payload.toInventory()) menu.gridToInventory(player);
+        else menu.returnGrid(player);
         finish(player, menu);
         return true;
     }
