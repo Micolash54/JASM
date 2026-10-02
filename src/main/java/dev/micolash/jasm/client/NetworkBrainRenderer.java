@@ -6,7 +6,6 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.brain.NetworkBrainBlock;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.core.BitlingKind;
-import dev.micolash.jasm.core.BrainChores;
 import dev.micolash.jasm.core.BrainCube;
 import dev.micolash.jasm.core.BrainSize;
 import dev.micolash.jasm.network.MachineBlock;
@@ -43,14 +42,15 @@ import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Draws the Bitlings busy inside a Network Brain. A single brain plays one little scene after another, each twice through;
+ * Draws the Bitlings busy inside a Network Brain. A single brain plays one little scene after another;
  * between scenes the glass clouds over, the next scene is set out behind it, and the glass clears again. Without power its
- * Bitling naps in the armchair. A 2×2×2 or 3×3×3 cube scales the glass chamber up to fill it, and its Bitlings work or idle,
- * picking again every few seconds.
+ * Bitling naps in the armchair. A 2×2×2 or 3×3×3 cube scales the chamber up to fill it and plays several scenes side by side,
+ * each Bitling at its own point in its loop; without power they all curl up where they stand.
  */
 public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlockEntity, NetworkBrainRenderer.State> {
-    static final Identifier CHAMBER_ID = Jasm.id("block/network_brain_chamber");
-    static final StandaloneModelKey<BlockStateModelPart> CHAMBER = new StandaloneModelKey<>(CHAMBER_ID::toString);
+    /** The brain's frame and floor, drawn scaled up around a big cube. */
+    static final Identifier FRAME_ID = Jasm.id("block/network_brain");
+    static final StandaloneModelKey<BlockStateModelPart> FRAME = new StandaloneModelKey<>(FRAME_ID::toString);
 
     /**
      * One scene of a single brain: its loop and props, where its middle is (from the Bitling's feet, in model pixels), how far
@@ -76,7 +76,7 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     /** The scene a brain without power shows. */
     private static final int NAP_SCENE = 2;
     /** How many times each scene plays before the next. */
-    private static final int PLAYS_PER_SCENE = 2;
+    private static final int PLAYS_PER_SCENE = 1;
     /** Seconds the glass takes to cloud over or clear, and how long it stays solid while the scene changes. */
     private static final float FADE_SECONDS = 1.6F;
     private static final float SOLID_SECONDS = 0.4F;
@@ -121,20 +121,28 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
         SCENE_MODELS.computeIfAbsent(path, p -> new StandaloneModelKey<>(id::toString));
     }
 
-    /** Where each Bitling stands in a big cube, from the cube's corner in model pixels, and which way it faces (180 is out the front). */
-    private record Spot(float x, float y, float z, float yaw) {}
+    /**
+     * Where a scene sits in a big cube: its middle, from the cube's corner in model pixels (the front is the low z side), and
+     * how far it is turned. Each spot starts its loop a little later than the one before, so no two move in step.
+     */
+    private record Spot(int scene, float x, float z, float yaw) {}
 
-    private static final Spot[] CUBE_2_SPOTS = {new Spot(10, 2, 12, 160), new Spot(22, 2, 12, 200), new Spot(16, 2, 22, 180)};
-    private static final Spot[] CUBE_3_SPOTS = {new Spot(12, 2, 14, 170), new Spot(24, 2, 12, 180), new Spot(36, 2, 14, 190),
-            new Spot(14, 2, 32, 160), new Spot(26, 2, 34, 180), new Spot(36, 2, 30, 200)};
-    /** How big the Bitlings are drawn in a big cube, by size. */
+    private static final int SHAPES = 0;
+    private static final int DESK = 1;
+    private static final int CRYSTAL = 3;
+    private static final int DOODLE = 4;
+    private static final int SNACK = 5;
+    private static final Spot[] CUBE_2_SPOTS = {new Spot(DESK, 9, 21.5F, 0), new Spot(SHAPES, 16, 10, 0), new Spot(NAP_SCENE, 21, 22, 30)};
+    private static final Spot[] CUBE_3_SPOTS = {new Spot(DESK, 22, 14.5F, 0), new Spot(SHAPES, 34.5F, 14, 0),
+            new Spot(NAP_SCENE, 35, 35, 35), new Spot(CRYSTAL, 10.5F, 31, 0), new Spot(DOODLE, 24, 33.5F, 0),
+            new Spot(SNACK, 11, 14, 0)};
+    /** How big the scenes are drawn in a big cube, by size. */
     private static final float CUBE_2_SCALE = 0.65F;
-    private static final float CUBE_3_SCALE = 0.80F;
+    private static final float CUBE_3_SCALE = 0.8F;
+    /** Seconds between one spot's start in its loop and the next one's. */
+    private static final float SPOT_STAGGER = 5;
     /** The Bitling model's own feet centre. */
     private static final float FEET_X = 8;
-    private static final float FEET_Z = 7.75F;
-    /** Seconds a change from one loop to the next takes in a big cube. */
-    private static final float BLEND_SECONDS = 0.35F;
 
     private final BitlingAnimations animations;
     /** Each scene's props: their parts and how they move. */
@@ -153,7 +161,7 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     }
 
     static void registerModels(ModelEvent.RegisterStandalone event) {
-        event.register(CHAMBER, SimpleUnbakedStandaloneModel.simpleModelWrapper(CHAMBER_ID));
+        event.register(FRAME, SimpleUnbakedStandaloneModel.simpleModelWrapper(FRAME_ID));
         for (Map.Entry<String, StandaloneModelKey<BlockStateModelPart>> e : SCENE_MODELS.entrySet()) {
             event.register(e.getValue(), SimpleUnbakedStandaloneModel.simpleModelWrapper(Jasm.id(e.getKey())));
         }
@@ -206,16 +214,37 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
                 wakes.put(brain, wake);
             }
             state.wokeOrSlept = wake.since();
+            // Every brain starts its scenes at its own point, so two side by side don't move together.
+            state.ownSeconds = state.seconds + Math.floorMod(at.asLong() * 0x9E3779B97F4A7C15L, 997L);
+            wakeOrSleep(state);
             if (state.size == BrainSize.SINGLE) {
-                pickScene(state, at);
+                pickScene(state);
+            }
+        }
+    }
+
+    /** Waking up or falling asleep clouds the glass over, and the Bitlings change what they do behind it. */
+    private static void wakeOrSleep(State state) {
+        double sinceChange = state.seconds - state.wokeOrSlept;
+        state.showAwake = state.awake;
+        state.glass = 0;
+        if (sinceChange < 2 * FADE_SECONDS + SOLID_SECONDS) {
+            if (sinceChange < FADE_SECONDS + SOLID_SECONDS / 2) {
+                state.showAwake = !state.awake;
+            }
+            if (sinceChange < FADE_SECONDS) {
+                state.glass = (float) (sinceChange / FADE_SECONDS);
+            } else if (sinceChange < FADE_SECONDS + SOLID_SECONDS) {
+                state.glass = 1;
+            } else {
+                state.glass = 1 - (float) ((sinceChange - FADE_SECONDS - SOLID_SECONDS) / FADE_SECONDS);
             }
         }
     }
 
     /** Which scene a single brain shows now, how far into it, and how clouded its glass is. */
-    private void pickScene(State state, BlockPos at) {
-        // Every brain starts its round of scenes at its own point, so two side by side don't change together.
-        double seconds = state.seconds + Math.floorMod(at.asLong() * 0x9E3779B97F4A7C15L, 997L);
+    private void pickScene(State state) {
+        double seconds = state.ownSeconds;
         double play = PLAYS_PER_SCENE * loopLength(SCENES.getFirst());
         double period = play + FADE_SECONDS;
         long round = (long) Math.floor(seconds / period);
@@ -230,31 +259,13 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
         } else {
             roundGlass = 0;
         }
-
-        // Waking up or falling asleep clouds the glass over too, and the scene changes behind it.
-        double sinceChange = state.seconds - state.wokeOrSlept;
-        boolean showAwake = state.awake;
-        float changeGlass = 0;
-        if (sinceChange < 2 * FADE_SECONDS + SOLID_SECONDS) {
-            if (sinceChange < FADE_SECONDS + SOLID_SECONDS / 2) {
-                showAwake = !state.awake;
-            }
-            if (sinceChange < FADE_SECONDS) {
-                changeGlass = (float) (sinceChange / FADE_SECONDS);
-            } else if (sinceChange < FADE_SECONDS + SOLID_SECONDS) {
-                changeGlass = 1;
-            } else {
-                changeGlass = 1 - (float) ((sinceChange - FADE_SECONDS - SOLID_SECONDS) / FADE_SECONDS);
-            }
-        }
-        if (showAwake) {
+        if (state.showAwake) {
             state.scene = (int) Math.floorMod(round, (long) SCENES.size());
             state.sceneTime = into;
-            state.glass = Math.max(roundGlass, changeGlass);
+            state.glass = Math.max(roundGlass, state.glass);
         } else {
             state.scene = NAP_SCENE;
             state.sceneTime = state.seconds;
-            state.glass = changeGlass;
         }
     }
 
@@ -292,27 +303,71 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
         poseStack.mulPose(Axis.YP.rotationDegrees(180 - state.facing.toYRot()));
         poseStack.translate(-side / 2, 0, -side / 2);
         if (state.size == BrainSize.SINGLE) {
-            submitScene(state, poseStack, collector, models);
+            submitSingle(state, poseStack, collector, models);
         } else {
             submitCube(state, poseStack, collector, models);
         }
         poseStack.popPose();
     }
 
-    /** A single brain's scene: its props, its Bitling and what it carries, then the glass around them. */
-    private void submitScene(State state, PoseStack poseStack, SubmitNodeCollector collector, ModelManager models) {
+    /** A single brain's scene, then the glass around it. */
+    private void submitSingle(State state, PoseStack poseStack, SubmitNodeCollector collector, ModelManager models) {
         Scene scene = SCENES.get(state.scene);
-        float time = (float) (Math.max(0, state.sceneTime) % loopLength(scene));
         poseStack.pushPose();
         poseStack.translate(0.5, FLOOR_Y / 16, 0.5);
+        submitScene(scene, (float) (Math.max(0, state.sceneTime) % loopLength(scene)), true, SCENE_SCALE, state, poseStack, collector,
+                models);
+        poseStack.popPose();
+        submitGlass(state, poseStack, collector, models);
+    }
+
+    /** A big cube: the frame scaled up to fill it, its scenes at their spots, then the glass. */
+    private void submitCube(State state, PoseStack poseStack, SubmitNodeCollector collector, ModelManager models) {
+        float side = state.size.side();
+        BlockStateModelPart frame = models.getStandaloneModel(FRAME);
+        if (frame != null) {
+            poseStack.pushPose();
+            poseStack.scale(side, side, side);
+            collector.submitBlockModel(poseStack, Sheets.cutoutBlockItemSheet(), List.of(frame), BlockModelRenderState.EMPTY_TINTS,
+                    state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+            poseStack.popPose();
+        }
+
+        Spot[] spots = spots(state.size);
+        float scale = scale(state.size);
+        for (int i = 0; i < spots.length; i++) {
+            Spot spot = spots[i];
+            Scene scene = SCENES.get(spot.scene());
+            float time = (float) (Math.max(0, state.ownSeconds + i * SPOT_STAGGER) % loopLength(scene));
+            poseStack.pushPose();
+            poseStack.translate(spot.x() / 16, FLOOR_Y * side / 16, spot.z() / 16);
+            poseStack.mulPose(Axis.YP.rotationDegrees(spot.yaw()));
+            // Without power only the napper keeps its scene; the others curl up where they stand.
+            submitScene(scene, time, state.showAwake || spot.scene() == NAP_SCENE, scale, state, poseStack, collector, models);
+            poseStack.popPose();
+        }
+
+        poseStack.pushPose();
+        poseStack.scale(side, side, side);
+        submitGlass(state, poseStack, collector, models);
+        poseStack.popPose();
+    }
+
+    /**
+     * A scene with its middle here: its props, its Bitling and what it carries. A Bitling that isn't {@code awake} naps where
+     * the scene starts it off, and the props wait as they are at the start.
+     */
+    private void submitScene(Scene scene, float time, boolean awake, float scale, State state, PoseStack poseStack,
+            SubmitNodeCollector collector, ModelManager models) {
+        poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(scene.turn()));
-        poseStack.scale(SCENE_SCALE, SCENE_SCALE, SCENE_SCALE);
-        // The scene's models sit where the Bitling's do, its middle on the brain's middle.
+        poseStack.scale(scale, scale, scale);
+        // The scene's models sit where the Bitling's do, its middle here.
         poseStack.translate(-(FEET_X + scene.x()) / 16, 0, -(FEET_X + scene.z()) / 16);
 
         BitlingAnimations sceneProps = props.get(scene.name());
         if (sceneProps != null) {
-            Map<String, float[]> propPose = sceneProps.sample(sceneProps.clip(scene.loop()), time);
+            Map<String, float[]> propPose = sceneProps.sample(sceneProps.clip(scene.loop()), awake ? time : 0);
             for (String part : scene.props()) {
                 submitPart(models, propPath(scene, part), part, sceneProps, propPose, false, state, poseStack, collector);
             }
@@ -321,7 +376,7 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
             }
         }
 
-        Map<String, float[]> pose = animations.sample(animations.clip(scene.loop()), time);
+        Map<String, float[]> pose = awake ? animations.sample(animations.clip(scene.loop()), time) : napAtStart(scene, time);
         Map<String, StandaloneModelKey<BlockStateModelPart>> keys = ChipWorkshopRenderer.KEYS.get(BitlingKind.BASIC);
         for (String part : ChipWorkshopRenderer.PARTS) {
             // The chip is only ever in the Workshop's hand.
@@ -330,11 +385,30 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
             }
             submitPart(models.getStandaloneModel(keys.get(part)), part, animations, pose, false, state, poseStack, collector);
         }
-        for (Held held : scene.held()) {
-            submitPart(models, heldPath(held), held.bone(), animations, pose, false, state, poseStack, collector);
+        if (awake) {
+            for (Held held : scene.held()) {
+                submitPart(models, heldPath(held), held.bone(), animations, pose, false, state, poseStack, collector);
+            }
         }
         poseStack.popPose();
+    }
 
+    /** The Workshop's napping loop, lying where and facing the way the scene's loop first puts the Bitling. */
+    private Map<String, float[]> napAtStart(Scene scene, float time) {
+        BitlingAnimations.Clip napping = animations.clip("napping");
+        float length = napping == null || napping.length() <= 0 ? 1 : napping.length();
+        Map<String, float[]> pose = animations.sample(napping, time % length);
+        float[] start = animations.sample(animations.clip(scene.loop()), 0).get("root");
+        float[] nap = pose.get("root");
+        if (start != null && nap != null) {
+            // The scene's spot and heading, with the nap's sink and tilt.
+            pose.put("root", new float[] {start[0], nap[1], start[2], nap[3], start[4], nap[5], nap[6], nap[7], nap[8]});
+        }
+        return pose;
+    }
+
+    /** The glass, as clouded as the brain's state says. */
+    private static void submitGlass(State state, PoseStack poseStack, SubmitNodeCollector collector, ModelManager models) {
         int stage = Mth.clamp(Math.round(state.glass * (GLASS_STAGES - 1)), 0, GLASS_STAGES - 1);
         BlockStateModelPart glass = models.getStandaloneModel(GLASS.get(stage));
         if (glass != null) {
@@ -361,82 +435,6 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
         poseStack.popPose();
     }
 
-    /** A big cube: the chamber scaled up to fill it, and its Bitlings at their spots. */
-    private void submitCube(State state, PoseStack poseStack, SubmitNodeCollector collector, ModelManager models) {
-        float side = state.size.side();
-        BlockStateModelPart chamber = models.getStandaloneModel(CHAMBER);
-        if (chamber != null) {
-            poseStack.pushPose();
-            poseStack.scale(side, side, side);
-            collector.submitBlockModel(poseStack, Sheets.translucentBlockItemSheet(), List.of(chamber), BlockModelRenderState.EMPTY_TINTS,
-                    state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
-            poseStack.popPose();
-        }
-
-        Spot[] spots = spots(state.size);
-        float scale = scale(state.size);
-        Map<String, StandaloneModelKey<BlockStateModelPart>> keys = ChipWorkshopRenderer.KEYS.get(BitlingKind.BASIC);
-        for (int i = 0; i < spots.length; i++) {
-            Spot spot = spots[i];
-            boolean working = state.awake && BrainChores.loop(BrainChores.shift(state.seconds, i), i).equals("working");
-            Map<String, float[]> pose = poseAt(state, i);
-            poseStack.pushPose();
-            poseStack.translate(spot.x() / 16, spot.y() / 16, spot.z() / 16);
-            poseStack.mulPose(Axis.YP.rotationDegrees(180 - spot.yaw()));
-            poseStack.scale(scale, scale, scale);
-            poseStack.translate(-FEET_X / 16, 0, -FEET_Z / 16);
-            for (String part : ChipWorkshopRenderer.PARTS) {
-                // The chip only shows while it works.
-                if (part.equals("chip") && !working) {
-                    continue;
-                }
-                submitPart(models.getStandaloneModel(keys.get(part)), part, animations, pose, false, state, poseStack, collector);
-            }
-            poseStack.popPose();
-        }
-    }
-
-    /** Bitling {@code i}'s pose now, easing out of the last one when it has just changed loop or woken or fallen asleep. */
-    private Map<String, float[]> poseAt(State state, int i) {
-        Map<String, float[]> pose = steadyPose(state.awake, i, state.seconds, state.wokeOrSlept);
-        double sinceWake = state.seconds - state.wokeOrSlept;
-        if (sinceWake < BLEND_SECONDS) {
-            Map<String, float[]> before = steadyPose(!state.awake, i, state.wokeOrSlept, Double.NEGATIVE_INFINITY);
-            return BitlingAnimations.mix(before, pose, smooth(sinceWake));
-        }
-        return pose;
-    }
-
-    /** The pose ignoring a recent wake or sleep: napping, or the loop of its shift, easing in from the last shift's. */
-    private Map<String, float[]> steadyPose(boolean awake, int i, double seconds, double asleepSince) {
-        if (!awake) {
-            double start = Double.isInfinite(asleepSince) ? 0 : asleepSince;
-            return sampleLoop("napping", seconds - start);
-        }
-        long shift = BrainChores.shift(seconds, i);
-        double start = BrainChores.shiftStart(shift, i);
-        Map<String, float[]> pose = sampleLoop(BrainChores.loop(shift, i), seconds - start);
-        double into = seconds - start;
-        if (into < BLEND_SECONDS) {
-            double lastStart = BrainChores.shiftStart(shift - 1, i);
-            Map<String, float[]> last = sampleLoop(BrainChores.loop(shift - 1, i), start - lastStart);
-            return BitlingAnimations.mix(last, pose, smooth(into));
-        }
-        return pose;
-    }
-
-    /** A loop's pose {@code seconds} after it started from its first frame. */
-    private Map<String, float[]> sampleLoop(String name, double seconds) {
-        BitlingAnimations.Clip clip = animations.clip(name);
-        float length = clip == null ? 0 : clip.length();
-        return animations.sample(clip, length <= 0 ? 0 : (float) (Math.max(0, seconds) % length));
-    }
-
-    private static float smooth(double seconds) {
-        float t = Mth.clamp((float) (seconds / BLEND_SECONDS), 0, 1);
-        return t * t * (3 - 2 * t);
-    }
-
     public static class State extends BlockEntityRenderState {
         BrainSize size = BrainSize.SINGLE;
         boolean awake;
@@ -447,11 +445,16 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
         int originY;
         int originZ;
         double seconds;
+        /** The time with this brain's own head start, so brains side by side don't move together. */
+        double ownSeconds;
         /** When the brain last woke or fell asleep, in seconds; minus infinity if not since it came into view. */
         double wokeOrSlept = Double.NEGATIVE_INFINITY;
-        /** A single brain's scene, seconds into it, and how solid its glass is, from 0 to 1. */
+        /** Whether the Bitlings show awake: behind clouded glass they may still be in their old state. */
+        boolean showAwake;
+        /** How solid the glass is, from 0 to 1. */
+        float glass;
+        /** A single brain's scene, and seconds into it. */
         int scene;
         double sceneTime;
-        float glass;
     }
 }
