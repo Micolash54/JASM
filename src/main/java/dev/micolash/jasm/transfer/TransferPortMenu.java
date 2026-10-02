@@ -15,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +30,7 @@ public final class TransferPortMenu extends AbstractContainerMenu {
     public static final int INVENTORY_START = POWER + 1;
     /** Side keys in the right-hand column: just the Deck Link. */
     public static final int SIDE_KEYS = 1;
+    public static final int CYCLE_REDSTONE = 1;
     /** Client side: where the Deck Link window lies over the screen. */
     private final LinkWindowCover linkCover = new LinkWindowCover();
     private final Player player;
@@ -39,6 +41,7 @@ public final class TransferPortMenu extends AbstractContainerMenu {
     private final ContainerData data;
     private final TransferPortKind kind;
     private TransferFilters filters;
+    private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
     public TransferPortMenu(int id, Inventory inventory, TransferPortBlockEntity port) {
         this(id, inventory, port, port.data(), port.kind(), port.filters());
     }
@@ -49,11 +52,22 @@ public final class TransferPortMenu extends AbstractContainerMenu {
         super(JasmMenus.TRANSFER_PORT.get(), id);
         this.port = port; this.data = data; this.kind = kind; this.filters = filters; this.player = inventory.player;
         addDataSlots(data);
+        addDataSlot(new DataSlot() {
+            @Override public int get() { return redstoneMode().ordinal(); }
+            @Override public void set(int value) { redstoneMode = RedstoneMode.byId(value); }
+        });
         var contents = port == null ? new SimpleContainer(AccessPortBlockEntity.INVENTORY_SIZE) : port;
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
             addSlot(new Slot(contents, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
                 @Override public boolean isActive() { return !linkCover.covers(this); }
-                @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.SPEED_UPGRADE.get()); }
+                @Override public boolean mayPlace(ItemStack stack) {
+                    if (stack.is(JasmItems.SPEED_UPGRADE.get())) return true;
+                    if (!stack.is(JasmItems.REDSTONE_UPGRADE.get())) return false;
+                    for (int j = 0; j < PortOperations.UPGRADE_SLOTS; j++) {
+                        if (getSlot(j) != this && getSlot(j).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return false;
+                    }
+                    return true;
+                }
                 @Override public int getMaxStackSize() { return 1; }
                 @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
             });
@@ -89,6 +103,13 @@ public final class TransferPortMenu extends AbstractContainerMenu {
         }
     }
     public TransferFilters filters() { return filters; }
+    public RedstoneMode redstoneMode() { return port == null ? redstoneMode : port.redstoneMode(); }
+    public boolean hasRedstoneUpgrade() {
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
+            if (getSlot(i).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return true;
+        }
+        return false;
+    }
     public int inventoryY() { return kind == TransferPortKind.INPUT_OUTPUT ? 276 : 180; }
     public int height() { return inventoryY() + 84; }
     public boolean defaultDeck() { return data.get(4) != 0; }
@@ -111,7 +132,15 @@ public final class TransferPortMenu extends AbstractContainerMenu {
     @Override public boolean stillValid(Player player) {
         return port == null || port.installed() && MachineAccess.canUse(port, player) && player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64;
     }
-    @Override public boolean clickMenuButton(Player player, int id) { return id == 0 && port != null && stillValid(player) && port.resetDeck(player); }
+    @Override public boolean clickMenuButton(Player player, int id) {
+        if (port == null || !stillValid(player)) return false;
+        if (id == 0) return port.resetDeck(player);
+        if (id == CYCLE_REDSTONE && port.hasRedstoneUpgrade()) {
+            port.setRedstoneMode(port.redstoneMode().next());
+            return true;
+        }
+        return false;
+    }
     @Override public void clicked(int index, int button, ContainerInput input, Player player) {
         ItemStack before = getSlot(LINK_IN).getItem().copy();
         super.clicked(index, button, input, player);
@@ -130,6 +159,9 @@ public final class TransferPortMenu extends AbstractContainerMenu {
             }
             if (!moved) return ItemStack.EMPTY;
         }
+        else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+            if (!moveItemStackTo(stack, 0, LINK_IN, false)) return ItemStack.EMPTY;
+        }
         else if (stack.is(JasmItems.POWER_UPGRADE.get())) { if (!moveItemStackTo(stack, POWER, POWER + 1, false)) return ItemStack.EMPTY; }
         else if (DeckItem.isCrafting(stack)) { if (!moveItemStackTo(stack, LINK_IN, LINK_IN + 1, false)) return ItemStack.EMPTY; }
         else return ItemStack.EMPTY;
@@ -137,4 +169,5 @@ public final class TransferPortMenu extends AbstractContainerMenu {
         if (port != null) { if (index >= INVENTORY_START && DeckItem.isCrafting(before)) port.queueDeckLink(player); port.processDeckLink(); }
         return before;
     }
+
 }

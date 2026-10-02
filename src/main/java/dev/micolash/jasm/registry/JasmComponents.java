@@ -91,5 +91,8 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<dev.micolash.jasm.transfer.TransferFilters>> TRANSFER_FILTERS = COMPONENTS.registerComponentType(
             "transfer_filters", b -> b.persistent(dev.micolash.jasm.transfer.TransferFilters.CODEC).networkSynchronized(dev.micolash.jasm.transfer.TransferFilters.STREAM_CODEC));
 
+    public static final Supplier<DataComponentType<dev.micolash.jasm.transfer.RedstoneMode>> REDSTONE_MODE = COMPONENTS.registerComponentType(
+            "redstone_mode", b -> b.persistent(dev.micolash.jasm.transfer.RedstoneMode.CODEC).networkSynchronized(dev.micolash.jasm.transfer.RedstoneMode.STREAM_CODEC));
+
     private JasmComponents() {}
 }

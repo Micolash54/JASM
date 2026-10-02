@@ -6,6 +6,7 @@ import dev.micolash.jasm.transfer.TransferPortKind;
 import dev.micolash.jasm.transfer.TransferPortMenu;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
+import dev.micolash.jasm.transfer.RedstoneMode;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -30,6 +31,9 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
     private final List<ItemFilterEditor> editors = new ArrayList<>();
     private JasmButton link;
+    private JasmButton redstone;
+    private boolean frameRedstone;
+    private @Nullable RedstoneMode shownRedstoneMode;
     private @Nullable DeckLinkWindow linkWindow;
     private JasmFrame frame;
     public TransferPortScreen(TransferPortMenu menu, Inventory inventory, Component title) {
@@ -39,7 +43,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     }
     @Override protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[] {0, 0, TransferPortMenu.WIDTH, imageHeight}, PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS));
+        frameRedstone = menu.hasRedstoneUpgrade();
+        frame = JasmFrame.rounded(new int[] {0, 0, TransferPortMenu.WIDTH, imageHeight}, PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, frameRedstone));
         editors.clear();
         boolean combined = menu.kind() == TransferPortKind.INPUT_OUTPUT;
         int rows = combined ? 1 : 2;
@@ -55,6 +60,36 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
                     () -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, 0));
         }
         link.setLatched(linkWindow.isOpen());
+        redstone = addRenderableWidget(JasmButton.icon(
+                () -> new JasmButton.Icon(Jasm.id("icon/redstone_" + menu.redstoneMode().getSerializedName()), 12, 12),
+                redstoneLabel(), b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, TransferPortMenu.CYCLE_REDSTONE),
+                leftPos + KEY_X, topPos + PortUpgradeLayout.redstoneY(TransferPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        shownRedstoneMode = null;
+        updateRedstoneButton();
+    }
+    private Component redstoneLabel() {
+        return Component.translatable("screen.jasm.transfer.redstone",
+                Component.translatable("screen.jasm.transfer.redstone_" + menu.redstoneMode().getSerializedName()));
+    }
+    private void updateRedstoneButton() {
+        boolean installed = menu.hasRedstoneUpgrade();
+        redstone.visible = installed;
+        redstone.active = installed;
+        redstone.setLatched(menu.redstoneMode() != RedstoneMode.IGNORE);
+        if (shownRedstoneMode != menu.redstoneMode()) {
+            shownRedstoneMode = menu.redstoneMode();
+            Component label = redstoneLabel();
+            redstone.setMessage(label);
+            redstone.setTooltip(Tooltip.create(label.copy().append("\n").append(Component.translatable("screen.jasm.transfer.redstone_hint"))));
+        }
+        if (frameRedstone != installed) {
+            frameRedstone = installed;
+            frame = JasmFrame.rounded(new int[] {0, 0, TransferPortMenu.WIDTH, imageHeight}, PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, installed));
+        }
+    }
+    @Override protected void containerTick() {
+        super.containerTick();
+        updateRedstoneButton();
     }
     private void toggleLink() {
         linkWindow.toggle(leftPos + KEY_X, topPos);

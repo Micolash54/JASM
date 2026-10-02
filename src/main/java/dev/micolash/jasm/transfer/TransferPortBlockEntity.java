@@ -33,6 +33,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     private final TransferPortKind kind;
     private final Direction face;
     private TransferFilters filters = TransferFilters.DEFAULT;
+    private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
 
     public TransferPortBlockEntity(BlockPos pos, BlockState state, TransferPortKind kind, Direction face) {
         super(pos, state);
@@ -42,10 +43,24 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     public TransferPortKind kind() { return kind; }
     public TransferFilters filters() { return filters; }
     public void setFilters(TransferFilters filters) { this.filters = filters; setChanged(); }
+    public RedstoneMode redstoneMode() { return redstoneMode; }
+    public void setRedstoneMode(RedstoneMode mode) { redstoneMode = mode; setChanged(); }
+    public boolean hasRedstoneUpgrade() {
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
+            if (getItem(SPEED_START + i).is(JasmItems.REDSTONE_UPGRADE.get())) return true;
+        }
+        return false;
+    }
     @Override public boolean hasMachine(Direction side) { return false; }
     @Override protected boolean canPowerSide(Direction side) { return side == face; }
     @Override public int[] getSlotsForFace(Direction side) { return new int[0]; }
     @Override public boolean canPlaceItem(int slot, ItemStack stack) {
+        if (slot >= SPEED_START && slot < INVENTORY_SIZE && stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+            for (int i = SPEED_START; i < INVENTORY_SIZE; i++) {
+                if (i != slot && getItem(i).is(JasmItems.REDSTONE_UPGRADE.get())) return false;
+            }
+            return true;
+        }
         return (slot == DECK_IN || slot == POWER_SLOT || slot >= SPEED_START) && super.canPlaceItem(slot, stack);
     }
     @Override public Component getDisplayName() { return label().isEmpty() ? Component.translatable("item.jasm." + kind.id()) : Component.literal(label()); }
@@ -60,6 +75,8 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         sendPower();
         processDeckLink();
         if (!(level instanceof ServerLevel world) || !running() || networkBlocked()) return;
+        // Thin ports in one block space read the same signal, each using its own mode.
+        if (hasRedstoneUpgrade() && !redstoneMode.allows(world.hasNeighborSignal(worldPosition))) return;
         int budget = transferBudget();
         if (budget <= 0) return;
         var network = Networks.at(world, worldPosition);
@@ -124,10 +141,15 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         }
         Jobs.refreshOpenDeck(player, deck);
     }
-    @Override protected void saveAdditional(ValueOutput output) { super.saveAdditional(output); output.store("transfer_filters", TransferFilters.CODEC, filters); }
+    @Override protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.store("transfer_filters", TransferFilters.CODEC, filters);
+        output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
+    }
     @Override protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         filters = input.read("transfer_filters", TransferFilters.CODEC).orElse(TransferFilters.DEFAULT);
+        redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         // Earlier ports held up to four speed upgrades in the old power slot.
         ItemStack old = getItem(POWER_SLOT);
         if (old.is(JasmItems.SPEED_UPGRADE.get())) {
@@ -137,7 +159,19 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             if (old.isEmpty()) setItem(POWER_SLOT, ItemStack.EMPTY);
         }
     }
-    @Override protected void collectImplicitComponents(DataComponentMap.Builder components) { super.collectImplicitComponents(components); components.set(JasmComponents.TRANSFER_FILTERS.get(), filters); }
-    @Override protected void applyImplicitComponents(DataComponentGetter components) { super.applyImplicitComponents(components); filters = components.getOrDefault(JasmComponents.TRANSFER_FILTERS.get(), TransferFilters.DEFAULT); }
-    @Override public void removeComponentsFromTag(ValueOutput output) { super.removeComponentsFromTag(output); output.discard("transfer_filters"); }
+    @Override protected void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        components.set(JasmComponents.TRANSFER_FILTERS.get(), filters);
+        components.set(JasmComponents.REDSTONE_MODE.get(), redstoneMode);
+    }
+    @Override protected void applyImplicitComponents(DataComponentGetter components) {
+        super.applyImplicitComponents(components);
+        filters = components.getOrDefault(JasmComponents.TRANSFER_FILTERS.get(), TransferFilters.DEFAULT);
+        redstoneMode = components.getOrDefault(JasmComponents.REDSTONE_MODE.get(), RedstoneMode.IGNORE);
+    }
+    @Override public void removeComponentsFromTag(ValueOutput output) {
+        super.removeComponentsFromTag(output);
+        output.discard("transfer_filters");
+        output.discard("redstone_mode");
+    }
 }
