@@ -9,6 +9,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.neoforge.client.event.RegisterConditionalItemModelPropertyEvent;
+import net.neoforged.neoforge.client.event.RegisterItemModelsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
@@ -28,6 +30,16 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerItemProperties(RegisterRangeSelectItemModelPropertyEvent event) {
         event.register(Jasm.id("deck_charge"), DeckCharge.MAP_CODEC);
+    }
+
+    @SubscribeEvent
+    static void registerItemConditions(RegisterConditionalItemModelPropertyEvent event) {
+        event.register(Jasm.id("shift_down"), ShiftDown.MAP_CODEC);
+    }
+
+    @SubscribeEvent
+    static void registerItemModels(RegisterItemModelsEvent event) {
+        event.register(Jasm.id("encoded_card"), EncodedCardModel.Unbaked.MAP_CODEC);
     }
 
     @SubscribeEvent
