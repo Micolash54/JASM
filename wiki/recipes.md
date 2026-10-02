@@ -81,6 +81,15 @@ Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold 
 | ![Advanced Data Cable](images/recipes/advanced_data_cable.png) | **Advanced Data Cable** | 8 × Data Cable, 1 × Link Chip |
 | ![Elite Data Cable](images/recipes/elite_data_cable.png) | **Elite Data Cable** | 8 × Advanced Data Cable, 1 × Advanced Link Chip |
 
+## Network Brain
+
+A network holds 4 machines on its own. A Network Brain lets it hold more as it levels up, and Network Chambers built around the brain into a 2×2×2 or 3×3×3 cube let it grow further. One chamber recipe makes 4. The brain's recipe uses a Basic Bitling: befriend a wild one first.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Network Brain](images/recipes/network_brain.png) | **Network Brain** | 3 × Glass, 1 × Logic Chip, 1 × Basic Bitling, 1 × Memory Chip, 2 × Iron Ingot, 1 × Data Cable |
+| ![Network Chamber](images/recipes/network_chamber.png) | **Network Chamber** | 4 × Iron Ingot, 4 × Glass, 1 × Memory Chip |
+
 ## Processors and Storage Modules
 
 They go in a Crafting Server. Each Processor tier is made from four of the one below.
@@ -133,13 +142,12 @@ Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data
 
 ## Bitlings and the Chip Workshop
 
-A Bitling in the Chip Workshop turns Blank Chips into chips. A Basic Bitling becomes a Logic, Memory or Link Bitling with chips of that type and keeps its charge. A Bitling or Nibbling with a full training bar grows up into the next stage; training starts again. The Bitling Station lets one of them roam around it.
+A Bitling in the Chip Workshop turns Blank Chips into chips. Basic Bitlings aren't crafted: hand a wild Bitling a Logic, Memory or Link Chip and it becomes one. A Basic Bitling becomes a Logic, Memory or Link Bitling with chips of that type and keeps its charge. A Bitling or Nibbling with a full training bar grows up into the next stage; training starts again. The Bitling Station lets one of them roam around it.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
 | ![Chip Workshop](images/recipes/chip_workshop.png) | **Chip Workshop** | 2 × Logic Chip, 4 × Iron Ingot, 2 × Memory Chip, 1 × Crafting Table |
 | ![Bitling Station](images/recipes/bitling_station.png) | **Bitling Station** | 1 × Logic Chip, 6 × Iron Ingot, 1 × Memory Chip, 1 × Crystal Resonator |
-| ![Basic Bitling](images/recipes/basic_bitling.png) | **Basic Bitling** | 4 × Logic Chip, 4 × Memory Chip, 1 × Iron Ingot |
 | ![Logic Bitling](images/recipes/logic_bitling.png) | **Logic Bitling** | 8 × Logic Chip, 1 × Basic Bitling |
 | ![Memory Bitling](images/recipes/memory_bitling.png) | **Memory Bitling** | 8 × Memory Chip, 1 × Basic Bitling |
 | ![Link Bitling](images/recipes/link_bitling.png) | **Link Bitling** | 8 × Link Chip, 1 × Basic Bitling |

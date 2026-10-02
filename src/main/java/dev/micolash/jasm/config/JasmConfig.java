@@ -1,5 +1,6 @@
 package dev.micolash.jasm.config;
 
+import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /** Server config. Only values that can never strand or truncate contents live here. */
@@ -187,6 +188,56 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue STATION_STUCK_SECONDS = BUILDER
             .comment("Seconds a Bitling can be stuck on its way home before it teleports onto the station")
             .defineInRange("stuckSeconds", 10, 1, 600);
+
+    static {
+        BUILDER.pop().push("brain");
+    }
+
+    public static final ModConfigSpec.IntValue BRAIN_LIMIT_WITHOUT_BRAIN = BUILDER
+            .comment("Machines a network may hold without a working Network Brain")
+            .defineInRange("limitWithoutBrain", 4, 0, 4_096);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_MACHINE_LIMITS = BUILDER
+            .comment("Machines a network may hold at brain levels 1 to 10 (10 numbers)")
+            .defineList("machineLimits", List.of(8, 12, 16, 24, 32, 48, 64, 96, 128, 256), () -> 0, o -> o instanceof Integer i && i >= 0);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEVEL_POINTS = BUILDER
+            .comment("Points a brain needs to go from level 1 to 2, 2 to 3, ... 9 to 10 (9 numbers). A brain learns its size's speed in points every powered tick")
+            .defineList("levelPoints", List.of(72_000, 108_000, 144_000, 216_000, 288_000, 432_000, 576_000, 864_000, 1_152_000),
+                    () -> 1, o -> o instanceof Integer i && i > 0);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEVEL_CAPS = BUILDER
+            .comment("Top level of a single brain, a 2x2x2 brain and a 3x3x3 brain (3 numbers)")
+            .defineList("levelCaps", List.of(3, 6, 10), () -> 1, o -> o instanceof Integer i && i >= 1 && i <= 10);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEARN_SPEED = BUILDER
+            .comment("Points learned each powered tick by a single, 2x2x2 and 3x3x3 brain (3 numbers)")
+            .defineList("learnSpeed", List.of(1, 2, 3), () -> 1, o -> o instanceof Integer i && i >= 0);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_DRAIN = BUILDER
+            .comment("FE used each tick by a single, 2x2x2 and 3x3x3 brain (3 numbers)")
+            .defineList("drainPerTick", List.of(8, 16, 32), () -> 0, o -> o instanceof Integer i && i >= 0);
+    public static final ModConfigSpec.IntValue BRAIN_CHIP_BONUS = BUILDER
+            .comment("Percent of the current level's bar a Logic, Memory or Link Chip gives")
+            .defineInRange("chipBonus", 2, 0, 100);
+    public static final ModConfigSpec.IntValue BRAIN_ADVANCED_CHIP_BONUS = BUILDER
+            .comment("Percent of the current level's bar an Advanced chip gives")
+            .defineInRange("advancedChipBonus", 10, 0, 100);
+    public static final ModConfigSpec.IntValue BRAIN_EAT_EVERY = BUILDER
+            .comment("Ticks between chips a brain eats from its slot")
+            .defineInRange("eatEvery", 10, 1, 1_200);
+
+    static {
+        BUILDER.pop().push("wild_bitling");
+    }
+
+    public static final ModConfigSpec.IntValue WILD_ATTRACT_INTERVAL = BUILDER
+            .comment("Average ticks between tries of a growing Seeded Amethyst to draw a wild Bitling over")
+            .defineInRange("attractInterval", 6_000, 200, 1_000_000);
+    public static final ModConfigSpec.IntValue WILD_FOLLOW_TICKS = BUILDER
+            .comment("Ticks a wild Bitling fed a Data Crystal follows the player who fed it")
+            .defineInRange("followTicks", 600, 20, 72_000);
+    public static final ModConfigSpec.IntValue WILD_FOLLOW_RANGE = BUILDER
+            .comment("Blocks away a player can get before a wild Bitling stops following them")
+            .defineInRange("followRange", 24, 4, 128);
+    public static final ModConfigSpec.IntValue WILD_HEALTH = BUILDER
+            .comment("Health of a wild Bitling (2 per heart)")
+            .defineInRange("health", 10, 1, 100);
 
     static {
         BUILDER.pop();

@@ -59,7 +59,7 @@ public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         if (!menu.running()) {
             // Between the cards and the inventory, wrapped to the panel.
-            java.util.List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.translatable("screen.jasm.rack.no_power"), imageWidth - 16);
+            java.util.List<net.minecraft.util.FormattedCharSequence> lines = font.split(MachineStatusText.noPower(menu.containerId, "screen.jasm.rack.no_power"), imageWidth - 16);
             for (int i = 0; i < Math.min(2, lines.size()); i++) {
                 graphics.text(font, lines.get(i), (imageWidth - font.width(lines.get(i))) / 2, RecipeRackMenu.CARDS_BOTTOM + 3 + i * 9, JasmGui.BAD, false);
             }

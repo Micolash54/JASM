@@ -5,6 +5,7 @@ import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
@@ -33,7 +34,7 @@ import org.jspecify.annotations.Nullable;
  * two wafer slots are the player's own at this Archive (see {@link ArchiveBlockEntity#slotsOf}); whatever is in them
  * goes back to the player on close, and stays in the Archive if the player logs out with the screen open.
  */
-public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board {
+public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board, MachineView {
     public static final int LINK_SLOT = 0;
     private static final Identifier EMPTY_LINK = Jasm.id("container/empty_link");
     private static final Identifier EMPTY_BLANK = Jasm.id("container/empty_blank");
@@ -364,5 +365,10 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board 
     @Override
     public Notices.Shown notices() {
         return notices;
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return archive == null ? null : archive.getBlockPos();
     }
 }

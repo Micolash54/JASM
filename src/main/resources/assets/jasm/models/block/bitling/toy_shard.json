@@ -1,0 +1,78 @@
+{
+  "textures": {
+    "atlas": "jasm:block/brain_scene",
+    "particle": "jasm:block/brain_scene",
+    "chunk": "jasm:block/data_crystal_cluster_chunk"
+  },
+  "elements": [
+    {
+      "name": "toy_shard",
+      "from": [
+        11.15,
+        1,
+        5.45
+      ],
+      "to": [
+        12.05,
+        2.8,
+        6.35
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,482 @@
+{
+  "textures": {
+    "atlas": "jasm:block/brain_scene",
+    "particle": "jasm:block/brain_scene",
+    "chunk": "jasm:block/data_crystal_cluster_chunk"
+  },
+  "elements": [
+    {
+      "name": "chunk_1",
+      "from": [
+        6.898,
+        3.62,
+        -1.036
+      ],
+      "to": [
+        9.026,
+        6.774,
+        0.978
+      ],
+      "rotation": {
+        "angle": -10,
+        "axis": "z",
+        "origin": [
+          7.962,
+          4,
+          -0.048
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "name": "chunk_2",
+      "from": [
+        6.252,
+        3.544,
+        0.256
+      ],
+      "to": [
+        7.886,
+        6.052,
+        1.852
+      ],
+      "rotation": {
+        "angle": 18,
+        "axis": "x",
+        "origin": [
+          7.088,
+          4,
+          1.054
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk",
+          "rotation": 90
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "name": "chunk_3",
+      "from": [
+        5.872,
+        3.544,
+        -1.948
+      ],
+      "to": [
+        7.43,
+        5.862,
+        -0.276
+      ],
+      "rotation": {
+        "angle": 24,
+        "axis": "z",
+        "origin": [
+          6.67,
+          4,
+          -1.112
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk",
+          "rotation": 270
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "name": "chunk_4",
+      "from": [
+        8.76,
+        3.544,
+        -0.884
+      ],
+      "to": [
+        10.166,
+        5.71,
+        0.712
+      ],
+      "rotation": {
+        "angle": -25,
+        "axis": "z",
+        "origin": [
+          9.444,
+          4,
+          -0.086
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "name": "chunk_5",
+      "from": [
+        7.734,
+        3.582,
+        -2.29
+      ],
+      "to": [
+        9.482,
+        5.102,
+        -0.846
+      ],
+      "rotation": {
+        "angle": -20,
+        "axis": "x",
+        "origin": [
+          8.608,
+          4,
+          -1.568
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk",
+          "rotation": 90
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    },
+    {
+      "name": "chunk_6",
+      "from": [
+        8.798,
+        3.62,
+        0.788
+      ],
+      "to": [
+        9.9,
+        4.95,
+        1.776
+      ],
+      "rotation": {
+        "angle": 15,
+        "axis": "x",
+        "origin": [
+          9.33,
+          4,
+          1.282
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "east": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        },
+        "south": {
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "west": {
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ],
+          "texture": "#chunk"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ],
+          "texture": "#chunk",
+          "rotation": 270
+        },
+        "down": {
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "texture": "#chunk"
+        }
+      }
+    }
+  ]
+}

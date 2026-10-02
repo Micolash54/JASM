@@ -3,6 +3,7 @@ package dev.micolash.jasm;
 import com.mojang.logging.LogUtils;
 import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.crystal.Quenching;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -17,6 +18,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import org.slf4j.Logger;
@@ -39,10 +41,19 @@ public final class Jasm {
         Quenching.ATTACHMENTS.register(modBus);
         container.registerConfig(ModConfig.Type.SERVER, JasmConfig.SPEC);
         container.registerConfig(ModConfig.Type.CLIENT, JasmClientConfig.SPEC);
+        modBus.addListener((ModConfigEvent.Loading event) -> forgetBrainBalance(event.getConfig()));
+        modBus.addListener((ModConfigEvent.Reloading event) -> forgetBrainBalance(event.getConfig()));
+        modBus.addListener((ModConfigEvent.Unloading event) -> forgetBrainBalance(event.getConfig()));
         // Players don't get crafting recipes from the server by default. Sending them lets recipe viewers like JEI
         // show JASM's recipes even when the server doesn't run the viewer itself.
         NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> event.sendRecipes(RecipeType.CRAFTING,
                 JasmRecipes.QUENCHING_TYPE.get()));
+    }
+
+    private static void forgetBrainBalance(ModConfig config) {
+        if (config.getSpec() == JasmConfig.SPEC) {
+            BrainBalance.forget();
+        }
     }
 
     public static Identifier id(String path) {

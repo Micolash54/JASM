@@ -46,6 +46,8 @@ public final class ArchiveService {
         ALREADY_LINKED,
         FULL,
         NO_POWER,
+        /** The network holds more machines than its brain allows. */
+        NETWORK_FULL,
         NOT_LINKED_HERE,
         UNREADABLE,
         NOT_BLANK,
@@ -73,6 +75,7 @@ public final class ArchiveService {
         DeckWafers wafers = DeckItem.wafers(deck);
         int total = wafers.count();
         if (access != Result.OK) return new Backup(access, 0, total);
+        if (block.networkStopped()) return new Backup(Result.NETWORK_FULL, 0, total);
         if (!(deck.getItem() instanceof DeckItem)) return new Backup(Result.WRONG_DECK, 0, total);
         ArchiveRecord archive = block.record();
         var network = Networks.at(player.level(), block.getBlockPos());
@@ -168,6 +171,9 @@ public final class ArchiveService {
         if (entries(store, archive).size() >= archive.tier().registrations()) {
             return Result.FULL;
         }
+        if (block.networkStopped()) {
+            return Result.NETWORK_FULL;
+        }
         int cost = JasmConfig.ARCHIVE_LINK_COST.getAsInt();
         if (block.energy().getAmountAsInt() < cost) {
             return Result.NO_POWER;
@@ -237,6 +243,9 @@ public final class ArchiveService {
         }
         if (!fits(record, blankItem.tier())) {
             return Result.TOO_SMALL;
+        }
+        if (block.networkStopped()) {
+            return Result.NETWORK_FULL;
         }
         int cost = JasmConfig.ARCHIVE_RECOVERY_COST.getAsInt();
         if (block.energy().getAmountAsInt() < cost) {

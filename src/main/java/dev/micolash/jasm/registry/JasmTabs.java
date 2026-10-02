@@ -13,9 +13,14 @@ import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+@EventBusSubscriber(modid = Jasm.MODID)
 public final class JasmTabs {
     public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Jasm.MODID);
 
@@ -72,6 +77,8 @@ public final class JasmTabs {
                 output.accept(JasmItems.CHIP_WORKSHOP);
                 output.accept(JasmItems.CRYSTAL_FOUNDRY);
                 output.accept(JasmItems.BITLING_STATION);
+                output.accept(JasmItems.NETWORK_BRAIN);
+                output.accept(JasmItems.NETWORK_CHAMBER);
                 output.accept(JasmItems.BLANK_CHIP);
                 output.accept(JasmItems.UNQUENCHED_LOGIC_CHIP);
                 output.accept(JasmItems.UNQUENCHED_MEMORY_CHIP);
@@ -87,10 +94,19 @@ public final class JasmTabs {
                     charged.set(JasmComponents.ENERGY.get(), bitling.battery());
                     output.accept(charged);
                 }
+                output.accept(JasmItems.WILD_BITLING_SPAWN_EGG);
                 JasmItems.cables().forEach(output::accept);
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());
 
     private JasmTabs() {}
+
+    /** The wild Bitling's spawn egg also sits with the others in the vanilla Spawn Eggs tab. */
+    @SubscribeEvent
+    static void addToVanillaTabs(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.SPAWN_EGGS) {
+            event.accept(JasmItems.WILD_BITLING_SPAWN_EGG);
+        }
+    }
 }

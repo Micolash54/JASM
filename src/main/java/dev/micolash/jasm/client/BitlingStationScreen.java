@@ -147,8 +147,14 @@ public class BitlingStationScreen extends JasmScreen<BitlingStationMenu> {
         if (status == StationStatus.KNOCKED_OUT) {
             state = Component.translatable("screen.jasm.station.knocked_out_in", menu.knockedOutSeconds());
         }
-        Component label = Component.translatable("screen.jasm.station.status", state.copy().withColor(colour(status)));
-        graphics.text(font, label, TEXT_X + 4, STATUS_Y + 3, JasmGui.SUBTEXT, false);
+        if (ClientNetworkStatus.full(menu.containerId) != null) {
+            Component full = MachineStatusText.noPower(menu.containerId, "screen.jasm.station.status.waiting_for_power", font,
+                    WIDTH - TEXT_X - PAD - 8);
+            graphics.text(font, full, TEXT_X + 4, STATUS_Y + 3, JasmGui.BAD, false);
+        } else {
+            Component label = Component.translatable("screen.jasm.station.status", state.copy().withColor(colour(status)));
+            graphics.text(font, label, TEXT_X + 4, STATUS_Y + 3, JasmGui.SUBTEXT, false);
+        }
 
         Component battery = Component.translatable("screen.jasm.station.battery");
         graphics.text(font, battery, PAD, BATTERY_LABEL_Y, JasmGui.SUBTEXT, false);

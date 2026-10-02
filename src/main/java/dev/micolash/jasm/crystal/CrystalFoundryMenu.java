@@ -1,6 +1,8 @@
 package dev.micolash.jasm.crystal;
 
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -15,7 +17,7 @@ import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
 /** The Foundry's menu: the seed slot, the 3×3 output grid, then the player's inventory and hotbar. */
-public class CrystalFoundryMenu extends AbstractContainerMenu {
+public class CrystalFoundryMenu extends AbstractContainerMenu implements MachineView {
     public static final int INPUT_X = 26;
     public static final int INPUT_Y = 35;
     public static final int OUTPUT_X = 108;
@@ -142,5 +144,10 @@ public class CrystalFoundryMenu extends AbstractContainerMenu {
         public boolean mayPlace(ItemStack stack) {
             return container.canPlaceItem(getContainerSlot(), stack);
         }
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return access.evaluate((level, pos) -> pos).orElse(null);
     }
 }

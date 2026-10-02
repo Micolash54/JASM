@@ -2,9 +2,9 @@ package dev.micolash.jasm.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import dev.micolash.jasm.bitling.BitlingBody;
+import dev.micolash.jasm.bitling.BitlingBody.Act;
 import dev.micolash.jasm.core.BitlingKind;
-import dev.micolash.jasm.station.StationBitling;
-import dev.micolash.jasm.station.StationBitling.Act;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,18 +17,21 @@ import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.item.ItemModelResolver;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Draws the Bitling that roams around its station: the same chibi robot, parts and loops as in the Chip Workshop, about
+ * Draws a Bitling out in the world, at a station or wild: the same chibi robot, parts and loops as in the Chip Workshop, about
  * two thirds of a block tall. Each part is its own model, turned around its joint every frame. A change of loop eases out
  * of wherever the Bitling really is, and when it looks around it turns its head.
  */
-public class StationBitlingRenderer extends EntityRenderer<StationBitling, StationBitlingRenderer.State> {
+public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBodyRenderer.State> {
     /** How big the model is drawn, and where its feet are in it, in model pixels. */
     private static final float SCALE = 0.57F;
     private static final float FEET_X = 8;
@@ -37,14 +40,21 @@ public class StationBitlingRenderer extends EntityRenderer<StationBitling, Stati
     private static final float BLEND_SECONDS = 0.35F;
     /** How quickly the head follows where it wants to look; higher is quicker. */
     private static final float HEAD_SPEED = 5;
+    /** Where a held item sits from the right arm's joint, in model pixels, and how big it is drawn. */
+    private static final float HAND_X = 0;
+    private static final float HAND_Y = -5;
+    private static final float HAND_Z = -2;
+    private static final float HELD_SCALE = 0.35F;
 
     private final BitlingAnimations animations;
-    private final Map<StationBitling, Motion> motions = new WeakHashMap<>();
+    private final ItemModelResolver itemModelResolver;
+    private final Map<BitlingBody, Motion> motions = new WeakHashMap<>();
 
-    public StationBitlingRenderer(EntityRendererProvider.Context context) {
+    public BitlingBodyRenderer(EntityRendererProvider.Context context) {
         super(context);
         this.shadowRadius = 0.28F;
         this.animations = BitlingAnimations.load(Minecraft.getInstance().getResourceManager());
+        this.itemModelResolver = context.getItemModelResolver();
     }
 
     @Override
@@ -53,13 +63,20 @@ public class StationBitlingRenderer extends EntityRenderer<StationBitling, Stati
     }
 
     @Override
-    public void extractRenderState(StationBitling bitling, State state, float partialTicks) {
+    public void extractRenderState(BitlingBody bitling, State state, float partialTicks) {
         super.extractRenderState(bitling, state, partialTicks);
         state.kind = bitling.kind();
         state.bodyYaw = Mth.rotLerp(partialTicks, bitling.yBodyRotO, bitling.yBodyRot);
         state.hurt = bitling.hurtTime > 0;
         Motion motion = motions.computeIfAbsent(bitling, b -> new Motion(b.getId()));
         state.pose = motion.update(bitling.act(), (bitling.tickCount + partialTicks) / 20F);
+        // It only ever holds something up to look at it or eat it, whichever loop stands in for that.
+        Act act = bitling.act();
+        if (act == Act.INSPECT || act == Act.EAT) {
+            itemModelResolver.updateForLiving(state.held, bitling.held(), ItemDisplayContext.GROUND, bitling);
+        } else {
+            state.held.clear();
+        }
     }
 
     /** The loops to try for each thing the Bitling can be doing, best first. */
@@ -74,6 +91,10 @@ public class StationBitlingRenderer extends EntityRenderer<StationBitling, Stati
             case STARTLED -> new String[] {"startled", "idle"};
             case PETTED -> new String[] {"petted", "idle"};
             case RECHARGE -> new String[] {"recharging", "napping"};
+            case INSPECT -> new String[] {"inspect", "idle"};
+            case NOD -> new String[] {"nod", "hop", "idle"};
+            case EAT -> new String[] {"eat", "idle"};
+            case SHAKE -> new String[] {"head_shake", "startled", "idle"};
         };
     }
 
@@ -197,6 +218,16 @@ public class StationBitlingRenderer extends EntityRenderer<StationBitling, Stati
                     state.lightCoords, overlay, 0);
             poseStack.popPose();
         }
+        BitlingAnimations.Bone arm = animations.bones().get("arm_right");
+        if (!state.held.isEmpty() && arm != null) {
+            float[] pivot = arm.pivot();
+            poseStack.pushPose();
+            animations.pose("arm_right", state.pose, poseStack);
+            poseStack.translate((pivot[0] + HAND_X) / 16, (pivot[1] + HAND_Y) / 16, (pivot[2] + HAND_Z) / 16);
+            poseStack.scale(HELD_SCALE, HELD_SCALE, HELD_SCALE);
+            state.held.submit(poseStack, collector, state.lightCoords, OverlayTexture.NO_OVERLAY, state.outlineColor);
+            poseStack.popPose();
+        }
         poseStack.popPose();
         super.submit(state, poseStack, collector, camera);
     }
@@ -206,5 +237,6 @@ public class StationBitlingRenderer extends EntityRenderer<StationBitling, Stati
         Map<String, float[]> pose = Map.of();
         float bodyYaw;
         boolean hurt;
+        final ItemStackRenderState held = new ItemStackRenderState();
     }
 }

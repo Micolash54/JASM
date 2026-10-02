@@ -6,6 +6,8 @@ import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.autocraft.CraftPayloads;
+import dev.micolash.jasm.core.BitlingKind;
+import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.client.EncodingTerminalScreen;
 import dev.micolash.jasm.deck.DeckTier;
@@ -106,6 +108,10 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "bitling", 3, JasmItems.bitlings());
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
         info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
+        info(registration, "network_brain", 3, List.of(JasmItems.NETWORK_BRAIN.get()));
+        info(registration, "network_chamber", 1, List.of(JasmItems.NETWORK_CHAMBER.get()));
+        info(registration, "basic_bitling", 2, List.of(JasmItems.bitling(BitlingKind.BASIC, BitlingStage.BITLING),
+                JasmItems.WILD_BITLING_SPAWN_EGG.get()));
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
         registration.addRecipes(FoundryCategory.TYPE, java.util.List.of(FoundryCategory.Grow.fromConfig()));
         info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));

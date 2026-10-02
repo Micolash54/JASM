@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "atlas": "jasm:block/brain_scene",
+    "particle": "jasm:block/brain_scene"
+  },
+  "elements": [
+    {
+      "name": "block_1",
+      "from": [
+        11.65,
+        0.7,
+        2.8
+      ],
+      "to": [
+        13.85,
+        2.9,
+        5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            6,
+            0,
+            8,
+            2
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            6,
+            0,
+            8,
+            2
+          ],
+          "texture": "#atlas"
+        },
+        "south": {
+          "uv": [
+            6,
+            0,
+            8,
+            2
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            6,
+            0,
+            8,
+            2
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            6,
+            0,
+            8,
+            2
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            6,
+            0,
+            8,
+            2
+          ],
+          "texture": "#atlas"
+        }
+      }
+    }
+  ]
+}

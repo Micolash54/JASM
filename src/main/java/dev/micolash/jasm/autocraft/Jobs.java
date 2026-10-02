@@ -62,7 +62,7 @@ public final class Jobs {
 
     // --- finding the network ---
 
-    /** The network a paired Crafting Deck belongs to, if its terminal stands in a loaded spot and has power. */
+    /** The network a paired Deck belongs to, if its terminal stands in a loaded spot and has power. */
     public static @Nullable EncodingTerminalBlockEntity terminalOf(MinecraftServer server, ItemStack deck) {
         UUID id = deck.get(JasmComponents.DECK_NETWORK.get());
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
@@ -90,7 +90,7 @@ public final class Jobs {
         return terminal;
     }
 
-    /** Whether the block at {@code pos} is on the network this Crafting Deck is paired with. */
+    /** Whether the block at {@code pos} is on the network this Deck is paired with. */
     public static boolean onDeckNetwork(ItemStack deck, ServerLevel level, BlockPos pos) {
         EncodingTerminalBlockEntity terminal = terminalOf(level.getServer(), deck);
         if (terminal == null || terminal.getLevel() != level) {
@@ -158,7 +158,8 @@ public final class Jobs {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.no_access");
         }
         if (!terminal.running()) {
-            return new Preview(empty, List.of(), -1, "message.jasm.craft.network_unreachable");
+            return new Preview(empty, List.of(), -1,
+                    terminal.stopped() ? "message.jasm.craft.network_full" : "message.jasm.craft.network_unreachable");
         }
         ServerLevel level = (ServerLevel) terminal.getLevel();
         if (!DeckItem.worksIn(deck, level)) return new Preview(empty, List.of(), -1, "message.jasm.deck.dimension_upgrade");
@@ -300,7 +301,7 @@ public final class Jobs {
         }
         if (!powered) {
             if (level.getGameTime() % DELIVER_EVERY == 0 && deliverTarget(level, server, job, record, store)) server.setChanged();
-            job.pause = "no_power";
+            job.pause = server.stopped() ? "network_full" : "no_power";
             return;
         }
         CableNetwork network = Networks.at(level, server.getBlockPos());
@@ -728,7 +729,7 @@ public final class Jobs {
         }
     }
 
-    /** The Crafting Deck with this identity in the player's inventory. */
+    /** The Deck with this identity in the player's inventory. */
     public static ItemStack findDeck(ServerPlayer player, @Nullable UUID deckId) {
         if (deckId == null) {
             return ItemStack.EMPTY;
@@ -736,7 +737,7 @@ public final class Jobs {
         Inventory inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
-            if (DeckItem.isCrafting(stack) && deckId.equals(stack.get(JasmComponents.DECK_ID.get()))) {
+            if (DeckItem.isDeck(stack) && deckId.equals(stack.get(JasmComponents.DECK_ID.get()))) {
                 return stack;
             }
         }
@@ -932,7 +933,7 @@ public final class Jobs {
     }
 
     /** A short code for why a job waits, for the server's screen. */
-    static int pauseCode(String pause) {
+    public static int pauseCode(String pause) {
         return switch (pause) {
             case "no_power" -> 1;
             case "no_card" -> 2;
@@ -943,6 +944,7 @@ public final class Jobs {
             case "no_machine" -> 7;
             case "dimension_upgrade" -> 8;
             case "deck_charge" -> 9;
+            case "network_full" -> 10;
             default -> 0;
         };
     }

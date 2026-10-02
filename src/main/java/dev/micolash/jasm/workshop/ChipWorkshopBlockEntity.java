@@ -6,7 +6,6 @@ import dev.micolash.jasm.core.ChipOdds;
 import dev.micolash.jasm.core.ChipType;
 import dev.micolash.jasm.core.Training;
 import dev.micolash.jasm.network.MachineBlockEntity;
-import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
@@ -169,6 +168,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     }
 
     private void tick(ServerLevel level) {
+        boolean stopped = checkStopped();
         working = false;
         ItemStack critter = items.get(CRITTER);
         if (!(critter.getItem() instanceof BitlingItem bitling)) {
@@ -183,7 +183,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             progress = 0;
         }
         lastCritter = bitling;
-        feed(level, critter, bitling);
+        feed(critter, bitling);
+        if (stopped) {
+            // A full network still charges the critter, but nothing is made.
+            return;
+        }
         int perChip = JasmConfig.BITLING_DRAIN_PER_CHIP.getAsInt();
         if (!napping && BitlingItem.energy(critter) < Math.max(1, perChip)) {
             napping = true;
@@ -216,9 +220,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     }
 
     /** Moves the power the Workshop was given into the critter's battery. */
-    private void feed(ServerLevel level, ItemStack critter, BitlingItem bitling) {
-        // Asking for the network keeps it alive, so it passes power on to this block each tick.
-        Networks.at(level, worldPosition);
+    private void feed(ItemStack critter, BitlingItem bitling) {
         int amount = energy.getAmountAsInt();
         fed = amount > 0;
         int charge = BitlingItem.energy(critter);
@@ -324,10 +326,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         return 0;
     }
 
-    /** Only a napping critter with no power coming in is stuck; otherwise the Workshop runs off the critter's battery. */
+    /**
+     * Only a napping critter with no power coming in, or a full network, stops it; otherwise the Workshop runs off the
+     * critter's battery.
+     */
     @Override
     public boolean running() {
-        return !napping || fed;
+        return !stopped() && (!napping || fed);
     }
 
     // --- settings, for the screen's buttons ---

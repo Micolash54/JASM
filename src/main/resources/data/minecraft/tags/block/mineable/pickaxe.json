@@ -24,6 +24,8 @@
     "jasm:crystal_resonator",
     "jasm:chip_workshop",
     "jasm:crystal_foundry",
-    "jasm:bitling_station"
+    "jasm:bitling_station",
+    "jasm:network_brain",
+    "jasm:network_chamber"
   ]
 }

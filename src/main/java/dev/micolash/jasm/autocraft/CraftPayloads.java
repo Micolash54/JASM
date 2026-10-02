@@ -64,8 +64,8 @@ public final class CraftPayloads {
     }
 
     /**
-     * Server → client, every second while a Crafting Deck is open: whether its network can be reached, what it can
-     * make, and this Deck's jobs. {@code network}: 0 not paired, 1 out of reach, 2 reachable.
+     * Server → client, every second while a Deck is open: whether its network can be reached and, on a Crafting Deck,
+     * what it can make and its jobs. {@code network}: 0 not paired, 1 out of reach, 2 reachable.
      */
     /** {@code stalled}: the Deck's rules that can't go ahead right now, each with the message saying why. */
     public record Status(int containerId, int network, List<ItemResource> craftable, List<JobView> jobs, Map<UUID, String> stalled)

@@ -6,6 +6,10 @@ import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
+import dev.micolash.jasm.brain.NetworkBrainBlock;
+import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
+import dev.micolash.jasm.brain.NetworkChamberBlock;
+import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
 import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.network.MachineBlock;
@@ -19,7 +23,7 @@ import snownee.jade.api.WailaPlugin;
 
 /**
  * Jade support: who owns an Archive and how many wafers it protects, what a generator is doing, the endless battery,
- * and the crafting-network blocks (owner, power, cards, the running job).
+ * the crafting-network blocks (owner, power, cards, the running job), and the Network Brain.
  */
 @WailaPlugin
 public class JasmJadePlugin implements IWailaPlugin {
@@ -33,6 +37,8 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, dev.micolash.jasm.network.DataCableBlockEntity.class);
         registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);
         registration.registerBlockDataProvider(FoundryInfo.INSTANCE, dev.micolash.jasm.crystal.CrystalFoundryBlockEntity.class);
+        registration.registerBlockDataProvider(BrainInfo.INSTANCE, NetworkBrainBlockEntity.class);
+        registration.registerBlockDataProvider(BrainInfo.INSTANCE, NetworkChamberBlockEntity.class);
     }
 
     @Override
@@ -46,6 +52,8 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(WorkshopInfo.Client.INSTANCE, ChipWorkshopBlock.class);
         registration.registerBlockComponent(FoundryInfo.Client.INSTANCE, dev.micolash.jasm.crystal.CrystalFoundryBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, dev.micolash.jasm.autocraft.AccessPortBlock.class);
+        registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkBrainBlock.class);
+        registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkChamberBlock.class);
         // A Recipe Rack says how many cards it holds; the list of every card would only crowd the box.
         registration.addTooltipCollectedCallback((box, accessor) -> {
             if (accessor instanceof BlockAccessor block && block.getBlock() instanceof dev.micolash.jasm.network.DataCableBlock

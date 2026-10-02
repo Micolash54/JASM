@@ -3,11 +3,13 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.UUID;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * <p>A Crafting Deck's job list can open it from afar ({@link #remote}); it then stays open while the player carries
  * that Deck, and has a button back to it.
  */
-public class CraftingServerMenu extends AbstractContainerMenu implements Notices.Board {
+public class CraftingServerMenu extends AbstractContainerMenu implements Notices.Board, MachineView {
     /** The side panel holds the parts: Processors in the left column, Storage Modules in the right. */
     public static final int SIDE_WIDTH = 50;
     public static final int SIDE_HEIGHT = 86;
@@ -338,5 +340,10 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     @Override
     public Notices.Shown notices() {
         return notices;
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return server == null ? null : server.getBlockPos();
     }
 }

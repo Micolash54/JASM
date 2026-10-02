@@ -29,11 +29,13 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     private boolean networkBlocked;
     /** Whether the last tick could be paid for. */
     private boolean running;
+    /** Whether the network is over its machine limit: the block works as if it had no power, but keeps charging. */
+    private boolean stopped;
 
     protected MachineBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state, int capacity) {
         super(type, pos, state);
         this.capacity = capacity;
-        this.energy = new SimpleEnergyHandler(capacity, capacity, capacity) {
+        this.energy = new NetworkEnergy(capacity) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
                 setChanged();
@@ -44,11 +46,34 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     /** FE this block uses each tick. */
     public abstract int drainPerTick();
 
-    /** Pays for one tick. Returns whether the block works this tick. */
-    public boolean payForTick() {
+    /** Whether this block takes up one of its network's machine places. Brains and chambers don't. */
+    public boolean countsTowardLimit() {
+        return true;
+    }
+
+    public boolean stopped() {
+        return stopped;
+    }
+
+    /**
+     * Looks the network up and notes whether it is over its limit. Asking for the network keeps it alive, so it passes
+     * power on to this block each tick.
+     */
+    protected boolean checkStopped() {
+        boolean now = false;
         if (level instanceof ServerLevel serverLevel) {
-            // Asking for the network keeps it alive, so it passes power on to this block each tick.
-            Networks.at(serverLevel, worldPosition);
+            CableNetwork network = Networks.at(serverLevel, worldPosition);
+            now = countsTowardLimit() && network != null && network.limitState().stopped();
+        }
+        stopped = now;
+        return now;
+    }
+
+    /** Pays for one tick. Returns whether the block works this tick: not while its network is full. */
+    public boolean payForTick() {
+        if (checkStopped()) {
+            running = false;
+            return false;
         }
         int drain = drainPerTick();
         int amount = energy.getAmountAsInt();

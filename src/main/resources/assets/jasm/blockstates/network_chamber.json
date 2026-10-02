@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "facing=north,formed=false": {
+      "model": "jasm:block/network_chamber"
+    },
+    "facing=north,formed=true": {
+      "model": "jasm:block/empty"
+    },
+    "facing=east,formed=false": {
+      "model": "jasm:block/network_chamber"
+    },
+    "facing=east,formed=true": {
+      "model": "jasm:block/empty"
+    },
+    "facing=south,formed=false": {
+      "model": "jasm:block/network_chamber"
+    },
+    "facing=south,formed=true": {
+      "model": "jasm:block/empty"
+    },
+    "facing=west,formed=false": {
+      "model": "jasm:block/network_chamber"
+    },
+    "facing=west,formed=true": {
+      "model": "jasm:block/empty"
+    }
+  }
+}

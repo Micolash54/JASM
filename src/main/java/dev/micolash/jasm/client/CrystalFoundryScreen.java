@@ -55,11 +55,16 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
         Component count = menu.growing()
                 ? Component.translatable("screen.jasm.foundry.seed", menu.made(), menu.perSeed())
                 : Component.translatable("screen.jasm.foundry.no_seed");
-        int color = menu.full() ? JasmGui.WARN : !menu.powered() && menu.growing() ? JasmGui.BAD : JasmGui.SUBTEXT;
-        if (menu.full()) {
+        boolean networkFull = ClientNetworkStatus.full(menu.containerId) != null;
+        int color = networkFull ? JasmGui.BAD : menu.full() ? JasmGui.WARN : !menu.powered() && menu.growing() ? JasmGui.BAD : JasmGui.SUBTEXT;
+        if (networkFull) {
+            // A stopped network matters more than a full output or a missing seed.
+            count = MachineStatusText.noPower(menu.containerId, "screen.jasm.foundry.no_power", font, PROGRESS_WIDTH + 24);
+        } else if (menu.full()) {
             count = Component.translatable("screen.jasm.foundry.full");
         } else if (!menu.powered() && menu.growing()) {
-            count = Component.translatable("screen.jasm.foundry.no_power");
+            // Only the room between the seed slot and the output grid.
+            count = MachineStatusText.noPower(menu.containerId, "screen.jasm.foundry.no_power", font, PROGRESS_WIDTH + 24);
         }
         graphics.text(font, count, PROGRESS_X + (PROGRESS_WIDTH - font.width(count)) / 2, COUNT_Y, color, false);
         Component power = Component.translatable("screen.jasm.workshop.power_amount", String.format("%,d", menu.energy()),

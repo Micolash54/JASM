@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.autocraft.RecipeCardItem;
 import dev.micolash.jasm.autocraft.ServerPartItem;
 import dev.micolash.jasm.autocraft.ThinAccessPortItem;
+import dev.micolash.jasm.brain.NetworkBrainItem;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipType;
@@ -24,6 +25,7 @@ import java.util.Map;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -85,6 +87,11 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> CHIP_WORKSHOP = ITEMS.registerSimpleBlockItem(JasmBlocks.CHIP_WORKSHOP);
     public static final DeferredItem<BlockItem> CRYSTAL_FOUNDRY = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_FOUNDRY);
     public static final DeferredItem<BlockItem> BITLING_STATION = ITEMS.registerSimpleBlockItem(JasmBlocks.BITLING_STATION);
+    public static final DeferredItem<NetworkBrainItem> NETWORK_BRAIN = ITEMS.registerItem("network_brain",
+            p -> new NetworkBrainItem(JasmBlocks.NETWORK_BRAIN.get(), p.useBlockDescriptionPrefix()));
+    public static final DeferredItem<BlockItem> NETWORK_CHAMBER = ITEMS.registerSimpleBlockItem(JasmBlocks.NETWORK_CHAMBER);
+    public static final DeferredItem<SpawnEggItem> WILD_BITLING_SPAWN_EGG = ITEMS.registerItem("wild_bitling_spawn_egg", SpawnEggItem::new,
+            p -> p.spawnEgg(JasmEntities.WILD_BITLING.get()));
     private static final Map<ProcessorTier, DeferredItem<ServerPartItem>> PROCESSORS = new EnumMap<>(ProcessorTier.class);
     private static final Map<MemoryTier, DeferredItem<ServerPartItem>> MODULES = new EnumMap<>(MemoryTier.class);
 

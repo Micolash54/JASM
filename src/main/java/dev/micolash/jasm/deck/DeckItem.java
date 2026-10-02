@@ -59,6 +59,11 @@ public class DeckItem extends Item implements WaferHolderItem {
         return stack.getItem() instanceof DeckItem deck && deck.crafting;
     }
 
+    /** Any Deck, crafting or not. Every Deck can link to a network. */
+    public static boolean isDeck(ItemStack stack) {
+        return stack.getItem() instanceof DeckItem;
+    }
+
     /** Decks must never nest inside bundles, shulker boxes, or other container items. */
     @Override
     public boolean canFitInsideContainerItems() {
@@ -141,16 +146,20 @@ public class DeckItem extends Item implements WaferHolderItem {
         wafers(holder).forEach(action);
     }
 
-    /** A new Crafting Deck links itself to the network of the Encoding Terminal its maker used last. */
+    /**
+     * A new Deck links itself to the network of the Encoding Terminal its maker used last. A Crafting Deck takes over
+     * from the maker's Deck there; any other Deck links only when the maker has none there yet.
+     */
     @Override
     public void onCraftedBy(ItemStack stack, Player player) {
         super.onCraftedBy(stack, player);
-        if (!isCrafting(stack) || !(player.level() instanceof ServerLevel level)) {
+        if (!(player.level() instanceof ServerLevel level)) {
             return;
         }
         MinecraftServer server = level.getServer();
         AutocraftState.get(server).lastTerminal(player.getUUID())
                 .map(id -> Jobs.terminalById(server, id))
+                .filter(terminal -> isCrafting(stack) || !terminal.hasPairedDeck(player.getUUID()))
                 .ifPresent(terminal -> terminal.pair(player.getUUID(), stack));
     }
 
@@ -175,10 +184,8 @@ public class DeckItem extends Item implements WaferHolderItem {
                 .withStyle(ChatFormatting.GRAY));
         builder.accept(Component.translatable("tooltip.jasm.deck.energy", String.format("%,d", energy(stack)),
                 String.format("%,d", tier.battery())).withStyle(ChatFormatting.GRAY));
-        if (isCrafting(stack)) {
-            boolean linked = stack.has(JasmComponents.DECK_NETWORK.get());
-            builder.accept(Component.translatable(linked ? "tooltip.jasm.deck.linked" : "tooltip.jasm.deck.not_linked")
-                    .withStyle(linked ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
-        }
+        boolean linked = stack.has(JasmComponents.DECK_NETWORK.get());
+        builder.accept(Component.translatable(linked ? "tooltip.jasm.deck.linked" : "tooltip.jasm.deck.not_linked")
+                .withStyle(linked ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
     }
 }

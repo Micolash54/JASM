@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
+import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import java.util.function.Supplier;
@@ -37,6 +38,9 @@ public final class JasmMenus {
 
     public static final Supplier<MenuType<BitlingStationMenu>> BITLING_STATION = MENUS.register("bitling_station",
             () -> new MenuType<>(BitlingStationMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<NetworkBrainMenu>> NETWORK_BRAIN = MENUS.register("network_brain",
+            () -> new MenuType<>(NetworkBrainMenu::new, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<EncodingTerminalMenu>> ENCODING_TERMINAL = MENUS.register("encoding_terminal",
             () -> new MenuType<>(EncodingTerminalMenu::new, FeatureFlags.VANILLA_SET));

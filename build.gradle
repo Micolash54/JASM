@@ -119,6 +119,7 @@ neoForge {
     }
 
     addModdingDependenciesTo(sourceSets.gametest)
+    addModdingDependenciesTo(sourceSets.test)
 
     mods {
         // define mod <-> source bindings

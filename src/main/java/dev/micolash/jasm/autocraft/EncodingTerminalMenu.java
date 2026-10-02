@@ -5,6 +5,7 @@ import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -44,7 +45,7 @@ import org.jspecify.annotations.Nullable;
  * The Encoding Terminal's menu: card in and out, the pairing slot, the 3×3 ghost grid and what it makes, then the
  * player's inventory (27) and hotbar (9). Ghost slots copy what is clicked into them and never take the item.
  */
-public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board {
+public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board, MachineView {
     public static final int GRID_X = 54;
     public static final int GRID_Y = 18;
     public static final int PREVIEW_X = 136;
@@ -551,7 +552,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     }
 
     /**
-     * Shift-click: cards go to the input slot and Crafting Decks to the pairing slot; out of the terminal, items go
+     * Shift-click: cards go to the input slot and Decks to the pairing slot; out of the terminal, items go
      * to the hotbar first, then the inventory.
      */
     @Override
@@ -568,7 +569,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             moved = moveItemStackTo(stack, hotbar, hotbar + 9, false) || moveItemStackTo(stack, SLOT_INVENTORY, hotbar, false);
         } else if (EncodingTerminalBlockEntity.accepts(EncodingTerminalBlockEntity.CARD_IN, stack)) {
             moved = moveItemStackTo(stack, SLOT_CARD_IN, SLOT_CARD_IN + 1, false);
-        } else if (DeckItem.isCrafting(stack)) {
+        } else if (DeckItem.isDeck(stack)) {
             moved = moveItemStackTo(stack, SLOT_PAIR_IN, SLOT_PAIR_IN + 1, false);
             if (moved && terminal != null && player instanceof ServerPlayer serverPlayer) {
                 terminal.queuePair(serverPlayer);
@@ -679,5 +680,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     @Override
     public Notices.Shown notices() {
         return notices;
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return terminal == null ? null : terminal.getBlockPos();
     }
 }

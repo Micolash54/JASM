@@ -122,7 +122,8 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int room = PANEL_W - 8;
         CraftingJob.Phase phase = menu.phase();
         if (phase == null) {
-            Component idle = Component.translatable(menu.running() ? "screen.jasm.server.idle" : "screen.jasm.machine.no_power");
+            Component idle = menu.running() ? Component.translatable("screen.jasm.server.idle")
+                    : MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font, room - 20);
             graphics.text(font, idle, tx + 20, CraftingServerMenu.JOB_Y + 4, menu.running() ? JasmGui.MUTED : JasmGui.BAD, false);
             return;
         }
@@ -154,6 +155,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             case 7 -> Component.translatable("screen.jasm.server.pause.no_machine");
             case 8 -> Component.translatable("screen.jasm.server.pause.dimension_upgrade");
             case 9 -> Component.translatable("screen.jasm.server.pause.deck_charge");
+            case 10 -> Component.translatable("screen.jasm.server.pause.network_full");
             default -> phase == CraftingJob.Phase.RETURNING ? Component.empty()
                     : menu.waiting() != null ? menu.waiting()
                     : Component.translatable("screen.jasm.server.active", menu.active());

@@ -2,8 +2,10 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -21,7 +23,7 @@ import org.jspecify.annotations.Nullable;
  * The Recipe Rack's menu: 16 card slots in a 4 × 4 grid, laid out like the front of the block, then the player's
  * inventory (27) and hotbar (9).
  */
-public class RecipeRackMenu extends AbstractContainerMenu {
+public class RecipeRackMenu extends AbstractContainerMenu implements MachineView {
     public static final int COLUMNS = 4;
     public static final int CARDS_X = (176 - COLUMNS * 18) / 2 + 1;
     public static final int CARDS_Y = 22;
@@ -142,5 +144,10 @@ public class RecipeRackMenu extends AbstractContainerMenu {
         public Identifier getNoItemIcon() {
             return EMPTY_CARD;
         }
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return rack == null ? null : rack.getBlockPos();
     }
 }

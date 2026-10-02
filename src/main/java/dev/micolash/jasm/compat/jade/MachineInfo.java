@@ -5,14 +5,20 @@ import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
-import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
+import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
+import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
+import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkLimit;
+import dev.micolash.jasm.network.Networks;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 import snownee.jade.api.BlockAccessor;
@@ -29,9 +35,12 @@ import snownee.jade.api.config.IPluginConfig;
 public class MachineInfo implements StreamServerDataProvider<BlockAccessor, MachineInfo.Data> {
     public static final MachineInfo INSTANCE = new MachineInfo();
 
-    /** {@code phase}: -1 no job, else the job's phase. {@code cards}: -1 when not a rack. {@code machine}: empty when not a port. */
+    /**
+     * {@code phase}: -1 no job, else the job's phase. {@code cards}: -1 when not a rack. {@code machine}: empty when not a port.
+     * {@code fullCount} and {@code fullLimit}: the network's machines and limit while it is full, both 0 otherwise.
+     */
     public record Data(String owner, boolean running, int cards, int phase, int progress, ItemStack target, long amount, String machine,
-            boolean inUse) {
+            boolean inUse, int fullCount, int fullLimit) {
         static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, Data::owner,
                 ByteBufCodecs.BOOL, Data::running,
@@ -42,6 +51,8 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                 ByteBufCodecs.VAR_LONG, Data::amount,
                 ByteBufCodecs.STRING_UTF8, Data::machine,
                 ByteBufCodecs.BOOL, Data::inUse,
+                ByteBufCodecs.VAR_INT, Data::fullCount,
+                ByteBufCodecs.VAR_INT, Data::fullLimit,
                 Data::new);
     }
 
@@ -52,10 +63,15 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
         int cards = machine instanceof RecipeRackBlockEntity rack
                 ? (int) java.util.stream.IntStream.range(0, rack.getContainerSize()).filter(i -> !rack.getItem(i).isEmpty()).count() : -1;
         CraftingJob job = machine instanceof CraftingServerBlockEntity server ? server.job() : null;
+        NetworkLimit.State full = null;
+        if (machine.stopped() && machine.getLevel() instanceof ServerLevel level
+                && Networks.at(level, machine.getBlockPos()) instanceof CableNetwork network) {
+            full = network.limitState();
+        }
         return new Data(machine.ownerName(), machine.running(), cards, job == null ? -1 : job.phase().ordinal(),
                 job == null ? 0 : Math.round(job.progress() * 100), job == null || job.target() == null ? ItemStack.EMPTY : job.target().create(),
                 job == null ? 0 : job.amount(), machine instanceof AccessPortBlockEntity port ? port.machineNames().getString() : "",
-                machine instanceof AccessPortBlockEntity port && port.locked());
+                machine instanceof AccessPortBlockEntity port && port.locked(), full == null ? 0 : full.count(), full == null ? 0 : full.limit());
     }
 
     static @Nullable MachineBlockEntity machine(BlockAccessor accessor) {
@@ -87,7 +103,11 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                 if (!data.owner().isEmpty()) {
                     tooltip.add(Component.translatable("jade.jasm.archive.owner", data.owner()));
                 }
-                if (!data.running()) {
+                if (data.fullLimit() > 0) {
+                    tooltip.add(Component.translatable("screen.jasm.machine.network_full", data.fullCount(), data.fullLimit()));
+                } else if (!data.running() && !(accessor.getBlockEntity() instanceof NetworkBrainBlockEntity)
+                        && !(accessor.getBlockEntity() instanceof NetworkChamberBlockEntity)) {
+                    // A brain's own status line says when it has no power, and a chamber never runs by itself.
                     tooltip.add(Component.translatable("screen.jasm.machine.no_power"));
                 }
                 if (!data.machine().isEmpty()) {

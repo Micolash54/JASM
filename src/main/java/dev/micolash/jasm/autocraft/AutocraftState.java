@@ -16,7 +16,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 /**
- * Where every Encoding Terminal stands (so a paired Crafting Deck can find its network from anywhere) and every
+ * Where every Encoding Terminal stands (so a paired Deck can find its network from anywhere) and every
  * running job (so a Crafting Server that loads without its job, after a crash, can find its items again). Written to
  * disk straight away whenever a job starts or ends.
  */
@@ -69,7 +69,7 @@ public final class AutocraftState extends SavedData {
     private final Map<UUID, Terminal> terminals = new LinkedHashMap<>();
     private final Map<UUID, Job> jobs = new LinkedHashMap<>();
     private final Map<UUID, Pairing> pairings = new LinkedHashMap<>();
-    /** The Encoding Terminal each player used last: a newly crafted Crafting Deck links there. */
+    /** The Encoding Terminal each player used last: a newly crafted Deck links there. */
     private final Map<UUID, UUID> lastTerminals = new LinkedHashMap<>();
 
     public AutocraftState() {}

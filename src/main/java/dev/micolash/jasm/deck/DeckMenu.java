@@ -227,9 +227,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         return 8 + sideColumns * 18;
     }
 
-    /** Width of the whole screen: the main panel with the scroll bar column, and the tab column on a Crafting Deck. */
+    /** Width of the whole screen: the main panel with the scroll bar column, and the tab column. */
     public int screenWidth() {
-        return mainX() + (isCrafting() ? 241 : 218);
+        return mainX() + 241;
     }
 
     public int waferSlots() {

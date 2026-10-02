@@ -1,6 +1,8 @@
 package dev.micolash.jasm.station;
 
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -15,7 +17,7 @@ import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
 /** The station's menu: the critter slot, then the player's inventory and hotbar. */
-public class BitlingStationMenu extends AbstractContainerMenu {
+public class BitlingStationMenu extends AbstractContainerMenu implements MachineView {
     public static final int WIDTH = 176;
     public static final int CRITTER_X = 12;
     public static final int CRITTER_Y = 24;
@@ -158,5 +160,10 @@ public class BitlingStationMenu extends AbstractContainerMenu {
             clicked.setChanged();
         }
         return before;
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return station == null ? null : station.getBlockPos();
     }
 }

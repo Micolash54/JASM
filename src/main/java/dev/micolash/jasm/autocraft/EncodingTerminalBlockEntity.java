@@ -41,7 +41,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Encoding Terminal: writes a recipe from its ghost grid onto a Recipe Card, pairs Crafting Decks with its
+ * The Encoding Terminal: writes a recipe from its ghost grid onto a Recipe Card, pairs Decks with its
  * network, and holds the trust list for its owner's blocks on that network. Mined, it keeps its identity (so paired
  * Decks stay paired) and its trust list.
  */
@@ -196,7 +196,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
 
     /** Remembers who inserted the Deck while it waits for the output slot. */
     public void queuePair(Player player) {
-        if (!DeckItem.isCrafting(items.get(PAIR_IN)) || !MachineAccess.canUse(this, player)) {
+        if (!DeckItem.isDeck(items.get(PAIR_IN)) || !MachineAccess.canUse(this, player)) {
             return;
         }
         pendingPairer = player.getUUID();
@@ -212,7 +212,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             return;
         }
         ItemStack deck = items.get(PAIR_IN);
-        if (!DeckItem.isCrafting(deck)) {
+        if (!DeckItem.isDeck(deck)) {
             pendingPairer = null;
             return;
         }
@@ -232,7 +232,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
      * Deck paired here before stops reaching the network.
      */
     public boolean pair(UUID player, ItemStack deck) {
-        if (!(level instanceof ServerLevel serverLevel) || !DeckItem.isCrafting(deck)) {
+        if (!(level instanceof ServerLevel serverLevel) || !DeckItem.isDeck(deck)) {
             return false;
         }
         CableNetwork network = Networks.at(serverLevel, worldPosition);
@@ -257,6 +257,16 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             deck.set(JasmComponents.DECK_NETWORK.get(), id);
         }
         return true;
+    }
+
+    /** Whether {@code player} already has a Deck paired on this terminal's network. */
+    public boolean hasPairedDeck(UUID player) {
+        if (!(level instanceof ServerLevel serverLevel) || Networks.at(serverLevel, worldPosition) == null) {
+            return false;
+        }
+        List<UUID> connected = Networks.at(serverLevel, worldPosition).machines(EncodingTerminalBlockEntity.class).stream()
+                .map(EncodingTerminalBlockEntity::ensureId).toList();
+        return AutocraftState.get(serverLevel.getServer()).pairedPlayer(connected, player).isPresent();
     }
 
     /** Whether the Deck in the output slot has been paired with this terminal. */
@@ -529,7 +539,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static boolean accepts(int slot, ItemStack stack) {
         return switch (slot) {
             case CARD_IN -> stack.is(JasmItems.RECIPE_CARD.get()) || stack.is(JasmItems.FILLED_RECIPE_CARD.get());
-            case PAIR_IN -> DeckItem.isCrafting(stack);
+            case PAIR_IN -> DeckItem.isDeck(stack);
             default -> false;
         };
     }

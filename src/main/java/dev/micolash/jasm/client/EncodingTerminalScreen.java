@@ -720,7 +720,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             text = Component.translatable(menu.message());
             color = menu.message().equals("message.jasm.terminal.encoded") ? JasmGui.GOOD : JasmGui.BAD;
         } else if (!menu.running()) {
-            text = Component.translatable("message.jasm.terminal.no_power");
+            text = MachineStatusText.noPower(menu.containerId, "message.jasm.terminal.no_power");
         } else if (menu.processing()) {
             text = Component.translatable("screen.jasm.terminal.processing_hint");
             color = JasmGui.MUTED;

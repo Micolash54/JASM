@@ -1,6 +1,8 @@
 package dev.micolash.jasm.workshop;
 
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -15,7 +17,7 @@ import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
 /** The Workshop's menu: Blank Chip slot, the 5×3 output grid, critter slot, then the player's inventory and hotbar. */
-public class ChipWorkshopMenu extends AbstractContainerMenu {
+public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineView {
     /** The critter's own panel on the left; the Workshop's main panel starts at {@link #MAIN_X}. */
     public static final int SIDE_WIDTH = 152;
     /** The main panel joins the side panel, overlapping it a little so the two read as one. */
@@ -223,5 +225,10 @@ public class ChipWorkshopMenu extends AbstractContainerMenu {
         public int getMaxStackSize(ItemStack stack) {
             return getContainerSlot() == ChipWorkshopBlockEntity.CRITTER ? 1 : super.getMaxStackSize(stack);
         }
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return workshop == null ? null : workshop.getBlockPos();
     }
 }

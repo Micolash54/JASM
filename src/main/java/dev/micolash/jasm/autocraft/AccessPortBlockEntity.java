@@ -199,7 +199,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (!(level instanceof ServerLevel serverLevel) || networkBlocked()
                 || pendingLinker == null || !getItem(DECK_OUT).isEmpty()) return;
         ItemStack deck = getItem(DECK_IN);
-        if (!DeckItem.isCrafting(deck)) {
+        if (!DeckItem.isDeck(deck)) {
             pendingLinker = null;
             setChanged();
             return;
@@ -242,7 +242,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** Items a processing job still expects stay here for its server to collect first. */
     private void forwardItems() {
-        if (!(level instanceof ServerLevel serverLevel) || !running() || networkBlocked()) return;
+        if (!(level instanceof ServerLevel serverLevel) || stopped() || !running() || networkBlocked()) return;
         int budget = transferBudget();
         if (budget <= 0) return;
         CableNetwork network = Networks.at(serverLevel, worldPosition);
@@ -295,7 +295,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** The upgrade sends spare charge to nearby machines, even without a crafting job. */
     protected void sendPower() {
-        if (level == null || networkBlocked() || !hasPowerUpgrade()) return;
+        if (level == null || networkBlocked() || !hasPowerUpgrade() || stopped()) return;
         for (Direction side : Direction.values()) {
             int available = energy.getAmountAsInt() - drainPerTick();
             if (available <= 0) return;
@@ -530,7 +530,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public boolean canPlaceItem(int slot, ItemStack stack) {
         if (slot >= SPEED_START && slot < INVENTORY_SIZE) return stack.is(JasmItems.SPEED_UPGRADE.get());
         if (slot == POWER_SLOT) return stack.is(JasmItems.POWER_UPGRADE.get());
-        if (slot == DECK_IN) return DeckItem.isCrafting(stack);
+        if (slot == DECK_IN) return DeckItem.isDeck(stack);
         return slot >= 0 && slot < BUFFER_SLOTS;
     }
 

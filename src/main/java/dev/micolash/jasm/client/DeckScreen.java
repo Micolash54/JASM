@@ -44,8 +44,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Deck screen: wafer slots in a side panel on the left; in the main panel, search and sorting, charge and wafer
  * status, a scrollable grid of everything on the Deck's wafers, and the player's inventory, with the scroll bar in a
- * column on the right. A Crafting Deck adds a box under the grid with the player, their armour and off-hand, and the
- * 3×3 crafting grid, and a column of tab buttons. Right-clicking a wafer opens its ordered filters in a window on top.
+ * column on the right and the tab keys beside it. A Crafting Deck adds a box under the grid with the player, their
+ * armour and off-hand, and the 3×3 crafting grid, and the Craft, Rules and Jobs keys. Right-clicking a wafer opens its
+ * ordered filters in a window on top.
  */
 public class DeckScreen extends JasmScreen<DeckMenu> {
     /** Width of the main panel; the side panels add to it. */
@@ -78,7 +79,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private static final Identifier CRAFTABLE = Jasm.id("icon/craftable");
     private static final JasmButton.Icon[] TAB_ICONS = {
             new JasmButton.Icon(Jasm.id("icon/tab_items"), 11, 10), new JasmButton.Icon(Jasm.id("icon/tab_craft"), 11, 11),
-            new JasmButton.Icon(Jasm.id("icon/tab_rules"), 11, 11)};
+            new JasmButton.Icon(Jasm.id("icon/tab_rules"), 11, 11), new JasmButton.Icon(Jasm.id("icon/tab_network"), 11, 11)};
     private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 11, 13);
     private static final JasmButton.Icon[] SIZE_ICONS = {
             new JasmButton.Icon(Jasm.id("icon/size_small"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_medium"), 8, 7),
@@ -110,10 +111,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private int rows = SMALL_ROWS;
     private Button sizeButton;
     private WaferFilterWindow filterWindow;
+    /** The Network tab: kept while the screen is open, so it remembers list or tree. */
+    private @Nullable NetworkPanel networkPanel;
 
-    /** A Crafting Deck's two views of its grid: what is stored, and what its network can craft. */
-    private enum Tab { ITEMS, CRAFT, RULES }
+    /** The views of the grid: what is stored, what the network can craft, the rules, and the network. */
+    private enum Tab { ITEMS, CRAFT, RULES, NETWORK }
 
+    /** The tabs this Deck has, top to bottom: only a Crafting Deck crafts and holds rules. */
+    private final List<Tab> shown;
     private Tab tab = Tab.ITEMS;
     private Tab builtTab = Tab.ITEMS;
     private final List<JasmButton> tabs = new ArrayList<>();
@@ -128,6 +133,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         this.gridX = mainX + 12;
         this.trackX = mainX + 203;
         this.inventoryLabelX = mainX + 21;
+        this.shown = menu.isCrafting() ? List.of(Tab.ITEMS, Tab.CRAFT, Tab.RULES, Tab.NETWORK) : List.of(Tab.ITEMS, Tab.NETWORK);
     }
 
     /**
@@ -206,28 +212,29 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         ruleWindow = new RuleWindow(menu, font);
         jobsWindow = new JobsWindow(menu, font);
         jobsButton = null;
+        int tabX = leftPos + mainX + 217;
+        for (int i = 0; i < shown.size(); i++) {
+            Tab t = shown.get(i);
+            Component label = Component.translatable("screen.jasm.deck.tab." + t.name().toLowerCase(java.util.Locale.ROOT));
+            JasmButton.Icon icon = TAB_ICONS[t.ordinal()];
+            JasmButton button = JasmButton.icon(() -> icon, label, b -> {
+                jobsWindow.close();
+                tab = t;
+                scrollRow = 0;
+                builtVersion = -1;
+                if (t == Tab.NETWORK) networkPanel.open();
+                updateTabs();
+            }, tabX, topPos + TAB_Y + i * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
+            button.setTooltip(Tooltip.create(label));
+            tabs.add(addRenderableWidget(button));
+        }
         if (menu.isCrafting()) {
-            int tabX = leftPos + mainX + 217;
-            for (Tab t : Tab.values()) {
-                Component label = Component.translatable("screen.jasm.deck.tab." + t.name().toLowerCase(java.util.Locale.ROOT));
-                JasmButton.Icon icon = TAB_ICONS[t.ordinal()];
-                JasmButton button = JasmButton.icon(() -> icon, label, b -> {
-                    jobsWindow.close();
-                    tab = t;
-                    scrollRow = 0;
-                    builtVersion = -1;
-                    updateTabs();
-                }, tabX, topPos + TAB_Y + t.ordinal() * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
-                button.setTooltip(Tooltip.create(label));
-                tabs.add(addRenderableWidget(button));
-            }
-            // The job list is the last tab: it can be opened from any of the others.
+            // The job list is the last key: it can be opened from any of the tabs.
             jobsButton = JasmButton.icon(() -> JOBS, Component.translatable("screen.jasm.jobs.button"),
                     b -> { if (jobsWindow.isOpen()) jobsWindow.close(); else openJobs(); updateTabs(); },
-                    tabX, topPos + TAB_Y + Tab.values().length * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
+                    tabX, topPos + TAB_Y + shown.size() * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
             jobsButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.jobs.button")));
             addRenderableWidget(jobsButton);
-            updateTabs();
             // Beside the crafting grid: send what is in it back to the Deck, or down to the inventory.
             int keysX = leftPos + mainX + 154;
             int gridTop = topPos + menu.craftY() + 12;
@@ -240,6 +247,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             toInventory.setTooltip(Tooltip.create(Component.translatable("screen.jasm.deck.grid_to_inventory")));
             addRenderableWidget(toInventory);
         }
+        if (networkPanel == null) networkPanel = new NetworkPanel(menu, font);
+        networkPanel.place(leftPos + gridX, topPos + gridY, COLUMNS * 18, rows);
+        addRenderableWidget(networkPanel.key());
+        updateTabs();
 
         if (filterWindow == null) filterWindow = new WaferFilterWindow(menu, font);
     }
@@ -248,9 +259,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private void updateTabs() {
         boolean jobs = jobsWindow != null && jobsWindow.isOpen();
         for (int i = 0; i < tabs.size(); i++) {
-            tabs.get(i).setSelected(!jobs && i == tab.ordinal());
+            tabs.get(i).setSelected(!jobs && i == shown.indexOf(tab));
         }
         if (jobsButton instanceof JasmButton button) button.setLatched(jobs);
+        if (networkPanel != null) networkPanel.key().visible = tab == Tab.NETWORK;
     }
 
     /** The job list covers the main panel; other windows close. */
@@ -265,6 +277,13 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     protected void containerTick() {
         super.containerTick();
         craftWindow.tick();
+        if (tab == Tab.NETWORK) networkPanel.tick();
+    }
+
+    @Override
+    public void removed() {
+        super.removed();
+        if (networkPanel != null) networkPanel.close();
     }
 
     /** Opens the request window for {@code key}, closing the wafer settings if they were open. */
@@ -439,7 +458,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             }
         }
         // Add unstored craftable items on Items; Craft shows every known recipe output.
-        for (ItemResource key : tab == Tab.RULES ? Set.<ItemResource>of() : view.craftable()) {
+        for (ItemResource key : tab == Tab.RULES || tab == Tab.NETWORK ? Set.<ItemResource>of() : view.craftable()) {
             if (tab == Tab.CRAFT || !view.contents().containsKey(key)) {
                 entries.add(entry(key, view.contents().getOrDefault(key, 0L)));
             }
@@ -457,6 +476,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private int maxScroll() {
         if (tab == Tab.RULES) {
             return Math.max(0, Math.min(rules().size() + 1, Rules.limit(currentDeck())) - ruleRows());
+        }
+        if (tab == Tab.NETWORK) {
+            return networkPanel == null ? 0 : networkPanel.maxScroll();
         }
         return Math.max(0, (visible.size() + COLUMNS - 1) / COLUMNS - rows);
     }
@@ -538,7 +560,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     /**
      * The panels as one shape: the wafers on the left, the main panel with its wider search row, the scroll column on
-     * the right and, on a Crafting Deck, the tab column. Rebuilt when the grid changes height.
+     * the right and the tab column, as tall as its keys. Rebuilt when the grid changes height.
      */
     private JasmFrame frame() {
         if (frame == null) {
@@ -547,7 +569,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                     new int[] {mainX, 0, DeckMenu.MAIN_WIDTH, imageHeight},
                     new int[] {0, DeckMenu.SIDE_TOP, mainX, menu.sideRows() * 18 + 38},
                     new int[] {mainX + 190, 25, 28, menu.gridEnd() - 18}));
-            if (menu.isCrafting()) rects.add(new int[] {mainX + 190, 25, 51, 94});
+            // A Crafting Deck's wider column takes in the scroll column's top; a normal Deck's holds only its two keys.
+            if (menu.isCrafting()) rects.add(new int[] {mainX + 190, 25, 51, tabColumnHeight(shown.size() + 1)});
+            else rects.add(new int[] {mainX + 214, 25, 27, tabColumnHeight(shown.size())});
             panels = rects;
             frame = JasmFrame.rounded(rects.toArray(int[][]::new));
         }
@@ -555,6 +579,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     }
 
     private List<int[]> panels = List.of();
+
+    /** Height of the tab column holding {@code keys} keys. */
+    private static int tabColumnHeight(int keys) {
+        return TAB_Y - 25 + keys * (TAB_HEIGHT - 1) + 6;
+    }
 
     private int handleOffset() {
         int travel = trackHeight() - HANDLE_HEIGHT;
@@ -585,36 +614,32 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         graphics.fill(bx + 1, by + 1, bx + CHARGE_WIDTH - 1, by + 7, WELL);
         int filled = (int) Math.round((CHARGE_WIDTH - 2) * charge);
         if (filled > 0) JasmGui.barFill(graphics, bx + 1, by + 1, filled, 6);
-        if (menu.isCrafting()) {
-            // The link light: green linked, yellow linked but out of reach, grey not linked.
-            int lx = x + linkX();
-            int colour = switch (menu.view().network()) {
-                case 2 -> JasmGui.GOOD;
-                case 1 -> JasmGui.WARN;
-                default -> JasmGui.MUTED;
-            };
-            graphics.fill(lx, y + statusY, lx + LINK_SIZE, y + statusY + LINK_SIZE, colour);
-        }
+        // The link light: green linked, yellow linked but out of reach, grey not linked.
+        int lx = x + linkX();
+        int colour = switch (menu.view().network()) {
+            case 2 -> JasmGui.GOOD;
+            case 1 -> JasmGui.WARN;
+            default -> JasmGui.MUTED;
+        };
+        graphics.fill(lx, y + statusY, lx + LINK_SIZE, y + statusY + LINK_SIZE, colour);
     }
 
-    /** Over the charge bar or the link light: the charge and, on a Crafting Deck, whether it is linked. */
+    /** Over the charge bar or the link light: the charge and whether the Deck is linked. */
     private void chargeTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        int left = leftPos + (menu.isCrafting() ? linkX() - 1 : mainX + 123);
+        int left = leftPos + linkX() - 1;
         int right = leftPos + mainX + 123 + CHARGE_WIDTH;
         if (mouseX < left || mouseX >= right || mouseY < topPos + 22 || mouseY >= topPos + 32) return;
         List<FormattedCharSequence> lines = new ArrayList<>();
         lines.add(Component.translatable("tooltip.jasm.deck.energy",
                 String.format("%,d", menu.view().energy()), String.format("%,d", tier().battery())).getVisualOrderText());
-        if (menu.isCrafting()) {
-            int network = menu.view().network();
-            String key = switch (network) {
-                case 2 -> "screen.jasm.deck.link.linked";
-                case 1 -> "screen.jasm.deck.link.unreachable";
-                default -> "screen.jasm.deck.link.not_linked";
-            };
-            int colour = network == 2 ? JasmGui.GOOD : network == 1 ? JasmGui.WARN : JasmGui.MUTED;
-            lines.addAll(font.split(Component.translatable(key).withColor(colour & 0xFFFFFF), 180));
-        }
+        int network = menu.view().network();
+        String key = switch (network) {
+            case 2 -> "screen.jasm.deck.link.linked";
+            case 1 -> "screen.jasm.deck.link.unreachable";
+            default -> "screen.jasm.deck.link.not_linked";
+        };
+        int colour = network == 2 ? JasmGui.GOOD : network == 1 ? JasmGui.WARN : JasmGui.MUTED;
+        lines.addAll(font.split(Component.translatable(key).withColor(colour & 0xFFFFFF), 180));
         graphics.setTooltipForNextFrame(font, lines, mouseX, mouseY);
     }
 
@@ -689,6 +714,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         int y = topPos;
         if (tab == Tab.RULES) {
             drawRules(graphics, mouseX, mouseY);
+            return;
+        }
+        if (tab == Tab.NETWORK) {
+            networkPanel.draw(graphics, mouseX, mouseY, scrollRow);
             return;
         }
         GridEntries.Entry<ItemResource> hovered = entryAt(mouseX, mouseY);
@@ -769,7 +798,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (types > 0) {
             // Type Wafers: types used, right-aligned before the charge bar, when there is room for both.
             Component typeStatus = Component.translatable("screen.jasm.deck.types", typesUsed, types);
-            int right = (menu.isCrafting() ? linkX() : mainX + 123) - 5;
+            int right = linkX() - 5;
             if (mainX + 6 + font.width(status) + 6 + font.width(typeStatus) <= right) {
                 graphics.text(font, typeStatus, right - font.width(typeStatus), statusY, typesUsed >= types ? JasmGui.BAD : JasmGui.SUBTEXT, false);
             }
@@ -841,6 +870,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         // (whichever tab is open), so nothing there is touched.
         if (inWindow(event.x(), event.y())) {
             return filterWindow.mouseClicked(event, doubleClick);
+        }
+        // The Network tab holds no items: a click there picks a block to light up, or presses the list/tree key.
+        if (tab == Tab.NETWORK && inGrid(event.x(), event.y())) {
+            if (networkPanel.key().isMouseOver(event.x(), event.y())) {
+                return super.mouseClicked(event, doubleClick);
+            }
+            networkPanel.mouseClicked(event.x(), event.y(), scrollRow);
+            return true;
         }
         // The rule window stays open while items are picked up from the inventory for its slot.
         if (tab == Tab.RULES && inGrid(event.x(), event.y())) {

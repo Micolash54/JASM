@@ -14,6 +14,10 @@ import dev.micolash.jasm.autocraft.RecipeRackBlock;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlock;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
+import dev.micolash.jasm.brain.NetworkBrainBlock;
+import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
+import dev.micolash.jasm.brain.NetworkChamberBlock;
+import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
 import dev.micolash.jasm.crystal.CrystalFoundryBlock;
 import dev.micolash.jasm.crystal.CrystalFoundryBlockEntity;
 import dev.micolash.jasm.crystal.ResonatorBlock;
@@ -154,6 +158,18 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<BitlingStationBlockEntity>> BITLING_STATION_ENTITY = BLOCK_ENTITIES.register(
             "bitling_station", () -> new BlockEntityType<>(BitlingStationBlockEntity::new, BITLING_STATION.get()));
+
+    public static final DeferredBlock<NetworkBrainBlock> NETWORK_BRAIN = BLOCKS.registerBlock("network_brain",
+            NetworkBrainBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
+
+    public static final Supplier<BlockEntityType<NetworkBrainBlockEntity>> NETWORK_BRAIN_ENTITY = BLOCK_ENTITIES.register(
+            "network_brain", () -> new BlockEntityType<>(NetworkBrainBlockEntity::new, NETWORK_BRAIN.get()));
+
+    public static final DeferredBlock<NetworkChamberBlock> NETWORK_CHAMBER = BLOCKS.registerBlock("network_chamber",
+            NetworkChamberBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
+
+    public static final Supplier<BlockEntityType<NetworkChamberBlockEntity>> NETWORK_CHAMBER_ENTITY = BLOCK_ENTITIES.register(
+            "network_chamber", () -> new BlockEntityType<>(NetworkChamberBlockEntity::new, NETWORK_CHAMBER.get()));
 
     private static BlockBehaviour.Properties seededProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.COLOR_PURPLE).randomTicks().strength(1.5F).sound(SoundType.AMETHYST).requiresCorrectToolForDrops()

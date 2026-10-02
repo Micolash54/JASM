@@ -36,8 +36,9 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Registers the autocrafting messages, answers the Crafting Deck's screen, and keeps it told, once a second, what its
- * network can make and how its jobs are doing. Nothing the screen sends is trusted.
+ * Registers the autocrafting messages, answers the Crafting Deck's screen, and keeps every Deck screen told, once a
+ * second, whether its network can be reached and, on a Crafting Deck, what it can make and how its jobs are doing.
+ * Nothing the screen sends is trusted.
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class CraftNetwork {
@@ -314,22 +315,32 @@ public final class CraftNetwork {
         MinecraftServer server = event.getServer();
         boolean due = server.getTickCount() % STATUS_EVERY == 0;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            // A Deck screen that just opened hears at once; after that, once a second.
-            if (player.containerMenu instanceof DeckMenu menu && menu.isCrafting() && (due || !SENT.containsKey(menu)) && menu.stillValid(player)) {
-                CraftPayloads.Status status = status(player, menu);
-                if (!status.equals(SENT.get(menu))) {
-                    SENT.put(menu, status);
-                    PacketDistributor.sendToPlayer(player, status);
-                }
+            CraftPayloads.Status status = statusToSend(player, due);
+            if (status != null) {
+                PacketDistributor.sendToPlayer(player, status);
             }
         }
     }
 
-    /** What the Crafting Deck's screen should know right now. */
+    /** What the player's open Deck screen should hear now, or null when it has nothing new. */
+    public static CraftPayloads.@Nullable Status statusToSend(ServerPlayer player, boolean due) {
+        // A Deck screen that just opened hears at once; after that, once a second.
+        if (player.containerMenu instanceof DeckMenu menu && (due || !SENT.containsKey(menu)) && menu.stillValid(player)) {
+            CraftPayloads.Status status = status(player, menu);
+            if (!status.equals(SENT.get(menu))) {
+                SENT.put(menu, status);
+                return status;
+            }
+        }
+        return null;
+    }
+
+    /** What the Deck's screen should know right now. A normal Deck hears only whether its network can be reached. */
     public static CraftPayloads.Status status(ServerPlayer player, DeckMenu menu) {
         ItemStack deck = menu.deck();
         MinecraftServer server = player.level().getServer();
-        List<CraftPayloads.JobView> jobs = jobsOf(server, player, deck);
+        boolean crafting = menu.isCrafting();
+        List<CraftPayloads.JobView> jobs = crafting ? jobsOf(server, player, deck) : List.of();
         if (!deck.has(JasmComponents.DECK_NETWORK.get())) {
             return new CraftPayloads.Status(menu.containerId, 0, List.of(), jobs, Map.of());
         }
@@ -341,7 +352,10 @@ public final class CraftNetwork {
         EncodingTerminalBlockEntity terminal = Jobs.terminalOf(server, deck);
         CableNetwork network = terminal == null ? null : Networks.at((ServerLevel) terminal.getLevel(), terminal.getBlockPos());
         if (network == null || !terminal.running()) {
-            return new CraftPayloads.Status(menu.containerId, 1, List.of(), jobs, Rules.stalled(server, deck));
+            return new CraftPayloads.Status(menu.containerId, 1, List.of(), jobs, crafting ? Rules.stalled(server, deck) : Map.of());
+        }
+        if (!crafting) {
+            return new CraftPayloads.Status(menu.containerId, 2, List.of(), List.of(), Map.of());
         }
         List<ItemResource> craftable = new ArrayList<>();
         for (Card card : Jobs.cards(network, player)) {

@@ -5,6 +5,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
+import dev.micolash.jasm.core.BrainProgress;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
@@ -52,7 +53,7 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<ProcessingCard>> PROCESSING_CARD = COMPONENTS.registerComponentType(
             "processing_card", b -> b.persistent(ProcessingCard.CODEC).networkSynchronized(ProcessingCard.STREAM_CODEC));
 
-    /** An Encoding Terminal's identity: Crafting Decks paired with it remember it. */
+    /** An Encoding Terminal's identity: Decks paired with it remember it. */
     public static final Supplier<DataComponentType<UUID>> TERMINAL_ID = COMPONENTS.registerComponentType(
             "terminal_id", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
 
@@ -60,11 +61,11 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<TrustList>> TRUST = COMPONENTS.registerComponentType(
             "trust", b -> b.persistent(TrustList.CODEC).networkSynchronized(TrustList.STREAM_CODEC));
 
-    /** A Crafting Deck's own identity, so finished jobs find their way back to it. Given when first paired. */
+    /** A Deck's own identity, so jobs and port deliveries find their way back to it. Given when first paired. */
     public static final Supplier<DataComponentType<UUID>> DECK_ID = COMPONENTS.registerComponentType(
             "deck_id", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
 
-    /** The Encoding Terminal a Crafting Deck is paired with. */
+    /** The Encoding Terminal a Deck is paired with. */
     public static final Supplier<DataComponentType<UUID>> DECK_NETWORK = COMPONENTS.registerComponentType(
             "deck_network", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
 
@@ -87,6 +88,10 @@ public final class JasmComponents {
     /** Chips a critter has made towards its next stage. */
     public static final Supplier<DataComponentType<Integer>> TRAINING = COMPONENTS.registerComponentType(
             "training", b -> b.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT));
+
+    /** A Network Brain's level and points, kept when it is mined. */
+    public static final Supplier<DataComponentType<BrainProgress>> BRAIN = COMPONENTS.registerComponentType(
+            "brain", b -> b.persistent(BrainProgress.CODEC).networkSynchronized(BrainProgress.STREAM_CODEC));
 
     public static final Supplier<DataComponentType<dev.micolash.jasm.transfer.TransferFilters>> TRANSFER_FILTERS = COMPONENTS.registerComponentType(
             "transfer_filters", b -> b.persistent(dev.micolash.jasm.transfer.TransferFilters.CODEC).networkSynchronized(dev.micolash.jasm.transfer.TransferFilters.STREAM_CODEC));

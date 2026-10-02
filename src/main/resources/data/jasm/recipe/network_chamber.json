@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:glass",
+    "M": "jasm:memory_chip"
+  },
+  "pattern": [
+    "IGI",
+    "GMG",
+    "IGI"
+  ],
+  "result": {
+    "id": "jasm:network_chamber",
+    "count": 4
+  }
+}

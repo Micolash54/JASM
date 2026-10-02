@@ -222,8 +222,8 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         Component header = Component.translatable("screen.jasm.archive.linked", menu.view().entries().size(), menu.tier().registrations());
         graphics.text(font, header, LIST_X, 20, JasmGui.SUBTEXT, false);
-        if (menu.view().energy() == 0) {
-            graphics.text(font, Component.translatable("screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
+        if (menu.view().energy() == 0 || ClientNetworkStatus.full(menu.containerId) != null) {
+            graphics.text(font, MachineStatusText.noPower(menu.containerId, "screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
         }
     }
 

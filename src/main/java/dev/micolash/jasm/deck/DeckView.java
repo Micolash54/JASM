@@ -19,7 +19,7 @@ public final class DeckView {
     private int energy;
     private List<DeckStorage.SlotStatus> slots = List.of();
     private int version;
-    /** Crafting Decks only: 0 not paired, 1 network out of reach, 2 reachable. */
+    /** 0 not paired, 1 network out of reach, 2 reachable. */
     private int network;
     private Set<ItemResource> craftable = Set.of();
     private List<CraftPayloads.JobView> jobs = List.of();

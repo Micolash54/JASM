@@ -1,8 +1,8 @@
 # Crystals, chips and Bitlings
 
-This guide is for JASM 0.5.0 on Minecraft 26.1.2 with NeoForge. See the [requirements](../README.md#requirements) for loader and optional mod versions.
+This guide is for JASM 0.6.0 on Minecraft 26.1.2 with NeoForge. See the [requirements](../README.md#requirements) for loader and optional mod versions.
 
-JASM's recipes are made from its own chips. This page shows how to get them, from your first hand-made chip to a Workshop run by a fully grown Byteling. The exact recipes are on the [recipes page](recipes.md).
+JASM's recipes are made from its own chips. This page shows how to get them, from your first hand-made chip to a Workshop run by a fully grown Byteling, and how a Bitling becomes the brain of your network. The exact recipes are on the [recipes page](recipes.md).
 
 ## Growing Data Crystals
 
@@ -22,6 +22,16 @@ A powered **Crystal Resonator** next to Seeded Amethyst makes it grow faster. Se
 ## The Crystal Foundry
 
 The Foundry grows crystals in bulk: every Crystal Seed always makes 16 Blank Chips, more than a seeded block gives on average. It needs power while it grows. Hoppers and pipes can feed it seeds and take the chips out.
+
+## Finding Bitlings
+
+Basic Bitlings aren't crafted. They live in the wild, and you make friends with them.
+
+- **Where**: wild Bitlings turn up now and then on well-lit grass in the Overworld. They don't live in oceans, rivers, beaches, deserts, badlands, mushroom fields, caves or the Deep Dark. They stay where they are, even when you walk away.
+- **Drawn to crystals**: growing Data Crystals attract them. While you are near Seeded Amethyst, a Bitling sometimes wanders over from a little way off to have a look, and stays around the crystals for a few minutes before settling down there. None comes while another wild Bitling is already close by.
+- **Befriending**: hand a wild Bitling a Logic, Memory or Link Chip (an Advanced one works too). It looks the chip over, nods, and turns into a **Basic Bitling** item at its feet. Blank and unquenched chips only get a shake of the head.
+- **Data Crystals**: hand it a Data Crystal and it eats it and follows you for about 30 seconds, so you can lead it somewhere. It stops if you get more than 24 blocks ahead.
+- Hit one and it runs off. Knocked out, it vanishes in a puff and leaves nothing behind.
 
 ## The Chip Workshop and Bitlings
 
@@ -49,6 +59,45 @@ Put any Bitling, Nibbling or Byteling in a **Bitling Station** and a little livi
 - The station's screen shows what it is doing, its battery, and a slider for how far it may roam (4 to 16 blocks).
 - If something knocks it out, it comes back after 30 seconds with full health. Take the critter out and the little Bitling is gone.
 - Hoppers and pipes can't reach the critter slot. Only its owner and the players they trust can open the station.
+
+## The Network Brain
+
+A network can hold **4 machines** on its own. Machines joined by Data Cables form a network, and so do JASM machines that simply touch each other, with no cable at all. Add a fifth and the whole network stops: every machine on it works as if it had no power until you remove one or add a **Network Brain**. The machines' screens, Jade and a linked Deck's Network tab show when a network is full.
+
+- **What counts**: Encoding Terminals, Recipe Racks, Crafting Servers, Access Ports and every other port, Archives, Chip Workshops, Crystal Foundries, Crystal Resonators and Bitling Stations, whether they are joined by cable or by touching each other. A row of five Archives side by side is a network of five. Cables, generators, Creative Batteries, brains and chambers don't count.
+- **Learning**: the brain learns all the time while it has power, and each level lets the network hold more machines. Put Logic, Memory or Link Chips in its slot to learn faster: it eats one every half second, and each one fills 2% of the current level's bar. Advanced chips fill 10%. Right-click the brain with chips to feed it one, sneak-right-click to feed the whole stack, or let a hopper or pipe feed it from any side. A brain that has reached its top level takes no more chips.
+- **Power**: if the brain runs out of power, the network falls back to 4 machines.
+- **Mined**, a brain keeps its level and progress.
+
+| Brain level | Machines |
+| --- | --- |
+| No brain | 4 |
+| 1 | 8 |
+| 2 | 12 |
+| 3 | 16 |
+| 4 | 24 |
+| 5 | 32 |
+| 6 | 48 |
+| 7 | 64 |
+| 8 | 96 |
+| 9 | 128 |
+| 10 | 256 |
+
+### Network Chambers
+
+A brain on its own stops at level 3. Build **Network Chambers** around it into a cube to go further and learn faster. The brain can sit anywhere in the cube, and cables can join any face of it. Right-click any chamber of the cube to open the brain's screen, or to feed it chips.
+
+| Shape | Chambers | Top level | Learning speed | Power |
+| --- | --- | --- | --- | --- |
+| Single brain | none | 3 | normal | 8 FE/t |
+| 2×2×2 cube | 7 | 6 | twice as fast | 16 FE/t |
+| 3×3×3 cube | 26 | 10 | three times as fast | 32 FE/t |
+
+A brain moved into a smaller cube keeps its level, but works at the smaller cube's top level until it has its big cube back.
+
+### Two brains on one network
+
+Brains don't add up. When a network holds more than one, only the best working brain leads: the highest level, then the most progress, then the one placed first. The others rest and don't learn until they lead again.
 
 ## How the tiers use the chips
 

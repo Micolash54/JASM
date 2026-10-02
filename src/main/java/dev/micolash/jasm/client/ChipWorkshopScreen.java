@@ -103,6 +103,9 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private record Status(String key, int color) {}
 
     private Status status(@Nullable BitlingItem critter) {
+        if (ClientNetworkStatus.full(menu.containerId) != null) {
+            return new Status("network_full", JasmGui.BAD);
+        }
         if (critter == null) {
             return new Status("empty", JasmGui.MUTED);
         }
@@ -217,9 +220,15 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
 
         BitlingItem critter = critter();
         Status status = status(critter);
-        Component label = Component.translatable("screen.jasm.workshop.status",
-                Component.translatable("screen.jasm.workshop.status." + status.key()).withColor(status.color()));
-        graphics.text(font, label, SIDE_PAD + 4, STATUS_Y + 3, JasmGui.SUBTEXT, false);
+        if (status.key().equals("network_full")) {
+            // The whole line, in place of "Status: ...", so the numbers fit.
+            Component full = MachineStatusText.noPower(menu.containerId, "screen.jasm.workshop.status.no_power", font, SIDE_TEXT_WIDTH - 8);
+            graphics.text(font, full, SIDE_PAD + 4, STATUS_Y + 3, status.color(), false);
+        } else {
+            Component label = Component.translatable("screen.jasm.workshop.status",
+                    Component.translatable("screen.jasm.workshop.status." + status.key()).withColor(status.color()));
+            graphics.text(font, label, SIDE_PAD + 4, STATUS_Y + 3, JasmGui.SUBTEXT, false);
+        }
         if (critter == null) {
             centred(graphics, Component.translatable("screen.jasm.workshop.no_critter_name"), NAME_Y, JasmGui.MUTED);
             List<FormattedCharSequence> hint = font.split(Component.translatable("screen.jasm.workshop.no_critter"), SIDE_TEXT_WIDTH);

@@ -1,0 +1,43 @@
+{
+  "variants": {
+    "facing=north,size=single": {
+      "model": "jasm:block/network_brain"
+    },
+    "facing=north,size=cube_2": {
+      "model": "jasm:block/empty"
+    },
+    "facing=north,size=cube_3": {
+      "model": "jasm:block/empty"
+    },
+    "facing=east,size=single": {
+      "model": "jasm:block/network_brain",
+      "y": 90
+    },
+    "facing=east,size=cube_2": {
+      "model": "jasm:block/empty"
+    },
+    "facing=east,size=cube_3": {
+      "model": "jasm:block/empty"
+    },
+    "facing=south,size=single": {
+      "model": "jasm:block/network_brain",
+      "y": 180
+    },
+    "facing=south,size=cube_2": {
+      "model": "jasm:block/empty"
+    },
+    "facing=south,size=cube_3": {
+      "model": "jasm:block/empty"
+    },
+    "facing=west,size=single": {
+      "model": "jasm:block/network_brain",
+      "y": 270
+    },
+    "facing=west,size=cube_2": {
+      "model": "jasm:block/empty"
+    },
+    "facing=west,size=cube_3": {
+      "model": "jasm:block/empty"
+    }
+  }
+}

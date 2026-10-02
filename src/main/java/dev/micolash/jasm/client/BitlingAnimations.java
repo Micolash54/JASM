@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import org.jspecify.annotations.Nullable;
 
@@ -32,8 +33,13 @@ public final class BitlingAnimations {
     private final Map<String, Clip> clips = new LinkedHashMap<>();
 
     public static BitlingAnimations load(ResourceManager resources) {
+        return load(resources, Jasm.id("animations/bitling.json"));
+    }
+
+    /** Parts and loops from any file in the same layout, like the props of a brain scene. */
+    public static BitlingAnimations load(ResourceManager resources, Identifier file) {
         BitlingAnimations animations = new BitlingAnimations();
-        try (Reader reader = resources.openAsReader(Jasm.id("animations/bitling.json"))) {
+        try (Reader reader = resources.openAsReader(file)) {
             JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
             for (Map.Entry<String, JsonElement> e : root.getAsJsonObject("bones").entrySet()) {
                 JsonObject b = e.getValue().getAsJsonObject();
@@ -60,7 +66,7 @@ public final class BitlingAnimations {
                 animations.clips.put(e.getKey(), new Clip(a.get("length").getAsFloat(), tracks));
             }
         } catch (Exception e) {
-            Jasm.LOGGER.error("Could not read the Bitling animations", e);
+            Jasm.LOGGER.error("Could not read the animations in {}", file, e);
         }
         return animations;
     }

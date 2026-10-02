@@ -1,5 +1,6 @@
 package dev.micolash.jasm.crystal;
 
+import dev.micolash.jasm.bitling.CrystalAttraction;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.function.Supplier;
@@ -35,6 +36,7 @@ public class SeededAmethystBlock extends AmethystBlock {
         if (random.nextInt(BuddingAmethystBlock.GROWTH_CHANCE) == 0) {
             grow(state, level, pos, random);
         }
+        CrystalAttraction.tryAttract(level, pos, random);
     }
 
     /** One growth attempt on a random face. */

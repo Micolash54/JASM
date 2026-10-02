@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.NetworkEnergy;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.autocraft.AutocraftState;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
@@ -73,7 +74,7 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
     public ArchiveBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.ARCHIVE_ENTITY.get(), pos, state);
         this.tier = ((ArchiveBlock) state.getBlock()).tier();
-        this.energy = new SimpleEnergyHandler(tier.energyBuffer(), tier.energyBuffer(), tier.energyBuffer()) {
+        this.energy = new NetworkEnergy(tier.energyBuffer()) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
                 setChanged();
@@ -96,13 +97,21 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
 
     /**
      * One tick of running cost. An Archive that runs dry keeps its owner, trust and links; it just can't link or
-     * recover until it is charged again.
+     * recover until it is charged again. On a full network it rests and uses nothing.
      */
     public void drain() {
+        if (networkStopped()) {
+            return;
+        }
         int amount = energy.getAmountAsInt();
         if (amount > 0) {
             energy.set(Math.max(0, amount - tier.drainPerTick()));
         }
+    }
+
+    /** Whether its network holds more machines than its brain allows: it can't link or recover then. */
+    public boolean networkStopped() {
+        return level instanceof ServerLevel s && Networks.at(s, worldPosition) instanceof CableNetwork n && n.limitState().stopped();
     }
 
     public ArchiveTier tier() {

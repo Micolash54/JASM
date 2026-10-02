@@ -1,0 +1,12 @@
+{
+  "values": [
+    "#c:is_ocean",
+    "#c:is_river",
+    "#c:is_beach",
+    "#c:is_desert",
+    "#c:is_badlands",
+    "#c:is_mushroom",
+    "#c:is_cave",
+    "minecraft:deep_dark"
+  ]
+}

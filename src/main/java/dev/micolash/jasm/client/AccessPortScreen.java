@@ -209,7 +209,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         Component state;
         int color;
         if (!menu.running()) {
-            state = Component.translatable("screen.jasm.machine.no_power");
+            state = MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font,
+                    WIDTH - 16 - font.width(Component.translatable("screen.jasm.port.status", "")));
             color = JasmGui.BAD;
         } else if (menu.locked()) {
             state = Component.translatable("screen.jasm.port.in_use");

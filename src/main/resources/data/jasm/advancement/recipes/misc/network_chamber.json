@@ -3,25 +3,15 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jasm:basic_bitling"
+        "recipe": "jasm:network_chamber"
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_logic_chip": {
+    "has_network_brain": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:logic_chip"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_memory_chip": {
-      "conditions": {
-        "items": [
-          {
-            "items": "jasm:memory_chip"
+            "items": "jasm:network_brain"
           }
         ]
       },
@@ -31,13 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_logic_chip",
-      "has_memory_chip"
+      "has_network_brain"
     ]
   ],
   "rewards": {
     "recipes": [
-      "jasm:basic_bitling"
+      "jasm:network_chamber"
     ]
   }
 }

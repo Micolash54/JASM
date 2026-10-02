@@ -4,6 +4,7 @@ import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.transfer.PortOperations;
@@ -31,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** The port's upgrades, item buffer, Deck link, status and player inventory. */
-public class AccessPortMenu extends AbstractContainerMenu {
+public class AccessPortMenu extends AbstractContainerMenu implements MachineView {
     public static final int MAX_NAME = 32;
     public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
     /** As tall as the Input Port: the inventory sits at the same height. */
@@ -110,7 +111,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
         }
         addSlot(new Slot(container, AccessPortBlockEntity.DECK_IN, 0, 0) {
             @Override public boolean isActive() { return port != null || linkCover.open(); }
-            @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isCrafting(stack); }
+            @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isDeck(stack); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
         });
@@ -267,7 +268,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
                 if (!moveItemStackTo(stack, SLOT_SPEED, inventoryStart, false)) break;
                 moved = true;
             }
-        } else if (DeckItem.isCrafting(stack)) {
+        } else if (DeckItem.isDeck(stack)) {
             moved = moveItemStackTo(stack, SLOT_DECK_IN, SLOT_DECK_OUT, false);
         } else {
             moved = moveItemStackTo(stack, SLOT_BUFFER, SLOT_DECK_IN, false);
@@ -276,7 +277,7 @@ public class AccessPortMenu extends AbstractContainerMenu {
         if (stack.isEmpty()) clicked.setByPlayer(ItemStack.EMPTY);
         else clicked.setChanged();
         if (port != null) {
-            if (index >= inventoryStart && DeckItem.isCrafting(before)) port.queueDeckLink(player);
+            if (index >= inventoryStart && DeckItem.isDeck(before)) port.queueDeckLink(player);
             port.processDeckLink();
         }
         return before;
@@ -285,5 +286,10 @@ public class AccessPortMenu extends AbstractContainerMenu {
     /** Server side: whether the port this menu shows stands at {@code pos}. */
     boolean shows(BlockPos pos) {
         return port != null && port.getBlockPos().equals(pos);
+    }
+
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return port == null ? null : port.getBlockPos();
     }
 }

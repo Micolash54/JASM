@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "G": "minecraft:glass",
+    "L": "jasm:logic_chip",
+    "B": "jasm:basic_bitling",
+    "M": "jasm:memory_chip",
+    "I": "minecraft:iron_ingot",
+    "C": "jasm:data_cable"
+  },
+  "pattern": [
+    "GGG",
+    "LBM",
+    "ICI"
+  ],
+  "result": {
+    "id": "jasm:network_brain"
+  }
+}

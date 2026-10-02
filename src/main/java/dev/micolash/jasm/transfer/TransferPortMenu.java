@@ -5,9 +5,11 @@ import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferSettings;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -22,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
-public final class TransferPortMenu extends AbstractContainerMenu {
+public final class TransferPortMenu extends AbstractContainerMenu implements MachineView {
     public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
     public static final int LINK_IN = PortOperations.UPGRADE_SLOTS;
     public static final int LINK_OUT = LINK_IN + 1;
@@ -74,7 +76,7 @@ public final class TransferPortMenu extends AbstractContainerMenu {
         }
         addSlot(new Slot(contents, AccessPortBlockEntity.DECK_IN, 0, 0) {
             @Override public boolean isActive() { return port != null || linkCover.open(); }
-            @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isCrafting(stack); }
+            @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isDeck(stack); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
         });
@@ -163,11 +165,15 @@ public final class TransferPortMenu extends AbstractContainerMenu {
             if (!moveItemStackTo(stack, 0, LINK_IN, false)) return ItemStack.EMPTY;
         }
         else if (stack.is(JasmItems.POWER_UPGRADE.get())) { if (!moveItemStackTo(stack, POWER, POWER + 1, false)) return ItemStack.EMPTY; }
-        else if (DeckItem.isCrafting(stack)) { if (!moveItemStackTo(stack, LINK_IN, LINK_IN + 1, false)) return ItemStack.EMPTY; }
+        else if (DeckItem.isDeck(stack)) { if (!moveItemStackTo(stack, LINK_IN, LINK_IN + 1, false)) return ItemStack.EMPTY; }
         else return ItemStack.EMPTY;
         if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY); else slot.setChanged();
-        if (port != null) { if (index >= INVENTORY_START && DeckItem.isCrafting(before)) port.queueDeckLink(player); port.processDeckLink(); }
+        if (port != null) { if (index >= INVENTORY_START && DeckItem.isDeck(before)) port.queueDeckLink(player); port.processDeckLink(); }
         return before;
     }
 
+    @Override
+    public @Nullable BlockPos machinePos() {
+        return port == null ? null : port.getBlockPos();
+    }
 }
