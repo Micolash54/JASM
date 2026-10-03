@@ -50,6 +50,9 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue BATTERY_CHARGE_PER_TICK = BUILDER
             .comment("Creative Battery charging-slot FE per tick")
             .defineInRange("chargePerTick", 100_000, 0, Integer.MAX_VALUE);
+    public static final ModConfigSpec.IntValue ACCEPTOR_RATE = BUILDER
+            .comment("Power Acceptor FE it takes per push and passes on per tick")
+            .defineInRange("acceptorRate", 10_000, 1, 100_000_000);
 
     static {
         BUILDER.pop().push("wafer");

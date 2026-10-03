@@ -1,6 +1,7 @@
 {
   "values": [
     "jasm:creative_battery",
+    "jasm:power_acceptor",
     "jasm:basic_archive",
     "jasm:advanced_archive",
     "jasm:ultimate_archive",

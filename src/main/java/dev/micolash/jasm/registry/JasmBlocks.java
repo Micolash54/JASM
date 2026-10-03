@@ -1,6 +1,8 @@
 package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.acceptor.PowerAcceptorBlock;
+import dev.micolash.jasm.acceptor.PowerAcceptorBlockEntity;
 import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveTier;
@@ -57,6 +59,12 @@ public final class JasmBlocks {
 
     public static final DeferredBlock<CreativeBatteryBlock> CREATIVE_BATTERY = BLOCKS.registerBlock("creative_battery",
             CreativeBatteryBlock::new, p -> p.mapColor(MapColor.COLOR_MAGENTA).strength(1.5F).sound(SoundType.METAL));
+
+    public static final DeferredBlock<PowerAcceptorBlock> POWER_ACCEPTOR = BLOCKS.registerBlock("power_acceptor",
+            PowerAcceptorBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<PowerAcceptorBlockEntity>> POWER_ACCEPTOR_ENTITY = BLOCK_ENTITIES.register(
+            "power_acceptor", () -> new BlockEntityType<>(PowerAcceptorBlockEntity::new, POWER_ACCEPTOR.get()));
 
     private static final Map<GeneratorTier, DeferredBlock<CombustionGeneratorBlock>> GENERATORS = new EnumMap<>(GeneratorTier.class);
 

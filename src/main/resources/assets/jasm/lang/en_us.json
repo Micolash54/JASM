@@ -246,6 +246,7 @@
   "screen.jasm.jobs.open": "Click to open its Crafting Server",
   "jei.jasm.transfer.missing": "Not in Deck or your inventory",
   "block.jasm.creative_battery": "Creative Battery",
+  "block.jasm.power_acceptor": "Power Acceptor",
   "block.jasm.basic_combustion_generator": "Basic Combustion Generator",
   "block.jasm.advanced_combustion_generator": "Advanced Combustion Generator",
   "block.jasm.elite_combustion_generator": "Elite Combustion Generator",

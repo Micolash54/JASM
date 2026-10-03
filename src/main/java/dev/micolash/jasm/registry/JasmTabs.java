@@ -96,6 +96,7 @@ public final class JasmTabs {
                 }
                 output.accept(JasmItems.WILD_BITLING_SPAWN_EGG);
                 JasmItems.cables().forEach(output::accept);
+                output.accept(JasmItems.POWER_ACCEPTOR);
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());

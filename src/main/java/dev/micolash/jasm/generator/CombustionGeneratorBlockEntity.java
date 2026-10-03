@@ -4,6 +4,7 @@ import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.EnumMap;
@@ -59,6 +60,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     private final ResourceHandler<ItemResource> slots = VanillaContainerWrapper.of(this);
     private final ResourceHandler<ItemResource> automation = new Automation();
     private final Map<Direction, BlockCapabilityCache<EnergyHandler, @Nullable Direction>> neighbours = new EnumMap<>(Direction.class);
+    private final PowerSides sides = new PowerSides();
     private int burnLeft;
     private int burnTotal;
     /** FE made in the last tick, for the screen. */
@@ -158,17 +160,21 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
         setChanged();
     }
 
-    /** Up to the per-side limit into each touching block that takes FE. */
+    /** Up to the per-side limit into each touching block that takes FE. JASM blocks are handed it directly. */
     public void pushToNeighbours(ServerLevel level) {
         int limit = tier.transferPerTick();
+        sides.refresh(level, worldPosition);
         for (Direction side : Direction.values()) {
             if (energy.getAmountAsInt() <= 0) {
                 return;
             }
-            EnergyHandler target = neighbours
-                    .computeIfAbsent(side,
-                            s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
-                    .getCapability();
+            EnergyHandler target = sides.receiver(side);
+            if (target == null && !sides.jasm(side)) {
+                target = neighbours
+                        .computeIfAbsent(side,
+                                s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
+                        .getCapability();
+            }
             if (target != null) {
                 give(target, limit);
             }
@@ -208,6 +214,16 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     /** What hoppers and pipes see. */
     public ResourceHandler<ItemResource> automation() {
         return automation;
+    }
+
+    @Override
+    public EnergyHandler networkOutput() {
+        return output;
+    }
+
+    @Override
+    public void neighboursChanged() {
+        sides.changed();
     }
 
     public int burnLeft() {

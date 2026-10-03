@@ -18,7 +18,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
@@ -442,7 +441,7 @@ public final class CableNetwork {
         int left;
         /** What the cables beside it can take in each tick, together. */
         int intake;
-        /** Generators, batteries and other mods' blocks beside it that it passes power on from. */
+        /** Generators, batteries and Power Acceptors beside it that it passes power on from. */
         final List<EnergyHandler> outside = new ArrayList<>(2);
 
         Spare(SimpleEnergyHandler handler, int left) {
@@ -451,34 +450,17 @@ public final class CableNetwork {
         }
     }
 
-    /**
-     * Power sources beside a network block that belong to no network: generators, batteries and other mods' blocks that
-     * give power on that side and take none in. Machines that also take power in are left alone, so their power stays
-     * theirs.
-     */
+    /** Generators, batteries and Power Acceptors beside a network block. Nothing else outside the network is looked at. */
     private List<EnergyHandler> outsideSources(BlockPos pos) {
         List<EnergyHandler> found = new ArrayList<>(2);
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
             if (machines.contains(next) || cables.contains(next) || !level.isLoaded(next)) continue;
-            var entity = level.getBlockEntity(next);
-            if (entity == null || entity instanceof DataCableBlockEntity || entity instanceof MachineBlockEntity
-                    || entity instanceof ArchiveBlockEntity)
-                continue;
-            EnergyHandler handler = level.getCapability(Capabilities.Energy.BLOCK, next, side.getOpposite());
-            if (handler != null && handler.getAmountAsLong() > 0 && onlyGives(handler)) found.add(handler);
+            if (level.getBlockEntity(next) instanceof NetworkPowerSource source && source.networkOutput().getAmountAsLong() > 0) {
+                found.add(source.networkOutput());
+            }
         }
         return found;
-    }
-
-    /**
-     * Whether a handler gives power and takes none in. Tried in a transaction that is never kept; one FE is taken out
-     * first, so a full two-way store still shows that it takes power in.
-     */
-    private static boolean onlyGives(EnergyHandler handler) {
-        try (Transaction tx = Transaction.openRoot()) {
-            return handler.extract(1, tx) > 0 && handler.insert(1, tx) == 0;
-        }
     }
 
     /**

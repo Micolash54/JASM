@@ -2,6 +2,7 @@ package dev.micolash.jasm.battery;
 
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.EnumMap;
 import java.util.Map;
@@ -28,6 +29,7 @@ import net.neoforged.neoforge.transfer.DelegatingResourceHandler;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.access.ItemAccess;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.energy.InfiniteEnergyHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
@@ -43,6 +45,7 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     private final ResourceHandler<ItemResource> slotHandler = VanillaContainerWrapper.of(slot);
     private final ResourceHandler<ItemResource> automation = new AutomationSlot();
     private final Map<Direction, BlockCapabilityCache<EnergyHandler, @Nullable Direction>> neighbours = new EnumMap<>(Direction.class);
+    private final PowerSides sides = new PowerSides();
 
     public CreativeBatteryBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.CREATIVE_BATTERY_ENTITY.get(), pos, state);
@@ -53,17 +56,21 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
         battery.charge(JasmConfig.BATTERY_CHARGE_PER_TICK.getAsInt());
     }
 
-    /** One tick of output: up to the per-side limit into each touching block that takes FE. */
+    /** One tick of output: up to the per-side limit into each touching block that takes FE. JASM blocks are handed it directly. */
     public void pushToNeighbours(ServerLevel level) {
         int amount = JasmConfig.BATTERY_PUSH_PER_FACE_PER_TICK.getAsInt();
         if (amount <= 0) {
             return;
         }
+        sides.refresh(level, worldPosition);
         for (Direction side : Direction.values()) {
-            EnergyHandler target = neighbours
-                    .computeIfAbsent(side,
-                            s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
-                    .getCapability();
+            EnergyHandler target = sides.receiver(side);
+            if (target == null && !sides.jasm(side)) {
+                target = neighbours
+                        .computeIfAbsent(side,
+                                s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
+                        .getCapability();
+            }
             if (target != null) {
                 try (Transaction tx = Transaction.openRoot()) {
                     target.insert(amount, tx);
@@ -96,6 +103,16 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     /** What hoppers and pipes see. */
     public ResourceHandler<ItemResource> automation() {
         return automation;
+    }
+
+    @Override
+    public EnergyHandler networkOutput() {
+        return InfiniteEnergyHandler.INSTANCE;
+    }
+
+    @Override
+    public void neighboursChanged() {
+        sides.changed();
     }
 
     /**
