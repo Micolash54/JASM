@@ -8,6 +8,7 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.transfer.energy.LimitingEnergyHandler;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
@@ -23,28 +24,18 @@ public final class MachineCapabilities {
 
     @SubscribeEvent
     static void register(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.ENCODING_TERMINAL_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.RECIPE_RACK_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CRAFTING_SERVER_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.ACCESS_PORT_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CRYSTAL_RESONATOR_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
+        powerIn(event, JasmBlocks.ENCODING_TERMINAL_ENTITY.get(),
+                JasmBlocks.RECIPE_RACK_ENTITY.get(),
+                JasmBlocks.CRAFTING_SERVER_ENTITY.get(),
+                JasmBlocks.ACCESS_PORT_ENTITY.get(),
+                JasmBlocks.CRYSTAL_RESONATOR_ENTITY.get(),
+                JasmBlocks.CHIP_WORKSHOP_ENTITY.get(),
+                JasmBlocks.BITLING_STATION_ENTITY.get(),
+                JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(),
+                JasmBlocks.NETWORK_BRAIN_ENTITY.get(),
+                JasmBlocks.NETWORK_CHAMBER_ENTITY.get());
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), (workshop, side) -> workshop.automation());
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.BITLING_STATION_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.NETWORK_BRAIN_ENTITY.get(),
-                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
-        // A formed chamber takes power and chips for its brain; a loose one takes nothing.
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.NETWORK_CHAMBER_ENTITY.get(),
-                (chamber, side) -> new LimitingEnergyHandler(chamber.energy(), Integer.MAX_VALUE, 0));
+        // A formed chamber takes chips for its brain; a loose one takes nothing.
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.NETWORK_CHAMBER_ENTITY.get(),
                 (chamber, side) -> chamber.brain() == null ? null : new WorldlyContainerWrapper(chamber.brain(), side == null ? Direction.UP : side));
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), (foundry, side) -> foundry.automation());
@@ -60,5 +51,18 @@ public final class MachineCapabilities {
         event.registerBlock(Capabilities.Energy.BLOCK, (level, pos, state, entity, side) ->
                         level instanceof ServerLevel serverLevel ? new CableInput(serverLevel, pos.immutable()) : null,
                 JasmBlocks.cables().stream().map(DeferredBlock::get).toArray(Block[]::new));
+    }
+
+    /** These blocks take FE on every side, and nothing can pull it back out. */
+    @SafeVarargs
+    private static void powerIn(RegisterCapabilitiesEvent event, BlockEntityType<? extends MachineBlockEntity>... types) {
+        for (BlockEntityType<? extends MachineBlockEntity> type : types) {
+            powerIn(event, type);
+        }
+    }
+
+    private static <T extends MachineBlockEntity> void powerIn(RegisterCapabilitiesEvent event, BlockEntityType<T> type) {
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, type,
+                (machine, side) -> new LimitingEnergyHandler(machine.energy(), Integer.MAX_VALUE, 0));
     }
 }

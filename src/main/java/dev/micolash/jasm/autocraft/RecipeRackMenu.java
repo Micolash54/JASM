@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -79,7 +80,7 @@ public class RecipeRackMenu extends AbstractContainerMenu implements MachineView
     }
 
     public int energy() {
-        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
     public int capacity() {

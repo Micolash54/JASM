@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -20,7 +21,6 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -42,7 +42,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     private boolean adoptChecked;
     /** What the job makes, for the screen. */
     private final SimpleContainer shown = new SimpleContainer(1);
-    /** The parts and power as last sent to players, packed by {@link #looks()}: all their game needs to draw the block. */
+    /** The parts and power as a player's game last heard them, packed by {@link #looks()}: all it needs to draw the block. */
     private int shownLooks;
 
     private final ContainerData data = new ContainerData() {
@@ -50,18 +50,18 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         public int get(int index) {
             CraftingJob j = job;
             return switch (index) {
-                case CraftingServerMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case CraftingServerMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case CraftingServerMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case CraftingServerMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case CraftingServerMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case CraftingServerMenu.DATA_PARALLEL -> parallel();
-                case CraftingServerMenu.DATA_MEMORY_LOW -> memory() & 0xFFFF;
-                case CraftingServerMenu.DATA_MEMORY_HIGH -> memory() >>> 16;
+                case CraftingServerMenu.DATA_MEMORY_LOW -> ContainerWords.low(memory());
+                case CraftingServerMenu.DATA_MEMORY_HIGH -> ContainerWords.high(memory());
                 case CraftingServerMenu.DATA_PHASE -> j == null ? 0 : j.phase().ordinal() + 1;
                 case CraftingServerMenu.DATA_PROGRESS -> j == null ? 0 : Math.round(j.progress() * 1000);
                 case CraftingServerMenu.DATA_ACTIVE -> j == null ? 0 : j.runningCount();
                 case CraftingServerMenu.DATA_PAUSE -> j == null ? 0 : j.pause().code();
-                case CraftingServerMenu.DATA_AMOUNT_LOW -> j == null ? 0 : (int) Math.min(Integer.MAX_VALUE, j.amount()) & 0xFFFF;
-                case CraftingServerMenu.DATA_AMOUNT_HIGH -> j == null ? 0 : (int) Math.min(Integer.MAX_VALUE, j.amount()) >>> 16;
+                case CraftingServerMenu.DATA_AMOUNT_LOW -> j == null ? 0 : ContainerWords.low((int) Math.min(Integer.MAX_VALUE, j.amount()));
+                case CraftingServerMenu.DATA_AMOUNT_HIGH -> j == null ? 0 : ContainerWords.high((int) Math.min(Integer.MAX_VALUE, j.amount()));
                 default -> 0;
             };
         }
@@ -92,11 +92,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         CraftingJob job = server.job;
         // What the job makes; the screen writes the amount beside it.
         server.shown.setItem(0, job == null || job.target() == null ? ItemStack.EMPTY : job.target().create().copyWithCount(1));
-        int looks = server.looks();
-        if (looks != server.shownLooks) {
-            server.shownLooks = looks;
-            level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
-        }
+        server.syncLooks(server.looks());
     }
 
     /** Three bits per slot, the part's tier plus one (0 when empty), then one bit for power. */

@@ -2,6 +2,7 @@ package dev.micolash.jasm.generator;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
@@ -78,12 +79,12 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
 
     /** Stored FE. Sent in two halves, since each synced value is only 16 bits. */
     public int energy() {
-        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
     /** FE the generator holds when full. */
     public int capacity() {
-        return (data.get(DATA_CAPACITY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_CAPACITY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_CAPACITY_HIGH), data.get(DATA_CAPACITY_LOW));
     }
 
     /** How much of the burning fuel item is left, from 0 to 1. */

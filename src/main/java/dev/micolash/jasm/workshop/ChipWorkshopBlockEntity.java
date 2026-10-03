@@ -4,6 +4,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipOdds;
 import dev.micolash.jasm.core.ChipType;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.core.Training;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -67,8 +68,6 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     private boolean working;
     /** Whether power was coming in on the last tick. */
     private boolean fed;
-    /** {@link #looks()} as last sent to players; -1 until the first tick. */
-    private int sentLooks = -1;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -77,14 +76,14 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             return switch (index) {
                 case ChipWorkshopMenu.DATA_PROGRESS -> progress;
                 case ChipWorkshopMenu.DATA_TICKS -> ticksForMode();
-                case ChipWorkshopMenu.DATA_CRITTER_ENERGY_LOW -> BitlingItem.energy(critter) & 0xFFFF;
-                case ChipWorkshopMenu.DATA_CRITTER_ENERGY_HIGH -> BitlingItem.energy(critter) >>> 16;
-                case ChipWorkshopMenu.DATA_BATTERY_LOW -> battery(critter) & 0xFFFF;
-                case ChipWorkshopMenu.DATA_BATTERY_HIGH -> battery(critter) >>> 16;
-                case ChipWorkshopMenu.DATA_TRAINED_LOW -> BitlingItem.trained(critter) & 0xFFFF;
-                case ChipWorkshopMenu.DATA_TRAINED_HIGH -> BitlingItem.trained(critter) >>> 16;
-                case ChipWorkshopMenu.DATA_REQUIRED_LOW -> required(critter) & 0xFFFF;
-                case ChipWorkshopMenu.DATA_REQUIRED_HIGH -> required(critter) >>> 16;
+                case ChipWorkshopMenu.DATA_CRITTER_ENERGY_LOW -> ContainerWords.low(BitlingItem.energy(critter));
+                case ChipWorkshopMenu.DATA_CRITTER_ENERGY_HIGH -> ContainerWords.high(BitlingItem.energy(critter));
+                case ChipWorkshopMenu.DATA_BATTERY_LOW -> ContainerWords.low(battery(critter));
+                case ChipWorkshopMenu.DATA_BATTERY_HIGH -> ContainerWords.high(battery(critter));
+                case ChipWorkshopMenu.DATA_TRAINED_LOW -> ContainerWords.low(BitlingItem.trained(critter));
+                case ChipWorkshopMenu.DATA_TRAINED_HIGH -> ContainerWords.high(BitlingItem.trained(critter));
+                case ChipWorkshopMenu.DATA_REQUIRED_LOW -> ContainerWords.low(required(critter));
+                case ChipWorkshopMenu.DATA_REQUIRED_HIGH -> ContainerWords.high(required(critter));
                 case ChipWorkshopMenu.DATA_FLAGS -> (batch ? ChipWorkshopMenu.FLAG_BATCH : 0) | (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
                         | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
                         | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0);
@@ -116,8 +115,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     public static void serverTick(Level level, BlockPos pos, BlockState state, ChipWorkshopBlockEntity workshop) {
         workshop.tick((ServerLevel) level);
         // Compared with what players were last told, since a critter can also be taken out between two ticks.
-        if (workshop.looks() != workshop.sentLooks) {
-            workshop.sentLooks = workshop.looks();
+        if (workshop.looksChanged(workshop.looks())) {
             workshop.lookChanged();
         }
     }

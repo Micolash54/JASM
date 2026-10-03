@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -188,6 +189,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         this.access = access;
         this.terminal = terminal;
         this.player = inventory.player;
+        if (terminal != null) {
+            terminal.menuOpened();
+        }
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_IN, CARD_X, CARD_IN_Y, EMPTY_CARD));
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_OUT, CARD_X, CARD_OUT_Y, null));
         // The pairing slots sit in the Deck Link window, which places them.
@@ -344,7 +348,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     }
 
     public int energy() {
-        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
     public int capacity() {
@@ -363,6 +367,14 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     /** Whether the Deck in the pairing slot is paired with this terminal. */
     public boolean paired() {
         return data.get(DATA_PAIRED) != 0;
+    }
+
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (terminal != null) {
+            terminal.menuClosed();
+        }
     }
 
     @Override

@@ -5,6 +5,7 @@ import dev.micolash.jasm.core.BrainCube;
 import dev.micolash.jasm.core.BrainLevels;
 import dev.micolash.jasm.core.BrainProgress;
 import dev.micolash.jasm.core.BrainSize;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
@@ -79,8 +80,8 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
                 }
                 case NetworkBrainMenu.DATA_SIZE -> size.ordinal();
                 case NetworkBrainMenu.DATA_STATUS -> status.ordinal();
-                case NetworkBrainMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case NetworkBrainMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case NetworkBrainMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case NetworkBrainMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 default -> 0;
             };
         }

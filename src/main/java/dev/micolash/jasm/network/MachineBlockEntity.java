@@ -8,6 +8,7 @@ import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -42,6 +43,9 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
             }
         };
     }
+
+    /** What players were last told the block looks like, packed by the block; -1 until the first tick. */
+    private int sentLooks = -1;
 
     /** FE this block uses each tick. */
     public abstract int drainPerTick();
@@ -82,6 +86,23 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
             energy.set(amount - drain);
         }
         return running;
+    }
+
+    /** Whether {@code looks} differs from what players were last told; it counts as told from here on. */
+    protected final boolean looksChanged(int looks) {
+        if (looks == sentLooks) {
+            return false;
+        }
+        sentLooks = looks;
+        return true;
+    }
+
+    /** Tells players the block looks different, if {@code looks} isn't what they last heard. */
+    protected final void syncLooks(int looks) {
+        if (looksChanged(looks) && level != null) {
+            BlockState state = getBlockState();
+            level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
+        }
     }
 
     /** Whether the block is working: the last tick was paid for. */

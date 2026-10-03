@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -176,7 +177,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     }
 
     public int energy() {
-        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
     public int capacity() {
@@ -192,7 +193,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     }
 
     public int memory() {
-        return (data.get(DATA_MEMORY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_MEMORY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_MEMORY_HIGH), data.get(DATA_MEMORY_LOW));
     }
 
     /** Null while idle. */
@@ -203,7 +204,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
 
     /** How many the job makes. */
     public int amount() {
-        return (data.get(DATA_AMOUNT_HIGH) & 0xFFFF) << 16 | (data.get(DATA_AMOUNT_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_AMOUNT_HIGH), data.get(DATA_AMOUNT_LOW));
     }
 
     public float progress() {

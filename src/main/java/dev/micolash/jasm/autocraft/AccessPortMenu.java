@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.deck.DeckItem;
@@ -229,7 +230,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     }
 
     public int energy() {
-        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
     public int capacity() {

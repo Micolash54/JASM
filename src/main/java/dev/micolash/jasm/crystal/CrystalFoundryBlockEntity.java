@@ -1,6 +1,7 @@
 package dev.micolash.jasm.crystal;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
@@ -55,8 +56,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
                 case CrystalFoundryMenu.DATA_TICKS -> JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getAsInt();
                 case CrystalFoundryMenu.DATA_MADE -> made;
                 case CrystalFoundryMenu.DATA_PER_SEED -> JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt();
-                case CrystalFoundryMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case CrystalFoundryMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case CrystalFoundryMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case CrystalFoundryMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case CrystalFoundryMenu.DATA_FLAGS -> (growing ? CrystalFoundryMenu.FLAG_GROWING : 0) | (running() ? CrystalFoundryMenu.FLAG_POWERED : 0)
                         | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0);
                 default -> 0;

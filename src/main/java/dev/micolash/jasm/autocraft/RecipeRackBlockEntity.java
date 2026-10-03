@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
@@ -43,8 +44,8 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         @Override
         public int get(int index) {
             return switch (index) {
-                case RecipeRackMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case RecipeRackMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case RecipeRackMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case RecipeRackMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case RecipeRackMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case RecipeRackMenu.DATA_MISSING -> missing;
                 default -> 0;

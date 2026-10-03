@@ -1,6 +1,7 @@
 package dev.micolash.jasm.station;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -62,10 +63,10 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
                 case BitlingStationMenu.DATA_KNOCKED_OUT -> (knockedOut + 19) / 20;
                 case BitlingStationMenu.DATA_RADIUS -> radius();
                 case BitlingStationMenu.DATA_RADIUS_MAX -> maxRadius();
-                case BitlingStationMenu.DATA_ENERGY_LOW -> BitlingItem.energy(critter) & 0xFFFF;
-                case BitlingStationMenu.DATA_ENERGY_HIGH -> BitlingItem.energy(critter) >>> 16;
-                case BitlingStationMenu.DATA_BATTERY_LOW -> battery(critter) & 0xFFFF;
-                case BitlingStationMenu.DATA_BATTERY_HIGH -> battery(critter) >>> 16;
+                case BitlingStationMenu.DATA_ENERGY_LOW -> ContainerWords.low(BitlingItem.energy(critter));
+                case BitlingStationMenu.DATA_ENERGY_HIGH -> ContainerWords.high(BitlingItem.energy(critter));
+                case BitlingStationMenu.DATA_BATTERY_LOW -> ContainerWords.low(battery(critter));
+                case BitlingStationMenu.DATA_BATTERY_HIGH -> ContainerWords.high(battery(critter));
                 default -> 0;
             };
         }

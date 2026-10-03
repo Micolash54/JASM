@@ -2,6 +2,7 @@ package dev.micolash.jasm.generator;
 
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -67,12 +68,12 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
         @Override
         public int get(int index) {
             return switch (index) {
-                case CombustionGeneratorMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case CombustionGeneratorMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case CombustionGeneratorMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case CombustionGeneratorMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case CombustionGeneratorMenu.DATA_FLAME -> burnTotal <= 0 ? 0 : (int) Math.ceil(burnLeft * 1000.0 / burnTotal);
                 case CombustionGeneratorMenu.DATA_OUTPUT -> lastOutput;
-                case CombustionGeneratorMenu.DATA_CAPACITY_LOW -> tier.capacity() & 0xFFFF;
-                case CombustionGeneratorMenu.DATA_CAPACITY_HIGH -> tier.capacity() >>> 16;
+                case CombustionGeneratorMenu.DATA_CAPACITY_LOW -> ContainerWords.low(tier.capacity());
+                case CombustionGeneratorMenu.DATA_CAPACITY_HIGH -> ContainerWords.high(tier.capacity());
                 case CombustionGeneratorMenu.DATA_POTENTIAL -> tier.fePerTick();
                 default -> 0;
             };

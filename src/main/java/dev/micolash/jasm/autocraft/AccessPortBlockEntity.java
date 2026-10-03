@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.CableNetwork;
@@ -101,8 +102,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         @Override
         public int get(int index) {
             return switch (index) {
-                case AccessPortMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case AccessPortMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case AccessPortMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case AccessPortMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case AccessPortMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case AccessPortMenu.DATA_LOCKED -> locks.size();
                 case AccessPortMenu.DATA_DEFAULT_DECK -> defaultDeck() ? 1 : 0;

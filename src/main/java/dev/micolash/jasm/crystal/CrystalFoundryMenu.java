@@ -1,5 +1,6 @@
 package dev.micolash.jasm.crystal;
 
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.core.BlockPos;
@@ -92,7 +93,7 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     }
 
     public int energy() {
-        return (data.get(DATA_ENERGY_HIGH) & 0xFFFF) << 16 | (data.get(DATA_ENERGY_LOW) & 0xFFFF);
+        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
     public boolean growing() {

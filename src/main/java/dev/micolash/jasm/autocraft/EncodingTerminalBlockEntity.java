@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
@@ -34,7 +35,6 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -102,8 +102,10 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     private boolean previewReady;
     /** Whether this block has told the list of terminals where it stands since it was placed or loaded. */
     private boolean placed;
-    /** The card piles and screen as last sent to players, packed by {@link #looks()}. */
+    /** The card piles and screen as a player's game last heard them, packed by {@link #looks()}. */
     private int shownLooks;
+    /** Screens open on this terminal right now, for the lit screen out front. Not saved. */
+    private int openMenus;
     private @Nullable UUID terminalId;
     private @Nullable UUID pendingPairer;
     private TrustList trust = TrustList.EMPTY;
@@ -112,8 +114,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         @Override
         public int get(int index) {
             return switch (index) {
-                case EncodingTerminalMenu.DATA_ENERGY_LOW -> energy.getAmountAsInt() & 0xFFFF;
-                case EncodingTerminalMenu.DATA_ENERGY_HIGH -> energy.getAmountAsInt() >>> 16;
+                case EncodingTerminalMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
+                case EncodingTerminalMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case EncodingTerminalMenu.DATA_STATE -> previewState;
                 case EncodingTerminalMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case EncodingTerminalMenu.DATA_PAIRED -> deckPaired() ? 1 : 0;
@@ -148,19 +150,23 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (terminal.payForTick()) {
             terminal.processPairing();
         }
-        int looks = terminal.looks();
-        if (looks != terminal.shownLooks) {
-            terminal.shownLooks = looks;
-            level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
-        }
+        terminal.syncLooks(terminal.looks());
     }
 
     /** Cards in the piles out front (one per four blank cards, sixteen at most), then one bit for "someone has it open". */
     private int looks() {
         int cards = Math.min(PILE_CARDS, (items.get(CARD_IN).getCount() + 3) / 4);
-        boolean inUse = level != null && level.players().stream()
-                .anyMatch(player -> player.containerMenu instanceof EncodingTerminalMenu menu && menu.terminal() == this);
-        return inUse ? cards | 1 << 5 : cards;
+        return openMenus > 0 ? cards | 1 << 5 : cards;
+    }
+
+    /** A player opened this terminal's screen. */
+    void menuOpened() {
+        openMenus++;
+    }
+
+    /** A player closed this terminal's screen. */
+    void menuClosed() {
+        openMenus = Math.max(0, openMenus - 1);
     }
 
     /** How many cards the piles out front show, as a player's game knows it. */

@@ -1,5 +1,6 @@
 package dev.micolash.jasm.workshop;
 
+import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.core.BlockPos;
@@ -109,7 +110,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     }
 
     private int wide(int low, int high) {
-        return (data.get(high) & 0xFFFF) << 16 | (data.get(low) & 0xFFFF);
+        return ContainerWords.join(data.get(high), data.get(low));
     }
 
     public float progress() {
