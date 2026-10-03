@@ -1,5 +1,6 @@
 package dev.micolash.jasm.brain;
 
+import dev.micolash.jasm.core.BrainFloor;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
@@ -16,8 +17,8 @@ import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A Network Chamber. Part of a brain's cube, it passes power, chips and clicks on to the brain. On its own it holds
- * nothing and does nothing, but it still carries its network like any machine. It never counts toward the limit.
+ * A Network Chamber. Part of a brain floor, it passes power and clicks on to the brain. On its own it holds nothing and
+ * does nothing, but it still carries its network like any machine. It never counts toward the limit.
  */
 public class NetworkChamberBlockEntity extends MachineBlockEntity {
     private @Nullable BlockPos brainPos;
@@ -26,13 +27,13 @@ public class NetworkChamberBlockEntity extends MachineBlockEntity {
         super(JasmBlocks.NETWORK_CHAMBER_ENTITY.get(), pos, state, 0);
     }
 
-    /** The brain whose cube this chamber is part of, while it is loaded. */
+    /** The brain whose floor this chamber is part of, while it is loaded. */
     public @Nullable NetworkBrainBlockEntity brain() {
         if (brainPos == null || level == null || !level.isLoaded(brainPos)) {
             return null;
         }
-        if (level.getBlockEntity(brainPos) instanceof NetworkBrainBlockEntity brain && brain.box() != null
-                && brain.box().contains(worldPosition.getX(), worldPosition.getY(), worldPosition.getZ())) {
+        if (level.getBlockEntity(brainPos) instanceof NetworkBrainBlockEntity brain && brain.floor() && BrainFloor.contains(brainPos.getX(),
+                brainPos.getY(), brainPos.getZ(), worldPosition.getX(), worldPosition.getY(), worldPosition.getZ())) {
             return brain;
         }
         return null;
@@ -42,7 +43,7 @@ public class NetworkChamberBlockEntity extends MachineBlockEntity {
         return brainPos;
     }
 
-    /** Joins a brain's cube, or leaves it with null. */
+    /** Joins a brain's floor, or leaves it with null. */
     public void claim(@Nullable BlockPos brain) {
         brainPos = brain == null ? null : brain.immutable();
         if (level != null) {
@@ -54,7 +55,7 @@ public class NetworkChamberBlockEntity extends MachineBlockEntity {
         setChanged();
     }
 
-    /** A formed chamber shares its brain's power, so a cable on any side of the cube charges the brain. */
+    /** A formed chamber shares its brain's power, so a cable on any side of the floor charges the brain. */
     @Override
     public SimpleEnergyHandler energy() {
         NetworkBrainBlockEntity brain = brain();

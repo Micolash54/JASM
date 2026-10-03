@@ -5,7 +5,6 @@ import dev.micolash.jasm.brain.NetworkBrainBlock;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
 import dev.micolash.jasm.core.BrainBalance;
-import dev.micolash.jasm.core.BrainLevels;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -201,7 +200,7 @@ public final class CableNetwork {
         if (state == null || now != stateTick) {
             stateTick = now;
             NetworkBrainBlockEntity lead = leader();
-            int limit = BrainLevels.machineLimit(lead == null ? 0 : lead.shownLevel(), BrainBalance.fromConfig());
+            int limit = BrainBalance.fromConfig().limit(lead != null, lead == null ? 0 : lead.floors());
             int count = machineCount();
             state = new NetworkLimit.State(count, limit, lead == null ? null : lead.getBlockPos(), count > limit);
         }
@@ -302,7 +301,7 @@ public final class CableNetwork {
                 }
                 BlockPos next = entry.getKey().relative(side);
                 SimpleEnergyHandler target = machines.contains(next) ? energyAt(next) : null;
-                // Two chambers of one cube both hand over to their brain: count it once.
+                // Two chambers of one floor both hand over to their brain: count it once.
                 if (target != null && !sources.contains(target) && target.getAmountAsInt() < target.getCapacityAsLong()
                         && !targets.contains(target))
                     targets.add(target);

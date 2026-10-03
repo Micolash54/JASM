@@ -65,39 +65,31 @@ Put any Bitling, Nibbling or Byteling in a **Bitling Station** and a little livi
 A network can hold **4 machines** on its own. Machines joined by Data Cables form a network, and so do JASM machines that simply touch each other, with no cable at all. Add a fifth and the whole network stops: every machine on it works as if it had no power until you remove one or add a **Network Brain**. The machines' screens, Jade and a linked Deck's Network tab show when a network is full.
 
 - **What counts**: Encoding Terminals, Recipe Racks, Crafting Servers, Access Ports and every other port, Archives, Chip Workshops, Crystal Foundries, Crystal Resonators and Bitling Stations, whether they are joined by cable or by touching each other. A row of five Archives side by side is a network of five. Cables, generators, Creative Batteries, brains and chambers don't count.
-- **Learning**: the brain learns all the time while it has power, and each level lets the network hold more machines. Put Logic, Memory or Link Chips in its slot to learn faster: it eats one every half second, and each one fills 2% of the current level's bar. Advanced chips fill 10%. Right-click the brain with chips to feed it one, sneak-right-click to feed the whole stack, or let a hopper or pipe feed it from any side. A brain that has reached its top level takes no more chips.
-- **Power**: if the brain runs out of power, the network falls back to 4 machines.
-- **Mined**, a brain keeps its level and progress.
+- **Power**: a brain uses 8 FE every tick. If it runs out of power, the network falls back to 4 machines.
+- **Mined**, a brain keeps its charge.
 
-| Brain level | Machines |
+### Brain floors and towers
+
+A lone brain lets the network hold **12 machines**. Put 8 **Network Chambers** round it, on the same layer, and it becomes a **brain floor**: a little glass office where 8 Bitlings work round a glowing core. Each floor adds 12 machines.
+
+Stack floors straight on top of each other into a **tower**. Every floor needs its own brain in the middle and all 8 of its chambers; a floor with a gap doesn't count, and splits the tower in two. A tower can be 8 floors tall; floors stacked higher make a tower of their own.
+
+| Brain | Machines |
 | --- | --- |
 | No brain | 4 |
-| 1 | 8 |
-| 2 | 12 |
-| 3 | 16 |
-| 4 | 24 |
-| 5 | 32 |
-| 6 | 48 |
-| 7 | 64 |
-| 8 | 96 |
-| 9 | 128 |
-| 10 | 256 |
+| Lone brain | 12 |
+| 1 floor | 24 |
+| 2 floors | 36 |
+| 3 floors | 48 |
+| Each further floor | +12 |
 
-### Network Chambers
+- Cables can join any block of a tower, and a cable on any block powers the whole tower. Each floor uses 8 FE every tick.
+- Right-click any chamber or brain of a tower to open its screen.
+- Without power, the Bitlings nap.
 
-A brain on its own stops at level 3. Build **Network Chambers** around it into a cube to go further and learn faster. The brain can sit anywhere in the cube, and cables can join any face of it. Right-click any chamber of the cube to open the brain's screen, or to feed it chips.
+### Several brains on one network
 
-| Shape | Chambers | Top level | Learning speed | Power |
-| --- | --- | --- | --- | --- |
-| Single brain | none | 3 | normal | 8 FE/t |
-| 2×2×2 cube | 7 | 6 | twice as fast | 16 FE/t |
-| 3×3×3 cube | 26 | 10 | three times as fast | 32 FE/t |
-
-A brain moved into a smaller cube keeps its level, but works at the smaller cube's top level until it has its big cube back.
-
-### Two brains on one network
-
-Brains don't add up. When a network holds more than one, only the best working brain leads: the highest level, then the most progress, then the one placed first. The others rest and don't learn until they lead again.
+Brains don't add up. When a network holds more than one brain or tower, only the best working one leads: the one with the most floors, then the one placed first. The others rest until they lead again.
 
 ## How the tiers use the chips
 

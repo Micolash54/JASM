@@ -162,7 +162,8 @@ public final class JasmBlocks {
 
     public static final DeferredBlock<NetworkBrainBlock> NETWORK_BRAIN = BLOCKS.registerBlock("network_brain",
             NetworkBrainBlock::new,
-            p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
+            p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion()
+                    .lightLevel(state -> 15));
 
     public static final Supplier<BlockEntityType<NetworkBrainBlockEntity>> NETWORK_BRAIN_ENTITY = BLOCK_ENTITIES.register(
             "network_brain", () -> new BlockEntityType<>(NetworkBrainBlockEntity::new, NETWORK_BRAIN.get()));

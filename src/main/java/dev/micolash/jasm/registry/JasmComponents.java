@@ -5,7 +5,6 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
-import dev.micolash.jasm.core.BrainProgress;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
@@ -94,10 +93,6 @@ public final class JasmComponents {
     /** Chips a critter has made towards its next stage. */
     public static final Supplier<DataComponentType<Integer>> TRAINING = COMPONENTS.registerComponentType(
             "training", b -> b.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.VAR_INT));
-
-    /** A Network Brain's level and points, kept when it is mined. */
-    public static final Supplier<DataComponentType<BrainProgress>> BRAIN = COMPONENTS.registerComponentType(
-            "brain", b -> b.persistent(BrainProgress.CODEC).networkSynchronized(BrainProgress.STREAM_CODEC));
 
     public static final Supplier<DataComponentType<TransferFilters>> TRANSFER_FILTERS = COMPONENTS.registerComponentType(
             "transfer_filters", b -> b.persistent(TransferFilters.CODEC).networkSynchronized(TransferFilters.STREAM_CODEC));

@@ -1,6 +1,5 @@
 package dev.micolash.jasm.config;
 
-import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /** Server config. Only values that can never strand or truncate contents live here. */
@@ -29,7 +28,6 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue SEND_MAX_SECONDS = BUILDER
             .comment("Deck to Deck: the longest any trip takes")
             .defineInRange("sendMaxSeconds", 180, 1, 86_400);
-
 
     static {
         BUILDER.pop().push("archive");
@@ -215,32 +213,18 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue BRAIN_LIMIT_WITHOUT_BRAIN = BUILDER
             .comment("Machines a network may hold without a working Network Brain")
             .defineInRange("limitWithoutBrain", 4, 0, 4_096);
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_MACHINE_LIMITS = BUILDER
-            .comment("Machines a network may hold at brain levels 1 to 10 (10 numbers)")
-            .defineList("machineLimits", List.of(8, 12, 16, 24, 32, 48, 64, 96, 128, 256), () -> 0, o -> o instanceof Integer i && i >= 0);
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEVEL_POINTS = BUILDER
-            .comment(
-                    "Points a brain needs to go from level 1 to 2, 2 to 3, ... 9 to 10 (9 numbers). A brain learns its size's speed in points every powered tick")
-            .defineList("levelPoints", List.of(72_000, 108_000, 144_000, 216_000, 288_000, 432_000, 576_000, 864_000, 1_152_000),
-                    () -> 1, o -> o instanceof Integer i && i > 0);
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEVEL_CAPS = BUILDER
-            .comment("Top level of a single brain, a 2x2x2 brain and a 3x3x3 brain (3 numbers)")
-            .defineList("levelCaps", List.of(3, 6, 10), () -> 1, o -> o instanceof Integer i && i >= 1 && i <= 10);
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEARN_SPEED = BUILDER
-            .comment("Points learned each powered tick by a single, 2x2x2 and 3x3x3 brain (3 numbers)")
-            .defineList("learnSpeed", List.of(1, 2, 3), () -> 1, o -> o instanceof Integer i && i >= 0);
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_DRAIN = BUILDER
-            .comment("FE used each tick by a single, 2x2x2 and 3x3x3 brain (3 numbers)")
-            .defineList("drainPerTick", List.of(8, 16, 32), () -> 0, o -> o instanceof Integer i && i >= 0);
-    public static final ModConfigSpec.IntValue BRAIN_CHIP_BONUS = BUILDER
-            .comment("Percent of the current level's bar a Logic, Memory or Link Chip gives")
-            .defineInRange("chipBonus", 2, 0, 100);
-    public static final ModConfigSpec.IntValue BRAIN_ADVANCED_CHIP_BONUS = BUILDER
-            .comment("Percent of the current level's bar an Advanced chip gives")
-            .defineInRange("advancedChipBonus", 10, 0, 100);
-    public static final ModConfigSpec.IntValue BRAIN_EAT_EVERY = BUILDER
-            .comment("Ticks between chips a brain eats from its slot")
-            .defineInRange("eatEvery", 10, 1, 1_200);
+    public static final ModConfigSpec.IntValue BRAIN_MACHINE_LIMIT = BUILDER
+            .comment("Machines a network may hold with a lone Network Brain")
+            .defineInRange("machineLimit", 12, 0, 4_096);
+    public static final ModConfigSpec.IntValue BRAIN_FLOOR_BONUS = BUILDER
+            .comment("Machines each brain floor (a brain with 8 Network Chambers round it) adds")
+            .defineInRange("floorBonus", 12, 0, 4_096);
+    public static final ModConfigSpec.IntValue BRAIN_MAX_FLOORS = BUILDER
+            .comment("Floors one brain tower may have. Floors stacked past this make a tower of their own")
+            .defineInRange("maxFloors", 8, 1, 64);
+    public static final ModConfigSpec.IntValue BRAIN_DRAIN_PER_FLOOR = BUILDER
+            .comment("FE each Network Brain uses every tick, so each floor of a tower uses this much")
+            .defineInRange("drainPerFloor", 8, 0, 100_000);
 
     static {
         BUILDER.pop().push("wild_bitling");

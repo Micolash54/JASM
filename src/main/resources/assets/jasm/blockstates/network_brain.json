@@ -1,42 +1,30 @@
 {
   "variants": {
-    "facing=north,size=single": {
+    "facing=north,floor=false": {
       "model": "jasm:block/network_brain"
     },
-    "facing=north,size=cube_2": {
+    "facing=north,floor=true": {
       "model": "jasm:block/empty"
     },
-    "facing=north,size=cube_3": {
-      "model": "jasm:block/empty"
-    },
-    "facing=east,size=single": {
+    "facing=east,floor=false": {
       "model": "jasm:block/network_brain",
       "y": 90
     },
-    "facing=east,size=cube_2": {
+    "facing=east,floor=true": {
       "model": "jasm:block/empty"
     },
-    "facing=east,size=cube_3": {
-      "model": "jasm:block/empty"
-    },
-    "facing=south,size=single": {
+    "facing=south,floor=false": {
       "model": "jasm:block/network_brain",
       "y": 180
     },
-    "facing=south,size=cube_2": {
+    "facing=south,floor=true": {
       "model": "jasm:block/empty"
     },
-    "facing=south,size=cube_3": {
-      "model": "jasm:block/empty"
-    },
-    "facing=west,size=single": {
+    "facing=west,floor=false": {
       "model": "jasm:block/network_brain",
       "y": 270
     },
-    "facing=west,size=cube_2": {
-      "model": "jasm:block/empty"
-    },
-    "facing=west,size=cube_3": {
+    "facing=west,floor=true": {
       "model": "jasm:block/empty"
     }
   }

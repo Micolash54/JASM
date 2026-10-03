@@ -111,7 +111,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "bitling", 3, JasmItems.bitlings());
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
         info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
-        info(registration, "network_brain", 3, List.of(JasmItems.NETWORK_BRAIN.get()));
+        info(registration, "network_brain", 2, List.of(JasmItems.NETWORK_BRAIN.get()));
         info(registration, "network_chamber", 1, List.of(JasmItems.NETWORK_CHAMBER.get()));
         info(registration, "basic_bitling", 2, List.of(JasmItems.bitling(BitlingKind.BASIC, BitlingStage.BITLING),
                 JasmItems.WILD_BITLING_SPAWN_EGG.get()));

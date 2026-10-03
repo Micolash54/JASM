@@ -153,7 +153,7 @@ public final class NetworkViewService {
         NetworkLimit.State limit = network.limitState();
         List<NetworkBrainBlockEntity> brains = network.machines(NetworkBrainBlockEntity.class);
         boolean brainUnpowered = !brains.isEmpty() && brains.stream().noneMatch(NetworkBrainBlockEntity::working);
-        NetworkViewPayloads.Header header = new NetworkViewPayloads.Header(0, leader == null ? -1 : leader.shownLevel(),
+        NetworkViewPayloads.Header header = new NetworkViewPayloads.Header(0, leader == null ? -1 : leader.floors(),
                 limit.count(), limit.limit(), limit.stopped(), brainUnpowered, partial);
         return new NetworkViewPayloads.View(containerId, header, nodes);
     }

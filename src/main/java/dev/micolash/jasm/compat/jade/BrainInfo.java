@@ -3,10 +3,9 @@ package dev.micolash.jasm.compat.jade;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.brain.BrainStatus;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
+import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
 import dev.micolash.jasm.core.BrainBalance;
-import dev.micolash.jasm.core.BrainLevels;
-import dev.micolash.jasm.core.BrainSize;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.NetworkLimit;
 import dev.micolash.jasm.network.Networks;
@@ -24,21 +23,19 @@ import snownee.jade.api.ITooltip;
 import snownee.jade.api.StreamServerDataProvider;
 import snownee.jade.api.config.IPluginConfig;
 
-/** A Network Brain, or a chamber of its cube: its level, the network's machines, its size and what it is doing. */
+/** A Network Brain, or a chamber of its floor: the network's machines, its tower's floors and what it is doing. */
 public class BrainInfo implements StreamServerDataProvider<BlockAccessor, BrainInfo.Data> {
     public static final BrainInfo INSTANCE = new BrainInfo();
 
-    /** {@code alone}: a chamber that isn't part of a brain; the other fields are then unused. */
-    public record Data(boolean alone, int level, int percent, int count, int limit, int size, int status) {
-        static final Data ALONE = new Data(true, 0, 0, 0, 0, 0, 0);
+    /** {@code alone}: a chamber that isn't part of a floor; the other fields are then unused. */
+    public record Data(boolean alone, int floors, int count, int limit, int status) {
+        static final Data ALONE = new Data(true, 0, 0, 0, 0);
 
         static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.BOOL, Data::alone,
-                ByteBufCodecs.VAR_INT, Data::level,
-                ByteBufCodecs.VAR_INT, Data::percent,
+                ByteBufCodecs.VAR_INT, Data::floors,
                 ByteBufCodecs.VAR_INT, Data::count,
                 ByteBufCodecs.VAR_INT, Data::limit,
-                ByteBufCodecs.VAR_INT, Data::size,
                 ByteBufCodecs.VAR_INT, Data::status,
                 Data::new);
     }
@@ -56,17 +53,14 @@ public class BrainInfo implements StreamServerDataProvider<BlockAccessor, BrainI
         } else {
             return null;
         }
-        BrainBalance balance = BrainBalance.fromConfig();
-        int level = BrainLevels.shownLevel(brain.progress(), brain.size(), balance);
         int count = 0;
-        int limit = BrainLevels.machineLimit(level, balance);
+        int limit = BrainBalance.fromConfig().limit(true, brain.floors());
         if (brain.getLevel() instanceof ServerLevel serverLevel && Networks.at(serverLevel, brain.getBlockPos()) instanceof CableNetwork network) {
             NetworkLimit.State state = network.limitState();
             count = state.count();
             limit = state.limit();
         }
-        return new Data(false, level, BrainLevels.percent(brain.progress(), brain.size(), balance), count, limit,
-                brain.size().ordinal(), brain.status().ordinal());
+        return new Data(false, brain.floors(), count, limit, brain.status().ordinal());
     }
 
     @Override
@@ -90,12 +84,9 @@ public class BrainInfo implements StreamServerDataProvider<BlockAccessor, BrainI
                     tooltip.add(Component.translatable("jade.jasm.chamber.alone"));
                     return;
                 }
-                BrainSize size = BrainSize.values()[Math.clamp(data.size(), 0, BrainSize.values().length - 1)];
                 BrainStatus status = BrainStatus.values()[Math.clamp(data.status(), 0, BrainStatus.values().length - 1)];
-                tooltip.add(Component.translatable("tooltip.jasm.network_brain.level", data.level(), data.percent()));
                 tooltip.add(Component.translatable("screen.jasm.brain.machines", data.count(), data.limit()));
-                tooltip.add(Component.translatable("jade.jasm.brain.size",
-                        Component.translatable("screen.jasm.brain.size." + size.getSerializedName())));
+                tooltip.add(NetworkBrainMenu.floorsText(data.floors()));
                 tooltip.add(Component.translatable("screen.jasm.brain.status." + status.name().toLowerCase(Locale.ROOT)));
             });
         }

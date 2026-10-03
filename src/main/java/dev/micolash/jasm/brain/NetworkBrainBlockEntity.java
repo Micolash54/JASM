@@ -1,30 +1,15 @@
 package dev.micolash.jasm.brain;
 
 import dev.micolash.jasm.core.BrainBalance;
-import dev.micolash.jasm.core.BrainCube;
-import dev.micolash.jasm.core.BrainLevels;
-import dev.micolash.jasm.core.BrainProgress;
-import dev.micolash.jasm.core.BrainSize;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
-import dev.micolash.jasm.registry.JasmComponents;
-import dev.micolash.jasm.registry.JasmTags;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.component.DataComponentGetter;
-import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.ContainerHelper;
-import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
@@ -38,48 +23,47 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Network Brain. While it has power and leads its network it learns a little every tick, up to the top level its
- * size allows, and eats the typed chips in its slot to learn faster. When a network holds several brains only the best
- * working one leads; the others rest. Mined, it keeps its level and points.
+ * The Network Brain. While it has power it lets its network hold more machines. With 8 chambers round it, it is a floor;
+ * floors stacked straight on top of each other make a tower, and each floor raises the limit. The lowest floor speaks for
+ * its tower; the brains above it show what it shows. When a network holds several brains or towers, only the best
+ * working one leads; the others rest.
  */
-public class NetworkBrainBlockEntity extends MachineBlockEntity implements WorldlyContainer {
-    public static final int SLOT = 0;
-    public static final int SLOTS = 1;
+public class NetworkBrainBlockEntity extends MachineBlockEntity {
     public static final int CAPACITY = 100_000;
 
-    private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
-    private BrainProgress progress = BrainProgress.START;
-    private BrainSize size = BrainSize.SINGLE;
-    /** The cube of chambers it sits in, in world coordinates; null on its own. */
-    private BrainCube.@Nullable Box box;
-    /** Whether it has looked for its cube since it was loaded or placed. */
+    /** The middle of a complete floor. */
+    private boolean floor;
+    /** Whether it has looked for its floor and tower since it was loaded or placed. */
     private boolean shapeChecked;
     /** Being removed: it lets its chambers go and takes none back. */
     private boolean leaving;
+    /**
+     * Its tower's lowest brain, itself when it is the lowest or not a floor. Saved, so the network's limit is right before
+     * the first tick after loading; that tick works it out again.
+     */
+    private BlockPos towerBase;
+    /** Floors in its tower; 0 for a brain that isn't a floor. */
+    private int towerFloors;
+    /** The config's stamp when the tower was worked out, so a new height limit restacks it. */
+    private int towerStamp = -1;
+    private @Nullable NetworkBrainBlockEntity base;
     private BrainStatus status = BrainStatus.NO_POWER;
     /** Game time of its first tick; the older brain wins a tie. */
     private long placedAt = -1;
-    /** Ticks since it last ate a chip. */
-    private int sinceEat;
 
     private final ContainerData data = new ContainerData() {
         @Override
         public int get(int index) {
-            BrainBalance balance = BrainBalance.fromConfig();
             return switch (index) {
-                case NetworkBrainMenu.DATA_LEVEL -> BrainLevels.shownLevel(progress, size, balance);
-                case NetworkBrainMenu.DATA_PERCENT -> BrainLevels.percent(progress, size, balance);
+                case NetworkBrainMenu.DATA_FLOORS -> towerFloors;
                 case NetworkBrainMenu.DATA_COUNT -> {
                     CableNetwork network = network();
                     yield network == null ? 0 : network.limitState().count();
                 }
                 case NetworkBrainMenu.DATA_LIMIT -> {
                     CableNetwork network = network();
-                    yield network == null
-                            ? BrainLevels.machineLimit(BrainLevels.shownLevel(progress, size, balance), balance)
-                            : network.limitState().limit();
+                    yield network == null ? BrainBalance.fromConfig().limit(true, towerFloors) : network.limitState().limit();
                 }
-                case NetworkBrainMenu.DATA_SIZE -> size.ordinal();
                 case NetworkBrainMenu.DATA_STATUS -> status.ordinal();
                 case NetworkBrainMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
                 case NetworkBrainMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
@@ -99,18 +83,21 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
 
     public NetworkBrainBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.NETWORK_BRAIN_ENTITY.get(), pos, state, CAPACITY);
+        towerBase = pos;
     }
 
     // --- the tick ---
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, NetworkBrainBlockEntity brain) {
-        brain.tick((ServerLevel) level, state);
+        brain.tick((ServerLevel) level);
     }
 
-    private void tick(ServerLevel level, BlockState state) {
+    private void tick(ServerLevel level) {
         if (!shapeChecked) {
             shapeChecked = true;
             BrainShapes.reshape(level, this);
+        } else if (towerStamp != BrainBalance.stamp()) {
+            BrainShapes.restack(level, worldPosition);
         }
         if (placedAt < 0) {
             placedAt = level.getGameTime();
@@ -119,39 +106,22 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
         // Asking for the network keeps it alive, so it passes power on to this block each tick.
         boolean powered = payForTick();
         CableNetwork network = Networks.at(level, worldPosition);
-        boolean leading = network == null || network.leader() == this;
-        BrainBalance balance = BrainBalance.fromConfig();
+        NetworkBrainBlockEntity lowest = base();
         BrainStatus next;
-        if (!powered) {
+        if (lowest != this) {
+            next = lowest == null ? BrainStatus.NO_POWER : lowest.status;
+        } else if (!powered) {
             next = BrainStatus.NO_POWER;
-        } else if (!leading) {
+        } else if (network != null && network.leader() != this) {
             next = BrainStatus.RESTING;
-        } else if (BrainLevels.shownLevel(progress, size, balance) == BrainBalance.MAX_LEVEL) {
-            next = BrainStatus.FULLY_GROWN;
-        } else if (BrainLevels.capped(progress, size, balance)) {
-            next = BrainStatus.NEEDS_BIGGER;
         } else {
-            next = BrainStatus.LEARNING;
+            next = BrainStatus.WORKING;
         }
         if (next != status) {
             status = next;
             setChanged();
         }
-        if (status == BrainStatus.LEARNING) {
-            setProgress(BrainLevels.add(progress, BrainLevels.passive(size, balance), size, balance));
-            if (++sinceEat >= balance.eatEvery()) {
-                sinceEat = 0;
-                ItemStack chip = items.get(SLOT);
-                // The passive points may have just reached the cap; a capped brain never eats.
-                if (chip.is(JasmTags.TYPED_CHIPS) && !BrainLevels.capped(progress, size, balance)) {
-                    boolean advanced = chip.is(JasmTags.ADVANCED_CHIPS);
-                    chip.shrink(1);
-                    setProgress(BrainLevels.add(progress, BrainLevels.chipPoints(progress, advanced, balance), size, balance));
-                }
-            }
-        }
-        boolean awake = status != BrainStatus.NO_POWER && status != BrainStatus.RESTING;
-        // Read again: forming the cube may have changed the block's size this tick.
+        boolean awake = status == BrainStatus.WORKING;
         BlockState now = level.getBlockState(worldPosition);
         if (now.hasProperty(NetworkBrainBlock.AWAKE) && now.getValue(NetworkBrainBlock.AWAKE) != awake) {
             level.setBlock(worldPosition, now.setValue(NetworkBrainBlock.AWAKE, awake), Block.UPDATE_CLIENTS);
@@ -160,48 +130,53 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
 
     // --- what the brain knows ---
 
-    public BrainProgress progress() {
-        return progress;
+    public boolean floor() {
+        return floor;
     }
 
-    public void setProgress(BrainProgress progress) {
-        this.progress = progress;
+    /** Becomes the middle of a floor, or stops being one, on the block too. */
+    void setFloor(boolean floor) {
+        this.floor = floor;
+        // While the brain is being removed its spot already holds the new block; leave that alone.
+        if (level != null && !level.isClientSide()) {
+            BlockState state = level.getBlockState(worldPosition);
+            if (state.hasProperty(NetworkBrainBlock.FLOOR) && state.getValue(NetworkBrainBlock.FLOOR) != floor) {
+                level.setBlock(worldPosition, state.setValue(NetworkBrainBlock.FLOOR, floor), Block.UPDATE_ALL);
+            }
+        }
         setChanged();
     }
 
-    public BrainSize size() {
-        return size;
+    void setTower(BlockPos base, int floors, int stamp) {
+        towerBase = base.immutable();
+        towerFloors = floors;
+        towerStamp = stamp;
+        this.base = null;
     }
 
     boolean leaving() {
         return leaving;
     }
 
-    /** The cube of chambers it sits in, in world coordinates; null on its own. */
-    public BrainCube.@Nullable Box box() {
-        return box;
+    /** Whether it speaks for its tower: the lowest floor, or a brain that isn't a floor. */
+    public boolean leadsItsTower() {
+        return towerBase.equals(worldPosition);
     }
 
-    /** Sets the cube it sits in, and with it its size, on the block too. */
-    public void setBox(BrainCube.@Nullable Box box) {
-        this.box = box;
-        size = box == null ? BrainSize.SINGLE : box.size();
-        // While the brain is being removed its spot already holds the new block; leave that alone.
-        if (level != null && !level.isClientSide()) {
-            BlockState state = level.getBlockState(worldPosition);
-            if (state.hasProperty(NetworkBrainBlock.SIZE) && state.getValue(NetworkBrainBlock.SIZE) != size) {
-                level.setBlock(worldPosition, state.setValue(NetworkBrainBlock.SIZE, size), Block.UPDATE_ALL);
-            } else if (state.hasProperty(NetworkBrainBlock.SIZE)) {
-                // Same size, other cube: players still need to hear where it is.
-                level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
-            }
+    /** Floors in its tower; 0 for a brain that isn't a floor. */
+    public int floors() {
+        return towerFloors;
+    }
+
+    /** Its tower's lowest brain, or null while that isn't loaded. */
+    private @Nullable NetworkBrainBlockEntity base() {
+        if (leadsItsTower()) {
+            return this;
         }
-        setChanged();
-    }
-
-    /** The level that counts: held down to the cap of the brain's size. */
-    public int shownLevel() {
-        return BrainLevels.shownLevel(progress, size, BrainBalance.fromConfig());
+        if ((base == null || base.isRemoved()) && level != null && level.isLoaded(towerBase)) {
+            base = level.getBlockEntity(towerBase) instanceof NetworkBrainBlockEntity found ? found : null;
+        }
+        return base;
     }
 
     /** Whether the last tick was paid for. */
@@ -223,7 +198,7 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
 
     @Override
     public int drainPerTick() {
-        return BrainLevels.drain(size, BrainBalance.fromConfig());
+        return BrainBalance.fromConfig().drainPerFloor();
     }
 
     @Override
@@ -241,47 +216,20 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
         super.preRemoveSideEffects(pos, state);
     }
 
-    // --- container ---
-
-    /** Typed chips, while the brain can still learn from them. */
-    public boolean accepts(ItemStack stack) {
-        return stack.is(JasmTags.TYPED_CHIPS) && !BrainLevels.capped(progress, size, BrainBalance.fromConfig());
-    }
-
-    @Override
-    public boolean canPlaceItem(int slot, ItemStack stack) {
-        return slot == SLOT && accepts(stack);
-    }
-
-    /** Hoppers and pipes feed chips in from any side; nothing comes back out. */
-    @Override
-    public int[] getSlotsForFace(Direction direction) {
-        return new int[]{SLOT};
-    }
-
-    @Override
-    public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction direction) {
-        return canPlaceItem(slot, stack);
-    }
-
-    @Override
-    public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction direction) {
-        return false;
-    }
+    // --- container: it holds nothing ---
 
     @Override
     protected NonNullList<ItemStack> getItems() {
-        return items;
+        return NonNullList.create();
     }
 
     @Override
     protected void setItems(NonNullList<ItemStack> items) {
-        this.items = items;
     }
 
     @Override
     public int getContainerSize() {
-        return SLOTS;
+        return 0;
     }
 
     @Override
@@ -300,83 +248,23 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        ContainerHelper.saveAllItems(output, items);
-        output.store("progress", BrainProgress.CODEC, progress);
+        output.putBoolean("floor", floor);
+        output.putLong("tower_base", towerBase.asLong());
+        output.putInt("tower_floors", towerFloors);
         output.putLong("placed_at", placedAt);
-        if (box != null) {
-            output.putInt("box_x", box.x());
-            output.putInt("box_y", box.y());
-            output.putInt("box_z", box.z());
-            output.putInt("box_side", box.side());
-        }
         output.putInt("status", status.ordinal());
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(input, items);
-        progress = input.read("progress", BrainProgress.CODEC).orElse(BrainProgress.START);
+        floor = input.getBooleanOr("floor", false);
+        towerBase = BlockPos.of(input.getLongOr("tower_base", worldPosition.asLong()));
+        towerFloors = floor ? Math.max(0, input.getIntOr("tower_floors", 0)) : 0;
+        base = null;
         placedAt = input.getLongOr("placed_at", -1);
-        readBox(input);
-        status = byOrdinal(BrainStatus.values(), input.getIntOr("status", -1), BrainStatus.NO_POWER);
-    }
-
-    // Players only get the cube, so the brain can be drawn filling it.
-    @Override
-    public ClientboundBlockEntityDataPacket getUpdatePacket() {
-        return ClientboundBlockEntityDataPacket.create(this);
-    }
-
-    @Override
-    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
-        if (box != null) {
-            tag.putInt("box_x", box.x());
-            tag.putInt("box_y", box.y());
-            tag.putInt("box_z", box.z());
-            tag.putInt("box_side", box.side());
-        }
-        return tag;
-    }
-
-    @Override
-    public void handleUpdateTag(ValueInput input) {
-        readBox(input);
-    }
-
-    @Override
-    public void onDataPacket(Connection connection, ValueInput input) {
-        readBox(input);
-    }
-
-    private void readBox(ValueInput input) {
-        int side = input.getIntOr("box_side", 0);
-        box = side < 2 ? null : new BrainCube.Box(input.getIntOr("box_x", 0), input.getIntOr("box_y", 0), input.getIntOr("box_z", 0), side);
-        size = box == null ? BrainSize.SINGLE : box.size();
-    }
-
-    private static <E> E byOrdinal(E[] values, int ordinal, E fallback) {
-        return ordinal >= 0 && ordinal < values.length ? values[ordinal] : fallback;
-    }
-
-    /** The mined item keeps the brain's level and points. */
-    @Override
-    protected void collectImplicitComponents(DataComponentMap.Builder components) {
-        super.collectImplicitComponents(components);
-        components.set(JasmComponents.BRAIN.get(), progress);
-    }
-
-    @Override
-    protected void applyImplicitComponents(DataComponentGetter components) {
-        super.applyImplicitComponents(components);
-        progress = components.getOrDefault(JasmComponents.BRAIN.get(), BrainProgress.START);
-    }
-
-    @Override
-    public void removeComponentsFromTag(ValueOutput output) {
-        super.removeComponentsFromTag(output);
-        output.discard("progress");
+        int ordinal = input.getIntOr("status", -1);
+        BrainStatus[] statuses = BrainStatus.values();
+        status = ordinal >= 0 && ordinal < statuses.length ? statuses[ordinal] : BrainStatus.NO_POWER;
     }
 }

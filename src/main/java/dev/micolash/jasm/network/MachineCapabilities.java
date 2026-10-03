@@ -35,13 +35,7 @@ public final class MachineCapabilities {
                 JasmBlocks.NETWORK_BRAIN_ENTITY.get(),
                 JasmBlocks.NETWORK_CHAMBER_ENTITY.get());
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), (workshop, side) -> workshop.automation());
-        // A formed chamber takes chips for its brain; a loose one takes nothing.
-        event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.NETWORK_CHAMBER_ENTITY.get(),
-                (chamber, side) -> chamber.brain() == null ? null : new WorldlyContainerWrapper(chamber.brain(), side == null ? Direction.UP : side));
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), (foundry, side) -> foundry.automation());
-        // Hoppers and pipes feed chips into a brain from any side; nothing comes back out.
-        event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.NETWORK_BRAIN_ENTITY.get(),
-                (brain, side) -> new WorldlyContainerWrapper(brain, side == null ? Direction.UP : side));
         // Full ports accept buffered items on every side, and never give anything out.
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.ACCESS_PORT_ENTITY.get(),
                 (port, side) -> new WorldlyContainerWrapper(port, side == null ? Direction.UP : side));

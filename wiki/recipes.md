@@ -83,7 +83,7 @@ Recipe Cards hold recipes; the Encoding Terminal writes them; Recipe Racks hold 
 
 ## Network Brain
 
-A network holds 4 machines on its own. A Network Brain lets it hold more as it levels up, and Network Chambers built around the brain into a 2×2×2 or 3×3×3 cube let it grow further. One chamber recipe makes 4. The brain's recipe uses a Basic Bitling: befriend a wild one first.
+A network holds 4 machines on its own, and 12 with a Network Brain. Put 8 Network Chambers round a brain to make a brain floor, and stack floors into a tower: each floor adds 12 more. One chamber recipe makes 4. The brain's recipe uses a Basic Bitling: befriend a wild one first.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |

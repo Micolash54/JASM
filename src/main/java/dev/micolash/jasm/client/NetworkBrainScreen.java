@@ -10,25 +10,22 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 
 /**
- * The Network Brain screen: its level and size, how far it is to the next level, how many machines its network holds
- * against how many it may, what it is doing, the chip slot and its charge.
+ * The Network Brain screen: how many floors its tower has, how many machines its network holds against how many it may,
+ * what it is doing, and its charge.
  */
 public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
     private static final int WIDTH = NetworkBrainMenu.WIDTH;
     private static final int HEIGHT = NetworkBrainMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int PAD = 8;
     private static final int INNER_WIDTH = WIDTH - 2 * PAD;
-    private static final int LEVEL_Y = 24;
+    private static final int FLOORS_Y = 24;
     private static final int BAR_HEIGHT = 8;
-    private static final int PROGRESS_Y = 34;
-    /** Room right of the progress bar for "100%". */
-    private static final int PERCENT_WIDTH = 28;
-    private static final int MACHINES_Y = 48;
-    private static final int STATUS_Y = 58;
+    private static final int MACHINES_Y = 40;
+    private static final int STATUS_Y = 56;
     private static final int STATUS_HEIGHT = 14;
-    private static final int POWER_X = NetworkBrainMenu.CHIP_X + 17 + 7;
-    private static final int POWER_Y = NetworkBrainMenu.CHIP_Y + 4;
-    private static final int POWER_WIDTH = WIDTH - PAD - POWER_X;
+    private static final int POWER_X = PAD;
+    private static final int POWER_Y = NetworkBrainMenu.POWER_Y;
+    private static final int POWER_WIDTH = INNER_WIDTH;
 
     public NetworkBrainScreen(NetworkBrainMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -37,9 +34,8 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
 
     private static int colour(BrainStatus status) {
         return switch (status) {
-            case LEARNING -> JasmGui.GOOD;
-            case FULLY_GROWN -> JasmGui.ACCENT;
-            case NEEDS_BIGGER, RESTING -> JasmGui.WARN;
+            case WORKING -> JasmGui.GOOD;
+            case RESTING -> JasmGui.WARN;
             case NO_POWER -> JasmGui.BAD;
         };
     }
@@ -77,7 +73,6 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
-        JasmGui.bar(graphics, x + PAD, y + PROGRESS_Y, INNER_WIDTH - PERCENT_WIDTH, BAR_HEIGHT, menu.percent() / 100.0);
         JasmGui.inset(graphics, x + PAD, y + STATUS_Y, INNER_WIDTH, STATUS_HEIGHT);
         JasmGui.bar(graphics, x + POWER_X, y + POWER_Y, POWER_WIDTH, BAR_HEIGHT, menu.energy() / (double) menu.capacity());
     }
@@ -85,9 +80,6 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractContents(graphics, mouseX, mouseY, a);
-        if (hoveredSlot == menu.getSlot(0) && !hoveredSlot.hasItem()) {
-            graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.brain.slot_hint"), 180), mouseX, mouseY);
-        }
         if (within(mouseX, mouseY, leftPos + POWER_X, topPos + POWER_Y, POWER_WIDTH, BAR_HEIGHT)) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
@@ -102,12 +94,7 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
 
-        graphics.text(font, Component.translatable("screen.jasm.brain.level", menu.level()), PAD, LEVEL_Y, JasmGui.TEXT, false);
-        Component size = Component.translatable("screen.jasm.brain.size." + menu.size().getSerializedName());
-        graphics.text(font, size, WIDTH - PAD - font.width(size), LEVEL_Y, JasmGui.SUBTEXT, false);
-
-        Component percent = Component.translatable("screen.jasm.brain.percent", menu.percent());
-        graphics.text(font, percent, WIDTH - PAD - font.width(percent), PROGRESS_Y, JasmGui.TEXT, false);
+        graphics.text(font, NetworkBrainMenu.floorsText(menu.floors()), PAD, FLOORS_Y, JasmGui.TEXT, false);
 
         boolean over = menu.machineCount() > menu.machineLimit();
         graphics.text(font, Component.translatable("screen.jasm.brain.machines", menu.machineCount(), menu.machineLimit()), PAD, MACHINES_Y,

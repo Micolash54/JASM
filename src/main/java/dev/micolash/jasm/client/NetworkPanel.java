@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -291,10 +292,10 @@ public final class NetworkPanel {
         }
     }
 
-    /** Two short lines beside the key: the brain's level and the network's state, then how full it is. */
+    /** Two short lines beside the key: the brain's floors and the network's state, then how full it is. */
     private void drawHeader(GuiGraphicsExtractor graphics, NetworkViewPayloads.Header header) {
-        Component level = header.level() >= 0
-                ? Component.translatable("screen.jasm.network.level", header.level())
+        Component level = header.floors() >= 0
+                ? NetworkBrainMenu.floorsText(header.floors())
                 : Component.translatable("screen.jasm.network.no_brain");
         graphics.text(font, level, x + 1, y, JasmGui.TEXT, false);
         Component state;

@@ -24,12 +24,12 @@ public final class NetworkViewPayloads {
 
     /**
      * The network as a whole. {@code state}: 0 shown, 1 not linked, 2 not reachable (terminal gone or unloaded),
-     * 3 no access. {@code level} is the leading brain's, or -1 without one.
+     * 3 no access. {@code floors} is the leading brain's tower's, 0 for a lone brain, or -1 without a brain.
      */
-    public record Header(int state, int level, int count, int limit, boolean stopped, boolean brainUnpowered, boolean partial) {
+    public record Header(int state, int floors, int count, int limit, boolean stopped, boolean brainUnpowered, boolean partial) {
         static final StreamCodec<ByteBuf, Header> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Header::state,
-                ByteBufCodecs.VAR_INT, Header::level,
+                ByteBufCodecs.VAR_INT, Header::floors,
                 ByteBufCodecs.VAR_INT, Header::count,
                 ByteBufCodecs.VAR_INT, Header::limit,
                 ByteBufCodecs.BOOL, Header::stopped,
