@@ -85,12 +85,20 @@ public final class CableClaims extends SavedData {
         Claim next = new Claim(key, Optional.ofNullable(owner), blocked);
         if (!next.equals(claims.put(key, next))) {
             setDirty();
+            markPortsDirty(level, pos);
         }
     }
 
     public void remove(ServerLevel level, BlockPos pos) {
         if (claims.remove(key(level, pos)) != null) {
             setDirty();
+            markPortsDirty(level, pos);
+        }
+    }
+
+    private static void markPortsDirty(ServerLevel level, BlockPos pos) {
+        if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+            cable.ownersChanged();
         }
     }
 }

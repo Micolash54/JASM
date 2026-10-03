@@ -676,9 +676,9 @@ public final class Jobs {
     }
 
     private static long moveToDeck(ServerPlayer player, ItemStack deck, WaferRecord record, WaferStore store, Map<ItemResource, Long> items) {
-        DeckStorage.checkAll(store, deck, player);
+        var storage = DeckStorage.checked(store, deck, player);
         long moved = 0;
-        for (var held : DeckStorage.depositAmounts(store, deck, items, player).entrySet()) {
+        for (var held : storage.depositAmounts(items).entrySet()) {
             moved += store.extract(record, held.getKey(), held.getValue(), false, player);
         }
         refreshOpenDeck(player, deck);

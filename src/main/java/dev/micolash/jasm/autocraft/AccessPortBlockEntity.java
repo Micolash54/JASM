@@ -261,14 +261,14 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             if (!items.get(i).isEmpty() && expected.contains(ItemResource.of(items.get(i)))) return;
         }
         var store = WaferStore.get(serverLevel.getServer());
-        DeckStorage.checkAll(store, deck, player);
+        var storage = DeckStorage.checked(store, deck, player);
         // The old ninth intake slot can still contain saved returns; drain it without accepting new items there.
         var incoming = new java.util.LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
             if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack))) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
-        var accepted = DeckStorage.depositAmounts(store, deck, incoming, player, budget);
+        var accepted = storage.depositAmounts(incoming, budget);
         transferred((int) accepted.values().stream().mapToLong(Long::longValue).sum());
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);

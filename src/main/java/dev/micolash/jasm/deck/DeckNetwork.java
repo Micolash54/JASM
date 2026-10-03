@@ -61,8 +61,8 @@ public final class DeckNetwork {
             return 0;
         }
         int max = key.getMaxStackSize();
-        DeckStorage.checkAll(store, menu.deck(), player);
-        long available = DeckStorage.count(store, menu.deck(), key);
+        var storage = DeckStorage.checked(store, menu.deck(), player);
+        long available = storage.count(key);
         long wanted = switch (payload.mode()) {
             case STACK -> Math.min(max, cursorRoom(menu, key));
             case HALF -> Math.min(cursorRoom(menu, key), (Math.min(available, max) + 1) / 2);
@@ -70,7 +70,7 @@ public final class DeckNetwork {
         };
         long moved = 0;
         if (wanted > 0 && available > 0) {
-            for (ItemStack stack : DeckStorage.withdraw(store, menu.deck(), key, Math.min(wanted, available), player)) {
+            for (ItemStack stack : storage.withdraw(key, Math.min(wanted, available))) {
                 moved += stack.getCount();
                 if (payload.mode() == DeckPayloads.ExtractMode.TO_INVENTORY) {
                     // Room was counted first; anything that still does not fit is dropped at the player's feet, never lost.

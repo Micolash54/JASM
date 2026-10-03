@@ -74,6 +74,77 @@ public final class DeckStorage {
 
     private DeckStorage() {}
 
+    /** Shares one wafer check between the reads and transfers in an operation. */
+    public static Checked checked(WaferStore store, ItemStack deck, ServerPlayer player) {
+        return new Checked(store, deck, player);
+    }
+
+    public static final class Checked {
+        private final WaferStore store;
+        private final ItemStack deck;
+        private final ServerPlayer player;
+        private DeckWafers wafers;
+        private int tick;
+
+        private Checked(WaferStore store, ItemStack deck, ServerPlayer player) {
+            this.store = store;
+            this.deck = deck;
+            this.player = player;
+            checkAll(store, deck, player);
+            remember();
+        }
+
+        private void remember() {
+            wafers = DeckItem.wafers(deck);
+            tick = player.level().getServer().getTickCount();
+        }
+
+        private void check() {
+            if (tick != player.level().getServer().getTickCount() || wafers != DeckItem.wafers(deck)) {
+                checkAll(store, deck, player);
+                remember();
+            }
+        }
+
+        public long count(ItemResource key) {
+            check();
+            return DeckStorage.count(store, deck, key);
+        }
+
+        public Map<ItemResource, Long> contents() {
+            check();
+            return DeckStorage.contents(store, deck);
+        }
+
+        public List<ItemStack> withdraw(ItemResource key, long amount) {
+            return DeckStorage.withdraw(store, deck, key, amount, player, true, this);
+        }
+
+        public List<ItemStack> withdrawQuietly(ItemResource key, long amount) {
+            return DeckStorage.withdraw(store, deck, key, amount, player, false, this);
+        }
+
+        public long room(ItemResource key, long amount) {
+            return DeckStorage.room(store, deck, key, amount, player, this);
+        }
+
+        public long depositAmount(ItemResource key, long amount) {
+            long moved = DeckStorage.depositAmount(store, deck, key, amount, player, this);
+            if (moved > 0) remember();
+            return moved;
+        }
+
+        public Map<ItemResource, Long> depositAmounts(Map<ItemResource, Long> items) {
+            return depositAmounts(items, Long.MAX_VALUE);
+        }
+
+        public Map<ItemResource, Long> depositAmounts(Map<ItemResource, Long> items, long limit) {
+            Map<ItemResource, Long> moved = DeckStorage.depositAmounts(store, deck, items, player, limit, this);
+            if (!moved.isEmpty()) remember();
+            return moved;
+        }
+    }
+
     /** Opening the Deck or inserting a wafer: every valid wafer gets a fresh stamp. Copies are blanked. */
     public static List<Verdict> activate(WaferStore store, ItemStack deck, ServerPlayer player) {
         return validateAll(store, deck, player, Mode.ACTIVATE);
@@ -134,10 +205,14 @@ public final class DeckStorage {
         }
         List<SlotView> views = views(store, deck, player);
         ItemResource key = ItemResource.of(source);
-        if (DepositRouter.planDeposit(views, key, source.getCount()).isEmpty() || !canAfford(deck, player, tell)) {
+        List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, source.getCount());
+        if (plan.isEmpty() || !canAfford(deck, player, tell)) {
             return 0;
         }
-        List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, Math.min(source.getCount(), affordable(deck)));
+        long affordable = affordable(deck);
+        if (affordable < plan.stream().mapToLong(DepositRouter.Allocation::amount).sum()) {
+            plan = DepositRouter.planDeposit(views, key, affordable);
+        }
         DeckWafers wafers = DeckItem.wafers(deck);
         long moved = 0;
         for (DepositRouter.Allocation allocation : plan) {
@@ -185,6 +260,11 @@ public final class DeckStorage {
      * as the charge pays for. Returns how many were stored; items wafers refuse store none.
      */
     public static long depositAmount(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        return depositAmount(store, deck, key, amount, player, null);
+    }
+
+    private static long depositAmount(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
+            @Nullable Checked checked) {
         if (!DeckItem.worksIn(deck, player.level())) return 0;
         if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
@@ -193,7 +273,7 @@ public final class DeckStorage {
         if (amount <= 0) {
             return 0;
         }
-        List<SlotView> views = views(store, deck, player);
+        List<SlotView> views = views(store, deck, player, checked);
         List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, amount);
         DeckWafers wafers = DeckItem.wafers(deck);
         long moved = 0;
@@ -219,6 +299,11 @@ public final class DeckStorage {
 
     /** Same routing order, with a shared limit on the number of items moved. The charge limits it too. */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player, long limit) {
+        return depositAmounts(store, deck, items, player, limit, null);
+    }
+
+    private static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items,
+            ServerPlayer player, long limit, @Nullable Checked checked) {
         if (!DeckItem.worksIn(deck, player.level())) return Map.of();
         limit = Math.min(limit, affordable(deck));
         long paid = limit;
@@ -227,7 +312,7 @@ public final class DeckStorage {
             if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) left.put(key, amount);
         });
         var moved = new java.util.LinkedHashMap<ItemResource, Long>();
-        List<SlotView> slots = views(store, deck, player);
+        List<SlotView> slots = views(store, deck, player, checked);
         DeckWafers wafers = DeckItem.wafers(deck);
         for (int i = 0; i < slots.size(); i++) {
             SlotView slot = slots.get(i);
@@ -261,11 +346,16 @@ public final class DeckStorage {
 
     /** How many of {@code key}, up to {@code amount}, the Deck's wafers would take. Changes nothing. */
     public static long room(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
+        return room(store, deck, key, amount, player, null);
+    }
+
+    private static long room(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
+            @Nullable Checked checked) {
         if (!DeckItem.worksIn(deck, player.level())) return 0;
         if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
         }
-        return DepositRouter.planDeposit(views(store, deck, player), key, amount).stream().mapToLong(DepositRouter.Allocation::amount).sum();
+        return DepositRouter.planDeposit(views(store, deck, player, checked), key, amount).stream().mapToLong(DepositRouter.Allocation::amount).sum();
     }
 
     /** Everything on the Deck's usable wafers, added up. Assumes {@link #checkAll} ran this tick. */
@@ -281,25 +371,29 @@ public final class DeckStorage {
 
     /** Takes up to {@code amount} of {@code key} out, as stacks no larger than the item allows. */
     public static List<ItemStack> withdraw(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
-        return withdraw(store, deck, key, amount, player, true);
+        return withdraw(store, deck, key, amount, player, true, null);
     }
 
     /** As {@link #withdraw}, but says nothing when the charge is empty (refilling the crafting grid). */
     public static List<ItemStack> withdrawQuietly(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player) {
-        return withdraw(store, deck, key, amount, player, false);
+        return withdraw(store, deck, key, amount, player, false, null);
     }
 
     private static List<ItemStack> withdraw(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
-            boolean tell) {
+            boolean tell, @Nullable Checked checked) {
         if (!checkDimension(deck, player, tell)) return List.of();
         if (amount <= 0 || key.isEmpty()) {
             return List.of();
         }
-        List<SlotView> views = views(store, deck, player);
-        if (DepositRouter.planWithdraw(views, key, amount).isEmpty() || !canAfford(deck, player, tell)) {
+        List<SlotView> views = views(store, deck, player, checked);
+        List<DepositRouter.Allocation> plan = DepositRouter.planWithdraw(views, key, amount);
+        if (plan.isEmpty() || !canAfford(deck, player, tell)) {
             return List.of();
         }
-        List<DepositRouter.Allocation> plan = DepositRouter.planWithdraw(views, key, Math.min(amount, affordable(deck)));
+        long affordable = affordable(deck);
+        if (affordable < plan.stream().mapToLong(DepositRouter.Allocation::amount).sum()) {
+            plan = DepositRouter.planWithdraw(views, key, affordable);
+        }
         long taken = 0;
         for (DepositRouter.Allocation allocation : plan) {
             taken += store.extract(views.get(allocation.slot()).record(), key, allocation.amount(), false, player);
@@ -377,7 +471,16 @@ public final class DeckStorage {
     }
 
     private static List<SlotView> views(WaferStore store, ItemStack deck, ServerPlayer player) {
-        checkAll(store, deck, player);
+        return views(store, deck, player, null);
+    }
+
+    private static List<SlotView> views(WaferStore store, ItemStack deck, ServerPlayer player, @Nullable Checked checked) {
+        if (checked == null) checkAll(store, deck, player);
+        else checked.check();
+        return viewsUnchecked(store, deck);
+    }
+
+    private static List<SlotView> viewsUnchecked(WaferStore store, ItemStack deck) {
         DeckTier tier = ((DeckItem) deck.getItem()).tier();
         DeckWafers wafers = DeckItem.wafers(deck);
         List<SlotView> views = new ArrayList<>();

@@ -430,12 +430,14 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         WaferStore store = WaferStore.get(player.level().getServer());
         placing = true;
+        DeckStorage.Checked storage = null;
         for (int i = 0; i < before.size(); i++) {
             ItemStack was = before.get(i);
             if (was.isEmpty() || !grid.getItem(i).isEmpty()) {
                 continue;
             }
-            List<ItemStack> taken = DeckStorage.withdrawQuietly(store, deck, ItemResource.of(was), 1, player);
+            if (storage == null) storage = DeckStorage.checked(store, deck, player);
+            List<ItemStack> taken = storage.withdrawQuietly(ItemResource.of(was), 1);
             if (!taken.isEmpty()) {
                 grid.setItem(i, taken.getFirst());
             }
@@ -446,6 +448,10 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Puts everything in the grid back on the wafers. What doesn't fit stays in the grid. */
     public void returnGrid(ServerPlayer player) {
+        returnGrid(player, null);
+    }
+
+    private void returnGrid(ServerPlayer player, DeckStorage.@Nullable Checked storage) {
         if (grid == null || !dimensionAllowed()) {
             return;
         }
@@ -456,7 +462,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             if (!stack.isEmpty()) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
         var accepted = DeckStorage.hasPower(deck)
-                ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player)
+                ? (storage == null ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player)
+                        : storage.depositAmounts(incoming))
                 : new java.util.LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack stack = grid.getItem(i);
@@ -498,7 +505,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         if (grid == null || !dimensionAllowed() || wanted.size() > DeckGridContainer.SIZE) {
             return;
         }
-        returnGrid(player);
+        var storage = DeckStorage.checked(WaferStore.get(player.level().getServer()), deck, player);
+        returnGrid(player, storage);
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack left = grid.getItem(i);
             if (!left.isEmpty()) {
@@ -507,8 +515,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                 player.getInventory().placeItemBackInInventory(left);
             }
         }
-        WaferStore store = WaferStore.get(player.level().getServer());
-        DeckStorage.checkAll(store, deck, player);
         Map<ItemResource, Long> available = new HashMap<>();
         List<@Nullable ItemResource> chosen = new ArrayList<>();
         for (List<ItemResource> options : wanted) {
@@ -518,7 +524,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                 if (option.isEmpty() || !allowedInGrid(option.toStack(1))) {
                     continue;
                 }
-                long count = available.computeIfAbsent(option, key -> DeckStorage.count(store, deck, key) + inventoryCount(player.getInventory(), key));
+                long count = available.computeIfAbsent(option, key -> storage.count(key) + inventoryCount(player.getInventory(), key));
                 if (count > bestCount) {
                     best = option;
                     bestCount = count;
@@ -544,7 +550,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
             int needed = sets;
             ItemStack placed = ItemStack.EMPTY;
-            for (ItemStack taken : DeckStorage.withdrawQuietly(store, deck, key, needed, player)) {
+            for (ItemStack taken : storage.withdrawQuietly(key, needed)) {
                 placed = placed.isEmpty() ? taken : placed.copyWithCount(placed.getCount() + taken.getCount());
             }
             needed -= placed.getCount();

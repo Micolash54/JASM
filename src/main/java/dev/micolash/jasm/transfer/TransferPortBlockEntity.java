@@ -92,11 +92,11 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         var inventory = Machines.inlet(world, worldPosition.relative(face), face.getOpposite());
         if (inventory == null) return;
         var store = WaferStore.get(world.getServer());
-        DeckStorage.checkAll(store, deck, player);
+        var storage = DeckStorage.checked(store, deck, player);
         budget = (int) Math.min(budget, DeckStorage.affordable(deck));
         // Output takes the shared allowance first. Neither filter list disables the other direction.
         if (kind.exports() && !filters.output().rules().isEmpty()) {
-            var contents = DeckStorage.contents(store, deck);
+            var contents = storage.contents();
             var keys = new ArrayList<>(contents.keySet());
             keys.removeIf(key -> filters.output().rank(key.getItem()) < 0);
             keys.sort(Comparator.comparingInt(key -> filters.output().rank(key.getItem())));
@@ -105,7 +105,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 try (var tx = Transaction.openRoot()) {
                     int accepted = inventory.insert(key, (int) Math.min(budget, contents.get(key)), tx);
                     if (accepted <= 0) continue;
-                    var stacks = DeckStorage.withdrawQuietly(store, deck, key, accepted, player);
+                    var stacks = storage.withdrawQuietly(key, accepted);
                     int taken = stacks.stream().mapToInt(ItemStack::getCount).sum();
                     if (taken == accepted) { tx.commit(); budget -= taken; transferred(taken); }
                     else if (taken > 0) {
@@ -124,12 +124,12 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             keys.sort(Comparator.comparingInt(key -> filters.input().rank(key.getItem())));
             for (var key : keys) {
                 if (budget <= 0) break;
-                int room = (int) DeckStorage.room(store, deck, key, budget, player);
+                int room = (int) storage.room(key, budget);
                 if (room <= 0) continue;
                 try (var tx = Transaction.openRoot()) {
                     int taken = inventory.extract(key, room, tx);
                     if (taken <= 0) continue;
-                    long stored = DeckStorage.depositAmount(store, deck, key, taken, player);
+                    long stored = storage.depositAmount(key, taken);
                     if (stored == taken) { tx.commit(); budget -= taken; transferred(taken); }
                     else if (stored > 0) {
                         // The source transaction rolls back, so undo a partial deposit as well.

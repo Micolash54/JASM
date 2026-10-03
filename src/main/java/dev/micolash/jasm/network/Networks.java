@@ -118,6 +118,14 @@ public final class Networks {
         previous.forEach(this::refreshBlocked);
         blocked.forEach(this::refreshBlocked);
         previous.forEach(this::refreshCableShapes);
+        previous.forEach(this::syncPortOwners);
+        blocked.forEach(this::syncPortOwners);
+    }
+
+    private void syncPortOwners(BlockPos pos) {
+        if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable && !cable.ports().isEmpty()) {
+            cable.syncOwners();
+        }
     }
 
     private void drop(CableNetwork network) {

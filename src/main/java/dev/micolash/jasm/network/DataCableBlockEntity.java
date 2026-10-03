@@ -38,6 +38,7 @@ public class DataCableBlockEntity extends BlockEntity {
     private boolean removing;
     /** Set while the block is swapped for another cable: the ports move with it. */
     private boolean moving;
+    private boolean ownersDirty = true;
     private final Map<Direction, AccessPortBlockEntity> ports = new EnumMap<>(Direction.class);
     private final SimpleEnergyHandler energy;
 
@@ -140,8 +141,16 @@ public class DataCableBlockEntity extends BlockEntity {
         UUID owner = claims.owner(serverLevel, worldPosition);
         for (AccessPortBlockEntity port : ports.values()) {
             if (owner != null) port.adoptOwner(owner, claims.ownerName(owner));
-            port.setNetworkBlocked(claims.blocked(serverLevel, worldPosition));
         }
+        boolean blocked = claims.blocked(serverLevel, worldPosition);
+        for (AccessPortBlockEntity port : ports.values()) {
+            port.setNetworkBlocked(blocked);
+        }
+        ownersDirty = false;
+    }
+
+    public void ownersChanged() {
+        ownersDirty = true;
     }
 
     public void changed() {
@@ -158,7 +167,7 @@ public class DataCableBlockEntity extends BlockEntity {
         if (state.getValue(DataCableBlock.HAS_PORTS) != !cable.ports.isEmpty() && state.getBlock() instanceof DataCableBlock block
                 && level instanceof ServerLevel serverLevel) block.refreshConnections(serverLevel, pos);
         if (cable.ports.isEmpty()) return;
-        cable.syncOwners();
+        if (cable.ownersDirty) cable.syncOwners();
         for (AccessPortBlockEntity port : cable.ports.values()) {
             if (port instanceof TransferPortBlockEntity transfer) transfer.tickTransfer();
             else AccessPortBlockEntity.serverTick(level, pos, port.getBlockState(), port);
@@ -168,6 +177,7 @@ public class DataCableBlockEntity extends BlockEntity {
     @Override
     public void setLevel(Level level) {
         super.setLevel(level);
+        ownersDirty = true;
         ports.values().forEach(port -> port.setLevel(level));
     }
 
@@ -216,6 +226,7 @@ public class DataCableBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
+        ownersDirty = true;
         energy.set(Math.clamp(input.getIntOr("energy", 0), 0, energy.getCapacityAsInt()));
         ports.values().forEach(BlockEntity::setRemoved);
         ports.clear();

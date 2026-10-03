@@ -163,8 +163,7 @@ public final class Rules {
             return room >= rule.amount();
         }
         WaferStore store = WaferStore.get(player.level().getServer());
-        DeckStorage.checkAll(store, deck, player);
-        return DeckStorage.room(store, deck, rule.item(), rule.amount(), player) >= rule.amount();
+        return DeckStorage.checked(store, deck, player).room(rule.item(), rule.amount()) >= rule.amount();
     }
 
     /** A rule that was deleted takes its count and its last problem with it. */
