@@ -17,7 +17,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import org.jspecify.annotations.Nullable;
 
-/** One wafer's ordered filters. The first enabled match decides; an empty list accepts everything. */
+/** One wafer's ordered filters. The first enabled match decides; without an Allow row everything else is accepted. */
 public record WaferSettings(List<Filter> rules) {
     public enum Mode implements StringRepresentable {
         ITEM,
@@ -99,13 +99,17 @@ public record WaferSettings(List<Filter> rules) {
         rules = List.copyOf(rules);
     }
 
-    /** Matching Allow row, unfiltered last, or -1 when denied. Item components are ignored. */
+    /** Only an enabled Allow row makes a wafer exclusive; with just Deny rows it still takes everything else. */
+    public boolean hasAllow() {
+        return rules.stream().anyMatch(rule -> rule.enabled() && rule.allow());
+    }
+    /** Matching Allow row, unmatched items last, or -1 when denied. Item components are ignored. */
     public int rank(Item item) {
         for (int i = 0; i < rules.size(); i++) {
             Filter rule = rules.get(i);
             if (rule.enabled() && rule.matches(item)) return rule.allow() ? i : -1;
         }
-        return rules.isEmpty() ? Integer.MAX_VALUE : -1;
+        return hasAllow() ? -1 : Integer.MAX_VALUE;
     }
     public boolean isDefault() { return equals(DEFAULT); }
 }

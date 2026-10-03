@@ -103,7 +103,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         var storage = DeckStorage.checked(store, deck, player);
         budget = (int) Math.min(budget, DeckStorage.affordable(deck));
         // Output takes the shared allowance first. Neither filter list disables the other direction.
-        if (kind.exports() && !filters.output().rules().isEmpty()) {
+        if (kind.exports() && filters.output().hasAllow()) {
             var contents = storage.contents();
             var keys = new ArrayList<>(contents.keySet());
             keys.removeIf(key -> filters.output().rank(key.getItem()) < 0);
