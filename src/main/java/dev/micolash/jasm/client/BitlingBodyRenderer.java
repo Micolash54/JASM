@@ -82,19 +82,19 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
     /** The loops to try for each thing the Bitling can be doing, best first. */
     private static String[] clipsFor(Act act) {
         return switch (act) {
-            case STAND, LOOK -> new String[] {"idle"};
-            case WALK -> new String[] {"walk", "working"};
-            case SPRINT -> new String[] {"sprint", "walk", "working"};
-            case HOP -> new String[] {"hop", "idle"};
-            case REST -> new String[] {"lie_down", "napping"};
-            case TIRED -> new String[] {"tired_walk", "walk", "working"};
-            case STARTLED -> new String[] {"startled", "idle"};
-            case PETTED -> new String[] {"petted", "idle"};
-            case RECHARGE -> new String[] {"recharging", "napping"};
-            case INSPECT -> new String[] {"inspect", "idle"};
-            case NOD -> new String[] {"nod", "hop", "idle"};
-            case EAT -> new String[] {"eat", "idle"};
-            case SHAKE -> new String[] {"head_shake", "startled", "idle"};
+            case STAND, LOOK -> new String[]{"idle"};
+            case WALK -> new String[]{"walk", "working"};
+            case SPRINT -> new String[]{"sprint", "walk", "working"};
+            case HOP -> new String[]{"hop", "idle"};
+            case REST -> new String[]{"lie_down", "napping"};
+            case TIRED -> new String[]{"tired_walk", "walk", "working"};
+            case STARTLED -> new String[]{"startled", "idle"};
+            case PETTED -> new String[]{"petted", "idle"};
+            case RECHARGE -> new String[]{"recharging", "napping"};
+            case INSPECT -> new String[]{"inspect", "idle"};
+            case NOD -> new String[]{"nod", "hop", "idle"};
+            case EAT -> new String[]{"eat", "idle"};
+            case SHAKE -> new String[]{"head_shake", "startled", "idle"};
         };
     }
 
@@ -177,20 +177,20 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         /** Where the head wants to be, turn and tilt in degrees, {@code seconds} into the current act. */
         private float[] lookAt(float seconds) {
             if (act != Act.LOOK) {
-                return new float[] {0, 0};
+                return new float[]{0, 0};
             }
             // Glance one way, then the other, then a curious tilt, then back to the front.
             float side = (seed & 1) == 0 ? 1 : -1;
             if (seconds < 1.1F) {
-                return new float[] {side * 40, 0};
+                return new float[]{side * 40, 0};
             }
             if (seconds < 2.3F) {
-                return new float[] {-side * 40, 0};
+                return new float[]{-side * 40, 0};
             }
             if (seconds < 3.3F) {
-                return new float[] {side * 12, -side * 14};
+                return new float[]{side * 12, -side * 14};
             }
-            return new float[] {0, 0};
+            return new float[]{0, 0};
         }
     }
 

@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.network.MachineBlock;
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
@@ -22,7 +23,6 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
@@ -65,8 +65,8 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
 
     @Override
     public void extractRenderState(
-        EncodingTerminalBlockEntity terminal, State state, float partialTicks, Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress
-    ) {
+            EncodingTerminalBlockEntity terminal, State state, float partialTicks, Vec3 cameraPosition,
+            ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(terminal, state, partialTicks, cameraPosition, breakProgress);
         state.facing = terminal.getBlockState().getValue(MachineBlock.FACING);
         state.cards = terminal.shownCards();
@@ -107,7 +107,8 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
         draw(part, Sheets.cutoutBlockItemSheet(), poseStack, collector, light);
     }
 
-    private static void draw(@Nullable BlockStateModelPart part, RenderType renderType, PoseStack poseStack, SubmitNodeCollector collector, int light) {
+    private static void draw(@Nullable BlockStateModelPart part, RenderType renderType, PoseStack poseStack, SubmitNodeCollector collector,
+            int light) {
         if (part != null) {
             collector.submitBlockModel(poseStack, renderType, List.of(part), BlockModelRenderState.EMPTY_TINTS, light, OverlayTexture.NO_OVERLAY, 0);
         }

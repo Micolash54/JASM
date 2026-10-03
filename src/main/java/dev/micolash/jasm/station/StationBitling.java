@@ -27,7 +27,11 @@ import org.jspecify.annotations.Nullable;
  * vanishes and the station brings it back after a wait.
  */
 public class StationBitling extends BitlingBody {
-    private enum Mode { ROAM, HOME, CHARGING }
+    private enum Mode {
+        ROAM,
+        HOME,
+        CHARGING
+    }
 
     private static final double TIRED_WALK = 0.085;
     private static final double HOME_WALK = 0.215;
@@ -215,7 +219,8 @@ public class StationBitling extends BitlingBody {
 
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
-        if (!(level() instanceof ServerLevel level) || station == null || !(level.getBlockEntity(station) instanceof BitlingStationBlockEntity home)) {
+        if (!(level() instanceof ServerLevel level) || station == null
+                || !(level.getBlockEntity(station) instanceof BitlingStationBlockEntity home)) {
             return InteractionResult.SUCCESS;
         }
         getNavigation().stop();

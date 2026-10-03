@@ -30,6 +30,8 @@ public class EncodingTerminalBlock extends MachineBlock {
 
     @Override
     public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return level.isClientSide() ? null : createTickerHelper(type, JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalBlockEntity::serverTick);
+        return level.isClientSide()
+                ? null
+                : createTickerHelper(type, JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalBlockEntity::serverTick);
     }
 }

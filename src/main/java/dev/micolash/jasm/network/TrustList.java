@@ -16,8 +16,8 @@ import net.minecraft.network.codec.StreamCodec;
 public record TrustList(List<Entry> entries) {
     public record Entry(UUID id, String name) {
         static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        UUIDUtil.CODEC.fieldOf("id").forGetter(Entry::id),
-                        Codec.STRING.fieldOf("name").forGetter(Entry::name))
+                UUIDUtil.CODEC.fieldOf("id").forGetter(Entry::id),
+                Codec.STRING.fieldOf("name").forGetter(Entry::name))
                 .apply(i, Entry::new));
         static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
                 UUIDUtil.STREAM_CODEC, Entry::id,
@@ -29,8 +29,8 @@ public record TrustList(List<Entry> entries) {
     public static final int MAX = 32;
     public static final TrustList EMPTY = new TrustList(List.of());
     public static final Codec<TrustList> CODEC = Entry.CODEC.listOf().xmap(TrustList::new, TrustList::entries);
-    public static final StreamCodec<RegistryFriendlyByteBuf, TrustList> STREAM_CODEC =
-            Entry.STREAM_CODEC.apply(ByteBufCodecs.list(MAX)).map(TrustList::new, TrustList::entries);
+    public static final StreamCodec<RegistryFriendlyByteBuf, TrustList> STREAM_CODEC = Entry.STREAM_CODEC.apply(ByteBufCodecs.list(MAX))
+            .map(TrustList::new, TrustList::entries);
 
     public TrustList {
         Map<UUID, Entry> unique = new LinkedHashMap<>();

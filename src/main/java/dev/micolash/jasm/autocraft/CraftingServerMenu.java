@@ -4,12 +4,14 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
-import dev.micolash.jasm.network.MachineView;
-import dev.micolash.jasm.registry.JasmComponents;
-import java.util.UUID;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmMenus;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -25,6 +27,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -149,11 +152,11 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         }
         CraftingJob job = server.job();
         Component now = job == null || job.waiting() == null ? null : job.waiting().line();
-        if (!java.util.Objects.equals(now, waiting)) {
+        if (!Objects.equals(now, waiting)) {
             waiting = now;
             if (player.connection.hasChannel(CraftPayloads.ServerWaiting.TYPE)) {
-                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(player,
-                        new CraftPayloads.ServerWaiting(containerId, java.util.Optional.ofNullable(now)));
+                PacketDistributor.sendToPlayer(player,
+                        new CraftPayloads.ServerWaiting(containerId, Optional.ofNullable(now)));
             }
         }
     }
@@ -229,7 +232,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         if (server == null) {
             return true;
         }
-        boolean reachable = deckId == null ? stillValid(access, player, JasmBlocks.CRAFTING_SERVER.get())
+        boolean reachable = deckId == null
+                ? stillValid(access, player, JasmBlocks.CRAFTING_SERVER.get())
                 : player instanceof ServerPlayer serverPlayer && carriesDeck(serverPlayer) && server.getLevel() != null
                         && server.getLevel().isLoaded(server.getBlockPos());
         return !server.isRemoved() && reachable
@@ -263,7 +267,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         }
         if (id == BUTTON_COLLECT) {
             long moved = Jobs.collect(serverPlayer, server);
-            Notices.tell(serverPlayer, moved > 0 ? Component.translatable("message.jasm.craft.collected", String.format("%,d", moved))
+            Notices.tell(serverPlayer, moved > 0
+                    ? Component.translatable("message.jasm.craft.collected", String.format("%,d", moved))
                     : Component.translatable("message.jasm.craft.nothing_to_collect"), moved > 0);
             return true;
         }

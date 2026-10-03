@@ -10,6 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /**
  * A Filled Recipe Card: its tooltip says what it makes and what goes in, and whether the recipe is shaped, shapeless,
@@ -62,7 +63,7 @@ public class RecipeCardItem extends Item {
                     .withStyle(ChatFormatting.GRAY));
         }
         builder.accept(Component.translatable("tooltip.jasm.card.processing").withStyle(ChatFormatting.LIGHT_PURPLE));
-        Map<net.neoforged.neoforge.transfer.item.ItemResource, Integer> counts = new LinkedHashMap<>();
+        Map<ItemResource, Integer> counts = new LinkedHashMap<>();
         for (ProcessingCard.Amount input : card.usedInputs()) {
             counts.merge(input.item(), input.count(), Integer::sum);
         }

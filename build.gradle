@@ -3,6 +3,7 @@ plugins {
     id 'maven-publish'
     id 'net.neoforged.moddev' version '2.0.147'
     id 'idea'
+    id 'com.diffplug.spotless' version '8.10.3'
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -212,4 +213,17 @@ idea {
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+}
+
+// Run by hand: ./gradlew.bat spotlessApply (or spotlessCheck). It is not part of build or check.
+spotless {
+    enforceCheck = false
+    java {
+        target 'src/main/java/**/*.java', 'src/test/java/**/*.java', 'src/gametest/java/**/*.java'
+        removeUnusedImports()
+        importOrder()
+        eclipse().configFile('config/formatter.xml')
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }

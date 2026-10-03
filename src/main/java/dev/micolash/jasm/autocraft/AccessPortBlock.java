@@ -109,7 +109,8 @@ public class AccessPortBlock extends BaseEntityBlock {
 
     /** Something next to the port changed: it may be a new machine, or one taken away. */
     @Override
-    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, @Nullable Orientation orientation, boolean movedByPiston) {
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, @Nullable Orientation orientation,
+            boolean movedByPiston) {
         super.neighborChanged(state, level, pos, block, orientation, movedByPiston);
         if (!level.isClientSide() && level.getBlockEntity(pos) instanceof AccessPortBlockEntity port) {
             port.refreshSides();

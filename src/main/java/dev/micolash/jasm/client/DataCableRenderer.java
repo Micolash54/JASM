@@ -3,11 +3,15 @@ package dev.micolash.jasm.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.network.DataCableBlockEntity;
+import dev.micolash.jasm.transfer.TransferPortBlockEntity;
+import dev.micolash.jasm.transfer.TransferPortKind;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
-import net.minecraft.util.RandomSource;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -22,7 +26,11 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
 import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 import org.jspecify.annotations.Nullable;
 
@@ -31,23 +39,24 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
     public static final StandaloneModelKey<BlockStateModelPart> PORT = new StandaloneModelKey<>(() -> "jasm:thin_access_port");
     public static final Identifier PORT_ID = Jasm.id("block/thin_access_port");
 
-    private static final java.util.Map<dev.micolash.jasm.transfer.TransferPortKind, StandaloneModelKey<BlockStateModelPart>> TRANSFER_MODELS = new java.util.EnumMap<>(dev.micolash.jasm.transfer.TransferPortKind.class);
+    private static final Map<TransferPortKind, StandaloneModelKey<BlockStateModelPart>> TRANSFER_MODELS = new EnumMap<>(TransferPortKind.class);
     static {
-        for (var kind : dev.micolash.jasm.transfer.TransferPortKind.values()) TRANSFER_MODELS.put(kind, new StandaloneModelKey<>(() -> "jasm:" + kind.id()));
+        for (var kind : TransferPortKind.values()) TRANSFER_MODELS.put(kind, new StandaloneModelKey<>(() -> "jasm:" + kind.id()));
     }
-    static void registerTransferModels(net.neoforged.neoforge.client.event.ModelEvent.RegisterStandalone event) {
-        TRANSFER_MODELS.forEach((kind, key) -> event.register(key, net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel.simpleModelWrapper(Jasm.id("block/" + kind.id()))));
+    static void registerTransferModels(ModelEvent.RegisterStandalone event) {
+        TRANSFER_MODELS.forEach((kind, key) -> event.register(key, SimpleUnbakedStandaloneModel.simpleModelWrapper(Jasm.id("block/" + kind.id()))));
     }
 
     public DataCableRenderer(BlockEntityRendererProvider.Context context) {}
-    @Override public State createRenderState() { return new State(); }
+    @Override
+    public State createRenderState() { return new State(); }
 
     @Override
     public void extractRenderState(DataCableBlockEntity cable, State state, float partialTicks, Vec3 cameraPosition,
             ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(cable, state, partialTicks, cameraPosition, breakProgress);
         state.ports = 0;
-        java.util.Arrays.fill(state.kinds, null);
+        Arrays.fill(state.kinds, null);
         state.cableParts = List.of();
         state.breakingPort = null;
         var minecraft = Minecraft.getInstance();
@@ -61,13 +70,13 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
         if (breakProgress != null && minecraft.level != null) {
             var progresses = minecraft.levelRenderer.destructionProgress.get(cable.getBlockPos().asLong());
             if (progresses != null && !progresses.isEmpty()
-                    && minecraft.level.getEntity(progresses.last().getId()) instanceof net.minecraft.world.entity.player.Player player) {
+                    && minecraft.level.getEntity(progresses.last().getId()) instanceof Player player) {
                 state.breakingPort = DataCableBlock.selectedPort(minecraft.level, cable.getBlockPos(), player);
             }
         }
         for (Direction side : Direction.values()) if (cable.port(side) != null) {
             state.ports |= 1 << side.ordinal();
-            if (cable.port(side) instanceof dev.micolash.jasm.transfer.TransferPortBlockEntity port) state.kinds[side.ordinal()] = port.kind();
+            if (cable.port(side) instanceof TransferPortBlockEntity port) state.kinds[side.ordinal()] = port.kind();
         }
     }
 
@@ -91,7 +100,8 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
             poses.pushPose();
             poses.translate(0.5F, 0.5F, 0.5F);
             switch (side) {
-                case NORTH -> {}
+                case NORTH -> {
+                }
                 case SOUTH -> poses.mulPose(Axis.YP.rotationDegrees(180));
                 case EAST -> poses.mulPose(Axis.YP.rotationDegrees(-90));
                 case WEST -> poses.mulPose(Axis.YP.rotationDegrees(90));
@@ -110,7 +120,7 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
 
     public static class State extends BlockEntityRenderState {
         int ports;
-        final dev.micolash.jasm.transfer.TransferPortKind[] kinds = new dev.micolash.jasm.transfer.TransferPortKind[6];
+        final TransferPortKind[] kinds = new TransferPortKind[6];
         List<BlockStateModelPart> cableParts = List.of();
         @Nullable Direction breakingPort;
     }

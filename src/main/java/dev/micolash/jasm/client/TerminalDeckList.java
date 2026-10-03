@@ -11,6 +11,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
@@ -106,10 +107,11 @@ final class TerminalDeckList {
                 }
             }
         }
-        Component empty = !menu.deckFound() ? Component.translatable("screen.jasm.terminal.deck_none")
+        Component empty = !menu.deckFound()
+                ? Component.translatable("screen.jasm.terminal.deck_none")
                 : menu.deckItems().isEmpty() ? Component.translatable("screen.jasm.terminal.deck_empty") : null;
         if (empty != null) {
-            List<net.minecraft.util.FormattedCharSequence> lines = font.split(empty, COLUMNS * 18 - 8);
+            List<FormattedCharSequence> lines = font.split(empty, COLUMNS * 18 - 8);
             int top = y + ROWS * 9 - lines.size() * 9 / 2;
             for (int i = 0; i < lines.size(); i++) {
                 graphics.text(font, lines.get(i), x + (COLUMNS * 18 - font.width(lines.get(i))) / 2, top + i * 9, JasmGui.MUTED, false);
@@ -129,7 +131,8 @@ final class TerminalDeckList {
         return lines;
     }
 
-    @Nullable ItemResource keyAt(double mouseX, double mouseY) {
+    @Nullable
+    ItemResource keyAt(double mouseX, double mouseY) {
         GridEntries.Entry<ItemResource> entry = entryAt(mouseX, mouseY);
         return entry == null ? null : entry.key();
     }

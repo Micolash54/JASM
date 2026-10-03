@@ -3,8 +3,8 @@ package dev.micolash.jasm.generator;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.core.ContainerWords;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.EnumMap;
 import java.util.Map;
@@ -139,7 +139,8 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
 
     /** How long this item burns here, in ticks: its furnace burn time, sped up by the tier. */
     public int burnDuration(ServerLevel level, ItemStack fuel) {
-        return fuel.isEmpty() ? 0
+        return fuel.isEmpty()
+                ? 0
                 : tier.burnTicks(fuel.getBurnTime(RecipeType.SMELTING, level.fuelValues()));
     }
 
@@ -165,7 +166,8 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
                 return;
             }
             EnergyHandler target = neighbours
-                    .computeIfAbsent(side, s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
+                    .computeIfAbsent(side,
+                            s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
                     .getCapability();
             if (target != null) {
                 give(target, limit);
@@ -250,7 +252,8 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new CombustionGeneratorMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition), getBlockState().getBlock());
+        return new CombustionGeneratorMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition),
+                getBlockState().getBlock());
     }
 
     // --- saving ---

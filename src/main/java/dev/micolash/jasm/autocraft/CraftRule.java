@@ -20,14 +20,14 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 public record CraftRule(UUID id, ItemResource item, boolean timed, long threshold, int seconds, long amount, boolean enabled,
         boolean toPlayer) {
     public static final Codec<CraftRule> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    UUIDUtil.CODEC.fieldOf("id").forGetter(CraftRule::id),
-                    ItemResource.CODEC.fieldOf("item").forGetter(CraftRule::item),
-                    Codec.BOOL.optionalFieldOf("timed", false).forGetter(CraftRule::timed),
-                    Codec.LONG.optionalFieldOf("threshold", 1L).forGetter(CraftRule::threshold),
-                    Codec.INT.optionalFieldOf("seconds", 60).forGetter(CraftRule::seconds),
-                    Codec.LONG.optionalFieldOf("amount", 1L).forGetter(CraftRule::amount),
-                    Codec.BOOL.optionalFieldOf("enabled", true).forGetter(CraftRule::enabled),
-                    Codec.BOOL.optionalFieldOf("to_player", false).forGetter(CraftRule::toPlayer))
+            UUIDUtil.CODEC.fieldOf("id").forGetter(CraftRule::id),
+            ItemResource.CODEC.fieldOf("item").forGetter(CraftRule::item),
+            Codec.BOOL.optionalFieldOf("timed", false).forGetter(CraftRule::timed),
+            Codec.LONG.optionalFieldOf("threshold", 1L).forGetter(CraftRule::threshold),
+            Codec.INT.optionalFieldOf("seconds", 60).forGetter(CraftRule::seconds),
+            Codec.LONG.optionalFieldOf("amount", 1L).forGetter(CraftRule::amount),
+            Codec.BOOL.optionalFieldOf("enabled", true).forGetter(CraftRule::enabled),
+            Codec.BOOL.optionalFieldOf("to_player", false).forGetter(CraftRule::toPlayer))
             .apply(i, CraftRule::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CraftRule> STREAM_CODEC = StreamCodec.composite(
@@ -48,7 +48,8 @@ public record CraftRule(UUID id, ItemResource item, boolean timed, long threshol
     public CraftRule cleaned() {
         int shortest = JasmConfig.RULE_MIN_SECONDS.getAsInt();
         int max = JasmConfig.MAX_REQUEST.getAsInt();
-        return new CraftRule(id, item, timed, Math.clamp(threshold, 1, max), Math.clamp(seconds, shortest, 86_400), Math.clamp(amount, 1, max), enabled,
+        return new CraftRule(id, item, timed, Math.clamp(threshold, 1, max), Math.clamp(seconds, shortest, 86_400), Math.clamp(amount, 1, max),
+                enabled,
                 toPlayer);
     }
 }

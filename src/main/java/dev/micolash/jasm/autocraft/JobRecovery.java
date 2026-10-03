@@ -82,7 +82,8 @@ final class JobRecovery {
                 store.deleteJob(record);
                 state.removeJob(entry.id());
             } else if (!record.isDirty()) {
-                Jasm.LOGGER.warn("Finished crafting job {} still holds {} items in record #{}; they are kept", entry.id(), record.used(), record.serial());
+                Jasm.LOGGER.warn("Finished crafting job {} still holds {} items in record #{}; they are kept", entry.id(), record.used(),
+                        record.serial());
                 state.removeJob(entry.id());
             }
         }
@@ -98,7 +99,8 @@ final class JobRecovery {
             ServerLevel jobLevel = level.getServer().getLevel(entry.server().dimension());
             BlockPos pos = entry.server().pos();
             if (jobLevel == null || !jobLevel.isLoaded(pos) || !(jobLevel.getBlockEntity(pos) instanceof CraftingServerBlockEntity server)
-                    || server.job() == null || !server.job().id().equals(id)) return null;
+                    || server.job() == null || !server.job().id().equals(id))
+                return null;
             for (var sent : server.job().sent) {
                 if (sent.port.equals(port.getBlockPos()) && port.lock(sent.side) != null) {
                     sent.waiting.forEach(amount -> expected.add(amount.item()));

@@ -5,8 +5,8 @@ import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -121,7 +121,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
                 case EncodingTerminalMenu.DATA_PAIRED -> deckPaired() ? 1 : 0;
                 case EncodingTerminalMenu.DATA_PROCESSING -> processing() ? 1 : 0;
                 default -> index >= EncodingTerminalMenu.DATA_AMOUNTS && index < EncodingTerminalMenu.DATA_AMOUNTS + AMOUNTS
-                        ? amount(index - EncodingTerminalMenu.DATA_AMOUNTS) : 0;
+                        ? amount(index - EncodingTerminalMenu.DATA_AMOUNTS)
+                        : 0;
             };
         }
 

@@ -1,24 +1,27 @@
 package dev.micolash.jasm.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.registry.JasmBlocks;
-import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -96,7 +99,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     @Override
     protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[] {0, 0, imageWidth, imageHeight}, new int[] {PANEL_X, 0, PANEL_W + 6, imageHeight},
+        frame = JasmFrame.rounded(new int[]{0, 0, imageWidth, imageHeight}, new int[]{PANEL_X, 0, PANEL_W + 6, imageHeight},
                 JasmGui.sideStrip(KEY_X, 2));
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
@@ -122,7 +125,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         accessButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.access_hint")));
         addRenderableWidget(accessButton);
         deckSearch = new JasmField(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP - 1, 58, 11, Component.translatable("screen.jasm.deck.search"));
-        deckSearch.setHint(Component.translatable("screen.jasm.deck.search").withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+        deckSearch.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         deckSearch.setMaxLength(64);
         addRenderableWidget(deckSearch);
         deckList = new TerminalDeckList(menu, font, deckSearch, leftPos + 8, topPos + EncodingTerminalMenu.INVENTORY_Y);
@@ -137,7 +140,8 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     /** What the Deck Link window says: whether the Deck in it is paired, or how to pair one. */
     private Component linkStatus() {
         if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_OUT).hasItem()) {
-            return menu.paired() ? Component.translatable("screen.jasm.terminal.linked").withColor(JasmGui.GOOD & 0xFFFFFF)
+            return menu.paired()
+                    ? Component.translatable("screen.jasm.terminal.linked").withColor(JasmGui.GOOD & 0xFFFFFF)
                     : Component.translatable("screen.jasm.terminal.relink");
         }
         if (menu.getSlot(EncodingTerminalMenu.SLOT_PAIR_IN).hasItem()) {
@@ -381,7 +385,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     }
 
     @Override
-    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (linkWindow.contains(event.x(), event.y())) {
             return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
         }
@@ -436,7 +440,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
      * a stack, right half of one, Shift does nothing. Holding a copy, right lets go of it and left swaps it for what is
      * under the mouse (or just lets go over an empty cell). In the grid, left puts the copy in and right puts in one.
      */
-    private void clickDeckList(net.minecraft.client.input.MouseButtonEvent event, boolean left, boolean right) {
+    private void clickDeckList(MouseButtonEvent event, boolean left, boolean right) {
         if (event.hasShiftDown() || !(left || right) || !menu.getCarried().isEmpty()) {
             return;
         }
@@ -454,7 +458,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     /** Holding a copy, dragging over ghost slots does to each what a click there would. On the Deck list's scroll bar it scrolls. */
     @Override
-    public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double dx, double dy) {
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (linkWindow.mouseDragged(event, width, height) || trustWindow.mouseDragged(event, width, height)) {
             return true;
         }
@@ -477,7 +481,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     }
 
     @Override
-    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         if (linkWindow.mouseReleased() | trustWindow.mouseReleased()) {
             return true;
         }
@@ -543,7 +547,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     }
 
     @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+    public boolean keyPressed(KeyEvent event) {
         if (linkWindow.isOpen() && event.isEscape()) {
             linkWindow.close();
             linkKey.setLatched(false);
@@ -565,7 +569,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     }
 
     @Override
-    public boolean charTyped(net.minecraft.client.input.CharacterEvent event) {
+    public boolean charTyped(CharacterEvent event) {
         if (trustWindow.isOpen() && trustWindow.charTyped(event)) {
             return true;
         }
@@ -662,8 +666,11 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             graphics.setTooltipForNextFrame(font, List.of(
                     Component.literal(view.present() ? view.name() : Component.translatable("screen.jasm.terminal.machine_missing").getString())
                             .getVisualOrderText(),
-                    Component.translatable("screen.jasm.terminal.machine_at", view.at().port().getX(), view.at().port().getY(), view.at().port().getZ())
-                            .withStyle(net.minecraft.ChatFormatting.GRAY).getVisualOrderText()), realMouseX, realMouseY);
+                    Component
+                            .translatable("screen.jasm.terminal.machine_at", view.at().port().getX(), view.at().port().getY(),
+                                    view.at().port().getZ())
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    realMouseX, realMouseY);
         } else if (row == 0) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.crafting_server_hint"), 160),
                     realMouseX, realMouseY);
@@ -676,7 +683,8 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (!ghostHeld.isEmpty()) {
             graphics.nextStratum();
             graphics.item(ghostHeld, realMouseX - 8, realMouseY - 8);
-            graphics.itemDecorations(font, ghostHeld, realMouseX - 8, realMouseY - 8, ghostHeld.getCount() > 1 ? String.valueOf(ghostHeld.getCount()) : "");
+            graphics.itemDecorations(font, ghostHeld, realMouseX - 8, realMouseY - 8,
+                    ghostHeld.getCount() > 1 ? String.valueOf(ghostHeld.getCount()) : "");
         }
     }
 

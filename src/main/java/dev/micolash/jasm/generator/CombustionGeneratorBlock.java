@@ -1,12 +1,12 @@
 package dev.micolash.jasm.generator;
 
 import com.mojang.serialization.MapCodec;
+import dev.micolash.jasm.network.PowerSourceBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import dev.micolash.jasm.network.PowerSourceBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
@@ -71,7 +71,8 @@ public class CombustionGeneratorBlock extends PowerSourceBlock {
 
     @Override
     public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return level.isClientSide() ? null
+        return level.isClientSide()
+                ? null
                 : createTickerHelper(type, JasmBlocks.COMBUSTION_GENERATOR_ENTITY.get(), CombustionGeneratorBlockEntity::serverTick);
     }
 }

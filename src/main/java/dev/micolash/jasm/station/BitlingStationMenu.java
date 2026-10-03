@@ -46,7 +46,8 @@ public class BitlingStationMenu extends AbstractContainerMenu implements Machine
     private final @Nullable BitlingStationBlockEntity station;
 
     /** Server side. */
-    public BitlingStationMenu(int containerId, Inventory inventory, BitlingStationBlockEntity station, ContainerData data, ContainerLevelAccess access,
+    public BitlingStationMenu(int containerId, Inventory inventory, BitlingStationBlockEntity station, ContainerData data,
+            ContainerLevelAccess access,
             Block block) {
         this(containerId, inventory, station, data, access, block, station);
     }

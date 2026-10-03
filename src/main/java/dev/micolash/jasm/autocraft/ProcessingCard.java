@@ -28,8 +28,8 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
         public static final Amount EMPTY = new Amount(ItemResource.EMPTY, 0);
 
         static final Codec<Amount> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        ItemResource.OPTIONAL_CODEC.fieldOf("item").forGetter(Amount::item),
-                        Codec.INT.optionalFieldOf("count", 0).forGetter(Amount::count))
+                ItemResource.OPTIONAL_CODEC.fieldOf("item").forGetter(Amount::item),
+                Codec.INT.optionalFieldOf("count", 0).forGetter(Amount::count))
                 .apply(i, Amount::of));
 
         static final StreamCodec<RegistryFriendlyByteBuf, Amount> STREAM_CODEC = StreamCodec.composite(
@@ -62,9 +62,9 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
      */
     public record Machine(BlockPos pos, Direction side, String name) {
         static final Codec<Machine> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        BlockPos.CODEC.fieldOf("pos").forGetter(Machine::pos),
-                        Direction.CODEC.optionalFieldOf("side", Direction.DOWN).forGetter(Machine::side),
-                        Codec.STRING.optionalFieldOf("name", "").forGetter(Machine::name))
+                BlockPos.CODEC.fieldOf("pos").forGetter(Machine::pos),
+                Direction.CODEC.optionalFieldOf("side", Direction.DOWN).forGetter(Machine::side),
+                Codec.STRING.optionalFieldOf("name", "").forGetter(Machine::name))
                 .apply(i, Machine::new));
 
         static final StreamCodec<RegistryFriendlyByteBuf, Machine> STREAM_CODEC = StreamCodec.composite(
@@ -79,9 +79,9 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     }
 
     public static final Codec<ProcessingCard> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    Amount.CODEC.listOf().fieldOf("inputs").forGetter(ProcessingCard::inputs),
-                    Amount.CODEC.listOf().fieldOf("outputs").forGetter(ProcessingCard::outputs),
-                    Machine.CODEC.listOf().fieldOf("machines").forGetter(ProcessingCard::machines))
+            Amount.CODEC.listOf().fieldOf("inputs").forGetter(ProcessingCard::inputs),
+            Amount.CODEC.listOf().fieldOf("outputs").forGetter(ProcessingCard::outputs),
+            Machine.CODEC.listOf().fieldOf("machines").forGetter(ProcessingCard::machines))
             .apply(i, ProcessingCard::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ProcessingCard> STREAM_CODEC = StreamCodec.composite(

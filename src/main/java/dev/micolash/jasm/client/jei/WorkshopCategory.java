@@ -74,7 +74,8 @@ public class WorkshopCategory extends AbstractRecipeCategory<BitlingItem> {
                         Component.translatable("jei.jasm.workshop.chip." + type.name().toLowerCase(Locale.ROOT)), percent(chance)));
             }
         }
-        lines.add(byteling(critter) ? Component.translatable("jei.jasm.workshop.advanced_toggle")
+        lines.add(byteling(critter)
+                ? Component.translatable("jei.jasm.workshop.advanced_toggle")
                 : Component.translatable("jei.jasm.workshop.advanced", percent(odds.advanced())));
         builder.addText(lines, getWidth() - TEXT_X, getHeight()).setPosition(TEXT_X, 1);
     }

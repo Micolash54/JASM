@@ -1,11 +1,11 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveMenu;
 import dev.micolash.jasm.archive.ArchivePayloads;
 import dev.micolash.jasm.archive.ArchiveService;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.wafer.WaferNumbers;
-import dev.micolash.jasm.Jasm;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
@@ -62,7 +62,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     @Override
     protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[] {0, 0, WIDTH, HEIGHT}, JasmGui.sideStrip(KEY_X, 1));
+        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, JasmGui.sideStrip(KEY_X, 1));
         int x = leftPos;
         int y = topPos;
         link = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.link"),
@@ -189,7 +189,8 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
             int amountWidth = font.width(amount);
             String number = WaferNumbers.visibleTo(minecraft.player) ? "#" + entry.serial() + " " : "";
             String label = number + (entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString());
-            graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2, entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
+            graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2,
+                    entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
             graphics.text(font, amount, x + LIST_WIDTH - 3 - amountWidth, ry + 2, JasmGui.TEXT, false);
         }
         // The last message lies over the bottom of the list for a few seconds.
@@ -203,11 +204,13 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
                     Component.translatable("screen.jasm.archive.energy", String.format("%,d", menu.view().energy()),
                             String.format("%,d", menu.tier().energyBuffer())).getVisualOrderText(),
                     Component.translatable("screen.jasm.archive.drain", menu.tier().drainPerTick())
-                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()), mouseX, mouseY);
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    mouseX, mouseY);
         }
         if (hoveredSlot != null && !hoveredSlot.hasItem() && hoveredSlot.index <= ArchiveMenu.RECOVERY_SLOT) {
             graphics.setTooltipForNextFrame(font, Component.translatable(hoveredSlot.index == ArchiveMenu.LINK_SLOT
-                    ? "screen.jasm.archive.link_hint" : "screen.jasm.archive.recover_hint"), mouseX, mouseY);
+                    ? "screen.jasm.archive.link_hint"
+                    : "screen.jasm.archive.recover_hint"), mouseX, mouseY);
         }
         if (linkWindow.isOpen()) {
             graphics.nextStratum();

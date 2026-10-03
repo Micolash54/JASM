@@ -17,8 +17,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
@@ -84,9 +84,10 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
                 case ChipWorkshopMenu.DATA_TRAINED_HIGH -> ContainerWords.high(BitlingItem.trained(critter));
                 case ChipWorkshopMenu.DATA_REQUIRED_LOW -> ContainerWords.low(required(critter));
                 case ChipWorkshopMenu.DATA_REQUIRED_HIGH -> ContainerWords.high(required(critter));
-                case ChipWorkshopMenu.DATA_FLAGS -> (batch ? ChipWorkshopMenu.FLAG_BATCH : 0) | (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
-                        | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
-                        | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0);
+                case ChipWorkshopMenu.DATA_FLAGS ->
+                    (batch ? ChipWorkshopMenu.FLAG_BATCH : 0) | (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
+                            | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
+                            | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0);
                 default -> 0;
             };
         }
@@ -428,7 +429,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new ChipWorkshopMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition), getBlockState().getBlock());
+        return new ChipWorkshopMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition),
+                getBlockState().getBlock());
     }
 
     @Override

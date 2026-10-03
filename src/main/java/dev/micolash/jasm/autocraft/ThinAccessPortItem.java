@@ -1,19 +1,20 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.network.CableTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.context.UseOnContext;
 
 /** Places a port in the cable's block space, or on its own in an empty space against the clicked block. */
 public class ThinAccessPortItem extends Item {
@@ -43,11 +44,12 @@ public class ThinAccessPortItem extends Item {
         Player player = context.getPlayer();
         BlockPos pos = context.getClickedPos().relative(context.getClickedFace());
         Direction side = context.getClickedFace().getOpposite();
-        if (player == null || !level.getBlockState(pos).canBeReplaced() || !player.mayUseItemAt(pos, context.getClickedFace(), context.getItemInHand())) {
+        if (player == null || !level.getBlockState(pos).canBeReplaced()
+                || !player.mayUseItemAt(pos, context.getClickedFace(), context.getItemInHand())) {
             return InteractionResult.FAIL;
         }
         if (level.isClientSide()) return InteractionResult.SUCCESS;
-        BlockState host = JasmBlocks.cable(dev.micolash.jasm.network.CableTier.BASIC).get().defaultBlockState().setValue(DataCableBlock.CORE, false);
+        BlockState host = JasmBlocks.cable(CableTier.BASIC).get().defaultBlockState().setValue(DataCableBlock.CORE, false);
         if (!level.setBlock(pos, host, Block.UPDATE_ALL) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity cable)) {
             return InteractionResult.FAIL;
         }

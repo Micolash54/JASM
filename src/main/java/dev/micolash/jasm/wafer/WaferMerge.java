@@ -23,8 +23,8 @@ import org.jspecify.annotations.Nullable;
  */
 public record WaferMerge(List<WaferIdentity> sources) {
     public static final Codec<WaferMerge> CODEC = WaferIdentity.CODEC.listOf().xmap(WaferMerge::new, WaferMerge::sources);
-    public static final StreamCodec<ByteBuf, WaferMerge> STREAM_CODEC =
-            WaferIdentity.STREAM_CODEC.apply(ByteBufCodecs.list()).map(WaferMerge::new, WaferMerge::sources);
+    public static final StreamCodec<ByteBuf, WaferMerge> STREAM_CODEC = WaferIdentity.STREAM_CODEC.apply(ByteBufCodecs.list()).map(WaferMerge::new,
+            WaferMerge::sources);
 
     public WaferMerge {
         sources = List.copyOf(sources);

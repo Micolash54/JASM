@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmEntities;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -12,8 +13,8 @@ import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterConditionalItemModelPropertyEvent;
 import net.neoforged.neoforge.client.event.RegisterItemModelsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
-import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
 
 /** Client-only setup. */
@@ -23,7 +24,7 @@ public final class JasmClient {
 
     @SubscribeEvent
     static void registerBlockExtensions(RegisterClientExtensionsEvent event) {
-        event.registerBlock(new DataCableClientExtensions(), JasmBlocks.cables().stream().map(b -> (net.minecraft.world.level.block.Block) b.get()).toArray(net.minecraft.world.level.block.Block[]::new));
+        event.registerBlock(new DataCableClientExtensions(), JasmBlocks.cables().stream().map(b -> (Block) b.get()).toArray(Block[]::new));
     }
 
     /** Lets item models pick a Deck's picture by how charged it is. */

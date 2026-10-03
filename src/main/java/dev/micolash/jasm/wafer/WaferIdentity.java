@@ -16,9 +16,9 @@ import net.minecraft.network.codec.StreamCodec;
  */
 public record WaferIdentity(UUID id, long serial, Stamp stamp) {
     public static final Codec<WaferIdentity> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    UUIDUtil.CODEC.fieldOf("id").forGetter(WaferIdentity::id),
-                    Codec.LONG.optionalFieldOf("serial", 0L).forGetter(WaferIdentity::serial),
-                    StorageCodecs.STAMP.fieldOf("stamp").forGetter(WaferIdentity::stamp))
+            UUIDUtil.CODEC.fieldOf("id").forGetter(WaferIdentity::id),
+            Codec.LONG.optionalFieldOf("serial", 0L).forGetter(WaferIdentity::serial),
+            StorageCodecs.STAMP.fieldOf("stamp").forGetter(WaferIdentity::stamp))
             .apply(i, WaferIdentity::new));
 
     public static final StreamCodec<ByteBuf, WaferIdentity> STREAM_CODEC = StreamCodec.composite(

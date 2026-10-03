@@ -1,24 +1,25 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.ContainerWords;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.deck.DeckItem;
-import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.network.MachineView;
-import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.network.PacketDistributor;
-import java.util.List;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -27,9 +28,9 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 /** The port's upgrades, item buffer, Deck link, status and player inventory. */
@@ -86,7 +87,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         return new AccessPortMenu(containerId, inventory, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null, label, machines);
     }
 
-    private AccessPortMenu(int containerId, Inventory inventory, ContainerData data, ContainerLevelAccess access, @Nullable AccessPortBlockEntity port,
+    private AccessPortMenu(int containerId, Inventory inventory, ContainerData data, ContainerLevelAccess access,
+            @Nullable AccessPortBlockEntity port,
             String label, List<MachineView> machines) {
         super(JasmMenus.ACCESS_PORT.get(), containerId);
         this.data = data;
@@ -100,31 +102,45 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         addDataSlots(data);
         var container = port == null ? new SimpleContainer(AccessPortBlockEntity.INVENTORY_SIZE) : port;
         addSlot(new Slot(container, AccessPortBlockEntity.POWER_SLOT, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.powerY(SIDE_KEYS)) {
-            @Override public boolean isActive() { return !linkCover.covers(this); }
-            @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
-            @Override public int getMaxStackSize() { return 1; }
-            @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+            @Override
+            public boolean isActive() { return !linkCover.covers(this); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
+            @Override
+            public int getMaxStackSize() { return 1; }
+            @Override
+            public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
         for (int col = 0; col < AccessPortBlockEntity.BUFFER_SLOTS; col++) {
             addSlot(new Slot(container, col, BUFFER_X + col * 18, BUFFER_Y) {
-                @Override public boolean isActive() { return !linkCover.covers(this); }
+                @Override
+                public boolean isActive() { return !linkCover.covers(this); }
             });
         }
         addSlot(new Slot(container, AccessPortBlockEntity.DECK_IN, 0, 0) {
-            @Override public boolean isActive() { return port != null || linkCover.open(); }
-            @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isDeck(stack); }
-            @Override public int getMaxStackSize() { return 1; }
-            @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
+            @Override
+            public boolean isActive() { return port != null || linkCover.open(); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return DeckItem.isDeck(stack); }
+            @Override
+            public int getMaxStackSize() { return 1; }
+            @Override
+            public Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
         });
         addSlot(new Slot(container, AccessPortBlockEntity.DECK_OUT, 0, 0) {
-            @Override public boolean isActive() { return port != null || linkCover.open(); }
-            @Override public boolean mayPlace(ItemStack stack) { return false; }
+            @Override
+            public boolean isActive() { return port != null || linkCover.open(); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return false; }
         });
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
             addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
-                @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.SPEED_UPGRADE.get()); }
-                @Override public int getMaxStackSize() { return 1; }
-                @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+                @Override
+                public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.SPEED_UPGRADE.get()); }
+                @Override
+                public int getMaxStackSize() { return 1; }
+                @Override
+                public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
             });
         }
         for (int row = 0; row < 3; row++) {
@@ -248,7 +264,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
 
     @Override
     public boolean stillValid(Player player) {
-        return port == null || port.installed() && player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64 && MachineAccess.canUse(port, player);
+        return port == null
+                || port.installed() && player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64 && MachineAccess.canUse(port, player);
     }
 
     @Override

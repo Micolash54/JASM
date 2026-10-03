@@ -18,7 +18,8 @@ public final class CreativeBatteryCapabilities {
 
     @SubscribeEvent
     static void register(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CREATIVE_BATTERY_ENTITY.get(), (battery, side) -> InfiniteEnergyHandler.INSTANCE);
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, JasmBlocks.CREATIVE_BATTERY_ENTITY.get(),
+                (battery, side) -> InfiniteEnergyHandler.INSTANCE);
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.CREATIVE_BATTERY_ENTITY.get(), (battery, side) -> battery.automation());
     }
 }

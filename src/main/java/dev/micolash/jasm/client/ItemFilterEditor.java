@@ -11,6 +11,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -24,8 +26,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /** Ordered item filters and the ghost input for adding one, shared by wafers and inventory ports. */
 class ItemFilterEditor {
@@ -115,7 +115,8 @@ class ItemFilterEditor {
             final int visible = row;
             int py = listY + row * rowHeight + (compact ? 22 : 4);
             rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 15), controlsX, py);
-            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 15), controlsX + actionWidth + 2, py);
+            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 15),
+                    controlsX + actionWidth + 2, py);
             rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 15), arrowsX, py);
             rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 13, 15), arrowsX + 15, py);
             rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 13, 15), arrowsX + 30, py);
@@ -128,10 +129,15 @@ class ItemFilterEditor {
     void setSave(Consumer<WaferSettings> save) { this.save = save; }
     void unfocus() { text.setFocused(false); }
     boolean contains(double mx, double my) { return isOpen() && mx >= x && mx < x + editorWidth && my >= y && my < y + height; }
-    Optional<Rect2i> area() { return isOpen() ? Optional.of(new Rect2i(x, y, editorWidth + (movable ? 3 : 0), height + (movable ? 3 : 0))) : Optional.empty(); }
+    Optional<Rect2i> area() {
+        return isOpen() ? Optional.of(new Rect2i(x, y, editorWidth + (movable ? 3 : 0), height + (movable ? 3 : 0))) : Optional.empty();
+    }
     Rect2i slotArea() { return new Rect2i(x + 8, y + slotY, 16, 16); }
     ItemStack ghost() { return tagChoices.isEmpty() && !text.getValue().isEmpty() ? icon(candidate()) : ghost; }
-    void fit(int width, int screenHeight) { if (movable) { x = Math.clamp(x, 0, Math.max(0, width - WIDTH)); y = Math.clamp(y, 0, Math.max(0, screenHeight - height)); } layout(); }
+    void fit(int width, int screenHeight) {
+        if (movable) { x = Math.clamp(x, 0, Math.max(0, width - WIDTH)); y = Math.clamp(y, 0, Math.max(0, screenHeight - height)); }
+        layout();
+    }
 
     void open(WaferSettings settings, Component title, Component suffix, ItemStack icon, int left, int top, int width, int screenHeight) {
         opened = true;
@@ -193,8 +199,12 @@ class ItemFilterEditor {
         switch (control) {
             case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled()));
             case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled()));
-            case 2 -> { if (at > 0) Collections.swap(rules, at, at - 1); }
-            case 3 -> { if (at + 1 < rules.size()) Collections.swap(rules, at, at + 1); }
+            case 2 -> {
+                if (at > 0) Collections.swap(rules, at, at - 1);
+            }
+            case 3 -> {
+                if (at + 1 < rules.size()) Collections.swap(rules, at, at + 1);
+            }
             case 4 -> rules.remove(at);
         }
         send(new WaferSettings(rules));
@@ -231,8 +241,8 @@ class ItemFilterEditor {
     }
 
     private ItemStack icon(Filter rule) {
-        List<ItemStack> matches = icons.computeIfAbsent(new Selector(rule.mode(), rule.value()), key ->
-                BuiltInRegistries.ITEM.stream().filter(rule::matches).map(ItemStack::new).toList());
+        List<ItemStack> matches = icons.computeIfAbsent(new Selector(rule.mode(), rule.value()),
+                key -> BuiltInRegistries.ITEM.stream().filter(rule::matches).map(ItemStack::new).toList());
         return matches.isEmpty() ? ItemStack.EMPTY : matches.get((int) ((Util.getMillis() / 1000) % matches.size()));
     }
     void draw(GuiGraphicsExtractor graphics, int mx, int my, float a, int width, int screenHeight) {
@@ -263,7 +273,8 @@ class ItemFilterEditor {
                 int color = rule.enabled() ? JasmGui.TEXT : JasmGui.MUTED;
                 graphics.text(font, font.plainSubstrByWidth(rule.value(), editorWidth - (compact ? 47 : 169)), x + 30, py + 4, color, false);
                 graphics.text(font, label(rule.mode().getSerializedName()), x + 30, py + 14, JasmGui.MUTED, false);
-                if (mx >= x + 8 && mx < x + editorWidth - (compact ? 13 : 135) && my >= py && my < py + (compact ? 22 : rowHeight)) graphics.setTooltipForNextFrame(font, Component.literal(rule.value()), mx, my);
+                if (mx >= x + 8 && mx < x + editorWidth - (compact ? 13 : 135) && my >= py && my < py + (compact ? 22 : rowHeight))
+                    graphics.setTooltipForNextFrame(font, Component.literal(rule.value()), mx, my);
             } else {
                 if (at >= tagChoices.size()) break;
                 boolean over = mx >= x + 8 && mx < x + editorWidth - (movable ? 23 : 13) && my >= py && my < py + TAG_ROW_HEIGHT;
@@ -307,8 +318,13 @@ class ItemFilterEditor {
             return true;
         }
         text.setFocused(text.isMouseOver(event.x(), event.y()));
-        if (text.isFocused()) { tagChoices = List.of(); text.mouseClicked(event, doubleClick); }
-        else if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && grabbable(event.x(), event.y())) { grabX = (int) event.x() - x; grabY = (int) event.y() - y; }
+        if (text.isFocused()) {
+            tagChoices = List.of();
+            text.mouseClicked(event, doubleClick);
+        } else if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && grabbable(event.x(), event.y())) {
+            grabX = (int) event.x() - x;
+            grabY = (int) event.y() - y;
+        }
         return true;
     }
     /** A movable window can be picked up by any empty spot, not just its title bar; the rule list and the field don't count. */
@@ -321,7 +337,8 @@ class ItemFilterEditor {
 
     private void scrollTo(double my) {
         int value = Math.clamp(Math.round((float) (my - y - listY - 7) / (rows * rowHeight - 15) * maxScroll()), 0, maxScroll());
-        if (tagChoices.isEmpty()) scroll = value; else tagScroll = value;
+        if (tagChoices.isEmpty()) scroll = value;
+        else tagScroll = value;
     }
     boolean mouseDragged(MouseButtonEvent event, int width, int screenHeight) {
         if (grabX >= 0) { x = (int) event.x() - grabX; y = (int) event.y() - grabY; fit(width, screenHeight); return true; }
@@ -336,15 +353,27 @@ class ItemFilterEditor {
     }
     boolean mouseScrolled(double delta) {
         int value = Math.clamp(offset() - (int) Math.signum(delta), 0, maxScroll());
-        if (tagChoices.isEmpty()) scroll = value; else tagScroll = value;
+        if (tagChoices.isEmpty()) scroll = value;
+        else tagScroll = value;
         return true;
     }
     boolean keyPressed(KeyEvent event) {
         if (event.isEscape()) {
-            if (!tagChoices.isEmpty()) { tagChoices = List.of(); update(); } else if (movable) close(); else { text.setFocused(false); return false; }
+            if (!tagChoices.isEmpty()) {
+                tagChoices = List.of();
+                update();
+            } else if (movable) close();
+            else {
+                text.setFocused(false);
+                return false;
+            }
             return true;
         }
-        if (text.isFocused()) { if (event.isConfirmation()) add(); else text.keyPressed(event); return true; }
+        if (text.isFocused()) {
+            if (event.isConfirmation()) add();
+            else text.keyPressed(event);
+            return true;
+        }
         return false;
     }
     boolean charTyped(CharacterEvent event) { return text.isFocused() && text.charTyped(event); }

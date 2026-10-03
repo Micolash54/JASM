@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -120,7 +121,7 @@ final class CraftRequestWindow {
 
     /** Minus and plus: 1 at a time, 16 with shift held. */
     private void step(int sign) {
-        long by = net.minecraft.client.Minecraft.getInstance().hasShiftDown() ? 16 : 1;
+        long by = Minecraft.getInstance().hasShiftDown() ? 16 : 1;
         amount.setValue(String.valueOf(Math.max(1, amount() + sign * by)));
     }
 

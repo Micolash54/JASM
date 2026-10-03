@@ -1,8 +1,8 @@
 package dev.micolash.jasm.battery;
 
 import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.EnumMap;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
@@ -61,7 +61,8 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
         }
         for (Direction side : Direction.values()) {
             EnergyHandler target = neighbours
-                    .computeIfAbsent(side, s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
+                    .computeIfAbsent(side,
+                            s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, worldPosition.relative(s), s.getOpposite()))
                     .getCapability();
             if (target != null) {
                 try (Transaction tx = Transaction.openRoot()) {

@@ -94,8 +94,9 @@ public class BitlingItem extends Item {
         int required = trainingRequired();
         if (required > 0) {
             int trained = Math.min(trained(stack), required);
-            builder.accept(Component.translatable(Training.full(trained, required) ? "tooltip.jasm.bitling.training_full" : "tooltip.jasm.bitling.training",
-                    trained * 100 / required).withStyle(ChatFormatting.GRAY));
+            builder.accept(
+                    Component.translatable(Training.full(trained, required) ? "tooltip.jasm.bitling.training_full" : "tooltip.jasm.bitling.training",
+                            trained * 100 / required).withStyle(ChatFormatting.GRAY));
         } else if (stage == BitlingStage.BYTELING) {
             builder.accept(Component.translatable("tooltip.jasm.bitling.fully_learned").withStyle(ChatFormatting.GRAY));
         }

@@ -65,7 +65,8 @@ final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTe
         if (doTransfer) {
             List<ItemStack> grid = new ArrayList<>();
             for (IRecipeSlotView input : inputs) {
-                grid.add(input.getDisplayedItemStack().or(() -> input.getItemStacks().findFirst()).map(s -> s.copyWithCount(1)).orElse(ItemStack.EMPTY));
+                grid.add(input.getDisplayedItemStack().or(() -> input.getItemStacks().findFirst()).map(s -> s.copyWithCount(1))
+                        .orElse(ItemStack.EMPTY));
             }
             ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(menu.containerId, -1, grid));
         }

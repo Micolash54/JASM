@@ -154,19 +154,22 @@ public final class JasmBlocks {
             "chip_workshop", () -> new BlockEntityType<>(ChipWorkshopBlockEntity::new, CHIP_WORKSHOP.get()));
 
     public static final DeferredBlock<BitlingStationBlock> BITLING_STATION = BLOCKS.registerBlock("bitling_station",
-            BitlingStationBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL).noOcclusion());
+            BitlingStationBlock::new,
+            p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL).noOcclusion());
 
     public static final Supplier<BlockEntityType<BitlingStationBlockEntity>> BITLING_STATION_ENTITY = BLOCK_ENTITIES.register(
             "bitling_station", () -> new BlockEntityType<>(BitlingStationBlockEntity::new, BITLING_STATION.get()));
 
     public static final DeferredBlock<NetworkBrainBlock> NETWORK_BRAIN = BLOCKS.registerBlock("network_brain",
-            NetworkBrainBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
+            NetworkBrainBlock::new,
+            p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
 
     public static final Supplier<BlockEntityType<NetworkBrainBlockEntity>> NETWORK_BRAIN_ENTITY = BLOCK_ENTITIES.register(
             "network_brain", () -> new BlockEntityType<>(NetworkBrainBlockEntity::new, NETWORK_BRAIN.get()));
 
     public static final DeferredBlock<NetworkChamberBlock> NETWORK_CHAMBER = BLOCKS.registerBlock("network_chamber",
-            NetworkChamberBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
+            NetworkChamberBlock::new,
+            p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.GLASS).noOcclusion());
 
     public static final Supplier<BlockEntityType<NetworkChamberBlockEntity>> NETWORK_CHAMBER_ENTITY = BLOCK_ENTITIES.register(
             "network_chamber", () -> new BlockEntityType<>(NetworkChamberBlockEntity::new, NETWORK_CHAMBER.get()));

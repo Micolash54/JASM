@@ -1,14 +1,14 @@
 package dev.micolash.jasm.client;
 
-import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -57,7 +57,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     @Override
     protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[] {0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS));
+        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS));
         name = new JasmField(font, leftPos + 8, topPos + NAME_Y, WIDTH - 16 - 48, 12, Component.translatable("screen.jasm.port.name"));
         name.setMaxLength(AccessPortMenu.MAX_NAME);
         name.setValue(menu.label());
@@ -104,7 +104,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
 
     private Component blockingLabel() {
         return Component.translatable("screen.jasm.port.blocking", Component.translatable(menu.blockingMode()
-                ? "screen.jasm.port.blocking_on" : "screen.jasm.port.blocking_off"));
+                ? "screen.jasm.port.blocking_on"
+                : "screen.jasm.port.blocking_off"));
     }
 
     private Tooltip blockingTooltip() {

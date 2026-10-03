@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.crystal.QuenchingRecipe;
 import java.util.List;
+import java.util.Locale;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder;
 import mezz.jei.api.helpers.IGuiHelper;
@@ -37,7 +38,7 @@ public class QuenchingCategory extends AbstractRecipeCategory<QuenchingCategory.
     @Override
     public void createRecipeExtras(IRecipeExtrasBuilder builder, Quench quench, IFocusGroup focuses) {
         builder.addRecipeArrowWidget().setPosition(44, 4);
-        String seconds = String.format(java.util.Locale.ROOT, "%.1f", JasmConfig.QUENCH_TICKS.getAsInt() / 20.0).replace(".0", "");
+        String seconds = String.format(Locale.ROOT, "%.1f", JasmConfig.QUENCH_TICKS.getAsInt() / 20.0).replace(".0", "");
         builder.addText(Component.translatable("jei.jasm.quenching.hint", seconds), getWidth(), 12).setPosition(0, 28);
     }
 }

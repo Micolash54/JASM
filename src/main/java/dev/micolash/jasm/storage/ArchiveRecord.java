@@ -23,23 +23,23 @@ public final class ArchiveRecord {
     /** Where the Archive block currently stands. Absent while carried as an item. */
     public record Placement(ResourceKey<Level> dimension, BlockPos pos) {
         public static final Codec<Placement> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(Placement::dimension),
-                        BlockPos.CODEC.fieldOf("pos").forGetter(Placement::pos))
+                Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(Placement::dimension),
+                BlockPos.CODEC.fieldOf("pos").forGetter(Placement::pos))
                 .apply(i, Placement::new));
     }
 
     public static final Codec<ArchiveRecord> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    UUIDUtil.CODEC.fieldOf("id").forGetter(ArchiveRecord::id),
-                    ArchiveTier.CODEC.fieldOf("tier").forGetter(ArchiveRecord::tier),
-                    UUIDUtil.CODEC.fieldOf("owner").forGetter(ArchiveRecord::owner),
-                    Codec.STRING.fieldOf("owner_name").forGetter(ArchiveRecord::ownerName),
-                    Placement.CODEC.optionalFieldOf("placement").forGetter(r -> Optional.ofNullable(r.placement)),
-                    Codec.LONG.listOf().optionalFieldOf("linked", List.of()).forGetter(r -> List.copyOf(r.linked)),
-                    Codec.LONG.listOf().optionalFieldOf("discarded", List.of()).forGetter(r -> List.copyOf(r.discarded)),
-                    UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(r -> Optional.ofNullable(r.deck)),
-                    UUIDUtil.CODEC.optionalFieldOf("deck_player").forGetter(r -> Optional.ofNullable(r.deckPlayer)),
-                    Codec.BOOL.optionalFieldOf("default_deck", true).forGetter(ArchiveRecord::defaultDeck),
-                    UUIDUtil.CODEC.optionalFieldOf("network").forGetter(r -> Optional.ofNullable(r.network)))
+            UUIDUtil.CODEC.fieldOf("id").forGetter(ArchiveRecord::id),
+            ArchiveTier.CODEC.fieldOf("tier").forGetter(ArchiveRecord::tier),
+            UUIDUtil.CODEC.fieldOf("owner").forGetter(ArchiveRecord::owner),
+            Codec.STRING.fieldOf("owner_name").forGetter(ArchiveRecord::ownerName),
+            Placement.CODEC.optionalFieldOf("placement").forGetter(r -> Optional.ofNullable(r.placement)),
+            Codec.LONG.listOf().optionalFieldOf("linked", List.of()).forGetter(r -> List.copyOf(r.linked)),
+            Codec.LONG.listOf().optionalFieldOf("discarded", List.of()).forGetter(r -> List.copyOf(r.discarded)),
+            UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(r -> Optional.ofNullable(r.deck)),
+            UUIDUtil.CODEC.optionalFieldOf("deck_player").forGetter(r -> Optional.ofNullable(r.deckPlayer)),
+            Codec.BOOL.optionalFieldOf("default_deck", true).forGetter(ArchiveRecord::defaultDeck),
+            UUIDUtil.CODEC.optionalFieldOf("network").forGetter(r -> Optional.ofNullable(r.network)))
             .apply(i, ArchiveRecord::decode));
 
     private final UUID id;

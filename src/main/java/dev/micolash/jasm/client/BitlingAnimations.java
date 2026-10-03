@@ -46,7 +46,7 @@ public final class BitlingAnimations {
                 JsonArray p = b.getAsJsonArray("pivot");
                 String parent = b.get("parent").isJsonNull() ? null : b.get("parent").getAsString();
                 animations.bones.put(e.getKey(), new Bone(e.getKey(), parent,
-                        new float[] {p.get(0).getAsFloat(), p.get(1).getAsFloat(), p.get(2).getAsFloat()}, b.get("model").getAsBoolean()));
+                        new float[]{p.get(0).getAsFloat(), p.get(1).getAsFloat(), p.get(2).getAsFloat()}, b.get("model").getAsBoolean()));
             }
             for (Map.Entry<String, JsonElement> e : root.getAsJsonObject("animations").entrySet()) {
                 JsonObject a = e.getValue().getAsJsonObject();
@@ -57,7 +57,8 @@ public final class BitlingAnimations {
                         List<Key> keys = new ArrayList<>();
                         for (JsonElement k : channel.getValue().getAsJsonArray()) {
                             JsonArray v = k.getAsJsonArray();
-                            keys.add(new Key(v.get(0).getAsFloat(), v.get(1).getAsFloat(), v.get(2).getAsFloat(), v.get(3).getAsFloat(), v.get(4).getAsString()));
+                            keys.add(new Key(v.get(0).getAsFloat(), v.get(1).getAsFloat(), v.get(2).getAsFloat(), v.get(3).getAsFloat(),
+                                    v.get(4).getAsString()));
                         }
                         channels.put(channel.getKey(), keys);
                     }
@@ -139,7 +140,7 @@ public final class BitlingAnimations {
         float[] move = sample(clip, bone, "position", time, ZERO);
         float[] turn = sample(clip, bone, "rotation", time, ZERO);
         float[] size = sample(clip, bone, "scale", time, ONE);
-        return new float[] {move[0], move[1], move[2], turn[0], turn[1], turn[2], size[0], size[1], size[2]};
+        return new float[]{move[0], move[1], move[2], turn[0], turn[1], turn[2], size[0], size[1], size[2]};
     }
 
     private static void move(Bone bone, float[] v, PoseStack poseStack) {
@@ -181,16 +182,16 @@ public final class BitlingAnimations {
             if (a.interpolation().equals("catmullrom") || b.interpolation().equals("catmullrom")) {
                 Key before = i > 0 ? keys.get(i - 1) : a;
                 Key after = i + 2 < keys.size() ? keys.get(i + 2) : b;
-                return new float[] {catmullRom(before.x(), a.x(), b.x(), after.x(), t), catmullRom(before.y(), a.y(), b.y(), after.y(), t),
+                return new float[]{catmullRom(before.x(), a.x(), b.x(), after.x(), t), catmullRom(before.y(), a.y(), b.y(), after.y(), t),
                         catmullRom(before.z(), a.z(), b.z(), after.z(), t)};
             }
-            return new float[] {a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t, a.z() + (b.z() - a.z()) * t};
+            return new float[]{a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t, a.z() + (b.z() - a.z()) * t};
         }
         return values(keys.getLast());
     }
 
     private static float[] values(Key k) {
-        return new float[] {k.x(), k.y(), k.z()};
+        return new float[]{k.x(), k.y(), k.z()};
     }
 
     private static float catmullRom(float p0, float p1, float p2, float p3, float t) {

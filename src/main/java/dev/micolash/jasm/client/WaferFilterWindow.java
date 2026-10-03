@@ -23,5 +23,6 @@ final class WaferFilterWindow extends ItemFilterEditor {
         super.open(settings, Component.translatable("screen.jasm.filter.title"), Component.translatable("screen.jasm.deck.settings.slot", slot + 1),
                 menu.slots.get(slot).getItem(), left, top, width, height);
     }
-    @Override void close() { index = -1; super.close(); }
+    @Override
+    void close() { index = -1; super.close(); }
 }

@@ -1,14 +1,14 @@
 package dev.micolash.jasm.deck;
 
+import dev.micolash.jasm.autocraft.CraftPayloads;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import dev.micolash.jasm.autocraft.CraftPayloads;
-import org.jspecify.annotations.Nullable;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * What the player's screen knows about an open Deck: combined contents of its wafers, charge, and each wafer

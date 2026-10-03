@@ -23,16 +23,16 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 public final class AutocraftState extends SavedData {
     public record Pairing(UUID terminal, UUID player, UUID deck) {
         static final Codec<Pairing> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        UUIDUtil.CODEC.fieldOf("terminal").forGetter(Pairing::terminal),
-                        UUIDUtil.CODEC.fieldOf("player").forGetter(Pairing::player),
-                        UUIDUtil.CODEC.fieldOf("deck").forGetter(Pairing::deck))
+                UUIDUtil.CODEC.fieldOf("terminal").forGetter(Pairing::terminal),
+                UUIDUtil.CODEC.fieldOf("player").forGetter(Pairing::player),
+                UUIDUtil.CODEC.fieldOf("deck").forGetter(Pairing::deck))
                 .apply(i, Pairing::new));
     }
 
     public record Terminal(UUID id, ArchiveRecord.Placement placement) {
         static final Codec<Terminal> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        UUIDUtil.CODEC.fieldOf("id").forGetter(Terminal::id),
-                        ArchiveRecord.Placement.CODEC.fieldOf("placement").forGetter(Terminal::placement))
+                UUIDUtil.CODEC.fieldOf("id").forGetter(Terminal::id),
+                ArchiveRecord.Placement.CODEC.fieldOf("placement").forGetter(Terminal::placement))
                 .apply(i, Terminal::new));
     }
 
@@ -40,15 +40,15 @@ public final class AutocraftState extends SavedData {
     public record Job(UUID id, long serial, UUID recordId, ArchiveRecord.Placement server, UUID requester, String requesterName,
             Optional<UUID> deck, boolean finished, Optional<UUID> rule) {
         static final Codec<Job> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        UUIDUtil.CODEC.fieldOf("id").forGetter(Job::id),
-                        Codec.LONG.fieldOf("serial").forGetter(Job::serial),
-                        UUIDUtil.CODEC.fieldOf("record").forGetter(Job::recordId),
-                        ArchiveRecord.Placement.CODEC.fieldOf("server").forGetter(Job::server),
-                        UUIDUtil.CODEC.fieldOf("requester").forGetter(Job::requester),
-                        Codec.STRING.optionalFieldOf("requester_name", "").forGetter(Job::requesterName),
-                        UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(Job::deck),
-                        Codec.BOOL.optionalFieldOf("finished", false).forGetter(Job::finished),
-                        UUIDUtil.CODEC.optionalFieldOf("rule").forGetter(Job::rule))
+                UUIDUtil.CODEC.fieldOf("id").forGetter(Job::id),
+                Codec.LONG.fieldOf("serial").forGetter(Job::serial),
+                UUIDUtil.CODEC.fieldOf("record").forGetter(Job::recordId),
+                ArchiveRecord.Placement.CODEC.fieldOf("server").forGetter(Job::server),
+                UUIDUtil.CODEC.fieldOf("requester").forGetter(Job::requester),
+                Codec.STRING.optionalFieldOf("requester_name", "").forGetter(Job::requesterName),
+                UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(Job::deck),
+                Codec.BOOL.optionalFieldOf("finished", false).forGetter(Job::finished),
+                UUIDUtil.CODEC.optionalFieldOf("rule").forGetter(Job::rule))
                 .apply(i, Job::new));
 
         Job asFinished() {
@@ -57,11 +57,11 @@ public final class AutocraftState extends SavedData {
     }
 
     public static final Codec<AutocraftState> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    Terminal.CODEC.listOf().optionalFieldOf("terminals", List.of()).forGetter(s -> List.copyOf(s.terminals.values())),
-                    Job.CODEC.listOf().optionalFieldOf("jobs", List.of()).forGetter(s -> List.copyOf(s.jobs.values())),
-                    Pairing.CODEC.listOf().optionalFieldOf("pairings", List.of()).forGetter(s -> List.copyOf(s.pairings.values())),
-                    Codec.unboundedMap(UUIDUtil.STRING_CODEC, UUIDUtil.CODEC).optionalFieldOf("last_terminals", Map.of())
-                            .forGetter(s -> Map.copyOf(s.lastTerminals)))
+            Terminal.CODEC.listOf().optionalFieldOf("terminals", List.of()).forGetter(s -> List.copyOf(s.terminals.values())),
+            Job.CODEC.listOf().optionalFieldOf("jobs", List.of()).forGetter(s -> List.copyOf(s.jobs.values())),
+            Pairing.CODEC.listOf().optionalFieldOf("pairings", List.of()).forGetter(s -> List.copyOf(s.pairings.values())),
+            Codec.unboundedMap(UUIDUtil.STRING_CODEC, UUIDUtil.CODEC).optionalFieldOf("last_terminals", Map.of())
+                    .forGetter(s -> Map.copyOf(s.lastTerminals)))
             .apply(i, AutocraftState::new));
 
     public static final SavedDataType<AutocraftState> TYPE = new SavedDataType<>(Jasm.id("autocraft"), AutocraftState::new, CODEC);

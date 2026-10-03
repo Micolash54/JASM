@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.registry.JasmItems;
 import java.util.List;
+import java.util.Locale;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
@@ -43,7 +44,7 @@ public class GeneratorFuelCategory extends AbstractRecipeCategory<GeneratorFuelC
             GeneratorTier tier = tiers[i];
             int ticks = tier.burnTicks(fuel.furnaceTicks());
             Component line = Component.translatable("jei.jasm.combustion_generator.line",
-                    Component.translatable("jei.jasm.combustion_generator." + tier.name().toLowerCase(java.util.Locale.ROOT)),
+                    Component.translatable("jei.jasm.combustion_generator." + tier.name().toLowerCase(Locale.ROOT)),
                     String.format("%,d", (long) ticks * tier.fePerTick()), seconds(ticks));
             graphics.text(font, line, 24, i * LINE_HEIGHT + 1, TEXT, false);
         }

@@ -3,13 +3,13 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
+import dev.micolash.jasm.registry.JasmComponents;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
-import dev.micolash.jasm.registry.JasmComponents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -247,7 +247,8 @@ public final class NetworkPanel {
 
     /** Two short lines beside the key: the brain's level and the network's state, then how full it is. */
     private void drawHeader(GuiGraphicsExtractor graphics, NetworkViewPayloads.Header header) {
-        Component level = header.level() >= 0 ? Component.translatable("screen.jasm.network.level", header.level())
+        Component level = header.level() >= 0
+                ? Component.translatable("screen.jasm.network.level", header.level())
                 : Component.translatable("screen.jasm.network.no_brain");
         graphics.text(font, level, x + 1, y, JasmGui.TEXT, false);
         Component state;

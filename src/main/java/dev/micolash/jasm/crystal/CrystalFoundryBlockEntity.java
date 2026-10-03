@@ -58,8 +58,9 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
                 case CrystalFoundryMenu.DATA_PER_SEED -> JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt();
                 case CrystalFoundryMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
                 case CrystalFoundryMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
-                case CrystalFoundryMenu.DATA_FLAGS -> (growing ? CrystalFoundryMenu.FLAG_GROWING : 0) | (running() ? CrystalFoundryMenu.FLAG_POWERED : 0)
-                        | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0);
+                case CrystalFoundryMenu.DATA_FLAGS ->
+                    (growing ? CrystalFoundryMenu.FLAG_GROWING : 0) | (running() ? CrystalFoundryMenu.FLAG_POWERED : 0)
+                            | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0);
                 default -> 0;
             };
         }
@@ -261,7 +262,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new CrystalFoundryMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition), getBlockState().getBlock());
+        return new CrystalFoundryMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition),
+                getBlockState().getBlock());
     }
 
     @Override

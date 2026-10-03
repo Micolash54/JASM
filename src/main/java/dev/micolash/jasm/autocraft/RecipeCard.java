@@ -20,10 +20,10 @@ import net.minecraft.world.item.crafting.Recipe;
  */
 public record RecipeCard(ResourceKey<Recipe<?>> recipe, ItemContainerContents grid, ItemStackTemplate output, boolean shapeless) implements Card {
     public static final Codec<RecipeCard> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    ResourceKey.codec(Registries.RECIPE).fieldOf("recipe").forGetter(RecipeCard::recipe),
-                    ItemContainerContents.CODEC.fieldOf("grid").forGetter(RecipeCard::grid),
-                    ItemStackTemplate.CODEC.fieldOf("output").forGetter(RecipeCard::output),
-                    Codec.BOOL.optionalFieldOf("shapeless", false).forGetter(RecipeCard::shapeless))
+            ResourceKey.codec(Registries.RECIPE).fieldOf("recipe").forGetter(RecipeCard::recipe),
+            ItemContainerContents.CODEC.fieldOf("grid").forGetter(RecipeCard::grid),
+            ItemStackTemplate.CODEC.fieldOf("output").forGetter(RecipeCard::output),
+            Codec.BOOL.optionalFieldOf("shapeless", false).forGetter(RecipeCard::shapeless))
             .apply(i, RecipeCard::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, RecipeCard> STREAM_CODEC = StreamCodec.composite(

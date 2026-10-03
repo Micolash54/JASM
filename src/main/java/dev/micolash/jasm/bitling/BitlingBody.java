@@ -29,7 +29,20 @@ import org.jspecify.annotations.Nullable;
 public abstract class BitlingBody extends PathfinderMob {
     /** What the Bitling is doing; the client picks a loop from it. */
     public enum Act {
-        STAND, WALK, SPRINT, LOOK, HOP, REST, TIRED, STARTLED, PETTED, RECHARGE, INSPECT, NOD, EAT, SHAKE;
+        STAND,
+        WALK,
+        SPRINT,
+        LOOK,
+        HOP,
+        REST,
+        TIRED,
+        STARTLED,
+        PETTED,
+        RECHARGE,
+        INSPECT,
+        NOD,
+        EAT,
+        SHAKE;
 
         public static Act of(int ordinal) {
             Act[] all = values();

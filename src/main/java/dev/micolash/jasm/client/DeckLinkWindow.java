@@ -117,7 +117,7 @@ final class DeckLinkWindow {
         input.y = y - top + SLOT_Y;
         output.x = x - left + OUT_X;
         output.y = y - top + SLOT_Y;
-        cover.set(new int[] {input.x, input.y, output.x, output.y});
+        cover.set(new int[]{input.x, input.y, output.x, output.y});
     }
 
     boolean overSlot(double mouseX, double mouseY) {

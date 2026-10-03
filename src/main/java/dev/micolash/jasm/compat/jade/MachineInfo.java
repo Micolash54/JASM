@@ -13,6 +13,7 @@ import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.NetworkLimit;
 import dev.micolash.jasm.network.Networks;
+import java.util.stream.IntStream;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -61,7 +62,8 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
         MachineBlockEntity machine = machine(accessor);
         if (machine == null) return null;
         int cards = machine instanceof RecipeRackBlockEntity rack
-                ? (int) java.util.stream.IntStream.range(0, rack.getContainerSize()).filter(i -> !rack.getItem(i).isEmpty()).count() : -1;
+                ? (int) IntStream.range(0, rack.getContainerSize()).filter(i -> !rack.getItem(i).isEmpty()).count()
+                : -1;
         CraftingJob job = machine instanceof CraftingServerBlockEntity server ? server.job() : null;
         NetworkLimit.State full = null;
         if (machine.stopped() && machine.getLevel() instanceof ServerLevel level
@@ -105,11 +107,12 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                 }
                 if (data.fullLimit() > 0) {
                     tooltip.add(Component.translatable("screen.jasm.machine.network_full", data.fullCount(), data.fullLimit()));
-                } else if (!data.running() && !(accessor.getBlockEntity() instanceof NetworkBrainBlockEntity)
-                        && !(accessor.getBlockEntity() instanceof NetworkChamberBlockEntity)) {
-                    // A brain's own status line says when it has no power, and a chamber never runs by itself.
-                    tooltip.add(Component.translatable("screen.jasm.machine.no_power"));
-                }
+                } else
+                    if (!data.running() && !(accessor.getBlockEntity() instanceof NetworkBrainBlockEntity)
+                            && !(accessor.getBlockEntity() instanceof NetworkChamberBlockEntity)) {
+                                // A brain's own status line says when it has no power, and a chamber never runs by itself.
+                                tooltip.add(Component.translatable("screen.jasm.machine.no_power"));
+                            }
                 if (!data.machine().isEmpty()) {
                     tooltip.add(Component.translatable("screen.jasm.port.machine", data.machine()));
                     tooltip.add(Component.translatable(data.inUse() ? "screen.jasm.port.in_use" : "screen.jasm.port.idle"));

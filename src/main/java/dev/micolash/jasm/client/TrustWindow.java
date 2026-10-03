@@ -9,6 +9,7 @@ import dev.micolash.jasm.network.TrustList;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -16,6 +17,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
@@ -74,8 +76,8 @@ final class TrustWindow {
         return open && mouseX >= x && mouseX < x + WIDTH && mouseY >= y && mouseY < y + HEIGHT;
     }
 
-    java.util.Optional<net.minecraft.client.renderer.Rect2i> area() {
-        return open ? java.util.Optional.of(new net.minecraft.client.renderer.Rect2i(x, y, WIDTH + 3, HEIGHT + 3)) : java.util.Optional.empty();
+    Optional<Rect2i> area() {
+        return open ? Optional.of(new Rect2i(x, y, WIDTH + 3, HEIGHT + 3)) : Optional.empty();
     }
 
     private void add() {
@@ -118,7 +120,7 @@ final class TrustWindow {
             }
         }
         // Who was trusted, or why not, over the bottom of the list for a few seconds.
-        Component notice = menu.notices().current(net.minecraft.client.Minecraft.getInstance().level.getGameTime());
+        Component notice = menu.notices().current(Minecraft.getInstance().level.getGameTime());
         if (notice != null) {
             graphics.nextStratum();
             JasmGui.notice(graphics, font, notice, menu.notices().ok(), x + 7, y + LIST_Y + ROWS * 10, WIDTH - 14);

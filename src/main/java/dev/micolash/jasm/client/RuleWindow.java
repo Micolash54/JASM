@@ -1,5 +1,7 @@
 package dev.micolash.jasm.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.CraftRule;
@@ -8,8 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -189,7 +189,8 @@ final class RuleWindow {
         boolean overSlot = mouseX >= x + SLOT_X && mouseX < x + SLOT_X + 16 && mouseY >= y + SLOT_Y && mouseY < y + SLOT_Y + 16;
         if (overSlot) {
             graphics.fill(x + SLOT_X, y + SLOT_Y, x + SLOT_X + 16, y + SLOT_Y + 16, JasmGui.HOVER);
-            graphics.setTooltipForNextFrame(font, item.isEmpty() ? Component.translatable("screen.jasm.rule.pick")
+            graphics.setTooltipForNextFrame(font, item.isEmpty()
+                    ? Component.translatable("screen.jasm.rule.pick")
                     : item.toStack(1).getHoverName(), mouseX, mouseY);
         }
         graphics.text(font, Component.translatable(timed ? "screen.jasm.rule.seconds" : "screen.jasm.rule.items"), x + 94, y + 52,

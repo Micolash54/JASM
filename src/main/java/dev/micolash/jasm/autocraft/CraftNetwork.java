@@ -11,10 +11,12 @@ import dev.micolash.jasm.deck.DeckView;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
@@ -50,7 +52,8 @@ public final class CraftNetwork {
     @SubscribeEvent
     static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1")
-                .playToServer(CraftPayloads.Ask.TYPE, CraftPayloads.Ask.STREAM_CODEC, (payload, context) -> ask((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.Ask.TYPE, CraftPayloads.Ask.STREAM_CODEC,
+                        (payload, context) -> ask((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.Start.TYPE, CraftPayloads.Start.STREAM_CODEC,
                         (payload, context) -> start((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.Cancel.TYPE, CraftPayloads.Cancel.STREAM_CODEC,
@@ -161,7 +164,8 @@ public final class CraftNetwork {
                 continue;
             }
             ServerLevel level = server.getLevel(entry.server().dimension());
-            if (level != null && level.isLoaded(payload.server()) && level.getBlockEntity(payload.server()) instanceof CraftingServerBlockEntity crafting
+            if (level != null && level.isLoaded(payload.server())
+                    && level.getBlockEntity(payload.server()) instanceof CraftingServerBlockEntity crafting
                     && crafting.job() != null && crafting.job().id().equals(entry.id()) && Jobs.onDeckNetwork(menu.deck(), level, payload.server())) {
                 return crafting;
             }
@@ -187,7 +191,8 @@ public final class CraftNetwork {
             CraftRule rule = payload.rule().get().cleaned();
             if (index >= 0 && index < rules.size()) {
                 // Editing keeps the rule's identity, so a job it started still counts as its own.
-                rule = new CraftRule(rules.get(index).id(), rule.item(), rule.timed(), rule.threshold(), rule.seconds(), rule.amount(), rule.enabled(),
+                rule = new CraftRule(rules.get(index).id(), rule.item(), rule.timed(), rule.threshold(), rule.seconds(), rule.amount(),
+                        rule.enabled(),
                         rule.toPlayer());
                 rules.set(index, rule);
             } else if (rules.size() < Rules.limit(deck)) {
@@ -264,7 +269,7 @@ public final class CraftNetwork {
         var open = context.player().containerMenu;
         if (open.containerId != payload.containerId()) return;
         if (open instanceof AccessPortMenu menu) menu.setLinkedPlayer(payload.name());
-        if (open instanceof dev.micolash.jasm.transfer.TransferPortMenu menu) menu.setLinkedPlayer(payload.name());
+        if (open instanceof TransferPortMenu menu) menu.setLinkedPlayer(payload.name());
     }
 
     private static void onTerminalDeck(CraftPayloads.TerminalDeck payload, IPayloadContext context) {
@@ -381,7 +386,7 @@ public final class CraftNetwork {
                 CraftingJob job = crafting.job();
                 ItemResource target = job.target() == null ? ItemResource.EMPTY : ItemResource.of(job.target().create());
                 views.add(new CraftPayloads.JobView(pos, target, job.amount(), job.phase().ordinal(), Math.round(job.progress() * 1000),
-                        job.pause().code(), java.util.Optional.ofNullable(job.waiting()).map(CraftingJob.Waiting::line)));
+                        job.pause().code(), Optional.ofNullable(job.waiting()).map(CraftingJob.Waiting::line)));
             }
             if (views.size() >= 64) {
                 break;

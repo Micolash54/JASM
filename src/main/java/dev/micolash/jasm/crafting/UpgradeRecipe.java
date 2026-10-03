@@ -39,12 +39,12 @@ import net.minecraft.world.level.Level;
  */
 public class UpgradeRecipe extends NormalCraftingRecipe {
     public static final MapCodec<UpgradeRecipe> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                    Recipe.CommonInfo.MAP_CODEC.forGetter(r -> r.commonInfo),
-                    CraftingRecipe.CraftingBookInfo.MAP_CODEC.forGetter(r -> r.bookInfo),
-                    ShapedRecipePattern.MAP_CODEC.forGetter(r -> r.pattern),
-                    Ingredient.CODEC.fieldOf("source").forGetter(r -> r.source),
-                    Codec.BOOL.optionalFieldOf("merge_wafers", false).forGetter(r -> r.mergeWafers),
-                    ItemStackTemplate.CODEC.fieldOf("result").forGetter(r -> r.result))
+            Recipe.CommonInfo.MAP_CODEC.forGetter(r -> r.commonInfo),
+            CraftingRecipe.CraftingBookInfo.MAP_CODEC.forGetter(r -> r.bookInfo),
+            ShapedRecipePattern.MAP_CODEC.forGetter(r -> r.pattern),
+            Ingredient.CODEC.fieldOf("source").forGetter(r -> r.source),
+            Codec.BOOL.optionalFieldOf("merge_wafers", false).forGetter(r -> r.mergeWafers),
+            ItemStackTemplate.CODEC.fieldOf("result").forGetter(r -> r.result))
             .apply(i, UpgradeRecipe::new));
     public static final StreamCodec<RegistryFriendlyByteBuf, UpgradeRecipe> STREAM_CODEC = StreamCodec.composite(
             Recipe.CommonInfo.STREAM_CODEC, r -> r.commonInfo,

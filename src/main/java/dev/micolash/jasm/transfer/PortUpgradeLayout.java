@@ -43,6 +43,6 @@ public final class PortUpgradeLayout {
 
     public static int[] column(int keys, boolean redstone) {
         int bottom = redstone ? redstoneY(keys) + 22 : powerY(keys) + 17;
-        return new int[] {KEY_X - 14, KEY_Y - 4, 38, bottom + 5 - (KEY_Y - 4)};
+        return new int[]{KEY_X - 14, KEY_Y - 4, 38, bottom + 5 - (KEY_Y - 4)};
     }
 }

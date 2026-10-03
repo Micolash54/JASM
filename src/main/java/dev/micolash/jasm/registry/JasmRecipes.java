@@ -1,10 +1,10 @@
 package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.crystal.QuenchingRecipe;
-import dev.micolash.jasm.workshop.EvolveRecipe;
 import dev.micolash.jasm.autocraft.WipeCardRecipe;
 import dev.micolash.jasm.crafting.UpgradeRecipe;
+import dev.micolash.jasm.crystal.QuenchingRecipe;
+import dev.micolash.jasm.workshop.EvolveRecipe;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.crafting.RecipeSerializer;

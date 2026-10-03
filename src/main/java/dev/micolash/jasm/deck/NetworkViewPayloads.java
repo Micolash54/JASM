@@ -47,7 +47,7 @@ public final class NetworkViewPayloads {
      * like and where it is. {@code status}: 0 working, 1 stopped or no power, 2 not loaded.
      */
     public record Node(int parent, int depth, boolean junction, ItemStack icon, Component name, BlockPos pos,
-                       ResourceKey<Level> dimension, int status) {
+            ResourceKey<Level> dimension, int status) {
         static final StreamCodec<RegistryFriendlyByteBuf, Node> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Node::parent,
                 ByteBufCodecs.VAR_INT, Node::depth,

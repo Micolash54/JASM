@@ -31,8 +31,8 @@ public final class DeckPayloads {
         /** One stack straight into the inventory (shift-click). */
         TO_INVENTORY;
 
-        static final StreamCodec<ByteBuf, ExtractMode> STREAM_CODEC =
-                ByteBufCodecs.idMapper(i -> values()[Math.floorMod(i, values().length)], ExtractMode::ordinal);
+        static final StreamCodec<ByteBuf, ExtractMode> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[Math.floorMod(i, values().length)],
+                ExtractMode::ordinal);
     }
 
     /** Client → server: take an item out of the Deck. */

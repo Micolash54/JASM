@@ -1,12 +1,12 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.transfer.TransferNetwork;
-import dev.micolash.jasm.transfer.TransferPortKind;
-import dev.micolash.jasm.transfer.TransferPortMenu;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.transfer.TransferNetwork;
+import dev.micolash.jasm.transfer.TransferPortKind;
+import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -41,10 +41,12 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         inventoryLabelX = (TransferPortMenu.WIDTH - 162) / 2;
         inventoryLabelY = menu.inventoryY() - 11;
     }
-    @Override protected void init() {
+    @Override
+    protected void init() {
         super.init();
         frameRedstone = menu.hasRedstoneUpgrade();
-        frame = JasmFrame.rounded(new int[] {0, 0, TransferPortMenu.WIDTH, imageHeight}, PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, frameRedstone));
+        frame = JasmFrame.rounded(new int[]{0, 0, TransferPortMenu.WIDTH, imageHeight},
+                PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, frameRedstone));
         editors.clear();
         boolean combined = menu.kind() == TransferPortKind.INPUT_OUTPUT;
         int rows = combined ? 1 : 2;
@@ -84,10 +86,12 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         }
         if (frameRedstone != installed) {
             frameRedstone = installed;
-            frame = JasmFrame.rounded(new int[] {0, 0, TransferPortMenu.WIDTH, imageHeight}, PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, installed));
+            frame = JasmFrame.rounded(new int[]{0, 0, TransferPortMenu.WIDTH, imageHeight},
+                    PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, installed));
         }
     }
-    @Override protected void containerTick() {
+    @Override
+    protected void containerTick() {
         super.containerTick();
         updateRedstoneButton();
     }
@@ -107,13 +111,17 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         editors.add(editor);
     }
     /** Where the Deck Link window is, while it is open, so JEI's item list stays clear of it. */
-    public List<Rect2i> extraAreas() { return linkWindow == null ? List.of() : linkWindow.area().map(List::of).orElse(List.of()); }
-    @Override protected boolean hasClickedOutside(double x, double y, int left, int top) {
+    public List<Rect2i> extraAreas() {
+        return linkWindow == null ? List.of() : linkWindow.area().map(List::of).orElse(List.of());
+    }
+    @Override
+    protected boolean hasClickedOutside(double x, double y, int left, int top) {
         return !linkWindow.contains(x, y) && super.hasClickedOutside(x, y, left, top);
     }
     public List<Rect2i> filterSlots() { return editors.stream().map(ItemFilterEditor::slotArea).toList(); }
     public void setFilterItem(int index, Item item) { if (index >= 0 && index < editors.size()) editors.get(index).setItem(new ItemStack(item)); }
-    @Override public void extractBackground(GuiGraphicsExtractor graphics, int mx, int my, float a) {
+    @Override
+    public void extractBackground(GuiGraphicsExtractor graphics, int mx, int my, float a) {
         super.extractBackground(graphics, mx, my, a);
         frame.draw(graphics, leftPos, topPos);
         JasmGui.divider(graphics, leftPos + KEY_X, topPos + PortUpgradeLayout.dividerY(TransferPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH);
@@ -127,11 +135,13 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
             }
         }
     }
-    @Override protected void extractLabels(GuiGraphicsExtractor graphics, int mx, int my) {
+    @Override
+    protected void extractLabels(GuiGraphicsExtractor graphics, int mx, int my) {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
     }
-    @Override public void extractContents(GuiGraphicsExtractor graphics, int realX, int realY, float a) {
+    @Override
+    public void extractContents(GuiGraphicsExtractor graphics, int realX, int realY, float a) {
         linkWindow.sync(leftPos, topPos);
         // Under the Deck Link window nothing lights up or shows a tooltip, except its own slots.
         boolean hidden = linkWindow.hidesMouse(realX, realY);
@@ -142,7 +152,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         graphics.nextStratum();
         for (var editor : editors) editor.draw(graphics, mx, my, a, width, height);
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
-            if (hoveredSlot == menu.getSlot(i)) graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.transfer.speed_hint"), mx, my);
+            if (hoveredSlot == menu.getSlot(i))
+                graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.transfer.speed_hint"), mx, my);
         }
         if (hoveredSlot == menu.getSlot(TransferPortMenu.POWER)) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.port.power_hint"), 180), mx, my);
@@ -152,7 +163,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
             linkWindow.draw(graphics, realX, realY, a, DeckLinkWindow.linkedTo(menu.linkedPlayer(), menu.linked()));
         }
     }
-    @Override public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (linkWindow.contains(event.x(), event.y())) {
             return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
         }
@@ -165,22 +177,26 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         editors.forEach(ItemFilterEditor::unfocus);
         return super.mouseClicked(event, doubleClick);
     }
-    @Override public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (linkWindow.mouseDragged(event, width, height)) return true;
         for (var editor : editors) if (editor.mouseDragged(event, width, height)) return true;
         return super.mouseDragged(event, dx, dy);
     }
-    @Override public boolean mouseReleased(MouseButtonEvent event) {
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
         boolean handled = linkWindow.mouseReleased();
         for (var editor : editors) handled |= editor.mouseReleased(event);
         return handled || super.mouseReleased(event);
     }
-    @Override public boolean mouseScrolled(double x, double y, double sx, double sy) {
+    @Override
+    public boolean mouseScrolled(double x, double y, double sx, double sy) {
         if (linkWindow.contains(x, y)) return true;
         for (var editor : editors) if (editor.contains(x, y)) return editor.mouseScrolled(sy);
         return super.mouseScrolled(x, y, sx, sy);
     }
-    @Override public boolean keyPressed(KeyEvent event) {
+    @Override
+    public boolean keyPressed(KeyEvent event) {
         if (linkWindow.isOpen() && event.isEscape()) {
             linkWindow.close();
             link.setLatched(false);
@@ -189,7 +205,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         for (var editor : editors) if (editor.keyPressed(event)) return true;
         return super.keyPressed(event);
     }
-    @Override public boolean charTyped(CharacterEvent event) {
+    @Override
+    public boolean charTyped(CharacterEvent event) {
         for (var editor : editors) if (editor.charTyped(event)) return true;
         return super.charTyped(event);
     }

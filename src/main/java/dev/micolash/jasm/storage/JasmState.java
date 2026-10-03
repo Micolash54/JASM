@@ -26,10 +26,10 @@ public final class JasmState extends SavedData {
     private static final LenientListCodec<ArchiveRecord> ARCHIVES_CODEC = new LenientListCodec<>(ArchiveRecord.CODEC, "archive record");
 
     public static final Codec<JasmState> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    Codec.LONG.fieldOf("epoch").forGetter(s -> s.stamps.epoch()),
-                    Codec.LONG.fieldOf("counter").forGetter(s -> s.stamps.counter()),
-                    Codec.LONG.fieldOf("next_serial").forGetter(s -> s.nextSerial),
-                    ARCHIVES_CODEC.fieldOf("archives").forGetter(s -> new LenientListCodec.Lenient<>(s.allArchivesForSave(), s.rawArchives)))
+            Codec.LONG.fieldOf("epoch").forGetter(s -> s.stamps.epoch()),
+            Codec.LONG.fieldOf("counter").forGetter(s -> s.stamps.counter()),
+            Codec.LONG.fieldOf("next_serial").forGetter(s -> s.nextSerial),
+            ARCHIVES_CODEC.fieldOf("archives").forGetter(s -> new LenientListCodec.Lenient<>(s.allArchivesForSave(), s.rawArchives)))
             .apply(i, JasmState::new));
 
     public static final SavedDataType<JasmState> TYPE = new SavedDataType<>(Jasm.id("state"), JasmState::new, CODEC);

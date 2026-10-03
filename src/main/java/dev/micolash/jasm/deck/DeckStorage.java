@@ -8,15 +8,17 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
-import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.wafer.WaferValidator;
 import dev.micolash.jasm.wafer.WaferValidator.Mode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -244,7 +246,8 @@ public final class DeckStorage {
         SlotView view = views.get(slot);
         List<WaferSettings.Filter> previous = view.record() == null ? List.of() : view.record().settings().rules();
         if (settings.rules().stream().anyMatch(rule -> !rule.valid() && previous.stream()
-                .noneMatch(old -> old.mode() == rule.mode() && old.value().equals(rule.value())))) return false;
+                .noneMatch(old -> old.mode() == rule.mode() && old.value().equals(rule.value()))))
+            return false;
         WaferRecord record = view.record();
         if (record == null) {
             ItemStack blank = view.wafer();
@@ -298,7 +301,8 @@ public final class DeckStorage {
     }
 
     /** Same routing order, with a shared limit on the number of items moved. The charge limits it too. */
-    public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player, long limit) {
+    public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player,
+            long limit) {
         return depositAmounts(store, deck, items, player, limit, null);
     }
 
@@ -307,11 +311,12 @@ public final class DeckStorage {
         if (!DeckItem.worksIn(deck, player.level())) return Map.of();
         limit = Math.min(limit, affordable(deck));
         long paid = limit;
-        var left = new java.util.LinkedHashMap<ItemResource, Long>();
+        var left = new LinkedHashMap<ItemResource, Long>();
         items.forEach((key, amount) -> {
-            if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) left.put(key, amount);
+            if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted())
+                left.put(key, amount);
         });
-        var moved = new java.util.LinkedHashMap<ItemResource, Long>();
+        var moved = new LinkedHashMap<ItemResource, Long>();
         List<SlotView> slots = views(store, deck, player, checked);
         DeckWafers wafers = DeckItem.wafers(deck);
         for (int i = 0; i < slots.size(); i++) {
@@ -321,7 +326,7 @@ public final class DeckStorage {
             WaferSettings settings = record == null ? WaferSettings.DEFAULT : record.settings();
             List<ItemResource> order = new ArrayList<>(left.keySet());
             order.removeIf(key -> settings.rank(key.getItem()) < 0);
-            order.sort(java.util.Comparator.comparingInt(key -> settings.rank(key.getItem())));
+            order.sort(Comparator.comparingInt(key -> settings.rank(key.getItem())));
             for (ItemResource key : order) {
                 if (limit <= 0) break;
                 long remaining = left.get(key);
@@ -360,7 +365,7 @@ public final class DeckStorage {
 
     /** Everything on the Deck's usable wafers, added up. Assumes {@link #checkAll} ran this tick. */
     public static Map<ItemResource, Long> contents(WaferStore store, ItemStack deck) {
-        Map<ItemResource, Long> total = new java.util.LinkedHashMap<>();
+        Map<ItemResource, Long> total = new LinkedHashMap<>();
         for (WaferRecord record : records(store, deck)) {
             if (record != null) {
                 record.contents().forEach((key, count) -> total.merge(key, count, Long::sum));

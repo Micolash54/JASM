@@ -11,8 +11,8 @@ public record BrainProgress(int level, long points) {
     public static final BrainProgress START = new BrainProgress(1, 0);
 
     public static final Codec<BrainProgress> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    Codec.INT.fieldOf("level").forGetter(BrainProgress::level),
-                    Codec.LONG.fieldOf("points").forGetter(BrainProgress::points))
+            Codec.INT.fieldOf("level").forGetter(BrainProgress::level),
+            Codec.LONG.fieldOf("points").forGetter(BrainProgress::points))
             .apply(i, BrainProgress::new));
 
     public static final StreamCodec<ByteBuf, BrainProgress> STREAM_CODEC = StreamCodec.composite(

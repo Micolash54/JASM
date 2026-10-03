@@ -7,8 +7,8 @@ import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
-import dev.micolash.jasm.core.JasmServerData.NetworkAnswer;
 import dev.micolash.jasm.core.JasmServerData;
+import dev.micolash.jasm.core.JasmServerData.NetworkAnswer;
 import dev.micolash.jasm.core.NetworkTree;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
@@ -237,7 +237,8 @@ public final class NetworkViewService {
             return !(entity instanceof NetworkBrainBlockEntity) || cell == root;
         }
 
-        @Nullable Integer firstMachine() {
+        @Nullable
+        Integer firstMachine() {
             for (int cell = 0; cell < positions.size(); cell++) {
                 if (machine(cell)) return cell;
             }

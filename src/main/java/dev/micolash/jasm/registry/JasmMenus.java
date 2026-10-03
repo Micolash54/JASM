@@ -8,12 +8,13 @@ import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.brain.NetworkBrainMenu;
+import dev.micolash.jasm.crystal.CrystalFoundryMenu;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
-import java.util.function.Supplier;
-import dev.micolash.jasm.crystal.CrystalFoundryMenu;
 import dev.micolash.jasm.station.BitlingStationMenu;
+import dev.micolash.jasm.transfer.TransferPortMenu;
 import dev.micolash.jasm.workshop.ChipWorkshopMenu;
+import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.flag.FeatureFlags;
 import net.minecraft.world.inventory.MenuType;
@@ -54,8 +55,8 @@ public final class JasmMenus {
     public static final Supplier<MenuType<AccessPortMenu>> ACCESS_PORT = MENUS.register("access_port",
             () -> IMenuTypeExtension.create(AccessPortMenu::client));
 
-    public static final Supplier<MenuType<dev.micolash.jasm.transfer.TransferPortMenu>> TRANSFER_PORT = MENUS.register("transfer_port",
-            () -> IMenuTypeExtension.create(dev.micolash.jasm.transfer.TransferPortMenu::client));
+    public static final Supplier<MenuType<TransferPortMenu>> TRANSFER_PORT = MENUS.register("transfer_port",
+            () -> IMenuTypeExtension.create(TransferPortMenu::client));
 
     private JasmMenus() {}
 }

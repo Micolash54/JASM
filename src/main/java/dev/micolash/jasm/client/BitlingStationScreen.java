@@ -55,7 +55,8 @@ public class BitlingStationScreen extends JasmScreen<BitlingStationMenu> {
     // --- the slider ---
 
     private boolean overSlider(double mouseX, double mouseY) {
-        return mouseX >= leftPos + PAD && mouseX < leftPos + PAD + SLIDER_WIDTH && mouseY >= topPos + SLIDER_Y - 2 && mouseY < topPos + SLIDER_Y + BAR_HEIGHT + 2;
+        return mouseX >= leftPos + PAD && mouseX < leftPos + PAD + SLIDER_WIDTH && mouseY >= topPos + SLIDER_Y - 2
+                && mouseY < topPos + SLIDER_Y + BAR_HEIGHT + 2;
     }
 
     private void dragTo(double mouseX) {
@@ -110,7 +111,8 @@ public class BitlingStationScreen extends JasmScreen<BitlingStationMenu> {
         }
         JasmGui.inset(graphics, x + TEXT_X, y + STATUS_Y, WIDTH - TEXT_X - PAD, STATUS_HEIGHT);
         int battery = menu.battery();
-        JasmGui.bar(graphics, x + PAD, y + BATTERY_Y, SLIDER_WIDTH, BAR_HEIGHT, hasCritter() && battery > 0 ? menu.critterEnergy() / (double) battery : 0);
+        JasmGui.bar(graphics, x + PAD, y + BATTERY_Y, SLIDER_WIDTH, BAR_HEIGHT,
+                hasCritter() && battery > 0 ? menu.critterEnergy() / (double) battery : 0);
         JasmGui.slider(graphics, x + PAD, y + SLIDER_Y, SLIDER_WIDTH, BAR_HEIGHT, HANDLE_WIDTH, radiusFraction(),
                 overSlider(mouseX, mouseY), dragging);
     }

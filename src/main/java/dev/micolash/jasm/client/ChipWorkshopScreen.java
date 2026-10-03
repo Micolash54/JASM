@@ -157,7 +157,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        if (frame == null) frame = JasmFrame.rounded(new int[] {0, 0, SIDE, imageHeight}, new int[] {MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight});
+        if (frame == null)
+            frame = JasmFrame.rounded(new int[]{0, 0, SIDE, imageHeight}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight});
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
@@ -249,7 +250,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         int required = menu.required();
         Component training = required > 0
                 ? Component.translatable("screen.jasm.workshop.training_percent", Math.min(100, menu.trained() * 100 / required))
-                : Component.translatable(critter.stage() == BitlingStage.BYTELING ? "tooltip.jasm.bitling.fully_learned" : "screen.jasm.workshop.no_training");
+                : Component.translatable(
+                        critter.stage() == BitlingStage.BYTELING ? "tooltip.jasm.bitling.fully_learned" : "screen.jasm.workshop.no_training");
         barLabel(graphics, Component.translatable("screen.jasm.workshop.training"), training, TRAINING_LABEL_Y);
         barLabel(graphics, Component.translatable("screen.jasm.workshop.battery"), Component.translatable("screen.jasm.workshop.battery_amount",
                 String.format("%,d", menu.critterEnergy()), String.format("%,d", menu.battery())), BATTERY_LABEL_Y);

@@ -10,8 +10,8 @@ import net.minecraft.network.codec.StreamCodec;
 /** Minecraft codecs for pure {@code core} types (core itself stays free of Minecraft imports). */
 public final class StorageCodecs {
     public static final Codec<Stamp> STAMP = RecordCodecBuilder.create(i -> i.group(
-                    Codec.LONG.fieldOf("epoch").forGetter(Stamp::epoch),
-                    Codec.LONG.fieldOf("counter").forGetter(Stamp::counter))
+            Codec.LONG.fieldOf("epoch").forGetter(Stamp::epoch),
+            Codec.LONG.fieldOf("counter").forGetter(Stamp::counter))
             .apply(i, Stamp::new));
 
     public static final StreamCodec<ByteBuf, Stamp> STAMP_STREAM = StreamCodec.composite(

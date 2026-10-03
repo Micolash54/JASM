@@ -4,6 +4,7 @@ import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.core.GridEntries;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -12,7 +13,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The Crafting Server screen: Processors and Storage Modules in a side panel on the left; in
@@ -65,8 +65,9 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        if (frame == null) frame = JasmFrame.rounded(new int[] {0, 0, CraftingServerMenu.SIDE_WIDTH, CraftingServerMenu.SIDE_HEIGHT},
-                new int[] {MAIN_X, 0, MAIN_WIDTH, imageHeight});
+        if (frame == null)
+            frame = JasmFrame.rounded(new int[]{0, 0, CraftingServerMenu.SIDE_WIDTH, CraftingServerMenu.SIDE_HEIGHT},
+                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight});
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             if (slot.index != CraftingServerMenu.SLOT_SHOWN) {
@@ -101,7 +102,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             int right = leftPos + PANEL_X + 4 + PANEL_W - 8;
             int top = topPos + CraftingServerMenu.JOB_Y + 20;
             if (mouseX >= right - pipsWidth() && mouseX < right && mouseY >= top - 1 && mouseY < top + 9) {
-                List<FormattedCharSequence> tip = new java.util.ArrayList<>();
+                List<FormattedCharSequence> tip = new ArrayList<>();
                 tip.add(Component.translatable("screen.jasm.server.processors", menu.active(), menu.parallel()).getVisualOrderText());
                 tip.addAll(font.split(Component.translatable("screen.jasm.server.processors_hint"), 170));
                 graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
@@ -123,7 +124,8 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int room = PANEL_W - 8;
         CraftingJob.Phase phase = menu.phase();
         if (phase == null) {
-            Component idle = menu.running() ? Component.translatable("screen.jasm.server.idle")
+            Component idle = menu.running()
+                    ? Component.translatable("screen.jasm.server.idle")
                     : MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font, room - 20);
             graphics.text(font, idle, tx + 20, CraftingServerMenu.JOB_Y + 4, menu.running() ? JasmGui.MUTED : JasmGui.BAD, false);
             return;
@@ -147,14 +149,18 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         }
         graphics.text(font, trim(state.getString(), stateRoom), tx, CraftingServerMenu.JOB_Y + 20, JasmGui.SUBTEXT, false);
         PauseReason pause = menu.pause();
-        Component detail = pause != PauseReason.NONE ? Component.translatable(pause.key())
-                : phase == CraftingJob.Phase.RETURNING ? Component.empty()
-                : menu.waiting() != null ? menu.waiting()
-                : Component.translatable("screen.jasm.server.active", menu.active());
+        Component detail = pause != PauseReason.NONE
+                ? Component.translatable(pause.key())
+                : phase == CraftingJob.Phase.RETURNING
+                        ? Component.empty()
+                        : menu.waiting() != null
+                                ? menu.waiting()
+                                : Component.translatable("screen.jasm.server.active", menu.active());
         // Up to two lines, so a long reason is read, not cut.
         List<FormattedCharSequence> lines = font.split(detail, room);
         for (int i = 0; i < Math.min(2, lines.size()); i++) {
-            graphics.text(font, lines.get(i), tx, CraftingServerMenu.JOB_Y + 30 + i * 9, pause == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD, false);
+            graphics.text(font, lines.get(i), tx, CraftingServerMenu.JOB_Y + 30 + i * 9, pause == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD,
+                    false);
         }
     }
 

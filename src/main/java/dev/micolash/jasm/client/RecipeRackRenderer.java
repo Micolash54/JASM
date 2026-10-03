@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.network.MachineBlock;
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
@@ -19,7 +20,6 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 import org.jspecify.annotations.Nullable;
@@ -43,8 +43,8 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
 
     @Override
     public void extractRenderState(
-        RecipeRackBlockEntity rack, State state, float partialTicks, Vec3 cameraPosition, ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress
-    ) {
+            RecipeRackBlockEntity rack, State state, float partialTicks, Vec3 cameraPosition,
+            ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
         BlockEntityRenderer.super.extractRenderState(rack, state, partialTicks, cameraPosition, breakProgress);
         state.facing = rack.getBlockState().getValue(MachineBlock.FACING);
         state.cards = 0;
@@ -81,8 +81,8 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
             // Seen from the front, the model's left is its +x side.
             poseStack.translate(-(slot % 4) * SLOT_STEP, -(slot / 4) * SLOT_STEP, 0);
             collector.submitBlockModel(
-                poseStack, Sheets.cutoutBlockItemSheet(), parts, BlockModelRenderState.EMPTY_TINTS, state.lightCoords, OverlayTexture.NO_OVERLAY, 0
-            );
+                    poseStack, Sheets.cutoutBlockItemSheet(), parts, BlockModelRenderState.EMPTY_TINTS, state.lightCoords, OverlayTexture.NO_OVERLAY,
+                    0);
             poseStack.popPose();
         }
         poseStack.popPose();

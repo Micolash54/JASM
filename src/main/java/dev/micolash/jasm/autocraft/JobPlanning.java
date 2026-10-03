@@ -102,7 +102,8 @@ final class JobPlanning {
         EncodingTerminalBlockEntity terminal = terminalOf(player.level().getServer(), deck);
         if (terminal == null) {
             return new Preview(empty, List.of(), -1, deck.has(JasmComponents.DECK_NETWORK.get())
-                    ? "message.jasm.craft.network_unreachable" : "message.jasm.craft.not_paired");
+                    ? "message.jasm.craft.network_unreachable"
+                    : "message.jasm.craft.not_paired");
         }
         if (!AutocraftState.get(player.level().getServer()).isPaired(terminal.terminalId(), player.getUUID(),
                 deck.get(JasmComponents.DECK_ID.get()))) {
@@ -129,7 +130,8 @@ final class JobPlanning {
         List<ServerOption> servers = new ArrayList<>();
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
             if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
-                servers.add(new ServerOption(server.getBlockPos(), server.memory(), server.parallel(), server.busy(), server.memory() >= plan.size()));
+                servers.add(
+                        new ServerOption(server.getBlockPos(), server.memory(), server.parallel(), server.busy(), server.memory() >= plan.size()));
             }
         }
         servers.sort(Comparator.comparingInt(ServerOption::memory).thenComparing(o -> o.pos().asLong()));
@@ -142,12 +144,15 @@ final class JobPlanning {
         }
         String problem = switch (plan.problem()) {
             case NO_PATTERN -> book.unreachable(target) ? "message.jasm.craft.machine_missing" : "message.jasm.craft.no_card";
-            case MISSING -> plan.missing().keySet().stream().anyMatch(book::unreachable) ? "message.jasm.craft.machine_missing"
+            case MISSING -> plan.missing().keySet().stream().anyMatch(book::unreachable)
+                    ? "message.jasm.craft.machine_missing"
                     : "message.jasm.craft.missing";
             case TOO_COMPLEX -> "message.jasm.craft.too_complex";
-            case NONE -> servers.isEmpty() ? "message.jasm.craft.no_server"
-                    : chosen < 0 ? (servers.stream().anyMatch(ServerOption::fits) ? "message.jasm.craft.servers_busy" : "message.jasm.craft.too_big")
-                    : null;
+            case NONE -> servers.isEmpty()
+                    ? "message.jasm.craft.no_server"
+                    : chosen < 0
+                            ? (servers.stream().anyMatch(ServerOption::fits) ? "message.jasm.craft.servers_busy" : "message.jasm.craft.too_big")
+                            : null;
         };
         return new Preview(plan, servers, chosen, problem);
     }

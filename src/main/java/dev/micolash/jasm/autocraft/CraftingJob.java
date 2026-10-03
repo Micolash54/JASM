@@ -5,10 +5,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -36,16 +38,16 @@ public final class CraftingJob {
 
         @Override
         public String getSerializedName() {
-            return name().toLowerCase(java.util.Locale.ROOT);
+            return name().toLowerCase(Locale.ROOT);
         }
     }
 
     /** One card and how many crafts of it are left. */
     public static final class Step {
         static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Card.CODEC.fieldOf("card").forGetter(s -> s.card),
-                        Codec.LONG.fieldOf("left").forGetter(s -> s.left),
-                        Codec.LONG.fieldOf("total").forGetter(s -> s.total))
+                Card.CODEC.fieldOf("card").forGetter(s -> s.card),
+                Codec.LONG.fieldOf("left").forGetter(s -> s.left),
+                Codec.LONG.fieldOf("total").forGetter(s -> s.total))
                 .apply(i, Step::new));
 
         final Card card;
@@ -74,9 +76,9 @@ public final class CraftingJob {
     /** A craft in progress: which step, how long to go, and the ingredients set aside for it (one per slot). */
     public static final class Running {
         static final Codec<Running> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Codec.INT.fieldOf("step").forGetter(r -> r.step),
-                        Codec.INT.fieldOf("ticks").forGetter(r -> r.ticks),
-                        ItemResource.OPTIONAL_CODEC.listOf().fieldOf("inputs").forGetter(r -> r.inputs))
+                Codec.INT.fieldOf("step").forGetter(r -> r.step),
+                Codec.INT.fieldOf("ticks").forGetter(r -> r.ticks),
+                ItemResource.OPTIONAL_CODEC.listOf().fieldOf("inputs").forGetter(r -> r.inputs))
                 .apply(i, Running::new));
 
         final int step;
@@ -97,23 +99,23 @@ public final class CraftingJob {
      */
     public static final class Sent {
         static final Codec<Sent> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Codec.INT.fieldOf("step").forGetter(s -> s.step),
-                        BlockPos.CODEC.fieldOf("port").forGetter(s -> s.port),
-                        net.minecraft.core.Direction.CODEC.optionalFieldOf("side", net.minecraft.core.Direction.DOWN).forGetter(s -> s.side),
-                        ProcessingCard.Amount.CODEC.listOf().fieldOf("waiting").forGetter(s -> s.waiting),
-                        Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since))
+                Codec.INT.fieldOf("step").forGetter(s -> s.step),
+                BlockPos.CODEC.fieldOf("port").forGetter(s -> s.port),
+                Direction.CODEC.optionalFieldOf("side", Direction.DOWN).forGetter(s -> s.side),
+                ProcessingCard.Amount.CODEC.listOf().fieldOf("waiting").forGetter(s -> s.waiting),
+                Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since))
                 .apply(i, Sent::new));
 
         final int step;
         final BlockPos port;
         /** Which side of the port the machine is on. */
-        final net.minecraft.core.Direction side;
+        final Direction side;
         /** Still to come back; entries drop out as they arrive. */
         final List<ProcessingCard.Amount> waiting;
         /** Game time it was sent. */
         final long since;
 
-        Sent(int step, BlockPos port, net.minecraft.core.Direction side, List<ProcessingCard.Amount> waiting, long since) {
+        Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since) {
             this.step = step;
             this.port = port.immutable();
             this.side = side;
@@ -164,19 +166,19 @@ public final class CraftingJob {
     }
 
     public static final Codec<CraftingJob> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    UUIDUtil.CODEC.fieldOf("id").forGetter(j -> j.id),
-                    Codec.LONG.fieldOf("serial").forGetter(j -> j.serial),
-                    UUIDUtil.CODEC.fieldOf("record").forGetter(j -> j.recordId),
-                    UUIDUtil.CODEC.fieldOf("requester").forGetter(j -> j.requester),
-                    Codec.STRING.optionalFieldOf("requester_name", "").forGetter(j -> j.requesterName),
-                    UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(j -> Optional.ofNullable(j.deck)),
-                    ItemStackTemplate.CODEC.optionalFieldOf("target").forGetter(j -> Optional.ofNullable(j.target)),
-                    Codec.LONG.optionalFieldOf("amount", 0L).forGetter(j -> j.amount),
-                    Step.CODEC.listOf().optionalFieldOf("steps", List.of()).forGetter(j -> j.steps),
-                    Running.CODEC.listOf().optionalFieldOf("running", List.of()).forGetter(j -> j.running),
-                    Sent.CODEC.listOf().optionalFieldOf("sent", List.of()).forGetter(j -> j.sent),
-                    Phase.CODEC.optionalFieldOf("phase", Phase.CRAFTING).forGetter(j -> j.phase),
-                    Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer))
+            UUIDUtil.CODEC.fieldOf("id").forGetter(j -> j.id),
+            Codec.LONG.fieldOf("serial").forGetter(j -> j.serial),
+            UUIDUtil.CODEC.fieldOf("record").forGetter(j -> j.recordId),
+            UUIDUtil.CODEC.fieldOf("requester").forGetter(j -> j.requester),
+            Codec.STRING.optionalFieldOf("requester_name", "").forGetter(j -> j.requesterName),
+            UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(j -> Optional.ofNullable(j.deck)),
+            ItemStackTemplate.CODEC.optionalFieldOf("target").forGetter(j -> Optional.ofNullable(j.target)),
+            Codec.LONG.optionalFieldOf("amount", 0L).forGetter(j -> j.amount),
+            Step.CODEC.listOf().optionalFieldOf("steps", List.of()).forGetter(j -> j.steps),
+            Running.CODEC.listOf().optionalFieldOf("running", List.of()).forGetter(j -> j.running),
+            Sent.CODEC.listOf().optionalFieldOf("sent", List.of()).forGetter(j -> j.sent),
+            Phase.CODEC.optionalFieldOf("phase", Phase.CRAFTING).forGetter(j -> j.phase),
+            Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer))
             .apply(i, CraftingJob::new));
 
     final UUID id;
@@ -241,7 +243,8 @@ public final class CraftingJob {
     /** Step {@code index}'s crafting card with its recipe, or null if the recipe is gone (or it is a processing card). */
     CardRecipes.@Nullable Resolved resolved(ServerLevel level, int index) {
         return resolved.computeIfAbsent(index, i -> steps.get(i).card instanceof RecipeCard card
-                ? Optional.ofNullable(CardRecipes.resolve(level, card)) : Optional.empty()).orElse(null);
+                ? Optional.ofNullable(CardRecipes.resolve(level, card))
+                : Optional.empty()).orElse(null);
     }
 
     /** Whether {@code key} may go in {@code slot} of step {@code step}'s card; remembered for the rest of the job. */

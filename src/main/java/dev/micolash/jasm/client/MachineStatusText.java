@@ -11,14 +11,16 @@ public final class MachineStatusText {
     /** What a machine screen says when it can't work: "Network full: 9 / 8 machines", or its usual "No power" line. */
     public static Component noPower(int containerId, String noPowerKey) {
         NetworkStatusSync.Full full = ClientNetworkStatus.full(containerId);
-        return full == null ? Component.translatable(noPowerKey)
+        return full == null
+                ? Component.translatable(noPowerKey)
                 : Component.translatable("screen.jasm.machine.network_full", full.count(), full.limit());
     }
 
     /** As {@link #noPower}, but only "Network full" where the numbers don't fit in {@code width}. */
     public static Component noPower(int containerId, String noPowerKey, Font font, int width) {
         Component text = noPower(containerId, noPowerKey);
-        return font.width(text) <= width || ClientNetworkStatus.full(containerId) == null ? text
+        return font.width(text) <= width || ClientNetworkStatus.full(containerId) == null
+                ? text
                 : Component.translatable("screen.jasm.server.pause.network_full");
     }
 }

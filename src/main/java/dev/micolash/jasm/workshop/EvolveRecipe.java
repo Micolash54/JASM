@@ -30,11 +30,11 @@ import net.minecraft.world.level.Level;
  */
 public class EvolveRecipe extends NormalCraftingRecipe {
     public static final MapCodec<EvolveRecipe> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                    Recipe.CommonInfo.MAP_CODEC.forGetter(r -> r.commonInfo),
-                    CraftingRecipe.CraftingBookInfo.MAP_CODEC.forGetter(r -> r.bookInfo),
-                    ShapedRecipePattern.MAP_CODEC.forGetter(r -> r.pattern),
-                    Ingredient.CODEC.fieldOf("source").forGetter(r -> r.source),
-                    ItemStackTemplate.CODEC.fieldOf("result").forGetter(r -> r.result))
+            Recipe.CommonInfo.MAP_CODEC.forGetter(r -> r.commonInfo),
+            CraftingRecipe.CraftingBookInfo.MAP_CODEC.forGetter(r -> r.bookInfo),
+            ShapedRecipePattern.MAP_CODEC.forGetter(r -> r.pattern),
+            Ingredient.CODEC.fieldOf("source").forGetter(r -> r.source),
+            ItemStackTemplate.CODEC.fieldOf("result").forGetter(r -> r.result))
             .apply(i, EvolveRecipe::new));
     public static final StreamCodec<RegistryFriendlyByteBuf, EvolveRecipe> STREAM_CODEC = StreamCodec.composite(
             Recipe.CommonInfo.STREAM_CODEC, r -> r.commonInfo,

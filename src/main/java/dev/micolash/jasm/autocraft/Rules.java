@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -183,8 +184,9 @@ public final class Rules {
             if (job.finished() || job.rule().isEmpty() || deckId == null || !job.deck().map(deckId::equals).orElse(false)) {
                 continue;
             }
-            net.minecraft.server.level.ServerLevel level = server.getLevel(job.server().dimension());
-            if (level != null && level.isLoaded(job.server().pos()) && level.getBlockEntity(job.server().pos()) instanceof CraftingServerBlockEntity crafting
+            ServerLevel level = server.getLevel(job.server().dimension());
+            if (level != null && level.isLoaded(job.server().pos())
+                    && level.getBlockEntity(job.server().pos()) instanceof CraftingServerBlockEntity crafting
                     && crafting.job() != null && crafting.job().id().equals(job.id()) && crafting.job().pause() == PauseReason.WAITING_SPACE) {
                 stalled.put(job.rule().get(), PauseReason.WAITING_SPACE.key());
             }

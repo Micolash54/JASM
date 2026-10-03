@@ -61,7 +61,8 @@ public final class WaferEligibility {
         if (stack.is(REJECTED)) {
             return Result.REJECTED;
         }
-        Optional<Tag> encoded = ItemResource.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), ItemResource.of(stack)).result();
+        Optional<Tag> encoded = ItemResource.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), ItemResource.of(stack))
+                .result();
         if (encoded.isEmpty()) {
             return Result.UNSAVEABLE;
         }

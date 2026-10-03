@@ -340,7 +340,8 @@ final class JobRunner {
     /** The job stops waiting on machines: its sets are forgotten and its machines let go. */
     static void release(ServerLevel level, CraftingJob job) {
         for (CraftingJob.Sent set : job.sent) {
-            if (level.isLoaded(set.port) && Machines.port(level, Networks.at(level, set.port), set.port, set.side) instanceof AccessPortBlockEntity port) {
+            if (level.isLoaded(set.port)
+                    && Machines.port(level, Networks.at(level, set.port), set.port, set.side) instanceof AccessPortBlockEntity port) {
                 port.unlockJob(job.id);
             }
         }
@@ -361,7 +362,8 @@ final class JobRunner {
             }
         }
         AccessPortBlockEntity port = Machines.port(level, network, oldest.port, oldest.side);
-        String name = port == null ? Machines.blockName(level, oldest.port.relative(oldest.side)).getString()
+        String name = port == null
+                ? Machines.blockName(level, oldest.port.relative(oldest.side)).getString()
                 : port.machineName(oldest.side).getString();
         return new CraftingJob.Waiting(name, item, count, Math.max(0, level.getGameTime() - oldest.since));
     }

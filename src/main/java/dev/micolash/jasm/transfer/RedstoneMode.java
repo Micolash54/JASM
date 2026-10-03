@@ -12,12 +12,12 @@ public enum RedstoneMode implements StringRepresentable {
     UNPOWERED("unpowered");
 
     public static final Codec<RedstoneMode> CODEC = StringRepresentable.fromEnum(RedstoneMode::values);
-    public static final StreamCodec<ByteBuf, RedstoneMode> STREAM_CODEC =
-            ByteBufCodecs.VAR_INT.map(RedstoneMode::byId, RedstoneMode::ordinal);
+    public static final StreamCodec<ByteBuf, RedstoneMode> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(RedstoneMode::byId, RedstoneMode::ordinal);
     private final String name;
 
     RedstoneMode(String name) { this.name = name; }
-    @Override public String getSerializedName() { return name; }
+    @Override
+    public String getSerializedName() { return name; }
     public static RedstoneMode byId(int id) {
         return id >= 0 && id < values().length ? values()[id] : IGNORE;
     }

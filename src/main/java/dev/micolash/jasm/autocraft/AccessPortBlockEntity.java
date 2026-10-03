@@ -11,6 +11,7 @@ import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.PlayerNames;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -20,6 +21,7 @@ import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.transfer.PortOperations;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,8 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -48,11 +52,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.HopperBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
-import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
@@ -83,9 +88,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     private record SavedLock(Direction side, UUID job, int step) {
         static final Codec<SavedLock> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Direction.CODEC.fieldOf("side").forGetter(SavedLock::side),
-                        UUIDUtil.CODEC.fieldOf("job").forGetter(SavedLock::job),
-                        Codec.INT.fieldOf("step").forGetter(SavedLock::step))
+                Direction.CODEC.fieldOf("side").forGetter(SavedLock::side),
+                UUIDUtil.CODEC.fieldOf("job").forGetter(SavedLock::job),
+                Codec.INT.fieldOf("step").forGetter(SavedLock::step))
                 .apply(i, SavedLock::new));
     }
 
@@ -182,10 +187,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     protected AutocraftState.@Nullable Pairing destination(CableNetwork network) {
         var state = AutocraftState.get(((ServerLevel) level).getServer());
         List<UUID> terminals = terminalIds(network);
-        var pairing = destinationDeck == null ? state.pairedPlayer(terminals, owner()).orElse(null)
+        var pairing = destinationDeck == null
+                ? state.pairedPlayer(terminals, owner()).orElse(null)
                 : state.pairing(destinationDeck).filter(p -> terminals.contains(p.terminal())).orElse(null);
         if (pairing == null || owner() == null || !pairing.player().equals(owner())
-                && !MachineAccess.trustedBy(network, owner(), pairing.player())) return null;
+                && !MachineAccess.trustedBy(network, owner(), pairing.player()))
+            return null;
         return pairing;
     }
 
@@ -198,7 +205,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     public void processDeckLink() {
         if (!(level instanceof ServerLevel serverLevel) || networkBlocked()
-                || pendingLinker == null || !getItem(DECK_OUT).isEmpty()) return;
+                || pendingLinker == null || !getItem(DECK_OUT).isEmpty())
+            return;
         ItemStack deck = getItem(DECK_IN);
         if (!DeckItem.isDeck(deck)) {
             pendingLinker = null;
@@ -207,12 +215,14 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         }
         CableNetwork network = Networks.at(serverLevel, worldPosition);
         if (network == null || owner() == null || !pendingLinker.equals(owner())
-                && !MachineAccess.trustedBy(network, owner(), pendingLinker)) return;
+                && !MachineAccess.trustedBy(network, owner(), pendingLinker))
+            return;
         UUID id = deck.get(JasmComponents.DECK_ID.get());
         var pairing = id == null ? null : AutocraftState.get(serverLevel.getServer()).pairing(id).orElse(null);
         if (pairing == null || !terminalIds(network).contains(pairing.terminal())
                 || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))
-                || !pairing.player().equals(owner()) && !MachineAccess.trustedBy(network, owner(), pairing.player())) return;
+                || !pairing.player().equals(owner()) && !MachineAccess.trustedBy(network, owner(), pairing.player()))
+            return;
         destinationDeck = pairing.player().equals(owner()) ? null : id;
         items.set(DECK_IN, ItemStack.EMPTY);
         items.set(DECK_OUT, deck);
@@ -255,7 +265,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
         if (deck.isEmpty() || !DeckItem.worksIn(deck, player.level())
                 || !DeckItem.worksIn(deck, serverLevel)
-                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
+                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get())))
+            return;
         Set<ItemResource> expected = Jobs.expectedPortReturns(serverLevel, this);
         if (expected == null) return;
         for (int i = 0; i < SLOTS; i++) {
@@ -264,10 +275,11 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         var store = WaferStore.get(serverLevel.getServer());
         var storage = DeckStorage.checked(store, deck, player);
         // The old ninth intake slot can still contain saved returns; drain it without accepting new items there.
-        var incoming = new java.util.LinkedHashMap<ItemResource, Long>();
+        var incoming = new LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
-            if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack))) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+            if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack)))
+                incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
         var accepted = storage.depositAmounts(incoming, budget);
         transferred((int) accepted.values().stream().mapToLong(Long::longValue).sum());
@@ -306,7 +318,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             var entity = level.getBlockEntity(targetPos);
             // JASM blocks share power through their own network.
             if (targetBlock instanceof DataCableBlock || entity instanceof MachineBlockEntity
-                    || entity instanceof ArchiveBlockEntity || entity instanceof dev.micolash.jasm.network.NetworkPowerSource) continue;
+                    || entity instanceof ArchiveBlockEntity || entity instanceof NetworkPowerSource)
+                continue;
             var target = level.getCapability(Capabilities.Energy.BLOCK, targetPos, side.getOpposite());
             if (target == null) continue;
             try (Transaction tx = Transaction.openRoot()) {
@@ -371,8 +384,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         }
         BlockPos pos = worldPosition.relative(side);
         BlockState there = level.getBlockState(pos);
-        boolean hopperIn = there.getBlock() instanceof net.minecraft.world.level.block.HopperBlock
-                && there.getValue(net.minecraft.world.level.block.HopperBlock.FACING) == side.getOpposite();
+        boolean hopperIn = there.getBlock() instanceof HopperBlock
+                && there.getValue(HopperBlock.FACING) == side.getOpposite();
         boolean network = there.getBlock() instanceof DataCableBlock || level.getBlockEntity(pos) instanceof MachineBlockEntity
                 || level.getBlockEntity(pos) instanceof ArchiveBlockEntity;
         return hopperIn || network ? PortSide.LINK : PortSide.NONE;
@@ -388,8 +401,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         }
         BlockPos pos = worldPosition.relative(side);
         BlockState there = level.getBlockState(pos);
-        if (there.getBlock() instanceof net.minecraft.world.level.block.HopperBlock
-                && there.getValue(net.minecraft.world.level.block.HopperBlock.FACING) == side.getOpposite()) {
+        if (there.getBlock() instanceof HopperBlock
+                && there.getValue(HopperBlock.FACING) == side.getOpposite()) {
             return false;
         }
         return Machines.inlet(level, pos, side.getOpposite()) != null;
@@ -413,7 +426,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (sides.isEmpty()) {
             return Component.translatable("screen.jasm.port.no_machine");
         }
-        net.minecraft.network.chat.MutableComponent names = Component.empty();
+        MutableComponent names = Component.empty();
         for (int i = 0; i < sides.size(); i++) {
             if (i > 0) {
                 names.append(", ");
@@ -511,7 +524,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** What the intake holds, by item. */
     Map<ItemResource, Long> intake() {
-        Map<ItemResource, Long> held = new java.util.LinkedHashMap<>();
+        Map<ItemResource, Long> held = new LinkedHashMap<>();
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
             if (!stack.isEmpty()) {
@@ -592,7 +605,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void writeOpening(RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(worldPosition);
         buf.writeUtf(label, AccessPortMenu.MAX_NAME);
-        AccessPortMenu.MachineView.STREAM_CODEC.apply(net.minecraft.network.codec.ByteBufCodecs.list(6))
+        AccessPortMenu.MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(6))
                 .encode(buf, AccessPortMenu.connectedMachines(this));
     }
 

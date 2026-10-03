@@ -1,6 +1,7 @@
 package dev.micolash.jasm.network;
 
 import com.mojang.serialization.MapCodec;
+import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,6 +10,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -72,12 +74,12 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
 
     public static VoxelShape portShape(Direction side) {
         return switch (side) {
-            case NORTH -> Shapes.or(Block.box(4,4,0,12,12,2), Block.box(5,5,2,11,11,5));
-            case SOUTH -> Shapes.or(Block.box(4,4,14,12,12,16), Block.box(5,5,11,11,11,14));
-            case WEST -> Shapes.or(Block.box(0,4,4,2,12,12), Block.box(2,5,5,5,11,11));
-            case EAST -> Shapes.or(Block.box(14,4,4,16,12,12), Block.box(11,5,5,14,11,11));
-            case DOWN -> Shapes.or(Block.box(4,0,4,12,2,12), Block.box(5,2,5,11,5,11));
-            case UP -> Shapes.or(Block.box(4,14,4,12,16,12), Block.box(5,11,5,11,14,11));
+            case NORTH -> Shapes.or(Block.box(4, 4, 0, 12, 12, 2), Block.box(5, 5, 2, 11, 11, 5));
+            case SOUTH -> Shapes.or(Block.box(4, 4, 14, 12, 12, 16), Block.box(5, 5, 11, 11, 11, 14));
+            case WEST -> Shapes.or(Block.box(0, 4, 4, 2, 12, 12), Block.box(2, 5, 5, 5, 11, 11));
+            case EAST -> Shapes.or(Block.box(14, 4, 4, 16, 12, 12), Block.box(11, 5, 5, 14, 11, 11));
+            case DOWN -> Shapes.or(Block.box(4, 0, 4, 12, 2, 12), Block.box(5, 2, 5, 11, 5, 11));
+            case UP -> Shapes.or(Block.box(4, 14, 4, 12, 16, 12), Block.box(5, 11, 5, 11, 14, 11));
         };
     }
 
@@ -133,7 +135,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         refreshConnectionsAround(serverLevel, pos);
         if (!player.getAbilities().instabuild) stack.shrink(1);
         var sound = filled.getSoundType(level, pos, player);
-        level.playSound(null, pos, sound.getPlaceSound(), net.minecraft.sounds.SoundSource.BLOCKS,
+        level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS,
                 (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);
         return true;
     }
@@ -266,7 +268,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         if (coreless(level.getBlockState(own)) || coreless(neighbour)) return false;
         if (level instanceof ServerLevel serverLevel && level.getBlockState(own).getBlock() instanceof DataCableBlock
                 && (neighbour.getBlock() instanceof DataCableBlock || level.getBlockEntity(neighbourPos) instanceof MachineBlockEntity
-                    || level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity)) {
+                        || level.getBlockEntity(neighbourPos) instanceof ArchiveBlockEntity)) {
             return Networks.canConnect(serverLevel, own, neighbourPos);
         }
         if (neighbour.getBlock() instanceof DataCableBlock) {
@@ -275,7 +277,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         if (neighbour.getBlock() instanceof MachineBlock) {
             return true;
         }
-        return level.getBlockEntity(neighbourPos) instanceof dev.micolash.jasm.archive.ArchiveBlockEntity
+        return level.getBlockEntity(neighbourPos) instanceof ArchiveBlockEntity
                 || level.getBlockEntity(neighbourPos) instanceof NetworkPowerSource;
     }
 

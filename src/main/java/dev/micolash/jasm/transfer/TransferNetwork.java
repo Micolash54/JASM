@@ -16,12 +16,17 @@ public final class TransferNetwork {
     public record Configure(int menu, boolean output, WaferSettings settings) implements CustomPacketPayload {
         public static final Type<Configure> TYPE = new Type<>(Jasm.id("transfer_filters"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Configure> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.VAR_INT, Configure::menu, ByteBufCodecs.BOOL, Configure::output, WaferSettings.STREAM_CODEC, Configure::settings, Configure::new);
-        @Override public Type<Configure> type() { return TYPE; }
+                ByteBufCodecs.VAR_INT, Configure::menu, ByteBufCodecs.BOOL, Configure::output, WaferSettings.STREAM_CODEC, Configure::settings,
+                Configure::new);
+        @Override
+        public Type<Configure> type() { return TYPE; }
     }
-    @SubscribeEvent static void register(RegisterPayloadHandlersEvent event) {
+    @SubscribeEvent
+    static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1").playToServer(Configure.TYPE, Configure.STREAM_CODEC, (payload, context) -> {
-            if (context.player().containerMenu instanceof TransferPortMenu menu && menu.containerId == payload.menu() && menu.stillValid(context.player())) menu.configure(payload.output(), payload.settings());
+            if (context.player().containerMenu instanceof TransferPortMenu menu && menu.containerId == payload.menu()
+                    && menu.stillValid(context.player()))
+                menu.configure(payload.output(), payload.settings());
         });
     }
 }

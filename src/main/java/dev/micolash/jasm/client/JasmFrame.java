@@ -94,7 +94,7 @@ public final class JasmFrame {
                 int start = 0;
                 for (int x = 1; x <= w; x++) {
                     if (x == w || color[y * w + x] != color[y * w + start]) {
-                        if (color[y * w + start] != 0) row.add(new int[] {start + minX, y + minY, x - start, 1, color[y * w + start]});
+                        if (color[y * w + start] != 0) row.add(new int[]{start + minX, y + minY, x - start, 1, color[y * w + start]});
                         start = x;
                     }
                 }

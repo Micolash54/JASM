@@ -75,7 +75,8 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
                 }
                 case NetworkBrainMenu.DATA_LIMIT -> {
                     CableNetwork network = network();
-                    yield network == null ? BrainLevels.machineLimit(BrainLevels.shownLevel(progress, size, balance), balance)
+                    yield network == null
+                            ? BrainLevels.machineLimit(BrainLevels.shownLevel(progress, size, balance), balance)
                             : network.limitState().limit();
                 }
                 case NetworkBrainMenu.DATA_SIZE -> size.ordinal();
@@ -255,7 +256,7 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
     /** Hoppers and pipes feed chips in from any side; nothing comes back out. */
     @Override
     public int[] getSlotsForFace(Direction direction) {
-        return new int[] {SLOT};
+        return new int[]{SLOT};
     }
 
     @Override
@@ -290,7 +291,8 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity implements World
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new NetworkBrainMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition), getBlockState().getBlock());
+        return new NetworkBrainMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition),
+                getBlockState().getBlock());
     }
 
     // --- saving ---

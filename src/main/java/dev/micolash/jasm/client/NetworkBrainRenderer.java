@@ -402,7 +402,7 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
         float[] nap = pose.get("root");
         if (start != null && nap != null) {
             // The scene's spot and heading, with the nap's sink and tilt.
-            pose.put("root", new float[] {start[0], nap[1], start[2], nap[3], start[4], nap[5], nap[6], nap[7], nap[8]});
+            pose.put("root", new float[]{start[0], nap[1], start[2], nap[3], start[4], nap[5], nap[6], nap[7], nap[8]});
         }
         return pose;
     }

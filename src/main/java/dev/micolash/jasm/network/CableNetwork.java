@@ -6,6 +6,7 @@ import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
 import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.core.BrainLevels;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -101,7 +102,8 @@ public final class CableNetwork {
                 if (!level.isLoaded(pos)) continue;
                 BlockEntity entity = level.getBlockEntity(pos);
                 if (entity == null) continue;
-                SimpleEnergyHandler energy = entity instanceof MachineBlockEntity machine ? machine.energy()
+                SimpleEnergyHandler energy = entity instanceof MachineBlockEntity machine
+                        ? machine.energy()
                         : entity instanceof ArchiveBlockEntity archive ? archive.energy() : null;
                 Member member = new Member(pos, entity, energy);
                 found.add(member);
@@ -243,8 +245,8 @@ public final class CableNetwork {
         for (Member member : members()) {
             SimpleEnergyHandler candidate = member.energy();
             if (candidate != null && candidate.getAmountAsInt() < candidate.getCapacityAsLong() && (leastCharged == null
-                    || (long) candidate.getAmountAsInt() * leastCharged.getCapacityAsLong()
-                        < (long) leastCharged.getAmountAsInt() * candidate.getCapacityAsLong())) {
+                    || (long) candidate.getAmountAsInt() * leastCharged.getCapacityAsLong() < (long) leastCharged.getAmountAsInt()
+                            * candidate.getCapacityAsLong())) {
                 leastCharged = candidate;
             }
         }
@@ -265,8 +267,8 @@ public final class CableNetwork {
             }
             if (leastCharged == null || leastCharged == source
                     || source.getAmountAsLong() * 10 < source.getCapacityAsLong() * 9
-                    || (long) leastCharged.getAmountAsInt() * source.getCapacityAsLong()
-                        >= (long) source.getAmountAsInt() * leastCharged.getCapacityAsLong()) {
+                    || (long) leastCharged.getAmountAsInt() * source.getCapacityAsLong() >= (long) source.getAmountAsInt()
+                            * leastCharged.getCapacityAsLong()) {
                 continue;
             }
             int spareNow = Math.max(0, Math.min(source instanceof NetworkEnergy energy ? energy.own() : 0, source.getAmountAsInt() - reserveAt(pos)));
@@ -302,7 +304,8 @@ public final class CableNetwork {
                 SimpleEnergyHandler target = machines.contains(next) ? energyAt(next) : null;
                 // Two chambers of one cube both hand over to their brain: count it once.
                 if (target != null && !sources.contains(target) && target.getAmountAsInt() < target.getCapacityAsLong()
-                        && !targets.contains(target)) targets.add(target);
+                        && !targets.contains(target))
+                    targets.add(target);
             }
             if (!targets.isEmpty()) wants.put(cable, targets);
         }
@@ -315,12 +318,13 @@ public final class CableNetwork {
         // starts goes round.
         Map<Hop, Integer> used = new HashMap<>();
         List<DataCableBlockEntity> order = new ArrayList<>(wants.keySet());
-        java.util.Collections.rotate(order, (int) Math.floorMod(now, (long) order.size()));
+        Collections.rotate(order, (int) Math.floorMod(now, (long) order.size()));
         Map<DataCableBlockEntity, Integer> wanted = new HashMap<>();
         for (DataCableBlockEntity cable : order) {
             long room = 0;
             for (EnergyHandler target : wants.get(cable)) room += target.getCapacityAsLong() - target.getAmountAsLong();
-            wanted.put(cable, (int) Math.min(Math.min(room, (long) cable.tier().rate() * wants.get(cable).size()), cable.energy().getCapacityAsInt()));
+            wanted.put(cable,
+                    (int) Math.min(Math.min(room, (long) cable.tier().rate() * wants.get(cable).size()), cable.energy().getCapacityAsInt()));
         }
         // When power is short, everyone gets an equal part first; then whoever still has room takes the rest.
         long spareTotal = 0;
@@ -372,7 +376,7 @@ public final class CableNetwork {
             return;
         }
         Map<DataCableBlockEntity, DataCableBlockEntity> towards = new HashMap<>();
-        java.util.ArrayDeque<DataCableBlockEntity> queue = new java.util.ArrayDeque<>();
+        ArrayDeque<DataCableBlockEntity> queue = new ArrayDeque<>();
         towards.put(cable, cable);
         queue.add(cable);
         while (!queue.isEmpty() && amount > 0) {
@@ -460,7 +464,8 @@ public final class CableNetwork {
             if (machines.contains(next) || cables.contains(next) || !level.isLoaded(next)) continue;
             var entity = level.getBlockEntity(next);
             if (entity == null || entity instanceof DataCableBlockEntity || entity instanceof MachineBlockEntity
-                    || entity instanceof ArchiveBlockEntity) continue;
+                    || entity instanceof ArchiveBlockEntity)
+                continue;
             EnergyHandler handler = level.getCapability(Capabilities.Energy.BLOCK, next, side.getOpposite());
             if (handler != null && handler.getAmountAsLong() > 0 && onlyGives(handler)) found.add(handler);
         }

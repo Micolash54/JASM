@@ -9,6 +9,8 @@ import dev.micolash.jasm.core.BrainProgress;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
+import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.transfer.TransferFilters;
 import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.List;
@@ -22,8 +24,8 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class JasmComponents {
-    public static final DeferredRegister.DataComponents COMPONENTS =
-            DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, Jasm.MODID);
+    public static final DeferredRegister.DataComponents COMPONENTS = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE,
+            Jasm.MODID);
 
     /** Absent on blank (unformatted) wafers. */
     public static final Supplier<DataComponentType<WaferIdentity>> WAFER_IDENTITY = COMPONENTS.registerComponentType(
@@ -93,11 +95,11 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<BrainProgress>> BRAIN = COMPONENTS.registerComponentType(
             "brain", b -> b.persistent(BrainProgress.CODEC).networkSynchronized(BrainProgress.STREAM_CODEC));
 
-    public static final Supplier<DataComponentType<dev.micolash.jasm.transfer.TransferFilters>> TRANSFER_FILTERS = COMPONENTS.registerComponentType(
-            "transfer_filters", b -> b.persistent(dev.micolash.jasm.transfer.TransferFilters.CODEC).networkSynchronized(dev.micolash.jasm.transfer.TransferFilters.STREAM_CODEC));
+    public static final Supplier<DataComponentType<TransferFilters>> TRANSFER_FILTERS = COMPONENTS.registerComponentType(
+            "transfer_filters", b -> b.persistent(TransferFilters.CODEC).networkSynchronized(TransferFilters.STREAM_CODEC));
 
-    public static final Supplier<DataComponentType<dev.micolash.jasm.transfer.RedstoneMode>> REDSTONE_MODE = COMPONENTS.registerComponentType(
-            "redstone_mode", b -> b.persistent(dev.micolash.jasm.transfer.RedstoneMode.CODEC).networkSynchronized(dev.micolash.jasm.transfer.RedstoneMode.STREAM_CODEC));
+    public static final Supplier<DataComponentType<RedstoneMode>> REDSTONE_MODE = COMPONENTS.registerComponentType(
+            "redstone_mode", b -> b.persistent(RedstoneMode.CODEC).networkSynchronized(RedstoneMode.STREAM_CODEC));
 
     private JasmComponents() {}
 }

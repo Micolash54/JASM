@@ -1,15 +1,18 @@
 package dev.micolash.jasm.client.jei;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.client.ReceivedRecipes;
 import dev.micolash.jasm.archive.ArchiveTier;
+import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
-import dev.micolash.jasm.autocraft.CraftPayloads;
-import dev.micolash.jasm.core.BitlingKind;
-import dev.micolash.jasm.core.BitlingStage;
+import dev.micolash.jasm.client.AccessPortScreen;
+import dev.micolash.jasm.client.ArchiveScreen;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.client.EncodingTerminalScreen;
+import dev.micolash.jasm.client.ReceivedRecipes;
+import dev.micolash.jasm.client.TransferPortScreen;
+import dev.micolash.jasm.core.BitlingKind;
+import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.registry.JasmItems;
@@ -113,7 +116,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "basic_bitling", 2, List.of(JasmItems.bitling(BitlingKind.BASIC, BitlingStage.BITLING),
                 JasmItems.WILD_BITLING_SPAWN_EGG.get()));
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
-        registration.addRecipes(FoundryCategory.TYPE, java.util.List.of(FoundryCategory.Grow.fromConfig()));
+        registration.addRecipes(FoundryCategory.TYPE, List.of(FoundryCategory.Grow.fromConfig()));
         info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
         info(registration, "combustion_generator", 2, Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
@@ -163,7 +166,8 @@ public class JasmJeiPlugin implements IModPlugin {
 
                         @Override
                         public void accept(I dropped) {
-                            ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(screen.getMenu().containerId, slot, List.of(stack.get().copyWithCount(1))));
+                            ClientPacketDistributor
+                                    .sendToServer(new CraftPayloads.Ghost(screen.getMenu().containerId, slot, List.of(stack.get().copyWithCount(1))));
                         }
                     });
                 }
@@ -180,17 +184,19 @@ public class JasmJeiPlugin implements IModPlugin {
                 return screen.sidePanelAreas();
             }
         });
-        registration.addGuiContainerHandler(dev.micolash.jasm.client.AccessPortScreen.class, new IGuiContainerHandler<>() {
+        registration.addGuiContainerHandler(AccessPortScreen.class, new IGuiContainerHandler<>() {
             @Override
-            public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.AccessPortScreen screen) {
+            public List<Rect2i> getGuiExtraAreas(AccessPortScreen screen) {
                 return screen.extraAreas();
             }
         });
-        registration.addGuiContainerHandler(dev.micolash.jasm.client.TransferPortScreen.class, new IGuiContainerHandler<>() {
-            @Override public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.TransferPortScreen screen) { return screen.extraAreas(); }
+        registration.addGuiContainerHandler(TransferPortScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public List<Rect2i> getGuiExtraAreas(TransferPortScreen screen) { return screen.extraAreas(); }
         });
-        registration.addGhostIngredientHandler(dev.micolash.jasm.client.TransferPortScreen.class, new IGhostIngredientHandler<>() {
-            @Override public <I> List<Target<I>> getTargetsTyped(dev.micolash.jasm.client.TransferPortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+        registration.addGhostIngredientHandler(TransferPortScreen.class, new IGhostIngredientHandler<>() {
+            @Override
+            public <I> List<Target<I>> getTargetsTyped(TransferPortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
                 Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK);
                 if (stack.isEmpty() || stack.get().isEmpty()) return List.of();
                 List<Target<I>> targets = new ArrayList<>();
@@ -198,17 +204,20 @@ public class JasmJeiPlugin implements IModPlugin {
                 for (int i = 0; i < areas.size(); i++) {
                     int index = i;
                     targets.add(new Target<>() {
-                        @Override public Rect2i getArea() { return areas.get(index); }
-                        @Override public void accept(I dropped) { screen.setFilterItem(index, stack.get().getItem()); }
+                        @Override
+                        public Rect2i getArea() { return areas.get(index); }
+                        @Override
+                        public void accept(I dropped) { screen.setFilterItem(index, stack.get().getItem()); }
                     });
                 }
                 return targets;
             }
-            @Override public void onComplete() {}
-        });
-        registration.addGuiContainerHandler(dev.micolash.jasm.client.ArchiveScreen.class, new IGuiContainerHandler<>() {
             @Override
-            public List<Rect2i> getGuiExtraAreas(dev.micolash.jasm.client.ArchiveScreen screen) {
+            public void onComplete() {}
+        });
+        registration.addGuiContainerHandler(ArchiveScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public List<Rect2i> getGuiExtraAreas(ArchiveScreen screen) {
                 return screen.linkWindowArea().map(List::of).orElse(List.of());
             }
         });
@@ -223,7 +232,8 @@ public class JasmJeiPlugin implements IModPlugin {
             @Override
             public Optional<? extends IClickableIngredient<?>> getClickableIngredientUnderMouse(IClickableIngredientFactory factory,
                     DeckScreen screen, double mouseX, double mouseY) {
-                return screen.itemAt(mouseX, mouseY).flatMap(shown -> factory.createBuilder(shown.stack()).buildWithArea(shown.x(), shown.y(), 16, 16));
+                return screen.itemAt(mouseX, mouseY)
+                        .flatMap(shown -> factory.createBuilder(shown.stack()).buildWithArea(shown.x(), shown.y(), 16, 16));
             }
         });
         registration.addGhostIngredientHandler(DeckScreen.class, new IGhostIngredientHandler<>() {

@@ -32,8 +32,8 @@ public final class WaferRecord {
     /** One stored variant and its count. */
     public record Entry(ItemResource item, long count) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        ItemResource.CODEC.fieldOf("item").forGetter(Entry::item),
-                        Codec.LONG.fieldOf("count").forGetter(Entry::count))
+                ItemResource.CODEC.fieldOf("item").forGetter(Entry::item),
+                Codec.LONG.fieldOf("count").forGetter(Entry::count))
                 .apply(i, Entry::new));
     }
 
@@ -54,9 +54,9 @@ public final class WaferRecord {
         static final History NONE = new History("", "", 0);
 
         static final Codec<History> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Codec.STRING.optionalFieldOf("created_by", "").forGetter(History::createdBy),
-                        Codec.STRING.optionalFieldOf("last_used_by", "").forGetter(History::lastUsedBy),
-                        Codec.LONG.optionalFieldOf("last_used_at", 0L).forGetter(History::lastUsedAt))
+                Codec.STRING.optionalFieldOf("created_by", "").forGetter(History::createdBy),
+                Codec.STRING.optionalFieldOf("last_used_by", "").forGetter(History::lastUsedBy),
+                Codec.LONG.optionalFieldOf("last_used_at", 0L).forGetter(History::lastUsedAt))
                 .apply(i, History::new));
     }
 
@@ -67,18 +67,18 @@ public final class WaferRecord {
     public record Snapshot(UUID id, long serial, int capacity, int types, int perType, Stamp stamp, Optional<Stamp> recoveryFloor,
             Optional<UUID> archive, String lastKnownName, History history, WaferSettings settings, LenientListCodec.Lenient<Entry> contents) {
         public static final Codec<Snapshot> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
-                        Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
-                        Codec.INT.fieldOf("capacity").forGetter(Snapshot::capacity),
-                        Codec.INT.optionalFieldOf("types", 0).forGetter(Snapshot::types),
-                        Codec.INT.optionalFieldOf("per_type", 0).forGetter(Snapshot::perType),
-                        StorageCodecs.STAMP.fieldOf("stamp").forGetter(Snapshot::stamp),
-                        StorageCodecs.STAMP.optionalFieldOf("recovery_floor").forGetter(Snapshot::recoveryFloor),
-                        UUIDUtil.CODEC.optionalFieldOf("archive").forGetter(Snapshot::archive),
-                        Codec.STRING.optionalFieldOf("last_known_name", "").forGetter(Snapshot::lastKnownName),
-                        History.CODEC.optionalFieldOf("history", History.NONE).forGetter(Snapshot::history),
-                        WaferSettings.CODEC.optionalFieldOf("settings", WaferSettings.DEFAULT).forGetter(Snapshot::settings),
-                        CONTENTS_CODEC.fieldOf("contents").forGetter(Snapshot::contents))
+                UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
+                Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
+                Codec.INT.fieldOf("capacity").forGetter(Snapshot::capacity),
+                Codec.INT.optionalFieldOf("types", 0).forGetter(Snapshot::types),
+                Codec.INT.optionalFieldOf("per_type", 0).forGetter(Snapshot::perType),
+                StorageCodecs.STAMP.fieldOf("stamp").forGetter(Snapshot::stamp),
+                StorageCodecs.STAMP.optionalFieldOf("recovery_floor").forGetter(Snapshot::recoveryFloor),
+                UUIDUtil.CODEC.optionalFieldOf("archive").forGetter(Snapshot::archive),
+                Codec.STRING.optionalFieldOf("last_known_name", "").forGetter(Snapshot::lastKnownName),
+                History.CODEC.optionalFieldOf("history", History.NONE).forGetter(Snapshot::history),
+                WaferSettings.CODEC.optionalFieldOf("settings", WaferSettings.DEFAULT).forGetter(Snapshot::settings),
+                CONTENTS_CODEC.fieldOf("contents").forGetter(Snapshot::contents))
                 .apply(i, Snapshot::new));
     }
 

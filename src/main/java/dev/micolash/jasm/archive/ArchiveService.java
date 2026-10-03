@@ -1,8 +1,8 @@
 package dev.micolash.jasm.archive;
 
+import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
-import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineAccess;
@@ -12,15 +12,17 @@ import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.JasmState;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
-import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.wafer.WaferValidator;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
@@ -57,7 +59,7 @@ public final class ArchiveService {
         WRONG_KIND;
 
         public String messageKey() {
-            return "message.jasm.archive." + name().toLowerCase(java.util.Locale.ROOT);
+            return "message.jasm.archive." + name().toLowerCase(Locale.ROOT);
         }
     }
 
@@ -277,7 +279,7 @@ public final class ArchiveService {
         }
         long biggest = record.contents().entrySet().stream()
                 .filter(e -> !TypeRules.isSingle(e.getKey()))
-                .mapToLong(java.util.Map.Entry::getValue).max().orElse(0);
+                .mapToLong(Map.Entry::getValue).max().orElse(0);
         return record.typesUsed() <= tier.types() && biggest <= tier.perType();
     }
 

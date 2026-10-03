@@ -2,6 +2,7 @@ package dev.micolash.jasm.transfer;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
+import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
@@ -11,6 +12,8 @@ import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferSettings;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -48,21 +51,31 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
         this(id, inventory, port, port.data(), port.kind(), port.filters());
     }
     public static TransferPortMenu client(int id, Inventory inventory, RegistryFriendlyByteBuf buf) {
-        return new TransferPortMenu(id, inventory, null, new SimpleContainerData(dev.micolash.jasm.autocraft.AccessPortMenu.DATA_COUNT), buf.readEnum(TransferPortKind.class), TransferFilters.STREAM_CODEC.decode(buf));
+        return new TransferPortMenu(id, inventory, null, new SimpleContainerData(AccessPortMenu.DATA_COUNT), buf.readEnum(TransferPortKind.class),
+                TransferFilters.STREAM_CODEC.decode(buf));
     }
-    private TransferPortMenu(int id, Inventory inventory, @Nullable TransferPortBlockEntity port, ContainerData data, TransferPortKind kind, TransferFilters filters) {
+    private TransferPortMenu(int id, Inventory inventory, @Nullable TransferPortBlockEntity port, ContainerData data, TransferPortKind kind,
+            TransferFilters filters) {
         super(JasmMenus.TRANSFER_PORT.get(), id);
-        this.port = port; this.data = data; this.kind = kind; this.filters = filters; this.player = inventory.player;
+        this.port = port;
+        this.data = data;
+        this.kind = kind;
+        this.filters = filters;
+        this.player = inventory.player;
         addDataSlots(data);
         addDataSlot(new DataSlot() {
-            @Override public int get() { return redstoneMode().ordinal(); }
-            @Override public void set(int value) { redstoneMode = RedstoneMode.byId(value); }
+            @Override
+            public int get() { return redstoneMode().ordinal(); }
+            @Override
+            public void set(int value) { redstoneMode = RedstoneMode.byId(value); }
         });
         var contents = port == null ? new SimpleContainer(AccessPortBlockEntity.INVENTORY_SIZE) : port;
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
             addSlot(new Slot(contents, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
-                @Override public boolean isActive() { return !linkCover.covers(this); }
-                @Override public boolean mayPlace(ItemStack stack) {
+                @Override
+                public boolean isActive() { return !linkCover.covers(this); }
+                @Override
+                public boolean mayPlace(ItemStack stack) {
                     if (stack.is(JasmItems.SPEED_UPGRADE.get())) return true;
                     if (!stack.is(JasmItems.REDSTONE_UPGRADE.get())) return false;
                     for (int j = 0; j < PortOperations.UPGRADE_SLOTS; j++) {
@@ -70,27 +83,39 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
                     }
                     return true;
                 }
-                @Override public int getMaxStackSize() { return 1; }
-                @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+                @Override
+                public int getMaxStackSize() { return 1; }
+                @Override
+                public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
             });
         }
         addSlot(new Slot(contents, AccessPortBlockEntity.DECK_IN, 0, 0) {
-            @Override public boolean isActive() { return port != null || linkCover.open(); }
-            @Override public boolean mayPlace(ItemStack stack) { return DeckItem.isDeck(stack); }
-            @Override public int getMaxStackSize() { return 1; }
-            @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
+            @Override
+            public boolean isActive() { return port != null || linkCover.open(); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return DeckItem.isDeck(stack); }
+            @Override
+            public int getMaxStackSize() { return 1; }
+            @Override
+            public Identifier getNoItemIcon() { return Jasm.id("container/empty_deck"); }
         });
         addSlot(new Slot(contents, AccessPortBlockEntity.DECK_OUT, 0, 0) {
-            @Override public boolean isActive() { return port != null || linkCover.open(); }
-            @Override public boolean mayPlace(ItemStack stack) { return false; }
+            @Override
+            public boolean isActive() { return port != null || linkCover.open(); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return false; }
         });
         addSlot(new Slot(contents, AccessPortBlockEntity.POWER_SLOT, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.powerY(SIDE_KEYS)) {
-            @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
-            @Override public int getMaxStackSize() { return 1; }
-            @Override public net.minecraft.resources.Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.POWER_UPGRADE.get()); }
+            @Override
+            public int getMaxStackSize() { return 1; }
+            @Override
+            public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
         int ix = (WIDTH - 162) / 2;
-        for (int row = 0; row < 3; row++) for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, 9 + row * 9 + col, ix + col * 18, inventoryY() + row * 18));
+        for (int row = 0; row < 3; row++)
+            for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, 9 + row * 9 + col, ix + col * 18, inventoryY() + row * 18));
         for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, ix + col * 18, inventoryY() + 58));
     }
     public TransferPortKind kind() { return kind; }
@@ -98,10 +123,11 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
     /** Whose Deck the port delivers to; on the client, what the server last said. */
     public String linkedPlayer() { return linkedPlayer; }
     public void setLinkedPlayer(String name) { linkedPlayer = name; }
-    @Override public void broadcastChanges() {
+    @Override
+    public void broadcastChanges() {
         super.broadcastChanges();
-        if (port != null && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer && serverPlayer.level().getGameTime() % 10 == 0) {
-            dev.micolash.jasm.autocraft.AccessPortMenu.sendLinkedPlayer(serverPlayer, containerId, port, lastPlayer);
+        if (port != null && player instanceof ServerPlayer serverPlayer && serverPlayer.level().getGameTime() % 10 == 0) {
+            AccessPortMenu.sendLinkedPlayer(serverPlayer, containerId, port, lastPlayer);
         }
     }
     public TransferFilters filters() { return filters; }
@@ -126,15 +152,20 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
     public boolean configure(boolean output, WaferSettings settings) {
         if (output ? !kind.exports() : !kind.imports()) return false;
         WaferSettings previous = output ? filters.output() : filters.input();
-        if (settings.rules().stream().anyMatch(rule -> !rule.valid() && previous.rules().stream().noneMatch(old -> old.mode() == rule.mode() && old.value().equals(rule.value())))) return false;
+        if (settings.rules().stream().anyMatch(
+                rule -> !rule.valid() && previous.rules().stream().noneMatch(old -> old.mode() == rule.mode() && old.value().equals(rule.value()))))
+            return false;
         filters = output ? new TransferFilters(filters.input(), settings) : new TransferFilters(settings, filters.output());
         if (port != null) port.setFilters(filters);
         return true;
     }
-    @Override public boolean stillValid(Player player) {
-        return port == null || port.installed() && MachineAccess.canUse(port, player) && player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64;
+    @Override
+    public boolean stillValid(Player player) {
+        return port == null
+                || port.installed() && MachineAccess.canUse(port, player) && player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64;
     }
-    @Override public boolean clickMenuButton(Player player, int id) {
+    @Override
+    public boolean clickMenuButton(Player player, int id) {
         if (port == null || !stillValid(player)) return false;
         if (id == 0) return port.resetDeck(player);
         if (id == CYCLE_REDSTONE && port.hasRedstoneUpgrade()) {
@@ -143,31 +174,37 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
         }
         return false;
     }
-    @Override public void clicked(int index, int button, ContainerInput input, Player player) {
+    @Override
+    public void clicked(int index, int button, ContainerInput input, Player player) {
         ItemStack before = getSlot(LINK_IN).getItem().copy();
         super.clicked(index, button, input, player);
         if (port != null) { if (!ItemStack.matches(before, getSlot(LINK_IN).getItem())) port.queueDeckLink(player); port.processDeckLink(); }
     }
-    @Override public ItemStack quickMoveStack(Player player, int index) {
+    @Override
+    public ItemStack quickMoveStack(Player player, int index) {
         if (index < 0 || index >= slots.size()) return ItemStack.EMPTY;
-        var slot = slots.get(index); if (!slot.hasItem()) return ItemStack.EMPTY;
-        var stack = slot.getItem(); var before = stack.copy();
-        if (index < INVENTORY_START) { if (!moveItemStackTo(stack, INVENTORY_START, slots.size(), true)) return ItemStack.EMPTY; }
-        else if (stack.is(JasmItems.SPEED_UPGRADE.get())) {
+        var slot = slots.get(index);
+        if (!slot.hasItem()) return ItemStack.EMPTY;
+        var stack = slot.getItem();
+        var before = stack.copy();
+        if (index < INVENTORY_START) {
+            if (!moveItemStackTo(stack, INVENTORY_START, slots.size(), true)) return ItemStack.EMPTY;
+        } else if (stack.is(JasmItems.SPEED_UPGRADE.get())) {
             boolean moved = false;
             for (int i = 0; i < PortOperations.UPGRADE_SLOTS && !stack.isEmpty(); i++) {
                 if (!moveItemStackTo(stack, 0, LINK_IN, false)) break;
                 moved = true;
             }
             if (!moved) return ItemStack.EMPTY;
-        }
-        else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
             if (!moveItemStackTo(stack, 0, LINK_IN, false)) return ItemStack.EMPTY;
-        }
-        else if (stack.is(JasmItems.POWER_UPGRADE.get())) { if (!moveItemStackTo(stack, POWER, POWER + 1, false)) return ItemStack.EMPTY; }
-        else if (DeckItem.isDeck(stack)) { if (!moveItemStackTo(stack, LINK_IN, LINK_IN + 1, false)) return ItemStack.EMPTY; }
-        else return ItemStack.EMPTY;
-        if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY); else slot.setChanged();
+        } else if (stack.is(JasmItems.POWER_UPGRADE.get())) {
+            if (!moveItemStackTo(stack, POWER, POWER + 1, false)) return ItemStack.EMPTY;
+        } else if (DeckItem.isDeck(stack)) {
+            if (!moveItemStackTo(stack, LINK_IN, LINK_IN + 1, false)) return ItemStack.EMPTY;
+        } else return ItemStack.EMPTY;
+        if (stack.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
+        else slot.setChanged();
         if (port != null) { if (index >= INVENTORY_START && DeckItem.isDeck(before)) port.queueDeckLink(player); port.processDeckLink(); }
         return before;
     }

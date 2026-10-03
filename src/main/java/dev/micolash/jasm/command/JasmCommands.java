@@ -57,7 +57,8 @@ public final class JasmCommands {
         JasmState state = store.state();
         source.sendSuccess(() -> Component.literal(("JASM storage: epoch %d, next wafer #%d, %d wafer records loaded (%d not yet saved,"
                 + " %d unreadable), %d archives (%d unreadable)").formatted(state.epoch(), state.nextSerial(), store.loadedCount(),
-                store.unsavedCount(), store.unreadableCount(), state.archiveCount(), state.unreadableArchiveCount())), false);
+                        store.unsavedCount(), store.unreadableCount(), state.archiveCount(), state.unreadableArchiveCount())),
+                false);
         return 1;
     }
 
@@ -72,11 +73,14 @@ public final class JasmCommands {
         }
         WaferRecord r = found.get();
         WaferRecord.History h = r.history();
-        String lastUsed = h.lastUsedAt() == 0 ? "never" : h.lastUsedBy() + " at " + new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(h.lastUsedAt()));
+        String lastUsed = h.lastUsedAt() == 0
+                ? "never"
+                : h.lastUsedBy() + " at " + new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(h.lastUsedAt()));
         source.sendSuccess(() -> Component.literal(("Wafer #%d (%s): %d/%d items (%d from missing mods), %d variants, stamp %s (saved %s),"
                 + " floor %s, archive %s, created by %s, last used by %s").formatted(r.serial(), r.id(), r.used(), r.capacity(),
-                r.quarantinedCount(), r.contents().size(), r.current(), r.confirmed(), r.recoveryFloor(), r.archiveId(),
-                h.createdBy().isEmpty() ? "-" : h.createdBy(), lastUsed)), false);
+                        r.quarantinedCount(), r.contents().size(), r.current(), r.confirmed(), r.recoveryFloor(), r.archiveId(),
+                        h.createdBy().isEmpty() ? "-" : h.createdBy(), lastUsed)),
+                false);
         return 1;
     }
 

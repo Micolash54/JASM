@@ -10,8 +10,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -50,7 +50,10 @@ public class WildBitling extends BitlingBody {
     private static final int FOLLOW_PATH_EVERY = 10;
 
     /** What it is busy with after being handed something. */
-    private enum Treat { CHIP, CRYSTAL }
+    private enum Treat {
+        CHIP,
+        CRYSTAL
+    }
 
     private @Nullable Vec3 garden;
     private @Nullable BlockPos crystal;

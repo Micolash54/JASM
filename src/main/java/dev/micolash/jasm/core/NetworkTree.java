@@ -57,7 +57,7 @@ public final class NetworkTree {
         // Depth-first, in order, without recursion: each entry is a cell, the row it hangs under, that row's depth + 1,
         // and 1 when that row is a cable run's junction, which takes in the machines further along the same run.
         ArrayDeque<int[]> stack = new ArrayDeque<>();
-        stack.push(new int[] {root, -1, 0, 0});
+        stack.push(new int[]{root, -1, 0, 0});
         while (!stack.isEmpty()) {
             int[] at = stack.pop();
             int cell = at[0];
@@ -91,7 +91,7 @@ public final class NetworkTree {
                 }
             }
             for (int i = below.size() - 1; i >= 0; i--) {
-                stack.push(new int[] {below.get(i), parent, depth, run ? 1 : 0});
+                stack.push(new int[]{below.get(i), parent, depth, run ? 1 : 0});
             }
         }
         return rows;

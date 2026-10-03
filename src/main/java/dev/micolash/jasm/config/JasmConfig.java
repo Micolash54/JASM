@@ -206,7 +206,8 @@ public final class JasmConfig {
             .comment("Machines a network may hold at brain levels 1 to 10 (10 numbers)")
             .defineList("machineLimits", List.of(8, 12, 16, 24, 32, 48, 64, 96, 128, 256), () -> 0, o -> o instanceof Integer i && i >= 0);
     public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEVEL_POINTS = BUILDER
-            .comment("Points a brain needs to go from level 1 to 2, 2 to 3, ... 9 to 10 (9 numbers). A brain learns its size's speed in points every powered tick")
+            .comment(
+                    "Points a brain needs to go from level 1 to 2, 2 to 3, ... 9 to 10 (9 numbers). A brain learns its size's speed in points every powered tick")
             .defineList("levelPoints", List.of(72_000, 108_000, 144_000, 216_000, 288_000, 432_000, 576_000, 864_000, 1_152_000),
                     () -> 1, o -> o instanceof Integer i && i > 0);
     public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_LEVEL_CAPS = BUILDER

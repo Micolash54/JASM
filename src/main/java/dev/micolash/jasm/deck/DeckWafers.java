@@ -19,8 +19,8 @@ import net.minecraft.world.item.ItemStackTemplate;
 public record DeckWafers(List<Entry> entries) {
     public record Entry(int slot, ItemStackTemplate wafer) {
         static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        Codec.intRange(0, 255).fieldOf("slot").forGetter(Entry::slot),
-                        ItemStackTemplate.CODEC.fieldOf("item").forGetter(Entry::wafer))
+                Codec.intRange(0, 255).fieldOf("slot").forGetter(Entry::slot),
+                ItemStackTemplate.CODEC.fieldOf("item").forGetter(Entry::wafer))
                 .apply(i, Entry::new));
 
         static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
@@ -33,8 +33,8 @@ public record DeckWafers(List<Entry> entries) {
 
     public static final Codec<DeckWafers> CODEC = Entry.CODEC.listOf().xmap(DeckWafers::new, DeckWafers::entries);
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, DeckWafers> STREAM_CODEC =
-            Entry.STREAM_CODEC.apply(ByteBufCodecs.list()).map(DeckWafers::new, DeckWafers::entries);
+    public static final StreamCodec<RegistryFriendlyByteBuf, DeckWafers> STREAM_CODEC = Entry.STREAM_CODEC.apply(ByteBufCodecs.list())
+            .map(DeckWafers::new, DeckWafers::entries);
 
     public DeckWafers {
         entries = entries.stream().sorted(Comparator.comparingInt(Entry::slot)).toList();

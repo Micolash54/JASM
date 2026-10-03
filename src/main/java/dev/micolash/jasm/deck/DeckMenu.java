@@ -2,13 +2,14 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
-import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferItem;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,12 +19,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.ResultSlot;
 import net.minecraft.world.inventory.Slot;
@@ -127,18 +127,23 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         upgrade = new DeckUpgradeContainer(deck, this, !player.level().isClientSide());
         upgradeSlot = slots.size();
         addSlot(new Slot(upgrade, 0, mainX() - 21, SIDE_TOP + 15 + sideRows * 18) {
-            @Override public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
-            @Override public int getMaxStackSize() { return 1; }
-            @Override public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
+            @Override
+            public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
+            @Override
+            public int getMaxStackSize() { return 1; }
+            @Override
+            public Identifier getNoItemIcon() { return Jasm.id("container/empty_upgrade"); }
         });
         if (grid != null) {
             armorStart = slots.size();
             for (int i = 0; i < ARMOR.length; i++) {
                 int index = 39 - i;
-                addSlot(index == deckSlot ? new LockedSlot(inventory, index, x + 10, 0)
+                addSlot(index == deckSlot
+                        ? new LockedSlot(inventory, index, x + 10, 0)
                         : new ArmorSlot(inventory, player, ARMOR[i], index, ARMOR_ICONS[i], x + 10));
             }
-            addSlot(deckSlot == Inventory.SLOT_OFFHAND ? new LockedSlot(inventory, Inventory.SLOT_OFFHAND, x + 70, 0)
+            addSlot(deckSlot == Inventory.SLOT_OFFHAND
+                    ? new LockedSlot(inventory, Inventory.SLOT_OFFHAND, x + 70, 0)
                     : new OffhandSlot(inventory, player, x + 70));
         } else {
             armorStart = -1;
@@ -238,7 +243,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     public int upgradeSlot() { return upgradeSlot; }
     /** The first armour slot's index in {@link #slots}, the off-hand four after it; -1 on a normal Deck. */
-    public int armorStart() { return armorStart; }
+    public int armorStart() {
+        return armorStart;
+    }
     public boolean dimensionAllowed() { return DeckItem.worksIn(player.getInventory().getItem(deckSlot), player.level()); }
 
     public DeckWaferContainer wafers() {
@@ -456,15 +463,16 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return;
         }
         placing = true;
-        var incoming = new java.util.LinkedHashMap<ItemResource, Long>();
+        var incoming = new LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack stack = grid.getItem(i);
             if (!stack.isEmpty()) incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
         var accepted = DeckStorage.hasPower(deck)
-                ? (storage == null ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player)
+                ? (storage == null
+                        ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player)
                         : storage.depositAmounts(incoming))
-                : new java.util.LinkedHashMap<ItemResource, Long>();
+                : new LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack stack = grid.getItem(i);
             if (!stack.isEmpty()) {
@@ -650,7 +658,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return dimensionAllowed() && allowedInGrid(stack);
         }
 
-        @Override public boolean mayPickup(Player player) { return dimensionAllowed(); }
+        @Override
+        public boolean mayPickup(Player player) { return dimensionAllowed(); }
     }
 
     /** Taking the result refills the grid from the wafers. */
@@ -696,9 +705,12 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             super.setByPlayer(stack, previous);
         }
 
-        @Override public int getMaxStackSize() { return 1; }
-        @Override public boolean mayPlace(ItemStack stack) { return stack.canEquip(equipment, owner); }
-        @Override public boolean isActive() { return owner.canUseSlot(equipment); }
+        @Override
+        public int getMaxStackSize() { return 1; }
+        @Override
+        public boolean mayPlace(ItemStack stack) { return stack.canEquip(equipment, owner); }
+        @Override
+        public boolean isActive() { return owner.canUseSlot(equipment); }
 
         @Override
         public boolean mayPickup(Player player) {
@@ -707,7 +719,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                     && super.mayPickup(player);
         }
 
-        @Override public Identifier getNoItemIcon() { return icon; }
+        @Override
+        public Identifier getNoItemIcon() { return icon; }
     }
 
     /** The off-hand, as in the player's own inventory. */
@@ -725,7 +738,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             super.setByPlayer(stack, previous);
         }
 
-        @Override public Identifier getNoItemIcon() { return Jasm.id("container/empty_shield"); }
+        @Override
+        public Identifier getNoItemIcon() { return Jasm.id("container/empty_shield"); }
     }
 
     /** The slot holding the open Deck. */

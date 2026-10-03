@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -19,11 +20,14 @@ import org.jspecify.annotations.Nullable;
 /** One wafer's ordered filters. The first enabled match decides; an empty list accepts everything. */
 public record WaferSettings(List<Filter> rules) {
     public enum Mode implements StringRepresentable {
-        ITEM, TAG, MOD_ID;
+        ITEM,
+        TAG,
+        MOD_ID;
         public static final Codec<Mode> CODEC = StringRepresentable.fromEnum(Mode::values);
         public static final StreamCodec<ByteBuf, Mode> STREAM_CODEC = ByteBufCodecs.STRING_UTF8.map(
-                value -> Mode.valueOf(value.toUpperCase(java.util.Locale.ROOT)), Mode::getSerializedName);
-        @Override public String getSerializedName() { return name().toLowerCase(java.util.Locale.ROOT); }
+                value -> Mode.valueOf(value.toUpperCase(Locale.ROOT)), Mode::getSerializedName);
+        @Override
+        public String getSerializedName() { return name().toLowerCase(Locale.ROOT); }
     }
 
     public static final class Filter {
@@ -71,9 +75,11 @@ public record WaferSettings(List<Filter> rules) {
         }
 
         public boolean valid() {
-            if (mode == Mode.MOD_ID) return !value.isEmpty() && BuiltInRegistries.ITEM.stream()
-                    .anyMatch(item -> BuiltInRegistries.ITEM.getKey(item).getNamespace().equals(value));
-            return mode == Mode.ITEM ? item != null && item != Items.AIR
+            if (mode == Mode.MOD_ID)
+                return !value.isEmpty() && BuiltInRegistries.ITEM.stream()
+                        .anyMatch(item -> BuiltInRegistries.ITEM.getKey(item).getNamespace().equals(value));
+            return mode == Mode.ITEM
+                    ? item != null && item != Items.AIR
                     : tag != null && BuiltInRegistries.ITEM.get(tag).filter(items -> items.size() > 0).isPresent();
         }
 
@@ -87,9 +93,11 @@ public record WaferSettings(List<Filter> rules) {
     // Older settings use different field names and load without filters.
     public static final Codec<WaferSettings> CODEC = RecordCodecBuilder.create(i -> i.group(
             Filter.CODEC.listOf().optionalFieldOf("rules", List.of()).forGetter(WaferSettings::rules)).apply(i, WaferSettings::new));
-    public static final StreamCodec<ByteBuf, WaferSettings> STREAM_CODEC =
-            Filter.STREAM_CODEC.apply(ByteBufCodecs.list()).map(WaferSettings::new, WaferSettings::rules);
-    public WaferSettings { rules = List.copyOf(rules); }
+    public static final StreamCodec<ByteBuf, WaferSettings> STREAM_CODEC = Filter.STREAM_CODEC.apply(ByteBufCodecs.list()).map(WaferSettings::new,
+            WaferSettings::rules);
+    public WaferSettings {
+        rules = List.copyOf(rules);
+    }
 
     /** Matching Allow row, unfiltered last, or -1 when denied. Item components are ignored. */
     public int rank(Item item) {

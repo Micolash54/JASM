@@ -2,18 +2,20 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.deck.DeckPayloads;
+import dev.micolash.jasm.network.TrustList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import dev.micolash.jasm.network.TrustList;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
@@ -69,14 +71,15 @@ public final class CraftPayloads {
      */
     /** {@code stalled}: the Deck's rules that can't go ahead right now, each with the message saying why. */
     public record Status(int containerId, int network, List<ItemResource> craftable, List<JobView> jobs, Map<UUID, String> stalled)
-            implements CustomPacketPayload {
+            implements
+                CustomPacketPayload {
         public static final Type<Status> TYPE = new Type<>(Jasm.id("craft_status"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Status> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Status::containerId,
                 ByteBufCodecs.VAR_INT, Status::network,
                 ItemResource.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_LIST)), Status::craftable,
                 JobView.STREAM_CODEC.apply(ByteBufCodecs.list(64)), Status::jobs,
-                ByteBufCodecs.map(java.util.HashMap::new, net.minecraft.core.UUIDUtil.STREAM_CODEC, ByteBufCodecs.stringUtf8(128), 64),
+                ByteBufCodecs.map(HashMap::new, UUIDUtil.STREAM_CODEC, ByteBufCodecs.stringUtf8(128), 64),
                 Status::stalled,
                 Status::new);
 
@@ -106,8 +109,8 @@ public final class CraftPayloads {
     public record Answer(int containerId, ItemResource target, long amount, long made, String problem, List<DeckPayloads.Entry> taken,
             List<DeckPayloads.Entry> missing, List<DeckPayloads.Entry> crafts, List<ServerView> servers, int chosen) implements CustomPacketPayload {
         public static final Type<Answer> TYPE = new Type<>(Jasm.id("craft_answer"));
-        private static final StreamCodec<RegistryFriendlyByteBuf, List<DeckPayloads.Entry>> ENTRIES =
-                DeckPayloads.Entry.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_LIST));
+        private static final StreamCodec<RegistryFriendlyByteBuf, List<DeckPayloads.Entry>> ENTRIES = DeckPayloads.Entry.STREAM_CODEC
+                .apply(ByteBufCodecs.list(MAX_LIST));
         public static final StreamCodec<RegistryFriendlyByteBuf, Answer> STREAM_CODEC = new StreamCodec<>() {
             @Override
             public Answer decode(RegistryFriendlyByteBuf buf) {
@@ -247,12 +250,12 @@ public final class CraftPayloads {
     }
 
     /** Client → server: trust the player called {@code name} at the open terminal, or ({@code remove}) stop trusting {@code player}. */
-    public record Trust(int containerId, String name, Optional<java.util.UUID> remove) implements CustomPacketPayload {
+    public record Trust(int containerId, String name, Optional<UUID> remove) implements CustomPacketPayload {
         public static final Type<Trust> TYPE = new Type<>(Jasm.id("terminal_trust"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Trust> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Trust::containerId,
                 ByteBufCodecs.stringUtf8(16), Trust::name,
-                ByteBufCodecs.optional(net.minecraft.core.UUIDUtil.STREAM_CODEC), Trust::remove,
+                ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC), Trust::remove,
                 Trust::new);
 
         @Override
@@ -269,7 +272,8 @@ public final class CraftPayloads {
                 AccessPortMenu.MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(6)), PortMachines::machines,
                 PortMachines::new);
 
-        @Override public Type<PortMachines> type() { return TYPE; }
+        @Override
+        public Type<PortMachines> type() { return TYPE; }
     }
 
     /** Server → client: whose Deck the open port delivers to. */
@@ -280,7 +284,8 @@ public final class CraftPayloads {
                 ByteBufCodecs.stringUtf8(64), PortLinkedPlayer::name,
                 PortLinkedPlayer::new);
 
-        @Override public Type<PortLinkedPlayer> type() { return TYPE; }
+        @Override
+        public Type<PortLinkedPlayer> type() { return TYPE; }
     }
 
     /** Client → server: rename the open Access Port; empty goes back to the machine's name. */

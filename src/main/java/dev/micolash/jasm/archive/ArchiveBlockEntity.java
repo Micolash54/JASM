@@ -2,13 +2,13 @@ package dev.micolash.jasm.archive;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.network.CableNetwork;
-import dev.micolash.jasm.network.NetworkEnergy;
-import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.autocraft.AutocraftState;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.NetworkEnergy;
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
@@ -199,8 +199,10 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
             return List.of();
         }
         CableNetwork network = Networks.at(serverLevel, worldPosition);
-        return network == null ? List.of() : network.machines(EncodingTerminalBlockEntity.class).stream()
-                .map(EncodingTerminalBlockEntity::ensureId).toList();
+        return network == null
+                ? List.of()
+                : network.machines(EncodingTerminalBlockEntity.class).stream()
+                        .map(EncodingTerminalBlockEntity::ensureId).toList();
     }
 
     /** Losing the physical Deck does not erase its registered player's recovery permission. */
@@ -219,7 +221,7 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
             var previous = AutocraftState.get(serverLevel.getServer()).terminal(record.network()).orElse(null);
             if (network == null || !network.complete()
                     || previous != null && previous.placement().dimension().equals(serverLevel.dimension())
-                        && !serverLevel.isLoaded(previous.placement().pos())) {
+                            && !serverLevel.isLoaded(previous.placement().pos())) {
                 return;
             }
             clearBackups();
@@ -441,9 +443,9 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
 
     private record SavedSlots(UUID player, ItemStack link, ItemStack recovery) {
         static final Codec<SavedSlots> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        UUIDUtil.CODEC.fieldOf("player").forGetter(SavedSlots::player),
-                        ItemStack.OPTIONAL_CODEC.optionalFieldOf("link", ItemStack.EMPTY).forGetter(SavedSlots::link),
-                        ItemStack.OPTIONAL_CODEC.optionalFieldOf("recovery", ItemStack.EMPTY).forGetter(SavedSlots::recovery))
+                UUIDUtil.CODEC.fieldOf("player").forGetter(SavedSlots::player),
+                ItemStack.OPTIONAL_CODEC.optionalFieldOf("link", ItemStack.EMPTY).forGetter(SavedSlots::link),
+                ItemStack.OPTIONAL_CODEC.optionalFieldOf("recovery", ItemStack.EMPTY).forGetter(SavedSlots::recovery))
                 .apply(i, SavedSlots::new));
     }
 

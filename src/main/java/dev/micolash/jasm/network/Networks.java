@@ -9,10 +9,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.List;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -410,7 +410,8 @@ public final class Networks {
     private boolean joins(BlockState from, BlockState to, BlockPos fromPos, BlockPos toPos) {
         Direction face = Direction.getApproximateNearest(toPos.getX() - fromPos.getX(), toPos.getY() - fromPos.getY(), toPos.getZ() - fromPos.getZ());
         if (level.getBlockEntity(fromPos) instanceof DataCableBlockEntity cable && cable.port(face) != null
-                || level.getBlockEntity(toPos) instanceof DataCableBlockEntity other && other.port(face.getOpposite()) != null) return false;
+                || level.getBlockEntity(toPos) instanceof DataCableBlockEntity other && other.port(face.getOpposite()) != null)
+            return false;
         if (DataCableBlock.coreless(from) || DataCableBlock.coreless(to)) return false;
         boolean fromCable = from.getBlock() instanceof DataCableBlock;
         boolean toCable = to.getBlock() instanceof DataCableBlock;
@@ -453,8 +454,8 @@ public final class Networks {
                 }
             }
         }
-        List<Wave> preferred = new java.util.ArrayList<>();
-        List<Wave> other = new java.util.ArrayList<>();
+        List<Wave> preferred = new ArrayList<>();
+        List<Wave> other = new ArrayList<>();
         for (BlockPos cable : cables) {
             for (Direction side : Direction.values()) {
                 BlockPos next = cable.relative(side);

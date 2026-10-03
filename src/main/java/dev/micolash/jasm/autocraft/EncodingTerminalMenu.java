@@ -6,25 +6,26 @@ import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
-import dev.micolash.jasm.network.MachineView;
-import dev.micolash.jasm.network.TrustList;
-import dev.micolash.jasm.network.LinkWindowCover;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.network.TrustList;
+import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
-import net.neoforged.neoforge.network.PacketDistributor;
-import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -39,6 +40,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -119,7 +121,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(at, name, present, selected);
+            return Objects.hash(at, name, present, selected);
         }
     }
 
@@ -272,7 +274,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         ItemStack deck = viewersDeck(player);
         WaferStore store = WaferStore.ifOpen(player.level().getServer());
         Map<ItemResource, Long> now = deck.isEmpty() || store == null || !DeckItem.worksIn(deck, player.level())
-                ? Map.of() : DeckStorage.contents(store, deck);
+                ? Map.of()
+                : DeckStorage.contents(store, deck);
         boolean found = !deck.isEmpty();
         if (deckSent != null && found == deckFoundSent && now.equals(deckSent)) {
             return;
@@ -546,7 +549,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         if (network != null) {
             for (AccessPortBlockEntity port : Machines.ports(network)) {
                 if (MachineAccess.canUse(port, player)) {
-                    for (net.minecraft.core.Direction side : port.machineSides()) {
+                    for (Direction side : port.machineSides()) {
                         Machines.At at = new Machines.At(port.getBlockPos(), side);
                         ItemStack icon = new ItemStack(level.getBlockState(port.getBlockPos().relative(side)).getBlock().asItem());
                         views.add(new MachineView(at, port.machineName(side).getString(), icon, true, chosen.contains(at)));

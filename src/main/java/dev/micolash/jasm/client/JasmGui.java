@@ -1,7 +1,10 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -63,14 +66,14 @@ public final class JasmGui {
      * screen. It tucks under the panel it hangs from, so the two are drawn as one shape.
      */
     public static int[] sideStrip(int keyX, int keys) {
-        return new int[] {keyX - 14, SIDE_KEY_Y - 4, 14 + SIDE_KEY_WIDTH + 3, keys * (SIDE_KEY_HEIGHT - 1) + 10};
+        return new int[]{keyX - 14, SIDE_KEY_Y - 4, 14 + SIDE_KEY_WIDTH + 3, keys * (SIDE_KEY_HEIGHT - 1) + 10};
     }
 
-    private static final java.util.Map<Long, JasmFrame> FRAMES = new java.util.HashMap<>();
+    private static final Map<Long, JasmFrame> FRAMES = new HashMap<>();
 
     /** A plain rounded panel, as the base of a screen or a window that stays put. */
     public static void panel(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {
-        FRAMES.computeIfAbsent((long) width << 32 | height, key -> JasmFrame.rounded(new int[] {0, 0, width, height}))
+        FRAMES.computeIfAbsent((long) width << 32 | height, key -> JasmFrame.rounded(new int[]{0, 0, width, height}))
                 .draw(graphics, x, y);
     }
 
@@ -224,7 +227,7 @@ public final class JasmGui {
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, TRACK, x, y, width, height);
         Identifier sprite = KNOB_DISABLED;
         if (active) {
-            var minecraft = net.minecraft.client.Minecraft.getInstance();
+            var minecraft = Minecraft.getInstance();
             var window = minecraft.getWindow();
             double mx = minecraft.mouseHandler.getScaledXPos(window);
             double my = minecraft.mouseHandler.getScaledYPos(window);

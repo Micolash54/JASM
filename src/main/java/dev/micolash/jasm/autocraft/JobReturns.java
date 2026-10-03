@@ -33,7 +33,8 @@ final class JobReturns {
         ServerPlayer player = level.getServer().getPlayerList().getPlayer(job.requester);
         ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
         if (deck.isEmpty() || !DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)
-                || !JobPlanning.onDeckNetwork(deck, level, server.getBlockPos())) return false;
+                || !JobPlanning.onDeckNetwork(deck, level, server.getBlockPos()))
+            return false;
         Map<ItemResource, Long> products = Map.of(target, available);
         return (job.toPlayer ? moveToInventory(player, record, store, products) : moveToDeck(player, deck, record, store, products)) > 0;
     }

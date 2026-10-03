@@ -1,10 +1,10 @@
 package dev.micolash.jasm.battery;
 
 import com.mojang.serialization.MapCodec;
+import dev.micolash.jasm.network.PowerSourceBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
-import dev.micolash.jasm.network.PowerSourceBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -30,6 +30,8 @@ public class CreativeBatteryBlock extends PowerSourceBlock {
 
     @Override
     public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        return level.isClientSide() ? null : createTickerHelper(type, JasmBlocks.CREATIVE_BATTERY_ENTITY.get(), CreativeBatteryBlockEntity::serverTick);
+        return level.isClientSide()
+                ? null
+                : createTickerHelper(type, JasmBlocks.CREATIVE_BATTERY_ENTITY.get(), CreativeBatteryBlockEntity::serverTick);
     }
 }

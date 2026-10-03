@@ -173,7 +173,7 @@ public final class DeckNetwork {
     /** At most {@code maxOpsPerTick} operations per player per tick; the rest are dropped. */
     private static boolean allow(ServerPlayer player) {
         long tick = player.level().getServer().getTickCount();
-        long[] seen = JasmServerData.of(player.level().getServer()).deckOps.computeIfAbsent(player.getUUID(), id -> new long[] {tick, 0});
+        long[] seen = JasmServerData.of(player.level().getServer()).deckOps.computeIfAbsent(player.getUUID(), id -> new long[]{tick, 0});
         if (seen[0] != tick) {
             seen[0] = tick;
             seen[1] = 0;

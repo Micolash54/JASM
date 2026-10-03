@@ -102,7 +102,8 @@ final class JobsWindow {
             String what = GridEntries.abbreviate(job.amount()) + " × " + shown.getHoverName().getString();
             graphics.text(font, trim(what, width - 36 - BAR_WIDTH - 6), x + 28, ry + 2, JasmGui.TEXT, false);
             Component state = state(job);
-            graphics.text(font, trim(state.getString(), width - 36), x + 28, ry + 11, PauseReason.of(job.pause()) == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD, false);
+            graphics.text(font, trim(state.getString(), width - 36), x + 28, ry + 11,
+                    PauseReason.of(job.pause()) == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD, false);
             if (job.phase() == 0) {
                 JasmGui.bar(graphics, x + width - 10 - BAR_WIDTH, ry + 4, BAR_WIDTH, 5, job.progress() / 1000.0);
             }

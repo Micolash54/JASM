@@ -20,15 +20,15 @@ import org.jspecify.annotations.Nullable;
 public final class CableClaims extends SavedData {
     private record Claim(ArchiveRecord.Placement placement, Optional<UUID> owner, boolean blocked) {
         static final Codec<Claim> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        ArchiveRecord.Placement.CODEC.fieldOf("placement").forGetter(Claim::placement),
-                        UUIDUtil.CODEC.optionalFieldOf("owner").forGetter(Claim::owner),
-                        Codec.BOOL.optionalFieldOf("blocked", false).forGetter(Claim::blocked))
+                ArchiveRecord.Placement.CODEC.fieldOf("placement").forGetter(Claim::placement),
+                UUIDUtil.CODEC.optionalFieldOf("owner").forGetter(Claim::owner),
+                Codec.BOOL.optionalFieldOf("blocked", false).forGetter(Claim::blocked))
                 .apply(i, Claim::new));
     }
 
     public static final Codec<CableClaims> CODEC = RecordCodecBuilder.create(i -> i.group(
-                    Claim.CODEC.listOf().optionalFieldOf("claims", List.of()).forGetter(data -> List.copyOf(data.claims.values())),
-                    MachineOwner.CODEC.listOf().optionalFieldOf("owners", List.of()).forGetter(data -> List.copyOf(data.owners.values())))
+            Claim.CODEC.listOf().optionalFieldOf("claims", List.of()).forGetter(data -> List.copyOf(data.claims.values())),
+            MachineOwner.CODEC.listOf().optionalFieldOf("owners", List.of()).forGetter(data -> List.copyOf(data.owners.values())))
             .apply(i, CableClaims::new));
     public static final SavedDataType<CableClaims> TYPE = new SavedDataType<>(Jasm.id("cable_claims"), CableClaims::new, CODEC);
 

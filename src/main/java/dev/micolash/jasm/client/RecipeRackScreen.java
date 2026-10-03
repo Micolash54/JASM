@@ -1,10 +1,15 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 
 /** The Recipe Rack screen: a 4 × 4 grid of card slots under the title and charge bar, like the front of the block. */
 public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
@@ -44,11 +49,11 @@ public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
 
     /** A card whose machine can't be reached says so at the top of its tooltip. */
     @Override
-    protected java.util.List<Component> getTooltipFromContainerItem(net.minecraft.world.item.ItemStack stack) {
-        java.util.List<Component> lines = super.getTooltipFromContainerItem(stack);
+    protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
+        List<Component> lines = super.getTooltipFromContainerItem(stack);
         if (hoveredSlot != null && menu.machineMissing(hoveredSlot.index)) {
-            lines = new java.util.ArrayList<>(lines);
-            lines.add(1, Component.translatable("screen.jasm.rack.machine_missing").withStyle(net.minecraft.ChatFormatting.RED));
+            lines = new ArrayList<>(lines);
+            lines.add(1, Component.translatable("screen.jasm.rack.machine_missing").withStyle(ChatFormatting.RED));
         }
         return lines;
     }
@@ -59,9 +64,10 @@ public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         if (!menu.running()) {
             // Between the cards and the inventory, wrapped to the panel.
-            java.util.List<net.minecraft.util.FormattedCharSequence> lines = font.split(MachineStatusText.noPower(menu.containerId, "screen.jasm.rack.no_power"), imageWidth - 16);
+            List<FormattedCharSequence> lines = font.split(MachineStatusText.noPower(menu.containerId, "screen.jasm.rack.no_power"), imageWidth - 16);
             for (int i = 0; i < Math.min(2, lines.size()); i++) {
-                graphics.text(font, lines.get(i), (imageWidth - font.width(lines.get(i))) / 2, RecipeRackMenu.CARDS_BOTTOM + 3 + i * 9, JasmGui.BAD, false);
+                graphics.text(font, lines.get(i), (imageWidth - font.width(lines.get(i))) / 2, RecipeRackMenu.CARDS_BOTTOM + 3 + i * 9, JasmGui.BAD,
+                        false);
             }
         }
     }

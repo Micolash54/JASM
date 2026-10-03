@@ -199,7 +199,8 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         } else if (ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.INPUT, stack)) {
             moved = moveItemStackTo(stack, 0, 1, false);
         } else {
-            moved = ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.CRITTER, stack) && moveItemStackTo(stack, MACHINE_SLOTS - 1, MACHINE_SLOTS, false);
+            moved = ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.CRITTER, stack)
+                    && moveItemStackTo(stack, MACHINE_SLOTS - 1, MACHINE_SLOTS, false);
         }
         if (!moved) {
             return ItemStack.EMPTY;

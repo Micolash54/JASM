@@ -51,10 +51,14 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         }
         return false;
     }
-    @Override public boolean hasMachine(Direction side) { return false; }
-    @Override protected boolean canPowerSide(Direction side) { return side == face; }
-    @Override public int[] getSlotsForFace(Direction side) { return new int[0]; }
-    @Override public boolean canPlaceItem(int slot, ItemStack stack) {
+    @Override
+    public boolean hasMachine(Direction side) { return false; }
+    @Override
+    protected boolean canPowerSide(Direction side) { return side == face; }
+    @Override
+    public int[] getSlotsForFace(Direction side) { return new int[0]; }
+    @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
         if (slot >= SPEED_START && slot < INVENTORY_SIZE && stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
             for (int i = SPEED_START; i < INVENTORY_SIZE; i++) {
                 if (i != slot && getItem(i).is(JasmItems.REDSTONE_UPGRADE.get())) return false;
@@ -63,9 +67,12 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         }
         return (slot == DECK_IN || slot == POWER_SLOT || slot >= SPEED_START) && super.canPlaceItem(slot, stack);
     }
-    @Override public Component getDisplayName() { return label().isEmpty() ? Component.translatable("item.jasm." + kind.id()) : Component.literal(label()); }
-    @Override protected AbstractContainerMenu createMenu(int id, Inventory inventory) { return new TransferPortMenu(id, inventory, this); }
-    @Override public void writeOpening(RegistryFriendlyByteBuf buf) {
+    @Override
+    public Component getDisplayName() { return label().isEmpty() ? Component.translatable("item.jasm." + kind.id()) : Component.literal(label()); }
+    @Override
+    protected AbstractContainerMenu createMenu(int id, Inventory inventory) { return new TransferPortMenu(id, inventory, this); }
+    @Override
+    public void writeOpening(RegistryFriendlyByteBuf buf) {
         buf.writeEnum(kind);
         TransferFilters.STREAM_CODEC.encode(buf, filters);
     }
@@ -88,7 +95,8 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
         if (deck.isEmpty() || !DeckStorage.hasPower(deck) || !DeckItem.worksIn(deck, player.level())
                 || !DeckItem.worksIn(deck, world)
-                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
+                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get())))
+            return;
         var inventory = Machines.inlet(world, worldPosition.relative(face), face.getOpposite());
         if (inventory == null) return;
         var store = WaferStore.get(world.getServer());
@@ -107,11 +115,15 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                     if (accepted <= 0) continue;
                     var stacks = storage.withdrawQuietly(key, accepted);
                     int taken = stacks.stream().mapToInt(ItemStack::getCount).sum();
-                    if (taken == accepted) { tx.commit(); budget -= taken; transferred(taken); }
-                    else if (taken > 0) {
+                    if (taken == accepted) {
+                        tx.commit();
+                        budget -= taken;
+                        transferred(taken);
+                    } else if (taken > 0) {
                         // Restore the original wafers even if their intake filters have changed.
                         long remaining = taken;
-                        for (var record : DeckStorage.records(store, deck)) if (record != null && remaining > 0) remaining -= store.insert(record, key, remaining, false, player);
+                        for (var record : DeckStorage.records(store, deck))
+                            if (record != null && remaining > 0) remaining -= store.insert(record, key, remaining, false, player);
                     }
                 }
             }
@@ -130,22 +142,28 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                     int taken = inventory.extract(key, room, tx);
                     if (taken <= 0) continue;
                     long stored = storage.depositAmount(key, taken);
-                    if (stored == taken) { tx.commit(); budget -= taken; transferred(taken); }
-                    else if (stored > 0) {
+                    if (stored == taken) {
+                        tx.commit();
+                        budget -= taken;
+                        transferred(taken);
+                    } else if (stored > 0) {
                         // The source transaction rolls back, so undo a partial deposit as well.
-                        for (var record : DeckStorage.records(store, deck)) if (record != null && stored > 0) stored -= store.extract(record, key, stored, false, player);
+                        for (var record : DeckStorage.records(store, deck))
+                            if (record != null && stored > 0) stored -= store.extract(record, key, stored, false, player);
                     }
                 }
             }
         }
         Jobs.refreshOpenDeck(player, deck);
     }
-    @Override protected void saveAdditional(ValueOutput output) {
+    @Override
+    protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         output.store("transfer_filters", TransferFilters.CODEC, filters);
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
     }
-    @Override protected void loadAdditional(ValueInput input) {
+    @Override
+    protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         filters = input.read("transfer_filters", TransferFilters.CODEC).orElse(TransferFilters.DEFAULT);
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
@@ -158,17 +176,20 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             if (old.isEmpty()) setItem(POWER_SLOT, ItemStack.EMPTY);
         }
     }
-    @Override protected void collectImplicitComponents(DataComponentMap.Builder components) {
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
         components.set(JasmComponents.TRANSFER_FILTERS.get(), filters);
         components.set(JasmComponents.REDSTONE_MODE.get(), redstoneMode);
     }
-    @Override protected void applyImplicitComponents(DataComponentGetter components) {
+    @Override
+    protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
         filters = components.getOrDefault(JasmComponents.TRANSFER_FILTERS.get(), TransferFilters.DEFAULT);
         redstoneMode = components.getOrDefault(JasmComponents.REDSTONE_MODE.get(), RedstoneMode.IGNORE);
     }
-    @Override public void removeComponentsFromTag(ValueOutput output) {
+    @Override
+    public void removeComponentsFromTag(ValueOutput output) {
         super.removeComponentsFromTag(output);
         output.discard("transfer_filters");
         output.discard("redstone_mode");

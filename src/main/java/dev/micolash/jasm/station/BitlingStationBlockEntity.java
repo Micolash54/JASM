@@ -294,7 +294,8 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
 
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
-        return new BitlingStationMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition), getBlockState().getBlock());
+        return new BitlingStationMenu(containerId, inventory, this, data, ContainerLevelAccess.create(level, worldPosition),
+                getBlockState().getBlock());
     }
 
     @Override

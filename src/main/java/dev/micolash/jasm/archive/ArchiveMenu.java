@@ -2,28 +2,32 @@ package dev.micolash.jasm.archive;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
-import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.MachineView;
+import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.network.PlayerNames;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferItem;
+import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.ContainerData;
-import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -211,12 +215,14 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
     /** Shows the outcome on the screen and sends the updated list right away. */
     private void feedback(ServerPlayer player, ArchivePayloads.Action action, ArchiveService.Result result) {
         String key = result == ArchiveService.Result.OK
-                ? "message.jasm.archive.done." + action.name().toLowerCase(java.util.Locale.ROOT)
+                ? "message.jasm.archive.done." + action.name().toLowerCase(Locale.ROOT)
                 : result.messageKey();
         if (result == ArchiveService.Result.NO_ACCESS) {
-            key = action == ArchivePayloads.Action.RESET_DECK ? "message.jasm.archive.owner_only"
-                    : archive.record() != null && !archive.record().defaultDeck() && archive.record().deckPlayer() == null ? "message.jasm.archive.no_deck"
-                    : "message.jasm.archive.deck_only";
+            key = action == ArchivePayloads.Action.RESET_DECK
+                    ? "message.jasm.archive.owner_only"
+                    : archive.record() != null && !archive.record().defaultDeck() && archive.record().deckPlayer() == null
+                            ? "message.jasm.archive.no_deck"
+                            : "message.jasm.archive.deck_only";
         }
         Notices.tell(player, Component.translatable(key), result == ArchiveService.Result.OK);
         sinceRefresh = REFRESH_TICKS;
@@ -229,7 +235,8 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
         if (archive != null) {
             ArchiveRecord record = archive.record();
             permissions.set(0, (canBackup() ? 1 : 0) | (canManageDeck() ? 2 : 0)
-                    | (record != null && (record.defaultDeck() || record.deckPlayer() != null) ? 4 : 0) | (record != null && record.defaultDeck() ? 8 : 0));
+                    | (record != null && (record.defaultDeck() || record.deckPlayer() != null) ? 4 : 0)
+                    | (record != null && record.defaultDeck() ? 8 : 0));
         }
         super.broadcastChanges();
         if (archive != null && player instanceof ServerPlayer serverPlayer) {
@@ -267,8 +274,8 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
         var online = server.getPlayerList().getPlayer(id);
         if (online != null) return online.getName().getString();
         if (id.equals(record.owner())) return record.ownerName();
-        return dev.micolash.jasm.network.PlayerNames.of(server, id,
-                dev.micolash.jasm.network.Networks.at((net.minecraft.server.level.ServerLevel) archive.getLevel(), archive.getBlockPos()));
+        return PlayerNames.of(server, id,
+                Networks.at((ServerLevel) archive.getLevel(), archive.getBlockPos()));
     }
 
     private ArchivePayloads.State withEnergy(ArchivePayloads.State state, int energy) {
@@ -293,8 +300,9 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
         int hotbar = INVENTORY_START + 27;
         boolean moved = index < INVENTORY_START
                 ? moveItemStackTo(stack, hotbar, hotbar + 9, false) || moveItemStackTo(stack, INVENTORY_START, hotbar, false)
-                : stack.getItem() instanceof DeckItem ? moveItemStackTo(stack, DECK_IN, DECK_OUT, false)
-                : stack.getItem() instanceof WaferItem && canBackup() && moveItemStackTo(stack, 0, 2, false);
+                : stack.getItem() instanceof DeckItem
+                        ? moveItemStackTo(stack, DECK_IN, DECK_OUT, false)
+                        : stack.getItem() instanceof WaferItem && canBackup() && moveItemStackTo(stack, 0, 2, false);
         if (!moved) {
             return ItemStack.EMPTY;
         }

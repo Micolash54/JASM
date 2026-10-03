@@ -31,8 +31,8 @@ public final class Machines {
     /** One machine: the Access Port it touches, and which side of the port it is on. */
     public record At(BlockPos port, Direction side) {
         public static final Codec<At> CODEC = RecordCodecBuilder.create(i -> i.group(
-                        BlockPos.CODEC.fieldOf("port").forGetter(At::port),
-                        Direction.CODEC.fieldOf("side").forGetter(At::side))
+                BlockPos.CODEC.fieldOf("port").forGetter(At::port),
+                Direction.CODEC.fieldOf("side").forGetter(At::side))
                 .apply(i, At::new));
 
         public static final StreamCodec<ByteBuf, At> STREAM_CODEC = StreamCodec.composite(
@@ -81,7 +81,8 @@ public final class Machines {
 
     /** Where items go into the block at {@code pos} through its {@code side}, or null if it takes none. */
     public static @Nullable ResourceHandler<ItemResource> inlet(Level level, BlockPos pos, Direction side) {
-        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
+        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity
+                || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
             // Another crafting block is no machine.
             return null;
         }
