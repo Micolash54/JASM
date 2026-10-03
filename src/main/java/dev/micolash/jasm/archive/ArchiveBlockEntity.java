@@ -91,7 +91,11 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
             ArchivePlacement.loaded(archive, (ServerLevel) level);
         }
         archive.drain();
-        archive.refreshDeckLink();
+        // Checking the link means walking the network for terminals: once a second is plenty, and each Archive takes
+        // a different tick so they don't all walk at once. Anything a player does checks straight away.
+        if ((level.getGameTime() + pos.asLong()) % 20 == 0) {
+            archive.refreshDeckLink();
+        }
         archive.processDeckLink();
     }
 
@@ -352,6 +356,8 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         } else if (!MachineAccess.canUse(this, player)) {
             player.sendOverlayMessage(Component.translatable("message.jasm.archive.no_access", record.ownerName()));
         } else {
+            // The linked wafers' records are read while the screen opens, so the first click on one doesn't wait.
+            WaferStore.get(player.level().getServer()).prefetch(record.linked());
             player.openMenu(this, buf -> buf.writeBlockPos(worldPosition));
         }
     }

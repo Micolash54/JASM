@@ -91,7 +91,6 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get()))) return;
         var inventory = Machines.inlet(world, worldPosition.relative(face), face.getOpposite());
         if (inventory == null) return;
-        Jobs.prepareOpenDeck(player, deck);
         var store = WaferStore.get(world.getServer());
         DeckStorage.checkAll(store, deck, player);
         budget = (int) Math.min(budget, DeckStorage.affordable(deck));

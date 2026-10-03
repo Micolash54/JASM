@@ -248,7 +248,8 @@ public final class Jobs {
                 return "message.jasm.craft.missing";
             }
         }
-        WaferRecord record = store.create(Integer.MAX_VALUE, player);
+        AutocraftState state = AutocraftState.get(level.getServer());
+        WaferRecord record = store.createJob(player, serial -> state.jobs().stream().anyMatch(j -> j.serial() == serial));
         for (Taken t : taken) {
             store.insert(record, t.key(), t.amount(), false, player);
         }
@@ -266,7 +267,6 @@ public final class Jobs {
                 ItemStackTemplate.fromNonEmptyStack(target.toStack(1)),
                 preview.plan().made(), steps, toPlayer);
         server.setJob(job);
-        AutocraftState state = AutocraftState.get(level.getServer());
         state.addJob(new AutocraftState.Job(id, record.serial(), record.id(), new ArchiveRecord.Placement(level.dimension(), server.getBlockPos()),
                 player.getUUID(), player.getPlainTextName(), Optional.of(deckId), false, Optional.ofNullable(rule)));
         state.saveNow(level.getServer());
@@ -570,7 +570,7 @@ public final class Jobs {
         WaferStore store = WaferStore.ifOpen(server);
         AutocraftState.Job entry = AutocraftState.get(server).job(jobId).orElse(null);
         if (store != null && entry != null) {
-            store.bySerial(entry.serial()).filter(r -> r.id().equals(entry.recordId())).ifPresent(store::writeNow);
+            store.jobRecord(entry.serial(), entry.recordId()).ifPresent(store::writeNow);
         }
     }
 
@@ -676,7 +676,6 @@ public final class Jobs {
     }
 
     private static long moveToDeck(ServerPlayer player, ItemStack deck, WaferRecord record, WaferStore store, Map<ItemResource, Long> items) {
-        prepareOpenDeck(player, deck);
         DeckStorage.checkAll(store, deck, player);
         long moved = 0;
         for (var held : DeckStorage.depositAmounts(store, deck, items, player).entrySet()) {
@@ -861,7 +860,7 @@ public final class Jobs {
             if (!entry.server().equals(here)) {
                 continue;
             }
-            WaferRecord record = store.bySerial(entry.serial()).filter(r -> r.id().equals(entry.recordId())).orElse(null);
+            WaferRecord record = store.jobRecord(entry.serial(), entry.recordId()).orElse(null);
             if (record != null && !record.contents().isEmpty()) {
                 Jasm.LOGGER.warn("Crafting Server at {} lost its job {} in a crash; returning its items", here, entry.id());
                 server.setJob(CraftingJob.adopted(entry));
@@ -870,7 +869,10 @@ public final class Jobs {
         }
     }
 
-    /** Finished jobs leave the list once their records are on disk. */
+    /**
+     * Finished jobs leave the list once their records are on disk, and an empty record gives up its slot. A finished
+     * job whose record still holds something is left alone: whatever is in it stays on disk for an admin to find.
+     */
     @SubscribeEvent
     static void cleanUp(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
@@ -883,11 +885,18 @@ public final class Jobs {
         }
         AutocraftState state = AutocraftState.get(server);
         for (AutocraftState.Job entry : state.jobs()) {
-            if (entry.finished()) {
-                WaferRecord record = store.bySerial(entry.serial()).orElse(null);
-                if (record == null || !record.isDirty()) {
-                    state.removeJob(entry.id());
-                }
+            if (!entry.finished()) {
+                continue;
+            }
+            WaferRecord record = store.jobRecord(entry.serial(), entry.recordId()).orElse(null);
+            if (record == null) {
+                state.removeJob(entry.id());
+            } else if (!record.isDirty() && record.isEmpty()) {
+                store.deleteJob(record);
+                state.removeJob(entry.id());
+            } else if (!record.isDirty()) {
+                Jasm.LOGGER.warn("Finished crafting job {} still holds {} items in record #{}; they are kept", entry.id(), record.used(), record.serial());
+                state.removeJob(entry.id());
             }
         }
     }
@@ -895,19 +904,12 @@ public final class Jobs {
     // --- helpers ---
 
     private static @Nullable WaferRecord record(WaferStore store, CraftingJob job) {
-        return store.bySerial(job.serial).filter(r -> r.id().equals(job.recordId)).orElse(null);
+        return store.jobRecord(job.serial, job.recordId).orElse(null);
     }
 
-    /** An open Deck screen keeps working copies of the wafers; bring them up to date before and after a change. */
-    public static void prepareOpenDeck(ServerPlayer player, ItemStack deck) {
-        if (player.containerMenu instanceof DeckMenu menu && menu.deck() == deck) {
-            menu.wafers().flush();
-        }
-    }
-
+    /** An open Deck screen shows its wafers' contents; tell it they changed. */
     public static void refreshOpenDeck(ServerPlayer player, ItemStack deck) {
         if (player.containerMenu instanceof DeckMenu menu && menu.deck() == deck) {
-            menu.wafers().reload();
             DeckViewTracker.markDirty(menu);
         }
     }

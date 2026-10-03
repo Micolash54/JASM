@@ -129,7 +129,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         } else {
             host.replaceBlock(filled);
         }
-        Networks.invalidate(serverLevel);
+        Networks.invalidate(serverLevel, pos);
         refreshConnectionsAround(serverLevel, pos);
         if (!player.getAbilities().instabuild) stack.shrink(1);
         var sound = filled.getSoundType(level, pos, player);
@@ -140,10 +140,10 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
 
     /** Recomputes the arms of this cable and the cables next to it. */
     public static void refreshConnectionsAround(ServerLevel level, BlockPos pos) {
-        if (level.getBlockState(pos).getBlock() instanceof DataCableBlock cable) cable.refreshConnections(level, pos);
+        if (level.isLoaded(pos) && level.getBlockState(pos).getBlock() instanceof DataCableBlock cable) cable.refreshConnections(level, pos);
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
-            if (level.getBlockState(next).getBlock() instanceof DataCableBlock cable) cable.refreshConnections(level, next);
+            if (level.isLoaded(next) && level.getBlockState(next).getBlock() instanceof DataCableBlock cable) cable.refreshConnections(level, next);
         }
     }
 
@@ -242,6 +242,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         BlockState state = defaultBlockState();
         for (Direction side : Direction.values()) {
             BlockPos next = context.getClickedPos().relative(side);
+            if (!context.getLevel().isLoaded(next)) continue;
             state = state.setValue(PROPERTY_BY_DIRECTION.get(side), connects(context.getLevel(), next, context.getLevel().getBlockState(next), side));
         }
         return state;
@@ -253,8 +254,14 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         return state.setValue(PROPERTY_BY_DIRECTION.get(direction), connects(level, neighbourPos, neighbourState, direction));
     }
 
+    /** Whether that spot can be read without pulling a chunk in. Block getters that aren't levels hold what they hold. */
+    private static boolean loaded(BlockGetter level, BlockPos pos) {
+        return !(level instanceof LevelReader reader) || reader.hasChunkAt(pos);
+    }
+
     private boolean connects(BlockGetter level, BlockPos neighbourPos, BlockState neighbour, Direction direction) {
         BlockPos own = neighbourPos.relative(direction.getOpposite());
+        if (!loaded(level, own) || !loaded(level, neighbourPos)) return false;
         if (level.getBlockEntity(own) instanceof DataCableBlockEntity host && host.port(direction) != null) return false;
         if (coreless(level.getBlockState(own)) || coreless(neighbour)) return false;
         if (level instanceof ServerLevel serverLevel && level.getBlockState(own).getBlock() instanceof DataCableBlock
@@ -280,6 +287,8 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         BlockState updated = state.setValue(HAS_PORTS, level.getBlockEntity(pos) instanceof DataCableBlockEntity host && !host.ports().isEmpty());
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
+            // An arm towards a chunk that isn't loaded keeps its shape until that chunk comes back.
+            if (!level.isLoaded(next)) continue;
             updated = updated.setValue(PROPERTY_BY_DIRECTION.get(side), connects(level, next, level.getBlockState(next), side));
         }
         if (state != updated) {
@@ -292,11 +301,11 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         super.onPlace(state, level, pos, oldState, movedByPiston);
         if (level instanceof ServerLevel serverLevel && !oldState.is(this)) {
             Networks.placedCable(serverLevel, pos);
-            Networks.invalidate(serverLevel);
+            Networks.invalidate(serverLevel, pos);
             refreshConnections(serverLevel, pos);
             for (Direction side : Direction.values()) {
                 BlockPos next = pos.relative(side);
-                if (serverLevel.getBlockState(next).getBlock() instanceof DataCableBlock cable) {
+                if (serverLevel.isLoaded(next) && serverLevel.getBlockState(next).getBlock() instanceof DataCableBlock cable) {
                     cable.refreshConnections(serverLevel, next);
                 }
             }
@@ -311,7 +320,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         if (!(level.getBlockState(pos).getBlock() instanceof DataCableBlock)) {
             CableClaims.get(level).remove(level, pos);
         }
-        Networks.invalidate(level);
+        Networks.invalidate(level, pos);
         level.invalidateCapabilities(pos);
     }
 }

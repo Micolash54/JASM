@@ -99,7 +99,7 @@ public class DataCableBlockEntity extends BlockEntity {
                 claims.set(serverLevel, worldPosition, player.getUUID(), false);
             }
             syncOwners();
-            Networks.invalidate(serverLevel);
+            Networks.invalidate(serverLevel, worldPosition);
         }
         changed();
         return true;
@@ -123,7 +123,7 @@ public class DataCableBlockEntity extends BlockEntity {
             port.onChunkUnloaded();
             port.setRemoved();
         }
-        if (level instanceof ServerLevel serverLevel) Networks.invalidate(serverLevel);
+        if (level instanceof ServerLevel serverLevel) Networks.invalidate(serverLevel, worldPosition);
         changed();
         return true;
     }

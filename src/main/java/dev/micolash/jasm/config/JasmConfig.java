@@ -50,6 +50,12 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue WAFER_MAX_ITEM_DATA_BYTES = BUILDER
             .comment("Largest encoded size in bytes of one distinct item variant a wafer accepts")
             .defineInRange("maxItemDataBytes", 32_768, 1_024, 1_048_576);
+    public static final ModConfigSpec.IntValue WAFER_LOADED_RECORDS = BUILDER
+            .comment("Wafer records kept in memory; beyond this, saved records nobody has used for a while are read again when needed")
+            .defineInRange("loadedRecords", 4_096, 64, 1_000_000);
+    public static final ModConfigSpec.IntValue WAFER_IDLE_MINUTES = BUILDER
+            .comment("Minutes a wafer record must go unused before it may leave memory")
+            .defineInRange("idleMinutes", 10, 0, 1_440);
 
     static {
         BUILDER.pop().push("autocrafting");

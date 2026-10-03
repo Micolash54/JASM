@@ -17,6 +17,7 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
@@ -27,12 +28,23 @@ import org.jspecify.annotations.Nullable;
  * One crafting network: Data Cables, machines and Archives joined face to face. Touching machines share their charge.
  * Every cable holds its own power and passes it on to its neighbours, each step at the slower of the two cables' rates,
  * so a fast cable feeds the blocks it touches at its own speed even when slower cables join the same network.
+ *
+ * <p>A network lives until something on it changes, so what it finds about its blocks the first time (which block
+ * entities sit where, which cables touch, which machines are of which kind) is kept and reused every tick.
  */
 public final class CableNetwork {
+    /** A loaded block of the network that isn't a cable, with its power buffer if it has one. */
+    private record Member(BlockPos pos, BlockEntity entity, @Nullable SimpleEnergyHandler energy) {}
+
     private final ServerLevel level;
     private final Set<BlockPos> cables;
     private final Set<BlockPos> machines;
     private final boolean complete;
+    private @Nullable List<Member> members;
+    private @Nullable Map<BlockPos, Member> memberByPos;
+    private @Nullable Map<BlockPos, DataCableBlockEntity> loadedCables;
+    private @Nullable Map<DataCableBlockEntity, List<DataCableBlockEntity>> adjacency;
+    private final Map<Class<?>, List<?>> byKind = new HashMap<>();
     private long lastTick = -1;
     private long leaderTick = -1;
     private @Nullable NetworkBrainBlockEntity leader;
@@ -62,20 +74,75 @@ public final class CableNetwork {
         return machines;
     }
 
-    /** The machines on this network that are loaded, of the given kind. */
+    /** The machines on this network that are loaded, of the given kind. Found once per kind and kept. */
+    @SuppressWarnings("unchecked")
     public <T extends MachineBlockEntity> List<T> machines(Class<T> kind) {
-        List<T> found = new ArrayList<>();
-        for (BlockPos pos : machines) {
-            if (level.isLoaded(pos) && kind.isInstance(level.getBlockEntity(pos))) {
-                found.add(kind.cast(level.getBlockEntity(pos)));
+        List<T> known = (List<T>) byKind.get(kind);
+        if (known == null) {
+            List<T> found = new ArrayList<>();
+            for (Member member : members()) {
+                if (kind.isInstance(member.entity())) found.add(kind.cast(member.entity()));
             }
-        }
-        for (BlockPos pos : cables) {
-            if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
+            for (DataCableBlockEntity cable : loadedCables().values()) {
                 for (var port : cable.ports()) if (kind.isInstance(port)) found.add(kind.cast(port));
             }
+            known = Collections.unmodifiableList(found);
+            byKind.put(kind, known);
         }
-        return found;
+        return known;
+    }
+
+    /** The loaded blocks of the network that aren't cables, looked up once. */
+    private List<Member> members() {
+        if (members == null) {
+            List<Member> found = new ArrayList<>(machines.size());
+            Map<BlockPos, Member> byPos = new HashMap<>();
+            for (BlockPos pos : machines) {
+                if (!level.isLoaded(pos)) continue;
+                BlockEntity entity = level.getBlockEntity(pos);
+                if (entity == null) continue;
+                SimpleEnergyHandler energy = entity instanceof MachineBlockEntity machine ? machine.energy()
+                        : entity instanceof ArchiveBlockEntity archive ? archive.energy() : null;
+                Member member = new Member(pos, entity, energy);
+                found.add(member);
+                byPos.put(pos, member);
+            }
+            members = found;
+            memberByPos = byPos;
+        }
+        return members;
+    }
+
+    private @Nullable Member memberAt(BlockPos pos) {
+        members();
+        return memberByPos.get(pos);
+    }
+
+    /** The loaded cables of the network, looked up once. */
+    private Map<BlockPos, DataCableBlockEntity> loadedCables() {
+        if (loadedCables == null) {
+            Map<BlockPos, DataCableBlockEntity> found = new HashMap<>();
+            for (BlockPos pos : cables) {
+                DataCableBlockEntity cable = cableAt(pos);
+                if (cable != null) found.put(pos, cable);
+            }
+            loadedCables = found;
+        }
+        return loadedCables;
+    }
+
+    /**
+     * Whether a block this network remembers has gone without the network hearing of it. It shouldn't happen, as every
+     * change forgets the network, but a network that kept a dead block would hand power to nothing, so it is checked.
+     */
+    private boolean stale() {
+        for (DataCableBlockEntity cable : loadedCables().values()) {
+            if (cable.isRemoved()) return true;
+        }
+        for (Member member : members()) {
+            if (member.entity().isRemoved()) return true;
+        }
+        return false;
     }
 
     /** The brain that runs this network this tick, or null when none is working. */
@@ -95,14 +162,15 @@ public final class CableNetwork {
     private List<NetworkBrainBlockEntity> brains() {
         if (brainSpots == null) {
             List<BlockPos> spots = new ArrayList<>();
-            for (BlockPos pos : machines) {
-                if (level.isLoaded(pos) && level.getBlockState(pos).getBlock() instanceof NetworkBrainBlock) spots.add(pos);
+            for (Member member : members()) {
+                if (member.entity().getBlockState().getBlock() instanceof NetworkBrainBlock) spots.add(member.pos());
             }
             brainSpots = spots;
         }
         List<NetworkBrainBlockEntity> found = new ArrayList<>(brainSpots.size());
         for (BlockPos pos : brainSpots) {
-            if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof NetworkBrainBlockEntity brain) found.add(brain);
+            Member member = memberAt(pos);
+            if (member != null && member.entity() instanceof NetworkBrainBlockEntity brain) found.add(brain);
         }
         return found;
     }
@@ -111,16 +179,14 @@ public final class CableNetwork {
     public int machineCount() {
         if (counted < 0) {
             int count = 0;
-            for (BlockPos pos : machines) {
-                if (!level.isLoaded(pos)) continue;
-                var entity = level.getBlockEntity(pos);
+            for (Member member : members()) {
+                var entity = member.entity();
                 if (entity instanceof MachineBlockEntity machine ? machine.countsTowardLimit() : entity instanceof ArchiveBlockEntity) {
                     count++;
                 }
             }
-            for (BlockPos pos : cables) {
-                DataCableBlockEntity cable = cableAt(pos);
-                if (cable != null) count += cable.ports().size();
+            for (DataCableBlockEntity cable : loadedCables().values()) {
+                count += cable.ports().size();
             }
             counted = count;
         }
@@ -147,9 +213,8 @@ public final class CableNetwork {
     /** All the power the cables hold right now. */
     public long stored() {
         long total = 0;
-        for (BlockPos pos : cables) {
-            DataCableBlockEntity cable = cableAt(pos);
-            if (cable != null) total += cable.energy().getAmountAsLong();
+        for (DataCableBlockEntity cable : loadedCables().values()) {
+            total += cable.energy().getAmountAsLong();
         }
         return total;
     }
@@ -165,18 +230,18 @@ public final class CableNetwork {
             return;
         }
         lastTick = now;
+        if (stale()) {
+            Networks.invalidate(level, machines.isEmpty() ? cables.iterator().next() : machines.iterator().next());
+            return;
+        }
         shareAdjacentPower();
         if (cables.isEmpty()) {
             return;
         }
-        Map<BlockPos, DataCableBlockEntity> loaded = new HashMap<>();
-        for (BlockPos pos : cables) {
-            DataCableBlockEntity cable = cableAt(pos);
-            if (cable != null) loaded.put(pos, cable);
-        }
+        Map<BlockPos, DataCableBlockEntity> loaded = loadedCables();
         SimpleEnergyHandler leastCharged = null;
-        for (BlockPos pos : machines) {
-            SimpleEnergyHandler candidate = energyAt(pos);
+        for (Member member : members()) {
+            SimpleEnergyHandler candidate = member.energy();
             if (candidate != null && candidate.getAmountAsInt() < candidate.getCapacityAsLong() && (leastCharged == null
                     || (long) candidate.getAmountAsInt() * leastCharged.getCapacityAsLong()
                         < (long) leastCharged.getAmountAsInt() * candidate.getCapacityAsLong())) {
@@ -192,8 +257,9 @@ public final class CableNetwork {
         Set<SimpleEnergyHandler> sources = new HashSet<>();
         Map<SimpleEnergyHandler, Spare> spares = new IdentityHashMap<>();
         Map<DataCableBlockEntity, List<Spare>> spareBeside = new HashMap<>();
-        for (BlockPos pos : machines) {
-            SimpleEnergyHandler source = energyAt(pos);
+        for (Member member : members()) {
+            BlockPos pos = member.pos();
+            SimpleEnergyHandler source = member.energy();
             if (source == null) {
                 continue;
             }
@@ -274,11 +340,11 @@ public final class CableNetwork {
         int part = (int) Math.max(1, Math.min(Integer.MAX_VALUE, available / order.size()));
         Map<DataCableBlockEntity, Integer> drawn = new HashMap<>();
         for (DataCableBlockEntity cable : order) {
-            pull(cable, Math.min(wanted.get(cable), part) - cable.energy().getAmountAsInt(), loaded, used, spareBeside, drawn);
+            pull(cable, Math.min(wanted.get(cable), part) - cable.energy().getAmountAsInt(), used, spareBeside, drawn);
             handOver(cable, wants.get(cable));
         }
         for (DataCableBlockEntity cable : order) {
-            pull(cable, wanted.get(cable) - cable.energy().getAmountAsInt(), loaded, used, spareBeside, drawn);
+            pull(cable, wanted.get(cable) - cable.energy().getAmountAsInt(), used, spareBeside, drawn);
             handOver(cable, wants.get(cable));
         }
         shareAdjacentPower();
@@ -300,7 +366,7 @@ public final class CableNetwork {
      * Brings up to {@code amount} into {@code cable} from the nearest cables holding power or touching a machine with
      * spare, hop by hop within each hop's rate. A machine gives into a cable at most that cable's rate each tick.
      */
-    private void pull(DataCableBlockEntity cable, int amount, Map<BlockPos, DataCableBlockEntity> loaded, Map<Hop, Integer> used,
+    private void pull(DataCableBlockEntity cable, int amount, Map<Hop, Integer> used,
             Map<DataCableBlockEntity, List<Spare>> spareBeside, Map<DataCableBlockEntity, Integer> drawn) {
         if (amount <= 0) {
             return;
@@ -347,7 +413,7 @@ public final class CableNetwork {
                     path -= fromOutside;
                 }
             }
-            for (DataCableBlockEntity next : neighbours(at, loaded)) {
+            for (DataCableBlockEntity next : neighbours(at)) {
                 if (!towards.containsKey(next) && left(next, at, used) > 0) {
                     towards.put(next, at);
                     queue.add(next);
@@ -443,14 +509,23 @@ public final class CableNetwork {
         return new Hop(Math.min(x, y), Math.max(x, y));
     }
 
-    /** The cables this one passes power to: touching, on this network, and not behind a port. */
-    private List<DataCableBlockEntity> neighbours(DataCableBlockEntity cable, Map<BlockPos, DataCableBlockEntity> loaded) {
-        List<DataCableBlockEntity> found = new ArrayList<>(6);
-        for (Direction side : Direction.values()) {
-            DataCableBlockEntity next = loaded.get(cable.getBlockPos().relative(side));
-            if (next != null && cable.port(side) == null && next.port(side.getOpposite()) == null) found.add(next);
+    /** The cables this one passes power to: touching, on this network, and not behind a port. Found once and kept. */
+    private List<DataCableBlockEntity> neighbours(DataCableBlockEntity cable) {
+        if (adjacency == null) {
+            adjacency = new IdentityHashMap<>();
         }
-        return found;
+        List<DataCableBlockEntity> known = adjacency.get(cable);
+        if (known == null) {
+            Map<BlockPos, DataCableBlockEntity> loaded = loadedCables();
+            List<DataCableBlockEntity> found = new ArrayList<>(6);
+            for (Direction side : Direction.values()) {
+                DataCableBlockEntity next = loaded.get(cable.getBlockPos().relative(side));
+                if (next != null && cable.port(side) == null && next.port(side.getOpposite()) == null) found.add(next);
+            }
+            known = found;
+            adjacency.put(cable, known);
+        }
+        return known;
     }
 
     private @Nullable DataCableBlockEntity cableAt(BlockPos pos) {
@@ -458,33 +533,34 @@ public final class CableNetwork {
     }
 
     private @Nullable SimpleEnergyHandler energyAt(BlockPos pos) {
-        if (level.getBlockEntity(pos) instanceof MachineBlockEntity machine) {
-            return machine.energy();
-        }
-        return level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive ? archive.energy() : null;
+        Member member = memberAt(pos);
+        return member == null ? null : member.energy();
     }
 
     /** What a block keeps back for its own next tick. A formed chamber holds its brain's power, so it keeps the brain's. */
     private int reserveAt(BlockPos pos) {
-        if (level.getBlockEntity(pos) instanceof NetworkChamberBlockEntity chamber) {
+        Member member = memberAt(pos);
+        BlockEntity entity = member == null ? null : member.entity();
+        if (entity instanceof NetworkChamberBlockEntity chamber) {
             NetworkBrainBlockEntity brain = chamber.brain();
             return brain == null ? 0 : brain.drainPerTick();
         }
-        if (level.getBlockEntity(pos) instanceof MachineBlockEntity machine) {
+        if (entity instanceof MachineBlockEntity machine) {
             return machine.drainPerTick();
         }
-        return level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive ? archive.tier().drainPerTick() : 0;
+        return entity instanceof ArchiveBlockEntity archive ? archive.tier().drainPerTick() : 0;
     }
 
     private void shareAdjacentPower() {
-        for (BlockPos pos : machines) {
-            SimpleEnergyHandler a = energyAt(pos);
+        for (Member member : members()) {
+            BlockPos pos = member.pos();
+            SimpleEnergyHandler a = member.energy();
             if (a == null) {
                 continue;
             }
             for (Direction side : List.of(Direction.EAST, Direction.UP, Direction.SOUTH)) {
                 BlockPos next = pos.relative(side);
-                SimpleEnergyHandler b = machines.contains(next) ? energyAt(next) : null;
+                SimpleEnergyHandler b = energyAt(next);
                 // A formed chamber holds its brain's power: nothing to share with itself.
                 if (b == null || b == a) {
                     continue;

@@ -1,4 +1,4 @@
-package dev.micolash.jasm.compat.jei;
+package dev.micolash.jasm.client.jei;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.generator.GeneratorTier;

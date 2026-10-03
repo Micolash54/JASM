@@ -104,6 +104,8 @@ public final class WaferRecord {
     /** Players who changed this record since it was last written. */
     private final Set<UUID> changedBy = new HashSet<>();
     private boolean dirty;
+    /** The server tick this record was last looked up or changed on; not saved. */
+    private long touched;
 
     /** A brand-new record: nothing about it is on disk yet. */
     WaferRecord(UUID id, long serial, int capacity, Stamp stamp, Stamp confirmed) {
@@ -336,5 +338,13 @@ public final class WaferRecord {
     void written() {
         dirty = false;
         changedBy.clear();
+    }
+
+    long touched() {
+        return touched;
+    }
+
+    void touch(long tick) {
+        touched = tick;
     }
 }

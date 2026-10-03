@@ -3,7 +3,6 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.deck.DeckItem;
-import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
@@ -118,15 +117,7 @@ public final class Rules {
                 }
                 continue;
             }
-            // An open Deck screen keeps working copies of the wafers; bring them in line around the change.
-            DeckMenu open = player.containerMenu instanceof DeckMenu menu && menu.deck() == deck ? menu : null;
-            if (open != null) {
-                open.wafers().flush();
-            }
             String problem = Jobs.start(player, deck, rule.item(), rule.amount(), null, rule.id(), rule.toPlayer());
-            if (open != null) {
-                open.wafers().reload();
-            }
             if (problem == null) {
                 COUNTED.remove(rule.id());
                 RETRY_AT.remove(rule.id());
@@ -174,6 +165,13 @@ public final class Rules {
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
         return DeckStorage.room(store, deck, rule.item(), rule.amount(), player) >= rule.amount();
+    }
+
+    /** A rule that was deleted takes its count and its last problem with it. */
+    public static void forget(UUID ruleId) {
+        COUNTED.remove(ruleId);
+        RETRY_AT.remove(ruleId);
+        STALLED.remove(ruleId);
     }
 
     /** Times count in the server's ticks, which start again with each world. */

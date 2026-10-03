@@ -2,6 +2,7 @@ package dev.micolash.jasm.storage;
 
 import com.mojang.serialization.DataResult;
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.OnceCheck;
 import dev.micolash.jasm.core.SerialLayout;
 import dev.micolash.jasm.core.Stamp;
@@ -11,9 +12,13 @@ import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.LongPredicate;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -44,10 +50,14 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Every wafer's record, one per slot in region files under {@code data/jasm/wafers}. Records load on first use
- * and stay cached. A record is only written after the player files it has to agree with (see {@link StorageEvents}):
- * after every player who changed it has been saved, and with the newest stamp known to be inside a saved player file.
- * All methods run on the server thread. Writing copies the record there and turns the copy into NBT in the
- * background, so a save never waits on big wafers.
+ * and stay cached until there are more than the server wants to hold, when the ones nobody has touched for a while
+ * and that are fully on disk are let go; using one again reads it back. A record is only written after the player
+ * files it has to agree with (see {@link StorageEvents}): after every player who changed it has been saved, and
+ * with the newest stamp known to be inside a saved player file. All methods run on the server thread. Writing
+ * copies the record there and turns the copy into NBT in the background, so a save never waits on big wafers.
+ *
+ * <p>The items a crafting job holds while it runs live in records of their own under {@code data/jasm/jobs}. Those
+ * slots are reused: a finished job's record is deleted once it is empty and on disk.
  */
 public final class WaferStore {
     /** Notified after a wafer's count for one variant changes. */
@@ -75,22 +85,163 @@ public final class WaferStore {
 
     private final MinecraftServer server;
     private final JasmState state;
-    private final SimpleRegionStorage storage;
-    private final Map<Long, WaferRecord> records = new HashMap<>();
-    private final Set<Long> emptySlots = new HashSet<>();
-    private final Set<Long> unreadableSlots = new HashSet<>();
+    private final Slots wafers;
+    private final Slots jobs;
     private final List<WaferChangeListener> listeners = new CopyOnWriteArrayList<>();
-    /** The newest write of each record that is still on its way to disk. A later write of the same record waits for it. */
-    private final Map<Long, CompletableFuture<Void>> pendingWrites = new HashMap<>();
+    /** Slots being read ahead right now, so the same one isn't asked for twice. */
+    private final Set<Long> prefetching = new HashSet<>();
     /** Set while this store saves other players' files, so their save events do not start another round. */
     private boolean savingPlayers;
+
+    /**
+     * One set of region files and the records read from it. Wafer records are kept in the order they were last
+     * used, so the ones to let go first are at the front.
+     */
+    private final class Slots {
+        final String what;
+        final SimpleRegionStorage storage;
+        final Map<Long, WaferRecord> records;
+        final Set<Long> emptySlots = new HashSet<>();
+        final Set<Long> unreadableSlots = new HashSet<>();
+        /** The newest write of each record that is still on its way to disk. A later write of the same record waits for it. */
+        final Map<Long, CompletableFuture<Void>> pendingWrites = new HashMap<>();
+
+        Slots(String what, String name, Path folder, boolean inOrderOfUse) {
+            this.what = what;
+            this.storage = new SimpleRegionStorage(new RegionStorageInfo(server.getWorldData().getLevelName(), Level.OVERWORLD, name),
+                    folder, server.getFixerUpper(), false, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
+            this.records = inOrderOfUse ? new LinkedHashMap<>(256, 0.75f, true) : new HashMap<>();
+        }
+
+        Lookup load(long serial) {
+            WaferRecord cached = records.get(serial);
+            if (cached != null) {
+                cached.touch(server.getTickCount());
+                return new Lookup(Status.FOUND, cached);
+            }
+            if (unreadableSlots.contains(serial)) {
+                return Lookup.UNREADABLE;
+            }
+            if (emptySlots.contains(serial)) {
+                return Lookup.MISSING;
+            }
+            Optional<CompoundTag> tag;
+            try {
+                tag = storage.read(pos(serial)).join();
+            } catch (RuntimeException e) {
+                Jasm.LOGGER.error("Could not read {} record #{}; it is locked until it can be read", what, serial, e);
+                unreadableSlots.add(serial);
+                return Lookup.UNREADABLE;
+            }
+            return decode(serial, tag);
+        }
+
+        /** What a slot read from disk holds. Remembers empty and unreadable slots so they aren't read again. */
+        Lookup decode(long serial, Optional<CompoundTag> tag) {
+            if (tag.isEmpty()) {
+                emptySlots.add(serial);
+                return Lookup.MISSING;
+            }
+            DataResult<WaferRecord> parsed = WaferRecord.CODEC.parse(ops(), tag.get().get("record"));
+            Optional<WaferRecord> record = parsed.result();
+            if (record.isEmpty() || record.get().serial() != serial) {
+                Jasm.LOGGER.error("{} record #{} cannot be read ({}); it is kept unchanged and locked", what, serial,
+                        parsed.error().map(e -> e.message()).orElse("serial mismatch"));
+                unreadableSlots.add(serial);
+                return Lookup.UNREADABLE;
+            }
+            record.get().touch(server.getTickCount());
+            records.put(serial, record.get());
+            if (this == wafers) {
+                relinkIfMissing(record.get());
+            }
+            return new Lookup(Status.FOUND, record.get());
+        }
+
+        void put(WaferRecord record) {
+            record.touch(server.getTickCount());
+            records.put(record.serial(), record);
+            emptySlots.remove(record.serial());
+        }
+
+        /**
+         * Copies the record now and writes the copy in the background. Writes of the same record reach the region
+         * file in the order they were made. If one fails, the last saved copy stays on disk and the record is
+         * written again at the next save.
+         */
+        CompletableFuture<Void> write(WaferRecord record) {
+            long serial = record.serial();
+            WaferRecord.Snapshot snapshot = record.snapshot();
+            record.written();
+            RegistryOps<Tag> ops = ops();
+            CompletableFuture<Void> previous = pendingWrites.getOrDefault(serial, CompletableFuture.completedFuture(null));
+            CompletableFuture<Void> next = previous
+                    .handle((ok, failure) -> snapshot)
+                    .thenApplyAsync(copy -> encode(copy, ops), Util.backgroundExecutor())
+                    .thenCompose(slot -> storage.write(pos(serial), slot));
+            pendingWrites.put(serial, next);
+            next.whenComplete((ok, failure) -> server.execute(() -> {
+                pendingWrites.remove(serial, next);
+                if (failure != null) {
+                    Jasm.LOGGER.error("Could not save {} record #{}; the last saved copy stays on disk and it will be written again at the next save",
+                            what, serial, failure);
+                    record.changed(null);
+                }
+            }));
+            return next;
+        }
+
+        /** Empties a slot on disk, behind any write of it still on its way. */
+        CompletableFuture<Void> delete(long serial) {
+            records.remove(serial);
+            CompletableFuture<Void> previous = pendingWrites.getOrDefault(serial, CompletableFuture.completedFuture(null));
+            CompletableFuture<Void> next = previous
+                    .handle((ok, failure) -> null)
+                    .thenCompose(ignored -> storage.write(pos(serial), (CompoundTag) null));
+            pendingWrites.put(serial, next);
+            next.whenComplete((ok, failure) -> server.execute(() -> {
+                pendingWrites.remove(serial, next);
+                if (failure != null) {
+                    Jasm.LOGGER.error("Could not clear {} record #{}; the slot is skipped until it can be", what, serial, failure);
+                } else if (!records.containsKey(serial)) {
+                    emptySlots.add(serial);
+                }
+            }));
+            return next;
+        }
+
+        void writeDirty(List<CompletableFuture<Void>> into) {
+            for (WaferRecord record : records.values()) {
+                if (record.isDirty()) {
+                    into.add(write(record));
+                }
+            }
+        }
+
+        /** Whether a write of this slot is still on its way. A finished one is forgotten on the next tick. */
+        boolean writing(long serial) {
+            CompletableFuture<Void> pending = pendingWrites.get(serial);
+            return pending != null && !pending.isDone();
+        }
+
+        /** Blocks until every write started so far is in the region files. Failures are already logged. */
+        void awaitWrites() {
+            CompletableFuture.allOf(pendingWrites.values().stream()
+                    .map(write -> write.handle((ok, failure) -> null))
+                    .toArray(CompletableFuture[]::new)).join();
+        }
+
+        void close() throws IOException {
+            awaitWrites();
+            storage.close();
+        }
+    }
 
     private WaferStore(MinecraftServer server, JasmState state) {
         this.server = server;
         this.state = state;
-        this.storage = new SimpleRegionStorage(
-                new RegionStorageInfo(server.getWorldData().getLevelName(), Level.OVERWORLD, "jasm_wafers"),
-                StateFiles.waferFolder(server), server.getFixerUpper(), false, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
+        this.wafers = new Slots("wafer", "jasm_wafers", StateFiles.waferFolder(server), true);
+        this.jobs = new Slots("job", "jasm_jobs", StateFiles.jobFolder(server), false);
     }
 
     /**
@@ -122,10 +273,14 @@ public final class WaferStore {
         }
         open = null;
         try {
-            store.awaitWrites();
-            store.storage.close();
+            store.wafers.close();
         } catch (IOException e) {
             Jasm.LOGGER.error("Could not close JASM wafer storage", e);
+        }
+        try {
+            store.jobs.close();
+        } catch (IOException e) {
+            Jasm.LOGGER.error("Could not close JASM job storage", e);
         }
     }
 
@@ -139,7 +294,7 @@ public final class WaferStore {
         if (identity.serial() < 1) {
             return Lookup.MISSING;
         }
-        Lookup slot = load(identity.serial());
+        Lookup slot = wafers.load(identity.serial());
         if (slot.record() != null && !slot.record().id().equals(identity.id())) {
             return Lookup.MISSING;
         }
@@ -147,43 +302,27 @@ public final class WaferStore {
     }
 
     public Optional<WaferRecord> bySerial(long serial) {
-        return serial < 1 ? Optional.empty() : Optional.ofNullable(load(serial).record());
+        return serial < 1 ? Optional.empty() : Optional.ofNullable(wafers.load(serial).record());
     }
 
-    private Lookup load(long serial) {
-        WaferRecord cached = records.get(serial);
-        if (cached != null) {
-            return new Lookup(Status.FOUND, cached);
+    /**
+     * Reads these wafers' records in the background, so the first use of each doesn't wait on the disk. Used when a
+     * player joins (for the wafers they carry) and when an Archive is opened (for the wafers linked to it).
+     */
+    public void prefetch(Collection<Long> serials) {
+        for (long serial : serials) {
+            if (serial < 1 || wafers.records.containsKey(serial) || wafers.emptySlots.contains(serial)
+                    || wafers.unreadableSlots.contains(serial) || !prefetching.add(serial)) {
+                continue;
+            }
+            wafers.storage.read(pos(serial)).whenComplete((tag, failure) -> server.execute(() -> {
+                prefetching.remove(serial);
+                if (failure == null && tag != null && !wafers.records.containsKey(serial) && !wafers.emptySlots.contains(serial)
+                        && !wafers.unreadableSlots.contains(serial) && !wafers.writing(serial)) {
+                    wafers.decode(serial, tag);
+                }
+            }));
         }
-        if (unreadableSlots.contains(serial)) {
-            return Lookup.UNREADABLE;
-        }
-        if (emptySlots.contains(serial)) {
-            return Lookup.MISSING;
-        }
-        Optional<CompoundTag> tag;
-        try {
-            tag = storage.read(pos(serial)).join();
-        } catch (RuntimeException e) {
-            Jasm.LOGGER.error("Could not read wafer record #{}; the wafer is locked until it can be read", serial, e);
-            unreadableSlots.add(serial);
-            return Lookup.UNREADABLE;
-        }
-        if (tag.isEmpty()) {
-            emptySlots.add(serial);
-            return Lookup.MISSING;
-        }
-        DataResult<WaferRecord> parsed = WaferRecord.CODEC.parse(ops(), tag.get().get("record"));
-        Optional<WaferRecord> record = parsed.result();
-        if (record.isEmpty() || record.get().serial() != serial) {
-            Jasm.LOGGER.error("Wafer record #{} cannot be read ({}); it is kept unchanged and the wafer is locked", serial,
-                    parsed.error().map(e -> e.message()).orElse("serial mismatch"));
-            unreadableSlots.add(serial);
-            return Lookup.UNREADABLE;
-        }
-        records.put(serial, record.get());
-        relinkIfMissing(record.get());
-        return new Lookup(Status.FOUND, record.get());
     }
 
     /**
@@ -213,11 +352,11 @@ public final class WaferStore {
         List<CompletableFuture<Void>> reads = new ArrayList<>();
         Set<Long> onDisk = ConcurrentHashMap.newKeySet();
         for (long serial = 1; serial < limit; serial++) {
-            if (records.containsKey(serial) || emptySlots.contains(serial) || unreadableSlots.contains(serial)) {
+            if (wafers.records.containsKey(serial) || wafers.emptySlots.contains(serial) || wafers.unreadableSlots.contains(serial)) {
                 continue;
             }
             long slot = serial;
-            reads.add(storage.read(pos(serial)).thenAccept(tag -> {
+            reads.add(wafers.storage.read(pos(serial)).thenAccept(tag -> {
                 if (tag.isPresent() && archiveId.equals(savedArchive(tag.get()))) {
                     onDisk.add(slot);
                 }
@@ -226,9 +365,9 @@ public final class WaferStore {
         return CompletableFuture.allOf(reads.toArray(CompletableFuture[]::new)).thenApplyAsync(ignored -> {
             int found = 0;
             for (long serial = 1; serial < limit; serial++) {
-                WaferRecord record = records.get(serial);
+                WaferRecord record = wafers.records.get(serial);
                 if (record == null && onDisk.contains(serial)) {
-                    record = load(serial).record();
+                    record = wafers.load(serial).record();
                 }
                 if (record != null && archiveId.equals(record.archiveId()) && !archive.discarded(serial)) {
                     state.addLinked(archive, serial);
@@ -251,8 +390,8 @@ public final class WaferStore {
     private long allocateSerial() {
         while (true) {
             long serial = state.takeSerial();
-            if (load(serial).status() == Status.MISSING && !records.containsKey(serial)) {
-                emptySlots.remove(serial);
+            if (wafers.load(serial).status() == Status.MISSING && !wafers.records.containsKey(serial)) {
+                wafers.emptySlots.remove(serial);
                 return serial;
             }
             Jasm.LOGGER.warn("Wafer serial #{} is already in use on disk; skipping it", serial);
@@ -270,12 +409,16 @@ public final class WaferStore {
 
     /** Creates the record for a freshly formatted Capacity Wafer. */
     public WaferRecord create(int capacity, @Nullable Player actor) {
-        long serial = allocateSerial();
+        WaferRecord record = fresh(allocateSerial(), capacity, actor);
+        wafers.put(record);
+        return record;
+    }
+
+    private WaferRecord fresh(long serial, int capacity, @Nullable Player actor) {
         WaferRecord record = new WaferRecord(UUID.randomUUID(), serial, capacity, state.mint(), NOTHING_SAVED);
         String name = actor == null ? "" : actor.getPlainTextName();
         record.setHistory(new WaferRecord.History(name, name, System.currentTimeMillis()));
         record.changed(uuid(actor));
-        records.put(serial, record);
         return record;
     }
 
@@ -316,6 +459,45 @@ public final class WaferStore {
         record.setCapacity(newCapacity);
         used(record, actor);
         return stamp;
+    }
+
+    // --- jobs ---
+
+    /**
+     * A record for the items a crafting job holds, in the lowest free job slot. {@code taken} says which slots are
+     * still claimed by a job the autocrafter knows about, so a slot isn't handed out twice.
+     */
+    public WaferRecord createJob(@Nullable Player actor, LongPredicate taken) {
+        long serial = 1;
+        while (jobs.records.containsKey(serial) || jobs.writing(serial) || taken.test(serial) || jobs.load(serial).status() != Status.MISSING) {
+            serial++;
+        }
+        WaferRecord record = fresh(serial, Integer.MAX_VALUE, actor);
+        jobs.put(record);
+        return record;
+    }
+
+    /**
+     * A job's record, if its slot still holds that job. Jobs started before job slots existed kept their items in a
+     * wafer slot; those are still found there.
+     */
+    public Optional<WaferRecord> jobRecord(long serial, UUID recordId) {
+        if (serial < 1) {
+            return Optional.empty();
+        }
+        WaferRecord record = jobs.load(serial).record();
+        if (record != null && record.id().equals(recordId)) {
+            return Optional.of(record);
+        }
+        record = wafers.load(serial).record();
+        return record != null && record.id().equals(recordId) ? Optional.of(record) : Optional.empty();
+    }
+
+    /** A finished job's empty record is cleared from its slot, so the slot can hold the next job. */
+    public void deleteJob(WaferRecord record) {
+        if (jobs.records.get(record.serial()) == record) {
+            jobs.delete(record.serial());
+        }
     }
 
     // --- contents ---
@@ -398,6 +580,7 @@ public final class WaferStore {
 
     private void used(WaferRecord record, @Nullable Player actor) {
         record.changed(uuid(actor));
+        record.touch(server.getTickCount());
         if (actor != null) {
             WaferRecord.History h = record.history();
             record.setHistory(new WaferRecord.History(h.createdBy(), actor.getPlainTextName(), System.currentTimeMillis()));
@@ -419,10 +602,12 @@ public final class WaferStore {
         UUID savedId = saved.getUUID();
         List<WaferRecord> due = new ArrayList<>();
         Set<UUID> coUsers = new HashSet<>();
-        for (WaferRecord record : records.values()) {
-            if (record.isDirty() && (record.changedBy().contains(savedId) || held.contains(record))) {
-                due.add(record);
-                coUsers.addAll(record.changedBy());
+        for (Slots slots : List.of(wafers, jobs)) {
+            for (WaferRecord record : slots.records.values()) {
+                if (record.isDirty() && (record.changedBy().contains(savedId) || held.contains(record))) {
+                    due.add(record);
+                    coUsers.addAll(record.changedBy());
+                }
             }
         }
         if (due.isEmpty()) {
@@ -438,7 +623,7 @@ public final class WaferStore {
             }
             List<CompletableFuture<Void>> writes = new ArrayList<>();
             for (WaferRecord record : due) {
-                writes.add(write(record));
+                writes.add(slotsOf(record).write(record));
             }
             CompletableFuture.allOf(writes.toArray(CompletableFuture[]::new)).join();
         } catch (RuntimeException e) {
@@ -454,16 +639,46 @@ public final class WaferStore {
      */
     public void writeNow(WaferRecord record) {
         if (record.isDirty()) {
-            write(record);
+            slotsOf(record).write(record);
         }
     }
 
     /** Full save: every player file has already been written. */
     void writeAllDirty() {
-        for (WaferRecord record : records.values()) {
-            if (record.isDirty()) {
-                write(record);
+        List<CompletableFuture<Void>> writes = new ArrayList<>();
+        wafers.writeDirty(writes);
+        jobs.writeDirty(writes);
+    }
+
+    private Slots slotsOf(WaferRecord record) {
+        return jobs.records.get(record.serial()) == record ? jobs : wafers;
+    }
+
+    /**
+     * Lets go of wafer records nobody has used for a while, from the least recently used, until no more than the
+     * configured number stay in memory. Only a record that is exactly what the disk holds is let go: nothing
+     * unwritten, no write on its way, and no stamp handed out that the disk doesn't know. Reading it back is then
+     * the same as after a restart, so an older copy of its wafer is locked rather than wiped until the newest shows.
+     */
+    public void sweep() {
+        sweep(JasmConfig.WAFER_LOADED_RECORDS.getAsInt(), JasmConfig.WAFER_IDLE_MINUTES.getAsInt() * 1200L);
+    }
+
+    void sweep(int keep, long idleTicks) {
+        if (wafers.records.size() <= keep) {
+            return;
+        }
+        long now = server.getTickCount();
+        Iterator<WaferRecord> oldestFirst = wafers.records.values().iterator();
+        while (oldestFirst.hasNext() && wafers.records.size() > keep) {
+            WaferRecord record = oldestFirst.next();
+            if (now - record.touched() < idleTicks) {
+                break;
             }
+            if (record.isDirty() || wafers.writing(record.serial()) || !record.current().equals(record.confirmed())) {
+                continue;
+            }
+            oldestFirst.remove();
         }
     }
 
@@ -471,7 +686,7 @@ public final class WaferStore {
         Set<WaferRecord> held = new HashSet<>();
         forEachHeldWafer(player, stack -> {
             WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());
-            WaferRecord record = identity == null ? null : records.get(identity.serial());
+            WaferRecord record = identity == null ? null : wafers.records.get(identity.serial());
             if (record != null && record.id().equals(identity.id())) {
                 record.confirm(identity.stamp());
                 held.add(record);
@@ -491,39 +706,24 @@ public final class WaferStore {
         }
     }
 
+    /** The serials of every wafer a player carries, for reading ahead. */
+    public static List<Long> heldSerials(Player player) {
+        List<Long> serials = new ArrayList<>();
+        forEachHeldWafer(player, stack -> {
+            WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());
+            if (identity != null) {
+                serials.add(identity.serial());
+            }
+        });
+        return serials;
+    }
+
     private static void visitWafers(ItemStack stack, Consumer<ItemStack> action) {
         if (stack.getItem() instanceof WaferItem) {
             action.accept(stack);
         } else if (stack.getItem() instanceof WaferHolderItem holder) {
             holder.forEachWafer(stack, action);
         }
-    }
-
-    /**
-     * Copies the record now and writes the copy in the background. Writes of the same record reach the region file
-     * in the order they were made. If one fails, the last saved copy stays on disk and the record is written again
-     * at the next save.
-     */
-    private CompletableFuture<Void> write(WaferRecord record) {
-        long serial = record.serial();
-        WaferRecord.Snapshot snapshot = record.snapshot();
-        record.written();
-        RegistryOps<Tag> ops = ops();
-        CompletableFuture<Void> previous = pendingWrites.getOrDefault(serial, CompletableFuture.completedFuture(null));
-        CompletableFuture<Void> next = previous
-                .handle((ok, failure) -> snapshot)
-                .thenApplyAsync(copy -> encode(copy, ops), Util.backgroundExecutor())
-                .thenCompose(slot -> storage.write(pos(serial), slot));
-        pendingWrites.put(serial, next);
-        next.whenComplete((ok, failure) -> server.execute(() -> {
-            pendingWrites.remove(serial, next);
-            if (failure != null) {
-                Jasm.LOGGER.error("Could not save wafer record #{}; the last saved copy stays on disk and it will be written again at the next save",
-                        serial, failure);
-                record.changed(null);
-            }
-        }));
-        return next;
     }
 
     /** Runs in the background: nothing here may touch the record or the world. */
@@ -535,56 +735,61 @@ public final class WaferStore {
         return slot;
     }
 
-    /** Blocks until every write started so far is in the region files. Failures are already logged. */
-    private void awaitWrites() {
-        CompletableFuture.allOf(pendingWrites.values().stream()
-                .map(write -> write.handle((ok, failure) -> null))
-                .toArray(CompletableFuture[]::new)).join();
-    }
-
     // --- tests ---
 
-    /** Puts raw data into a slot, as if written by something else. For tests only. */
+    /** Puts raw data into a wafer slot, as if written by something else. For tests only. */
     CompletableFuture<Void> writeRaw(long serial, CompoundTag slot) {
-        records.remove(serial);
-        emptySlots.remove(serial);
-        unreadableSlots.remove(serial);
-        return storage.write(pos(serial), slot);
+        wafers.records.remove(serial);
+        wafers.emptySlots.remove(serial);
+        wafers.unreadableSlots.remove(serial);
+        return wafers.storage.write(pos(serial), slot);
     }
 
     /** Waits until every queued write has reached the region files. For tests only. */
     void flush() {
-        awaitWrites();
-        storage.synchronize(true).join();
+        wafers.awaitWrites();
+        jobs.awaitWrites();
+        wafers.storage.synchronize(true).join();
+        jobs.storage.synchronize(true).join();
     }
 
     /** Drops a saved record from memory so its next use reads it from disk, as after a restart. For tests only. */
     boolean unload(long serial) {
-        WaferRecord record = records.get(serial);
-        CompletableFuture<Void> pending = pendingWrites.get(serial);
+        WaferRecord record = wafers.records.get(serial);
+        CompletableFuture<Void> pending = wafers.pendingWrites.get(serial);
         if (record == null || record.isDirty() || (pending != null && !pending.isDone())) {
             return false;
         }
-        records.remove(serial);
+        wafers.records.remove(serial);
         return true;
+    }
+
+    /** Whether a wafer's record is in memory right now, without reading it. For tests only. */
+    boolean isLoaded(long serial) {
+        return wafers.records.containsKey(serial);
+    }
+
+    /** Whether a job slot holds a record on disk or in memory. For tests only. */
+    boolean jobSlotInUse(long serial) {
+        return jobs.records.containsKey(serial) || jobs.load(serial).status() != Status.MISSING;
     }
 
     // --- stats ---
 
     public int loadedCount() {
-        return records.size();
+        return wafers.records.size();
     }
 
     public int unsavedCount() {
-        return (int) records.values().stream().filter(WaferRecord::isDirty).count();
+        return (int) wafers.records.values().stream().filter(WaferRecord::isDirty).count();
     }
 
     public int unreadableCount() {
-        return unreadableSlots.size();
+        return wafers.unreadableSlots.size();
     }
 
     public boolean isUnreadable(long serial) {
-        return unreadableSlots.contains(serial);
+        return wafers.unreadableSlots.contains(serial);
     }
 
     private static ChunkPos pos(long serial) {

@@ -11,6 +11,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
  * Keeps wafer records in step with player files. After a crash each file goes back to its own last save, so a
@@ -68,6 +69,29 @@ public final class StorageEvents {
             WaferStore store = WaferStore.ifOpen(level.getServer());
             if (store != null) {
                 store.writeAllDirty();
+                store.sweep();
+            }
+        }
+    }
+
+    /** Once a minute, records that haven't been used for a while may leave memory. */
+    @SubscribeEvent
+    static void onServerTick(ServerTickEvent.Post event) {
+        if (event.getServer().getTickCount() % 1200 == 0) {
+            WaferStore store = WaferStore.ifOpen(event.getServer());
+            if (store != null) {
+                store.sweep();
+            }
+        }
+    }
+
+    /** The wafers a player brings along are read while they are still joining. */
+    @SubscribeEvent
+    static void onPlayerJoined(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WaferStore store = WaferStore.ifOpen(player.level().getServer());
+            if (store != null) {
+                store.prefetch(WaferStore.heldSerials(player));
             }
         }
     }

@@ -5,6 +5,7 @@ import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AutocraftState;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -16,6 +17,7 @@ import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -25,9 +27,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Finds crafting networks and keeps them until something changes. A network is worked out the first time anything
- * asks about one of its blocks, by walking from block to block. Placing or removing a cable, a machine or an Archive,
- * or a chunk loading or unloading, throws every network of that level away; each is worked out again when next
- * asked, keeping the power its cables held.
+ * asks about one of its blocks, by walking from block to block. Placing or removing a cable, a machine or an Archive
+ * throws away the network it touches, and only that one; a chunk loading or unloading throws away the networks that
+ * have a block in it, or that stopped at its edge. Each is worked out again when next asked, keeping the power its
+ * cables held.
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class Networks {
@@ -39,6 +42,9 @@ public final class Networks {
     private final ServerLevel level;
     private final Map<BlockPos, CableNetwork> byPos = new HashMap<>();
     private final Set<CableNetwork> all = new LinkedHashSet<>();
+    /** The networks with a block in each chunk, or that stopped at its edge because it wasn't loaded. */
+    private final Map<Long, Set<CableNetwork>> byChunk = new HashMap<>();
+    private final Map<CableNetwork, Set<Long>> chunksOf = new HashMap<>();
 
     private Networks(ServerLevel level) {
         this.level = level;
@@ -66,22 +72,83 @@ public final class Networks {
     }
 
     public static void ownerChanged(ServerLevel level, BlockPos pos) {
-        invalidate(level);
+        invalidate(level, pos);
         Networks networks = of(level);
         for (Direction side : Direction.values()) {
             networks.refreshCableShapes(pos.relative(side));
         }
     }
 
-    /** Something changed: every network in this level is worked out again when next needed. */
-    public static void invalidate(ServerLevel level) {
+    /** Something changed at {@code pos}: the networks there and beside it are worked out again when next needed. */
+    public static void invalidate(ServerLevel level, BlockPos pos) {
         Networks networks = LEVELS.get(level);
         if (networks != null) {
-            Set<BlockPos> previous = Set.copyOf(networks.byPos.keySet());
-            networks.clear();
-            previous.forEach(networks::refreshBlocked);
-            CableClaims.get(level).blockedPositions(level).forEach(networks::refreshBlocked);
-            previous.forEach(networks::refreshCableShapes);
+            networks.dropAround(pos);
+        }
+    }
+
+    /**
+     * Forgets the networks at {@code pos} and beside it. Their blocks, and any blocked cable touching them, are checked
+     * again for a change of owner, and their cables' arms are redrawn.
+     */
+    private void dropAround(BlockPos pos) {
+        Set<BlockPos> previous = new HashSet<>();
+        previous.add(pos.immutable());
+        for (Direction side : Direction.values()) {
+            previous.add(pos.relative(side));
+        }
+        for (BlockPos at : List.copyOf(previous)) {
+            CableNetwork network = byPos.get(at);
+            if (network != null) {
+                previous.addAll(network.cables());
+                previous.addAll(network.machines());
+                drop(network);
+            }
+        }
+        CableClaims claims = CableClaims.get(level);
+        Set<BlockPos> blocked = new HashSet<>();
+        for (BlockPos at : previous) {
+            for (Direction side : Direction.values()) {
+                BlockPos next = at.relative(side);
+                if (!previous.contains(next) && level.isLoaded(next) && claims.blocked(level, next)) {
+                    blocked.add(next);
+                }
+            }
+        }
+        previous.forEach(this::refreshBlocked);
+        blocked.forEach(this::refreshBlocked);
+        previous.forEach(this::refreshCableShapes);
+    }
+
+    private void drop(CableNetwork network) {
+        if (!all.remove(network)) {
+            return;
+        }
+        for (BlockPos pos : network.cables()) {
+            byPos.remove(pos, network);
+        }
+        for (BlockPos pos : network.machines()) {
+            byPos.remove(pos, network);
+        }
+        Set<Long> chunks = chunksOf.remove(network);
+        if (chunks != null) {
+            for (long key : chunks) {
+                Set<CableNetwork> there = byChunk.get(key);
+                if (there != null && there.remove(network) && there.isEmpty()) {
+                    byChunk.remove(key);
+                }
+            }
+        }
+    }
+
+    /** A chunk came or went: the networks with a block in it, or waiting at its edge, are forgotten. */
+    private void chunkChanged(long key) {
+        Set<CableNetwork> there = byChunk.get(key);
+        if (there == null) {
+            return;
+        }
+        for (CableNetwork network : List.copyOf(there)) {
+            drop(network);
         }
     }
 
@@ -134,7 +201,7 @@ public final class Networks {
         } else if (owners.isEmpty() && networks.ownerAt(pos) != null) {
             networks.claimUnowned(pos, networks.ownerAt(pos));
         }
-        invalidate(level);
+        invalidate(level, pos);
         for (Direction side : Direction.values()) {
             networks.refreshCableShapes(pos.relative(side));
         }
@@ -259,11 +326,6 @@ public final class Networks {
         }
     }
 
-    private void clear() {
-        all.clear();
-        byPos.clear();
-    }
-
     private @Nullable CableNetwork find(BlockPos pos) {
         CableNetwork known = byPos.get(pos);
         if (known != null) {
@@ -280,7 +342,7 @@ public final class Networks {
             }
         }
         if (refreshBlocked(pos)) {
-            clear();
+            dropAround(pos);
         }
         known = byPos.get(pos);
         if (known != null) {
@@ -290,6 +352,7 @@ public final class Networks {
         Set<BlockPos> machines = new HashSet<>();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> seen = new HashSet<>();
+        Set<Long> chunks = new HashSet<>();
         queue.add(pos.immutable());
         seen.add(pos.immutable());
         boolean complete = true;
@@ -298,10 +361,13 @@ public final class Networks {
             BlockState state = level.getBlockState(at);
             boolean cable = state.getBlock() instanceof DataCableBlock;
             (cable ? cables : machines).add(at);
+            chunks.add(ChunkPos.pack(at));
             for (Direction side : Direction.values()) {
                 BlockPos next = at.relative(side);
                 if (!level.isLoaded(next)) {
+                    // The walk stops here; when that chunk comes in, this network is worked out again.
                     complete = false;
+                    chunks.add(ChunkPos.pack(next));
                 }
                 if (!seen.contains(next) && level.isLoaded(next) && joins(state, level.getBlockState(next), at, next)
                         && ownerCompatible(at, next)) {
@@ -314,6 +380,10 @@ public final class Networks {
         all.add(network);
         cables.forEach(p -> byPos.put(p, network));
         machines.forEach(p -> byPos.put(p, network));
+        chunksOf.put(network, chunks);
+        for (long key : chunks) {
+            byChunk.computeIfAbsent(key, k -> new HashSet<>()).add(network);
+        }
         AutocraftState.get(level.getServer()).mergePairings(network.machines(EncodingTerminalBlockEntity.class).stream()
                 .map(EncodingTerminalBlockEntity::ensureId).toList());
         return network;
@@ -491,7 +561,7 @@ public final class Networks {
         if (event.getLevel() instanceof ServerLevel level) {
             Networks networks = LEVELS.get(level);
             if (networks != null) {
-                for (CableNetwork network : Set.copyOf(networks.all)) {
+                for (CableNetwork network : new ArrayList<>(networks.all)) {
                     network.tick();
                 }
             }
@@ -501,14 +571,20 @@ public final class Networks {
     @SubscribeEvent
     static void onChunkLoad(ChunkEvent.Load event) {
         if (event.getLevel() instanceof ServerLevel level) {
-            invalidate(level);
+            Networks networks = LEVELS.get(level);
+            if (networks != null) {
+                networks.chunkChanged(event.getChunk().getPos().pack());
+            }
         }
     }
 
     @SubscribeEvent
     static void onChunkUnload(ChunkEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel level) {
-            invalidate(level);
+            Networks networks = LEVELS.get(level);
+            if (networks != null) {
+                networks.chunkChanged(event.getChunk().getPos().pack());
+            }
         }
     }
 }

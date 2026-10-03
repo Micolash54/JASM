@@ -33,6 +33,10 @@ final class StateFiles {
         return folder(server).resolve("wafers");
     }
 
+    static Path jobFolder(MinecraftServer server) {
+        return folder(server).resolve("jobs");
+    }
+
     /**
      * Runs before the state is first used. Refuses to continue if the file cannot be read, or if it is missing
      * while a backup or wafer records exist. Only a file that loaded correctly replaces the previous backup.

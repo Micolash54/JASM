@@ -154,13 +154,13 @@ public class AccessPortBlock extends BaseEntityBlock {
     protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
         super.onPlace(state, level, pos, oldState, movedByPiston);
         if (level instanceof ServerLevel serverLevel && !oldState.is(this)) {
-            Networks.invalidate(serverLevel);
+            Networks.invalidate(serverLevel, pos);
         }
     }
 
     @Override
     protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
         super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
-        Networks.invalidate(level);
+        Networks.invalidate(level, pos);
     }
 }

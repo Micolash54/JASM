@@ -334,9 +334,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             moveItemStackTo(stack, 0, waferSlots, false);
             slot.setChanged();
         } else if (player instanceof ServerPlayer serverPlayer) {
-            wafers.flush();
             DeckStorage.deposit(WaferStore.get(serverPlayer.level().getServer()), deck, stack, serverPlayer);
-            wafers.reload();
             slot.setChanged();
         }
         return ItemStack.EMPTY;
@@ -386,9 +384,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     public void slotsChanged(Container container) {
         if (container == upgrade && player instanceof ServerPlayer serverPlayer) {
             if (dimensionAllowed()) {
-                wafers.flush();
                 DeckStorage.activate(WaferStore.get(serverPlayer.level().getServer()), deck, serverPlayer);
-                wafers.reload();
             }
             if (grid != null) updateResult(serverPlayer, null);
             DeckViewTracker.markDirty(this);
@@ -424,9 +420,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Stores {@code stack} on the wafers, shrinking it by what fit. */
     private void store(ServerPlayer player, ItemStack stack) {
-        wafers.flush();
         DeckStorage.depositQuietly(WaferStore.get(player.level().getServer()), deck, stack, player);
-        wafers.reload();
     }
 
     /** After a craft: every grid slot that ran out gets one more of what was there, if the wafers have it. */
@@ -435,7 +429,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return;
         }
         WaferStore store = WaferStore.get(player.level().getServer());
-        wafers.flush();
         placing = true;
         for (int i = 0; i < before.size(); i++) {
             ItemStack was = before.get(i);
@@ -448,7 +441,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         placing = false;
-        wafers.reload();
         updateResult(player, null);
     }
 
@@ -458,7 +450,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             return;
         }
         placing = true;
-        wafers.flush();
         var incoming = new java.util.LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack stack = grid.getItem(i);
@@ -478,7 +469,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         placing = false;
-        wafers.reload();
         updateResult(player, null);
     }
 
@@ -518,7 +508,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         WaferStore store = WaferStore.get(player.level().getServer());
-        wafers.flush();
         DeckStorage.checkAll(store, deck, player);
         Map<ItemResource, Long> available = new HashMap<>();
         List<@Nullable ItemResource> chosen = new ArrayList<>();
@@ -573,7 +562,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         placing = false;
-        wafers.reload();
         updateResult(player, null);
     }
 
@@ -592,11 +580,10 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         return !(stack.getItem() instanceof WaferItem) && !(stack.getItem() instanceof WaferHolderItem);
     }
 
-    /** Vanilla slot code can change a stack without telling its container; catch up every tick. */
+    /** Vanilla slot code can change a grid stack without telling its container; catch up every tick. */
     @Override
     public void broadcastChanges() {
         if (!player.level().isClientSide()) {
-            wafers.flush();
             upgrade.flush();
             if (grid != null) {
                 grid.flush();
@@ -616,7 +603,6 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             if (player instanceof ServerPlayer serverPlayer && grid != null && stillValid(player) && !serverPlayer.hasDisconnected()) {
                 returnGrid(serverPlayer);
             }
-            wafers.flush();
             upgrade.flush();
             if (grid != null) {
                 grid.flush();

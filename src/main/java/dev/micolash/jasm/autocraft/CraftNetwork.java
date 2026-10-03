@@ -98,7 +98,6 @@ public final class CraftNetwork {
             return;
         }
         LAST_ASK.put(player.getUUID(), now);
-        menu.wafers().flush();
         Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
         CraftPlanner.Plan<ItemResource> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
@@ -117,9 +116,7 @@ public final class CraftNetwork {
         if (menu == null || payload.target().isEmpty()) {
             return;
         }
-        menu.wafers().flush();
         String problem = Jobs.start(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
-        menu.wafers().reload();
         Notices.tell(player, problem == null
                 ? Component.translatable("message.jasm.craft.started", clamp(payload.amount()), payload.target().toStack(1).getHoverName())
                 : Component.translatable(problem), problem == null);
@@ -185,7 +182,7 @@ public final class CraftNetwork {
             if (index < 0 || index >= rules.size()) {
                 return false;
             }
-            rules.remove(index);
+            Rules.forget(rules.remove(index).id());
         } else {
             CraftRule rule = payload.rule().get().cleaned();
             if (index >= 0 && index < rules.size()) {

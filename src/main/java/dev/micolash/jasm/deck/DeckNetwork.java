@@ -11,6 +11,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -59,7 +61,6 @@ public final class DeckNetwork {
             return 0;
         }
         int max = key.getMaxStackSize();
-        menu.wafers().flush();
         DeckStorage.checkAll(store, menu.deck(), player);
         long available = DeckStorage.count(store, menu.deck(), key);
         long wanted = switch (payload.mode()) {
@@ -92,7 +93,6 @@ public final class DeckNetwork {
             return 0;
         }
         WaferStore store = WaferStore.get(player.level().getServer());
-        menu.wafers().flush();
         ItemStack carried = menu.getCarried();
         long moved;
         if (payload.one()) {
@@ -114,7 +114,6 @@ public final class DeckNetwork {
             return false;
         }
         WaferStore store = WaferStore.get(player.level().getServer());
-        menu.wafers().flush();
         boolean done = DeckStorage.configure(store, menu.deck(), payload.slot(), payload.settings(), player);
         finish(player, menu);
         return done;
@@ -144,7 +143,6 @@ public final class DeckNetwork {
     }
 
     private static void finish(ServerPlayer player, DeckMenu menu) {
-        menu.wafers().reload();
         menu.broadcastChanges();
         DeckViewTracker.markDirty(menu);
     }
@@ -188,6 +186,16 @@ public final class DeckNetwork {
             seen[1] = 0;
         }
         return ++seen[1] <= JasmConfig.DECK_MAX_OPS_PER_TICK.getAsInt();
+    }
+
+    @SubscribeEvent
+    static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        RATE.remove(event.getEntity().getUUID());
+    }
+
+    @SubscribeEvent
+    static void onServerStopped(ServerStoppedEvent event) {
+        RATE.clear();
     }
 
     // --- client ---
