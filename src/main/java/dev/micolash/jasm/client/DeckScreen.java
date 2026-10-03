@@ -276,12 +276,12 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (networkPanel != null) networkPanel.key().visible = tab == Tab.NETWORK;
     }
 
-    /** The job list covers the main panel; other windows close. */
+    /** The job list covers the main panel, including its wider search row; other windows close. */
     private void openJobs() {
         closeSettings();
         craftWindow.close();
         ruleWindow.close();
-        jobsWindow.open(leftPos + mainX, topPos, MAIN_WIDTH, imageHeight);
+        jobsWindow.open(leftPos + mainX - 3, topPos, MAIN_WIDTH + 5, imageHeight);
     }
 
     @Override
@@ -302,7 +302,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         closeSettings();
         ruleWindow.close();
         jobsWindow.close();
-        craftWindow.open(key, leftPos + mainX, topPos, MAIN_WIDTH, imageHeight);
+        craftWindow.open(key, leftPos + mainX - 3, topPos, MAIN_WIDTH + 5, imageHeight);
     }
 
     /** The Deck as the client has it now; the slot's stack is replaced whenever the server sends it again. */

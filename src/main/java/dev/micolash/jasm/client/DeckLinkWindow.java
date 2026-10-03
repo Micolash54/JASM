@@ -32,6 +32,7 @@ final class DeckLinkWindow {
     private static final int OUT_X = IN_X + 44;
     private static final int TEXT_Y = 56;
     private static final int LINE = 10;
+    private static final int RESET_HEIGHT = 17;
     private static final Identifier ARROW = Jasm.id("icon/craft_arrow_wide");
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
 
@@ -56,7 +57,7 @@ final class DeckLinkWindow {
         this.output = output;
         this.cover = cover;
         close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11);
-        reset = resetLabel == null ? null : JasmButton.text(resetLabel, b -> onReset.run(), 0, 0, font.width(resetLabel) + 16, 16);
+        reset = resetLabel == null ? null : JasmButton.text(resetLabel, b -> onReset.run(), 0, 0, font.width(resetLabel) + 16, RESET_HEIGHT);
     }
 
     /** "Linked:" and who to, lit up green when {@code lit}; or how to link a Deck when nobody is known. */
@@ -96,7 +97,7 @@ final class DeckLinkWindow {
     }
 
     int height() {
-        return reset != null ? resetY() + 16 + 8 : TEXT_Y + lines * LINE + 6;
+        return reset != null ? resetY() + RESET_HEIGHT + 8 : TEXT_Y + lines * LINE + 6;
     }
 
     boolean contains(double mouseX, double mouseY) {

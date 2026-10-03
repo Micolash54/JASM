@@ -6,6 +6,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferSettings.Filter;
 import dev.micolash.jasm.storage.WaferSettings.Mode;
+import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -83,7 +84,7 @@ class ItemFilterEditor {
         this.carried = carried;
         this.editorWidth = editorWidth;
         this.compact = !movable;
-        this.rowHeight = compact ? 40 : 24;
+        this.rowHeight = compact ? TransferPortMenu.FILTER_ROW : 24;
         this.listY = movable ? 37 : 16;
         this.slotY = movable ? 168 - (4 - rows) * rowHeight : listY + rows * rowHeight + 28;
         this.height = slotY + (movable ? 24 : 20);
@@ -101,8 +102,8 @@ class ItemFilterEditor {
         modeButton = place(JasmButton.text(Component.empty(), b -> {
             mode = Mode.values()[(mode.ordinal() + 1) % Mode.values().length];
             setItem(ghost);
-        }, 0, 0, keyWidth, 16), 8, slotY - 24);
-        action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, keyWidth, 16), 10 + keyWidth, slotY - 24);
+        }, 0, 0, keyWidth, 17), 8, slotY - 24);
+        action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, keyWidth, 17), 10 + keyWidth, slotY - 24);
         confirm = place(JasmButton.icon(() -> CHECK, label("add"), b -> add(), 0, 0, 17, 17), 274 - shrink, slotY - 1);
         confirm.setTooltip(Tooltip.create(label("add")));
         int controlsX = compact ? 10 : 163 - shrink;
@@ -113,13 +114,13 @@ class ItemFilterEditor {
         int arrowsX = compact ? editorWidth - 60 : controlsX + 70;
         for (int row = 0; row < rows; row++) {
             final int visible = row;
-            int py = listY + row * rowHeight + (compact ? 22 : 4);
-            rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 15), controlsX, py);
-            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 15),
+            int py = listY + row * rowHeight + (compact ? 16 : 4);
+            rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 17), controlsX, py);
+            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 17),
                     controlsX + actionWidth + 2, py);
-            rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 15), arrowsX, py);
-            rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 13, 15), arrowsX + 15, py);
-            rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 13, 15), arrowsX + 30, py);
+            rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 17), arrowsX, py);
+            rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 13, 17), arrowsX + 15, py);
+            rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 13, 17), arrowsX + 30, py);
         }
     }
 
@@ -245,6 +246,14 @@ class ItemFilterEditor {
                 key -> BuiltInRegistries.ITEM.stream().filter(rule::matches).map(ItemStack::new).toList());
         return matches.isEmpty() ? ItemStack.EMPTY : matches.get((int) ((Util.getMillis() / 1000) % matches.size()));
     }
+    /** An item at nine tenths of its size, with its top left corner at the given spot. */
+    private static void smallItem(GuiGraphicsExtractor graphics, ItemStack stack, int px, int py) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(px, py);
+        graphics.pose().scale(0.9F, 0.9F);
+        graphics.item(stack, 0, 0);
+        graphics.pose().popMatrix();
+    }
     void draw(GuiGraphicsExtractor graphics, int mx, int my, float a, int width, int screenHeight) {
         if (!isOpen()) return;
         fit(width, screenHeight);
@@ -269,11 +278,21 @@ class ItemFilterEditor {
             if (tagChoices.isEmpty()) {
                 if (at >= draft.rules().size()) break;
                 Filter rule = draft.rules().get(at);
-                graphics.item(icon(rule), x + 10, py + 3);
+                int rowRight = x + editorWidth - (movable ? 23 : 13);
+                if (mx >= x + 8 && mx < rowRight && my >= py && my < py + rowHeight) graphics.fill(x + 8, py, rowRight, py + rowHeight, JasmGui.HOVER);
+                smallItem(graphics, icon(rule), x + 10, py + (compact ? 1 : 5));
                 int color = rule.enabled() ? JasmGui.TEXT : JasmGui.MUTED;
-                graphics.text(font, font.plainSubstrByWidth(rule.value(), editorWidth - (compact ? 47 : 169)), x + 30, py + 4, color, false);
-                graphics.text(font, label(rule.mode().getSerializedName()), x + 30, py + 14, JasmGui.MUTED, false);
-                if (mx >= x + 8 && mx < x + editorWidth - (compact ? 13 : 135) && my >= py && my < py + (compact ? 22 : rowHeight))
+                Component kind = label(rule.mode().getSerializedName());
+                if (compact) {
+                    // The kind sits on the first line, over the arrow keys.
+                    int kindRight = x + editorWidth - 17;
+                    graphics.text(font, kind, kindRight - font.width(kind), py + 4, JasmGui.MUTED, false);
+                    graphics.text(font, font.plainSubstrByWidth(rule.value(), kindRight - font.width(kind) - 8 - (x + 30)), x + 30, py + 4, color, false);
+                } else {
+                    graphics.text(font, font.plainSubstrByWidth(rule.value(), editorWidth - 169), x + 30, py + 4, color, false);
+                    graphics.text(font, kind, x + 30, py + 14, JasmGui.MUTED, false);
+                }
+                if (mx >= x + 8 && mx < x + editorWidth - (compact ? 13 : 135) && my >= py && my < py + (compact ? 15 : rowHeight))
                     graphics.setTooltipForNextFrame(font, Component.literal(rule.value()), mx, my);
             } else {
                 if (at >= tagChoices.size()) break;

@@ -26,6 +26,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private static final int MAIN_X = ChipWorkshopMenu.MAIN_X;
     private static final int WIDTH = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
     private static final int HEIGHT = ChipWorkshopMenu.INVENTORY_Y + 58 + 18 + 6;
+    /** The critter's panel is taller than the Workshop's: it holds a speech bubble, a switch and two bars. */
+    private static final int SIDE_HEIGHT = 178;
 
     // The critter panel.
     private static final int SIDE_PAD = 6;
@@ -36,10 +38,10 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private static final int BUBBLE_Y = STATUS_Y + STATUS_HEIGHT + 6;
     private static final int BUBBLE_PAD = 4;
     private static final int BUBBLE_LINES = 4;
-    private static final int BAR_HEIGHT = 12;
+    private static final int BAR_HEIGHT = 17;
     private static final int SIDE_BAR_HEIGHT = 8;
     /** Each bar has its label line above it: the name on the left, the figures on the right. */
-    private static final int BATTERY_Y = HEIGHT - SIDE_PAD - SIDE_BAR_HEIGHT;
+    private static final int BATTERY_Y = SIDE_HEIGHT - SIDE_PAD - SIDE_BAR_HEIGHT;
     private static final int BATTERY_LABEL_Y = BATTERY_Y - 10;
     private static final int TRAINING_Y = BATTERY_LABEL_Y - 4 - SIDE_BAR_HEIGHT;
     private static final int TRAINING_LABEL_Y = TRAINING_Y - 10;
@@ -158,7 +160,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         int x = leftPos;
         int y = topPos;
         if (frame == null)
-            frame = JasmFrame.rounded(new int[]{0, 0, SIDE, imageHeight}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight});
+            frame = JasmFrame.rounded(new int[]{0, 0, SIDE, SIDE_HEIGHT}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight});
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);

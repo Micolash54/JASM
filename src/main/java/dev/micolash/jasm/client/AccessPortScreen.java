@@ -6,10 +6,12 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
@@ -64,7 +66,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         name.setHint(Component.translatable("screen.jasm.port.name_hint"));
         addRenderableWidget(name);
         rename = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.port.rename"), b -> rename(),
-                leftPos + WIDTH - 8 - 44, topPos + NAME_Y - 1, 44, 14));
+                leftPos + WIDTH - 8 - 44, topPos + NAME_Y - 2, 44, 17));
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         link = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
@@ -90,6 +92,12 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     /** Where the Deck Link window is, while it is open, so JEI's item list stays clear of it. */
     public List<Rect2i> extraAreas() {
         return linkWindow == null ? List.of() : linkWindow.area().map(List::of).orElse(List.of());
+    }
+
+    /** Clicks on the Deck Link slots belong to the slots, not to a key behind them. */
+    @Override
+    public Optional<GuiEventListener> getChildAt(double mouseX, double mouseY) {
+        return linkWindow != null && linkWindow.overSlot(mouseX, mouseY) ? Optional.empty() : super.getChildAt(mouseX, mouseY);
     }
 
     @Override
@@ -164,6 +172,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         linkWindow.sync(leftPos, topPos);
+        link.setLatched(linkWindow.isOpen());
         // Under the Deck Link window nothing lights up or shows a tooltip, except its own slots.
         boolean hidden = linkWindow.hidesMouse(realMouseX, realMouseY);
         int mouseX = hidden ? -1000 : realMouseX;

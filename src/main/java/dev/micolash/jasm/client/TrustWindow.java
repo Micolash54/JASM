@@ -52,7 +52,7 @@ final class TrustWindow {
         name = new JasmField(font, 0, 0, WIDTH - 66, 12, Component.translatable("screen.jasm.terminal.name"));
         name.setMaxLength(16);
         name.setHint(Component.translatable("screen.jasm.terminal.name"));
-        trust = JasmButton.text(Component.translatable("screen.jasm.archive.trust"), b -> add(), 0, 0, 44, 16);
+        trust = JasmButton.text(Component.translatable("screen.jasm.archive.trust"), b -> add(), 0, 0, 44, 17);
         close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> open = false, 0, 0, 11, 11);
         for (int i = 0; i < ROWS; i++) {
             int row = i;
@@ -126,7 +126,7 @@ final class TrustWindow {
             JasmGui.notice(graphics, font, notice, menu.notices().ok(), x + 7, y + LIST_Y + ROWS * 10, WIDTH - 14);
         }
         name.setPosition(x + 8, y + HEIGHT - 22);
-        trust.setPosition(x + WIDTH - 52, y + HEIGHT - 24);
+        trust.setPosition(x + WIDTH - 52, y + HEIGHT - 25);
         trust.active = !name.getValue().isBlank() && !menu.trust().isFull();
         name.extractRenderState(graphics, mouseX, mouseY, a);
         trust.extractRenderState(graphics, mouseX, mouseY, a);

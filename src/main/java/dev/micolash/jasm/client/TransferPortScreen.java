@@ -9,8 +9,10 @@ import dev.micolash.jasm.transfer.TransferPortKind;
 import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -50,8 +52,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         editors.clear();
         boolean combined = menu.kind() == TransferPortKind.INPUT_OUTPUT;
         int rows = combined ? 1 : 2;
-        if (menu.kind().exports()) createEditor(true, rows, 24);
-        if (menu.kind().imports()) createEditor(false, rows, combined ? 144 : 24);
+        if (menu.kind().exports()) createEditor(true, rows, TransferPortMenu.FILTER_TOP);
+        if (menu.kind().imports()) createEditor(false, rows, combined ? TransferPortMenu.secondFilterTop() : TransferPortMenu.FILTER_TOP);
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         link = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
@@ -114,6 +116,12 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     public List<Rect2i> extraAreas() {
         return linkWindow == null ? List.of() : linkWindow.area().map(List::of).orElse(List.of());
     }
+    /** Clicks on the Deck Link slots belong to the slots, not to a key behind them. */
+    @Override
+    public Optional<GuiEventListener> getChildAt(double mouseX, double mouseY) {
+        return linkWindow != null && linkWindow.overSlot(mouseX, mouseY) ? Optional.empty() : super.getChildAt(mouseX, mouseY);
+    }
+
     @Override
     protected boolean hasClickedOutside(double x, double y, int left, int top) {
         return !linkWindow.contains(x, y) && super.hasClickedOutside(x, y, left, top);
@@ -126,7 +134,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         frame.draw(graphics, leftPos, topPos);
         JasmGui.divider(graphics, leftPos + KEY_X, topPos + PortUpgradeLayout.dividerY(TransferPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH);
         if (menu.kind() == TransferPortKind.INPUT_OUTPUT) {
-            JasmGui.divider(graphics, leftPos + 8, topPos + 139, TransferPortMenu.WIDTH - 16);
+            JasmGui.divider(graphics, leftPos + 8, topPos + TransferPortMenu.secondFilterTop() - 5, TransferPortMenu.WIDTH - 16);
         }
         // The Deck Link window draws its own two slots.
         for (var slot : menu.slots) {
@@ -143,6 +151,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realX, int realY, float a) {
         linkWindow.sync(leftPos, topPos);
+        link.setLatched(linkWindow.isOpen());
         // Under the Deck Link window nothing lights up or shows a tooltip, except its own slots.
         boolean hidden = linkWindow.hidesMouse(realX, realY);
         int mx = hidden ? -1000 : realX;

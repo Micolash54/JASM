@@ -17,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
-/** The Workshop's menu: Blank Chip slot, the 5×3 output grid, critter slot, then the player's inventory and hotbar. */
+/** The Workshop's menu: Blank Chip slot, the 3×2 output grid, critter slot, then the player's inventory and hotbar. */
 public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineView {
     /** The critter's own panel on the left; the Workshop's main panel starts at {@link #MAIN_X}. */
     public static final int SIDE_WIDTH = 152;
@@ -28,12 +28,12 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     public static final int CRITTER_Y = 20;
     /** The Workshop panel has two columns: the Blank Chip slot, then the output grid, both 8 from the panel's edge. */
     public static final int INPUT_X = MAIN_X + 9;
-    public static final int OUTPUT_X = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 8 - 5 * 18 + 1;
-    public static final int OUTPUT_Y = 22;
-    public static final int OUTPUT_COLUMNS = 5;
-    /** The Blank Chip slot sits level with the middle row of the output grid. */
-    public static final int SLOT_Y = OUTPUT_Y + 18;
-    public static final int INVENTORY_Y = OUTPUT_Y + 3 * 18 + 20;
+    public static final int OUTPUT_X = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 8 - 3 * 18 + 1;
+    public static final int OUTPUT_Y = 26;
+    public static final int OUTPUT_COLUMNS = 3;
+    /** The Blank Chip slot sits level with the middle of the output grid. */
+    public static final int SLOT_Y = OUTPUT_Y + 10;
+    public static final int INVENTORY_Y = OUTPUT_Y + 2 * 18 + 20;
 
     public static final int BUTTON_BATCH = 0;
     public static final int BUTTON_ADVANCED = 1;

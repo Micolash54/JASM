@@ -71,16 +71,16 @@ final class RuleWindow {
         kind = place(JasmButton.text(Component.empty(), b -> {
             timed = !timed;
             first.setValue(timed ? "60" : "16");
-        }, 0, 0, 100, 16), 30, 28);
-        sendTo = place(JasmButton.text(Component.empty(), b -> toPlayer = !toPlayer, 0, 0, 50, 16), 56, 83);
-        enabled = place(JasmButton.text(Component.empty(), b -> on = !on, 0, 0, 36, 16), 8, HEIGHT - 22);
+        }, 0, 0, 100, 17), 30, 28);
+        sendTo = place(JasmButton.text(Component.empty(), b -> toPlayer = !toPlayer, 0, 0, 50, 17), 56, 83);
+        enabled = place(JasmButton.text(Component.empty(), b -> on = !on, 0, 0, 36, 17), 8, HEIGHT - 23);
         delete = place(JasmButton.text(Component.translatable("screen.jasm.rule.delete"), b -> {
             send(Optional.empty());
             close();
-        }, 0, 0, 44, 16), 48, HEIGHT - 22);
+        }, 0, 0, 44, 17), 48, HEIGHT - 23);
         place(JasmButton.text(Component.translatable("screen.jasm.deck.settings.done"), b -> {
             save();
-        }, 0, 0, 40, 16), WIDTH - 47, HEIGHT - 22);
+        }, 0, 0, 40, 17), WIDTH - 47, HEIGHT - 23);
     }
 
     private Button place(Button button, int px, int py) {

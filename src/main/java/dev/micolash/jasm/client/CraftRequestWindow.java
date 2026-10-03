@@ -70,10 +70,10 @@ final class CraftRequestWindow {
         amount.setMaxLength(7);
         amount.setResponder(s -> askIn = 6);
         place(JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11), 16, 5, true);
-        place(JasmButton.text(Component.literal("-"), b -> step(-1), 0, 0, 15, 14), 58, 26, false);
-        place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 15, 14), 127, 26, false);
-        next = place(JasmButton.text(Component.translatable("screen.jasm.craft.next_server"), b -> nextServer(), 0, 0, 34, 14), 41, 43, true);
-        craft = place(JasmButton.text(Component.translatable("screen.jasm.craft.start"), b -> start(), 0, 0, 44, 14), 51, -20, true);
+        place(JasmButton.text(Component.literal("-"), b -> step(-1), 0, 0, 15, 17), 58, 24, false);
+        place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 15, 17), 127, 24, false);
+        next = place(JasmButton.text(Component.translatable("screen.jasm.craft.next_server"), b -> nextServer(), 0, 0, 34, 17), 41, 42, true);
+        craft = place(JasmButton.text(Component.translatable("screen.jasm.craft.start"), b -> start(), 0, 0, 44, 17), 51, -23, true);
     }
 
     private Button place(Button button, int px, int py, boolean fromRight) {

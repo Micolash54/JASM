@@ -51,13 +51,13 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int y = topPos + BUTTONS_Y;
         back = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.server.back"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_BACK),
-                leftPos + PANEL_X, y, 40, 14));
+                leftPos + PANEL_X, y, 40, 17));
         cancel = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.server.cancel"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_CANCEL),
-                leftPos + PANEL_X + PANEL_W - 44 - 2 - 44, y, 44, 14));
+                leftPos + PANEL_X + PANEL_W - 44 - 2 - 44, y, 44, 17));
         collect = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.server.collect"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_COLLECT),
-                leftPos + PANEL_X + PANEL_W - 44, y, 44, 14));
+                leftPos + PANEL_X + PANEL_W - 44, y, 44, 17));
     }
 
     @Override

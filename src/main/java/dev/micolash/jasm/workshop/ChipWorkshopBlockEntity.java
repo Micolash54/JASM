@@ -10,7 +10,9 @@ import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -21,6 +23,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.Containers;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
@@ -47,14 +50,19 @@ import org.jspecify.annotations.Nullable;
 public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     public static final int INPUT = 0;
     public static final int OUTPUT_FIRST = 1;
-    public static final int OUTPUT_COUNT = 15;
+    public static final int OUTPUT_COUNT = 6;
     public static final int CRITTER = OUTPUT_FIRST + OUTPUT_COUNT;
     public static final int SLOTS = CRITTER + 1;
     /** Only a landing place for power on its way into the critter's battery. */
     public static final int CAPACITY = 1_000;
     public static final int BATCH_SIZE = 8;
+    /** Saves from before the output shrank to 6 slots have no layout number and 15 output slots. */
+    private static final int LAYOUT = 2;
+    private static final int LEGACY_OUTPUTS = 15;
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
+    /** Chips from an old save that no longer fit the output; dropped at the Workshop on the next tick. */
+    private final List<ItemStack> overflow = new ArrayList<>();
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
     private boolean batch;
     private boolean advancedSelected;
@@ -167,6 +175,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     }
 
     private void tick(ServerLevel level) {
+        if (!overflow.isEmpty()) {
+            for (ItemStack stack : overflow) {
+                Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 1, worldPosition.getZ() + 0.5, stack);
+            }
+            overflow.clear();
+            setChanged();
+        }
         boolean stopped = checkStopped();
         working = false;
         ItemStack critter = items.get(CRITTER);
@@ -437,6 +452,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         ContainerHelper.saveAllItems(output, items);
+        output.putInt("layout", LAYOUT);
+        if (!overflow.isEmpty()) {
+            ValueOutput.TypedOutputList<ItemStack> saved = output.list("overflow", ItemStack.OPTIONAL_CODEC);
+            overflow.forEach(saved::add);
+        }
         output.putBoolean("batch", batch);
         output.putBoolean("advanced", advancedSelected);
         output.putInt("progress", progress);
@@ -448,12 +468,36 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(input, items);
+        overflow.clear();
+        if (input.getIntOr("layout", 1) >= LAYOUT) {
+            ContainerHelper.loadAllItems(input, items);
+        } else {
+            moveFromOldLayout(input);
+        }
+        for (ItemStack stack : input.listOrEmpty("overflow", ItemStack.OPTIONAL_CODEC)) {
+            if (!stack.isEmpty()) overflow.add(stack);
+        }
         batch = input.getBooleanOr("batch", false);
         advancedSelected = input.getBooleanOr("advanced", false);
         progress = Math.max(0, input.getIntOr("progress", 0));
         operationChips = Math.max(0, input.getIntOr("operation_chips", 0));
         napping = input.getBooleanOr("napping", false);
+    }
+
+    /** The input and critter keep their stacks; the old 15 output slots are packed into the 6 there are now. */
+    private void moveFromOldLayout(ValueInput input) {
+        NonNullList<ItemStack> old = NonNullList.withSize(OUTPUT_FIRST + LEGACY_OUTPUTS + 1, ItemStack.EMPTY);
+        ContainerHelper.loadAllItems(input, old);
+        items.set(INPUT, old.get(INPUT));
+        items.set(CRITTER, old.get(OUTPUT_FIRST + LEGACY_OUTPUTS));
+        int next = OUTPUT_FIRST;
+        for (int slot = OUTPUT_FIRST; slot < OUTPUT_FIRST + LEGACY_OUTPUTS; slot++) {
+            ItemStack stack = old.get(slot);
+            if (stack.isEmpty()) continue;
+            while (next < CRITTER && !items.get(next).isEmpty()) next++;
+            if (next < CRITTER) items.set(next, stack);
+            else overflow.add(stack);
+        }
     }
 
     /** Hoppers and pipes: Blank Chips in, finished chips out. The critter slot is for players only. */

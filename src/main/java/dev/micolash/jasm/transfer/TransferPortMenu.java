@@ -138,7 +138,16 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
         }
         return false;
     }
-    public int inventoryY() { return kind == TransferPortKind.INPUT_OUTPUT ? 276 : 180; }
+    /** One row of a filter list in a port's panel, and the top of the first list. */
+    public static final int FILTER_ROW = 35;
+    public static final int FILTER_TOP = 24;
+    /** A filter list's whole height: header, its rows, then the line with the slot and the field. */
+    public static int filterHeight(int rows) { return 16 + rows * FILTER_ROW + 48; }
+    /** Where the second list starts on a port that does both. */
+    public static int secondFilterTop() { return FILTER_TOP + filterHeight(1) + 16; }
+    public int inventoryY() {
+        return kind == TransferPortKind.INPUT_OUTPUT ? secondFilterTop() + filterHeight(1) + 28 : FILTER_TOP + filterHeight(2) + 12;
+    }
     public int height() { return inventoryY() + 84; }
     public boolean defaultDeck() { return data.get(4) != 0; }
     public boolean linked() { return data.get(5) != 0; }

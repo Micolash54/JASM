@@ -12,6 +12,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
@@ -165,6 +166,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         linkWindow.sync(leftPos, topPos);
+        linkKey.setLatched(linkWindow.isOpen());
         // Under the Deck Link window nothing lights up or shows a tooltip, except its own slots.
         boolean underWindow = linkWindow.hidesMouse(realMouseX, realMouseY);
         int mouseX = underWindow ? -1000 : realMouseX;
@@ -236,6 +238,12 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     }
 
     // --- input ---
+
+    /** Clicks on the Deck Link slots belong to the slots, not to a key behind them. */
+    @Override
+    public Optional<GuiEventListener> getChildAt(double mouseX, double mouseY) {
+        return linkWindow != null && linkWindow.overSlot(mouseX, mouseY) ? Optional.empty() : super.getChildAt(mouseX, mouseY);
+    }
 
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {

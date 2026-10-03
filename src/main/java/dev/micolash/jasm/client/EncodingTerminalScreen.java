@@ -9,11 +9,13 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -112,7 +114,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         linkKey.setLatched(linkWindow.isOpen());
         encodeButton = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.terminal.encode"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_ENCODE),
-                leftPos + EncodingTerminalMenu.PREVIEW_X + 8 - ENCODE_WIDTH / 2, topPos + 74, ENCODE_WIDTH, 14));
+                leftPos + EncodingTerminalMenu.PREVIEW_X + 8 - ENCODE_WIDTH / 2, topPos + 74, ENCODE_WIDTH, 17));
         JasmButton clear = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.terminal.clear"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_CLEAR),
                 leftPos + EncodingTerminalMenu.GRID_X + 3 * 18 + 2, topPos + EncodingTerminalMenu.GRID_Y - 1, 11, 11);
@@ -500,6 +502,12 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     }
 
     /** The side panels sit outside the terminal, but clicking them doesn't throw the held item away. */
+    /** Clicks on the Deck Link slots belong to the slots, not to a key behind them. */
+    @Override
+    public Optional<GuiEventListener> getChildAt(double mouseX, double mouseY) {
+        return linkWindow != null && linkWindow.overSlot(mouseX, mouseY) ? Optional.empty() : super.getChildAt(mouseX, mouseY);
+    }
+
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
         boolean inside = sidePanelAreas().stream().anyMatch(area -> area.contains((int) mouseX, (int) mouseY));
@@ -621,6 +629,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         accessButton.active = menu.owner();
         accessButton.setLatched(trustWindow.isOpen());
         linkWindow.sync(leftPos, topPos);
+        linkKey.setLatched(linkWindow.isOpen());
         // Under the windows nothing lights up or shows a tooltip, except the Deck Link window's own slots.
         boolean over = trustWindow.contains(realMouseX, realMouseY) || linkWindow.hidesMouse(realMouseX, realMouseY);
         int mouseX = over ? -1000 : realMouseX;
