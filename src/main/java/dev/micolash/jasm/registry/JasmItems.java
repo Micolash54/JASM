@@ -55,6 +55,7 @@ public final class JasmItems {
     public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
     public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");
     public static final DeferredItem<Item> CRYSTAL_DUST = ITEMS.registerSimpleItem("crystal_dust");
+    public static final DeferredItem<Item> WRENCH = ITEMS.registerSimpleItem("wrench", p -> p.stacksTo(1));
     public static final DeferredItem<BlockItem> SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.SEEDED_AMETHYST);
     public static final DeferredItem<BlockItem> WORN_SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.WORN_SEEDED_AMETHYST);
     public static final DeferredItem<BlockItem> CRACKED_SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.CRACKED_SEEDED_AMETHYST);

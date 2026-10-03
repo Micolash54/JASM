@@ -124,6 +124,22 @@ The old generator is used up. The new one keeps its stored power.
 | ![Advanced Combustion Generator](images/recipes/advanced_combustion_generator.png) | **Advanced Combustion Generator** | 4 × Diamond, 1 × Link Chip, 3 × Redstone, 1 × Basic Combustion Generator |
 | ![Elite Combustion Generator](images/recipes/elite_combustion_generator.png) | **Elite Combustion Generator** | 4 × Emerald, 1 × Advanced Logic Chip, 3 × Redstone, 1 × Advanced Combustion Generator |
 
+## Power Acceptor
+
+JASM blocks only take power from JASM generators, batteries and cables. Put a Power Acceptor between another mod's power and a cable or machine: it pulls power from the blocks next to it and passes it on, and never gives any back.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Power Acceptor](images/recipes/power_acceptor.png) | **Power Acceptor** | 4 × Iron Ingot, 2 × Copper Ingot, 2 × Redstone, 1 × Hopper |
+
+## Wrench
+
+Right-click a side of a JASM machine, Archive or generator to turn its front there. Sneak and right-click a JASM machine, cable or power block to pick it up at once; it keeps what it keeps when mined. Wrenches from other mods work on JASM blocks too.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Wrench](images/recipes/wrench.png) | **Wrench** | 4 × Data Crystal |
+
 ## Crystals and chips
 
 Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data Crystal clusters. A Stonecutter cuts each Data Crystal into a Blank Chip. Cook a Blank Chip on a Campfire or in a Blast Furnace, then drop it in water to cool it into a Logic or Memory Chip. The Crystal Foundry grows 16 Blank Chips from every seed. Link Chips and Advanced chips come only from the Chip Workshop.

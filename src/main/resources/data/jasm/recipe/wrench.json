@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "C": "jasm:data_crystal"
+  },
+  "pattern": [
+    " C ",
+    " CC",
+    "C  "
+  ],
+  "result": {
+    "id": "jasm:wrench"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "values": [
+    "jasm:creative_battery",
+    "jasm:power_acceptor",
+    "jasm:basic_archive",
+    "jasm:advanced_archive",
+    "jasm:ultimate_archive",
+    "jasm:basic_combustion_generator",
+    "jasm:advanced_combustion_generator",
+    "jasm:elite_combustion_generator",
+    "jasm:encoding_terminal",
+    "jasm:recipe_rack",
+    "jasm:data_cable",
+    "jasm:advanced_data_cable",
+    "jasm:elite_data_cable",
+    "jasm:crafting_server",
+    "jasm:access_port",
+    "jasm:crystal_resonator",
+    "jasm:chip_workshop",
+    "jasm:crystal_foundry",
+    "jasm:bitling_station",
+    "jasm:network_brain",
+    "jasm:network_chamber"
+  ]
+}

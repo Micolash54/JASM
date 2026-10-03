@@ -1,0 +1,17 @@
+{
+  "values": [
+    "jasm:basic_archive",
+    "jasm:advanced_archive",
+    "jasm:ultimate_archive",
+    "jasm:basic_combustion_generator",
+    "jasm:advanced_combustion_generator",
+    "jasm:elite_combustion_generator",
+    "jasm:crafting_server",
+    "jasm:encoding_terminal",
+    "jasm:recipe_rack",
+    "jasm:crystal_foundry",
+    "jasm:crystal_resonator",
+    "jasm:chip_workshop",
+    "jasm:bitling_station"
+  ]
+}

@@ -25,7 +25,7 @@ art/
 Thumbs.db
 
 # Local helper scripts
-tools/
+/tools/
 
 # Unit tests (kept locally)
 src/test/
