@@ -2,6 +2,10 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.delivery.DeliveryState;
+import dev.micolash.jasm.delivery.DeliveryView;
+import dev.micolash.jasm.delivery.InboxContainer;
+import dev.micolash.jasm.delivery.SendContainer;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
@@ -19,6 +23,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -44,7 +49,10 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The wafer slots sit in a side panel on the left, up to {@link #SIDE_ROWS} per column; the main panel starts at
  * {@link #mainX()} with the item grid at the top and the inventory at the bottom. A Crafting Deck has a box between
- * them with the player's armour and off-hand, the 3×3 grid and its result; those slots come last.
+ * them with the player's armour and off-hand, the 3×3 grid and its result; those slots come after the upgrade.
+ *
+ * <p>Last come the Deck to Deck window's slots: the send grid and the inbox. The screen moves them with the window;
+ * while it is open, the Deck's own slots under it stop taking clicks.
  */
 public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
@@ -86,6 +94,14 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private boolean placing;
     /** Client side only: what the server has told this screen. */
     private final DeckView view = new DeckView();
+    private final SendContainer send;
+    private final Container inbox;
+    private final int sendStart;
+    private final int inboxStart;
+    /** Client side only: the Deck to Deck window's trips and people. */
+    private final DeliveryView deliveries = new DeliveryView();
+    /** Client side only: the Deck to Deck window's area {x, y, width, height} from the screen's corner, or null while shut. */
+    private int @Nullable [] window;
 
     /** Server side. */
     public DeckMenu(int containerId, Inventory inventory, int deckSlot) {
@@ -126,7 +142,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         upgrade = new DeckUpgradeContainer(deck, this, !player.level().isClientSide());
         upgradeSlot = slots.size();
-        addSlot(new Slot(upgrade, 0, mainX() - 21, SIDE_TOP + 15 + sideRows * 18) {
+        addSlot(new CoveredSlot(upgrade, 0, mainX() - 21, SIDE_TOP + 15 + sideRows * 18) {
             @Override
             public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
             @Override
@@ -148,6 +164,18 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         } else {
             armorStart = -1;
         }
+        send = new SendContainer(deck, !player.level().isClientSide());
+        sendStart = slots.size();
+        for (int i = 0; i < SendContainer.SIZE; i++) {
+            addSlot(new SendSlot(send, i, i < sendSlots()));
+        }
+        inbox = player instanceof ServerPlayer serverPlayer
+                ? new InboxContainer(serverPlayer.level().getServer(), player.getUUID())
+                : new SimpleContainer(DeliveryState.INBOX);
+        inboxStart = slots.size();
+        for (int i = 0; i < DeliveryState.INBOX; i++) {
+            addSlot(new InboxSlot(inbox, i));
+        }
         layout(MIN_ROWS);
     }
 
@@ -157,7 +185,53 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     private Slot playerSlot(Inventory inventory, int index, int x, int y) {
-        return index == deckSlot ? new LockedSlot(inventory, index, x, y) : new Slot(inventory, index, x, y);
+        return index == deckSlot ? new LockedSlot(inventory, index, x, y) : new CoveredSlot(inventory, index, x, y);
+    }
+
+    /** Client side: whether the Deck to Deck window lies over any part of {@code slot}. */
+    private boolean covered(Slot slot) {
+        int[] w = window;
+        return w != null && slot.x + 16 > w[0] && slot.x < w[0] + w[2] && slot.y + 16 > w[1] && slot.y < w[1] + w[3];
+    }
+
+    /** Client side: where the Deck to Deck window is, or null when it shuts. */
+    public void setWindow(int @Nullable [] window) {
+        this.window = window;
+    }
+
+    /** The first send grid slot in {@link #slots}; nine follow, though only the Deck's tier's worth take items. */
+    public int sendStart() {
+        return sendStart;
+    }
+
+    /** The first inbox slot in {@link #slots}. */
+    public int inboxStart() {
+        return inboxStart;
+    }
+
+    /** Send grid slots this Deck's tier has. */
+    public int sendSlots() {
+        return deck.getItem() instanceof DeckItem item ? item.tier().sendSlots() : 1;
+    }
+
+    /** What is in the send grid's usable slots. */
+    public List<ItemStack> sendItems() {
+        List<ItemStack> items = new ArrayList<>();
+        for (int i = 0; i < sendSlots(); i++) items.add(send.getItem(i));
+        return items;
+    }
+
+    /** Empties the send grid's usable slots after a send. */
+    public void clearSend() {
+        for (int i = 0; i < sendSlots(); i++) send.setItem(i, ItemStack.EMPTY);
+    }
+
+    public Container inbox() {
+        return inbox;
+    }
+
+    public DeliveryView deliveries() {
+        return deliveries;
     }
 
     public ItemStack deck() {
@@ -306,6 +380,22 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         ItemStack stack = slot.getItem();
         if (armorStart >= 0 && index >= armorStart && index <= armorStart + ARMOR.length) {
+            moveItemStackTo(stack, waferSlots, waferSlots + 36, false);
+            slot.setChanged();
+            return ItemStack.EMPTY;
+        }
+        if (index >= inboxStart) {
+            // Inbox: hotbar first, then the inventory, like a wafer.
+            int hotbar = waferSlots + 27;
+            if (!moveItemStackTo(stack, hotbar, hotbar + 9, false)) {
+                moveItemStackTo(stack, waferSlots, hotbar, false);
+            }
+            slot.setChanged();
+            return ItemStack.EMPTY;
+        }
+        if (index >= sendStart) {
+            // Send grid: back onto the wafers, or into the inventory if they won't take it.
+            if (player instanceof ServerPlayer serverPlayer && dimensionAllowed()) store(serverPlayer, stack);
             moveItemStackTo(stack, waferSlots, waferSlots + 36, false);
             slot.setChanged();
             return ItemStack.EMPTY;
@@ -599,6 +689,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     public void broadcastChanges() {
         if (!player.level().isClientSide()) {
             upgrade.flush();
+            send.flush();
             if (grid != null) {
                 grid.flush();
             }
@@ -618,14 +709,54 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                 returnGrid(serverPlayer);
             }
             upgrade.flush();
+            send.flush();
             if (grid != null) {
                 grid.flush();
             }
         }
     }
 
+    /** One of the Deck's own slots: on the client it stops taking clicks while the Deck to Deck window lies over it. */
+    private class CoveredSlot extends Slot {
+        CoveredSlot(Container container, int index, int x, int y) {
+            super(container, index, x, y);
+        }
+
+        @Override
+        public boolean isActive() { return !covered(this); }
+    }
+
+    /** A send grid slot: anything but wafers and Decks, and only the tier's worth. On the client, only while the window is open. */
+    private final class SendSlot extends Slot {
+        private final boolean usable;
+
+        SendSlot(SendContainer container, int index, boolean usable) {
+            super(container, index, -1000, -1000);
+            this.usable = usable;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) { return usable && allowedInGrid(stack); }
+
+        @Override
+        public boolean isActive() { return usable && (!player.level().isClientSide() || window != null); }
+    }
+
+    /** An inbox slot: take only. On the client, only while the window is open. */
+    private final class InboxSlot extends Slot {
+        InboxSlot(Container container, int index) {
+            super(container, index, -1000, -1000);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) { return false; }
+
+        @Override
+        public boolean isActive() { return !player.level().isClientSide() || window != null; }
+    }
+
     /** Accepts wafers only, one per slot. */
-    private static final class WaferSlot extends Slot {
+    private final class WaferSlot extends CoveredSlot {
         WaferSlot(DeckWaferContainer container, int index, int x, int y) {
             super(container, index, x, y);
         }
@@ -648,7 +779,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     /** A crafting grid slot: anything but wafers and Decks. */
-    private final class GridSlot extends Slot {
+    private final class GridSlot extends CoveredSlot {
         GridSlot(DeckGridContainer container, int index, int x, int y) {
             super(container, index, x, y);
         }
@@ -674,6 +805,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
 
         @Override
+        public boolean isActive() { return !covered(this); }
+
+        @Override
         public void onTake(Player player, ItemStack carried) {
             List<ItemStack> before = new ArrayList<>();
             for (int i = 0; i < DeckGridContainer.SIZE; i++) {
@@ -687,7 +821,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     /** One armour piece, as in the player's own inventory. */
-    private static final class ArmorSlot extends Slot {
+    private final class ArmorSlot extends Slot {
         private final Player owner;
         private final EquipmentSlot equipment;
         private final Identifier icon;
@@ -710,7 +844,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         @Override
         public boolean mayPlace(ItemStack stack) { return stack.canEquip(equipment, owner); }
         @Override
-        public boolean isActive() { return owner.canUseSlot(equipment); }
+        public boolean isActive() { return owner.canUseSlot(equipment) && !covered(this); }
 
         @Override
         public boolean mayPickup(Player player) {
@@ -724,7 +858,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     /** The off-hand, as in the player's own inventory. */
-    private static final class OffhandSlot extends Slot {
+    private final class OffhandSlot extends CoveredSlot {
         private final Player owner;
 
         OffhandSlot(Inventory inventory, Player owner, int x) {
@@ -743,7 +877,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     }
 
     /** The slot holding the open Deck. */
-    private static final class LockedSlot extends Slot {
+    private final class LockedSlot extends CoveredSlot {
         LockedSlot(Inventory inventory, int index, int x, int y) {
             super(inventory, index, x, y);
         }

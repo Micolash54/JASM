@@ -43,6 +43,10 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<ItemContainerContents>> DECK_GRID = COMPONENTS.registerComponentType(
             "deck_grid", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
 
+    /** What waits in a Deck's Deck to Deck send grid. */
+    public static final Supplier<DataComponentType<ItemContainerContents>> DECK_SEND = COMPONENTS.registerComponentType(
+            "deck_send", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
     /** The upgrade installed in a Deck. */
     public static final Supplier<DataComponentType<ItemContainerContents>> DECK_UPGRADE = COMPONENTS.registerComponentType(
             "deck_upgrade", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));

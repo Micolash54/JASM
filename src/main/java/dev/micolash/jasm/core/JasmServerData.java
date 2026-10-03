@@ -38,6 +38,8 @@ public final class JasmServerData {
     public final Map<UUID, long[]> deckOps = new HashMap<>();
     /** Owners with a name lookup running at an Encoding Terminal; one at a time each. */
     public final Set<UUID> nameLookups = new HashSet<>();
+    /** Players with the Deck to Deck window open, and in which screen; they hear about their trips each second. */
+    public final Map<UUID, Integer> sendWatchers = new HashMap<>();
 
     private final MinecraftServer server;
 
@@ -60,6 +62,7 @@ public final class JasmServerData {
         planAsked.remove(player);
         networkAsked.remove(player);
         deckOps.remove(player);
+        sendWatchers.remove(player);
     }
 
     /** A rule was deleted: its count, timer and last problem go with it. */

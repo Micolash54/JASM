@@ -17,6 +17,19 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue DECK_ENERGY_PER_ITEM = BUILDER
             .comment("FE a Deck uses for each item that goes into or out of its wafers")
             .defineInRange("energyPerItem", 1, 0, 1_000);
+    public static final ModConfigSpec.IntValue SEND_BASE_SECONDS = BUILDER
+            .comment("Deck to Deck: seconds every trip takes, however short")
+            .defineInRange("sendBaseSeconds", 5, 0, 3_600);
+    public static final ModConfigSpec.IntValue SEND_BLOCKS_PER_SECOND = BUILDER
+            .comment("Deck to Deck: blocks a trip covers each second")
+            .defineInRange("sendBlocksPerSecond", 64, 1, 100_000);
+    public static final ModConfigSpec.IntValue SEND_DIMENSION_SECONDS = BUILDER
+            .comment("Deck to Deck: extra seconds for a trip to another dimension")
+            .defineInRange("sendDimensionSeconds", 30, 0, 3_600);
+    public static final ModConfigSpec.IntValue SEND_MAX_SECONDS = BUILDER
+            .comment("Deck to Deck: the longest any trip takes")
+            .defineInRange("sendMaxSeconds", 180, 1, 86_400);
+
 
     static {
         BUILDER.pop().push("archive");

@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,6 +130,11 @@ public final class AutocraftState extends SavedData {
 
     public Optional<Pairing> pairedPlayer(List<UUID> terminals, UUID player) {
         return pairings.values().stream().filter(p -> p.player().equals(player) && terminals.contains(p.terminal())).findFirst();
+    }
+
+    /** Every Deck paired on one of {@code terminals}. */
+    public List<Pairing> pairingsOn(Collection<UUID> terminals) {
+        return pairings.values().stream().filter(p -> terminals.contains(p.terminal())).toList();
     }
 
     /** A same-owner merge keeps each player's most recently registered Deck. */

@@ -140,7 +140,7 @@ public final class DeckNetwork {
         DeckViewTracker.markDirty(menu);
     }
 
-    private static @Nullable DeckMenu openMenu(ServerPlayer player, int containerId) {
+    public static @Nullable DeckMenu openMenu(ServerPlayer player, int containerId) {
         if (player.containerMenu instanceof DeckMenu menu && menu.containerId == containerId && menu.stillValid(player)) {
             return menu;
         }
@@ -171,7 +171,7 @@ public final class DeckNetwork {
     }
 
     /** At most {@code maxOpsPerTick} operations per player per tick; the rest are dropped. */
-    private static boolean allow(ServerPlayer player) {
+    public static boolean allow(ServerPlayer player) {
         long tick = player.level().getServer().getTickCount();
         long[] seen = JasmServerData.of(player.level().getServer()).deckOps.computeIfAbsent(player.getUUID(), id -> new long[]{tick, 0});
         if (seen[0] != tick) {

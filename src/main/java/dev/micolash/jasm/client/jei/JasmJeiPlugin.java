@@ -225,7 +225,7 @@ public class JasmJeiPlugin implements IModPlugin {
             /** Keeps JEI's item list from covering the settings window where it sticks out past the Deck. */
             @Override
             public List<Rect2i> getGuiExtraAreas(DeckScreen screen) {
-                return screen.settingsWindowArea().map(List::of).orElse(List.of());
+                return screen.windowAreas();
             }
 
             /** Items in the Deck grid and in filter slots work with JEI's recipe and usage keys. */

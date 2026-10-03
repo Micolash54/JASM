@@ -33,6 +33,16 @@ public enum DeckTier {
         return battery;
     }
 
+    /** Slots in the Deck to Deck send grid. */
+    public int sendSlots() {
+        return switch (this) {
+            case STARTER -> 1;
+            case BASIC -> 3;
+            case ADVANCED -> 6;
+            case ELITE, ULTIMATE -> 9;
+        };
+    }
+
     /** Only Advanced and up come as a Crafting Deck too. */
     public boolean hasCraftingDeck() {
         return ordinal() >= ADVANCED.ordinal();

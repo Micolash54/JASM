@@ -83,6 +83,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             new JasmButton.Icon(Jasm.id("icon/tab_items"), 11, 10), new JasmButton.Icon(Jasm.id("icon/tab_craft"), 11, 11),
             new JasmButton.Icon(Jasm.id("icon/tab_rules"), 11, 11), new JasmButton.Icon(Jasm.id("icon/tab_network"), 11, 11)};
     private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 11, 13);
+    private static final JasmButton.Icon SEND = new JasmButton.Icon(Jasm.id("icon/send"), 11, 11);
     private static final JasmButton.Icon[] SIZE_ICONS = {
             new JasmButton.Icon(Jasm.id("icon/size_small"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_medium"), 8, 7),
             new JasmButton.Icon(Jasm.id("icon/size_tall"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_full"), 8, 7)};
@@ -133,6 +134,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private RuleWindow ruleWindow;
     private JobsWindow jobsWindow;
     private @Nullable Button jobsButton;
+    /** The Deck to Deck window: kept while the screen is open, so it stays where it was dragged. */
+    private @Nullable DeckSendWindow sendWindow;
+    private JasmButton sendButton;
 
     public DeckScreen(DeckMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, menu.screenWidth(), menu.screenHeight());
@@ -258,6 +262,16 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             toInventory.setTooltip(Tooltip.create(Component.translatable("screen.jasm.deck.grid_to_inventory")));
             addRenderableWidget(toInventory);
         }
+        // Deck to Deck is the last key of the column on every Deck.
+        if (sendWindow == null) sendWindow = new DeckSendWindow(menu, font);
+        int sendKeys = shown.size() + (menu.isCrafting() ? 1 : 0);
+        sendButton = JasmButton.icon(() -> SEND, Component.translatable("screen.jasm.send.button"), b -> {
+            sendWindow.toggle(tabX, topPos, width, height);
+            sendButton.setLatched(sendWindow.isOpen());
+        }, tabX, topPos + TAB_Y + sendKeys * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
+        sendButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.send.button")));
+        sendButton.setLatched(sendWindow.isOpen());
+        addRenderableWidget(sendButton);
         if (networkPanel == null) networkPanel = new NetworkPanel(menu, font);
         networkPanel.place(leftPos + gridX, topPos + gridY, COLUMNS * 18, rows);
         addRenderableWidget(networkPanel.key());
@@ -295,6 +309,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     public void removed() {
         super.removed();
         if (networkPanel != null) networkPanel.close();
+        if (sendWindow != null) sendWindow.close();
     }
 
     /** Opens the request window for {@code key}, closing the wafer settings if they were open. */
@@ -401,6 +416,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     /** An item drawn on this screen outside the normal slots, and where it is drawn. */
     public record ShownItem(ItemStack stack, int x, int y) {}
+
+    /** Every open window's area on screen, with its shadow. */
+    public List<Rect2i> windowAreas() {
+        List<Rect2i> areas = new ArrayList<>();
+        settingsWindowArea().ifPresent(areas::add);
+        if (sendWindow != null) sendWindow.area().ifPresent(areas::add);
+        return areas;
+    }
 
     /** The settings window's area on screen, with its shadow, while it is open. */
     public Optional<Rect2i> settingsWindowArea() {
@@ -585,8 +608,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                     new int[]{0, DeckMenu.SIDE_TOP, mainX, menu.sideRows() * 18 + 38},
                     new int[]{mainX + 190, 25, 28, menu.gridEnd() - 18}));
             // A Crafting Deck's wider column takes in the scroll column's top; a normal Deck's holds only its two keys.
-            if (menu.isCrafting()) rects.add(new int[]{mainX + 190, 25, 51, tabColumnHeight(shown.size() + 1)});
-            else rects.add(new int[]{mainX + 214, 25, 27, tabColumnHeight(shown.size())});
+            if (menu.isCrafting()) rects.add(new int[]{mainX + 190, 25, 51, tabColumnHeight(shown.size() + 2)});
+            else rects.add(new int[]{mainX + 214, 25, 27, tabColumnHeight(shown.size() + 1)});
             panels = rects;
             frame = JasmFrame.rounded(rects.toArray(int[][]::new));
         }
@@ -676,9 +699,12 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 && !(filterWindow.selected() < menu.view().slots().size() && menu.view().slots().get(filterWindow.selected()).present())) {
             closeSettings();
         }
-        // Under the settings or request window nothing lights up or shows a tooltip.
-        boolean overWindow = inWindow(realMouseX, realMouseY) || craftWindow.contains(realMouseX, realMouseY)
-                || ruleWindow.contains(realMouseX, realMouseY) || jobsWindow.contains(realMouseX, realMouseY);
+        sendWindow.sync(leftPos, topPos);
+        sendButton.setLatched(sendWindow.isOpen());
+        // Under the settings or request window nothing lights up or shows a tooltip; the Deck to Deck window's slots do.
+        boolean overWindow = sendWindow.hidesMouse(realMouseX, realMouseY)
+                || !sendWindow.contains(realMouseX, realMouseY) && (inWindow(realMouseX, realMouseY) || craftWindow.contains(realMouseX, realMouseY)
+                        || ruleWindow.contains(realMouseX, realMouseY) || jobsWindow.contains(realMouseX, realMouseY));
         int mouseX = overWindow ? -1000 : realMouseX;
         int mouseY = overWindow ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
@@ -708,6 +734,17 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (jobsWindow.isOpen()) {
             graphics.nextStratum();
             jobsWindow.draw(graphics, realMouseX, realMouseY, a);
+        }
+        if (!sendWindow.isOpen() && !menu.inbox().isEmpty()) {
+            // Something waits in the inbox: a dot on the Deck to Deck key.
+            graphics.nextStratum();
+            int dx = sendButton.getX() + sendButton.getWidth() - 6;
+            int dy = sendButton.getY() + 3;
+            graphics.fill(dx, dy, dx + 3, dy + 3, JasmGui.GOOD);
+        }
+        if (sendWindow.isOpen()) {
+            graphics.nextStratum();
+            sendWindow.draw(graphics, realMouseX, realMouseY, a, minecraft.level.getGameTime());
         }
     }
 
@@ -851,7 +888,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** Only the panels count as the screen: items dropped anywhere else fall out as usual. */
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
-        if (inWindow(mouseX, mouseY)) {
+        if (inWindow(mouseX, mouseY) || sendWindow != null && sendWindow.contains(mouseX, mouseY)) {
             return false;
         }
         frame();
@@ -867,6 +904,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
      */
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // The Deck to Deck window lies over everything; its slots are handled as normal slots.
+        if (sendWindow.contains(event.x(), event.y())) {
+            return sendWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
+        }
         if (!menu.dimensionAllowed() && inGrid(event.x(), event.y())) return true;
         boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
         // Right-click on the size button steps back a size.
@@ -958,6 +999,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (sendWindow.mouseDragged(event, width, height)) return true;
         if (craftWindow.mouseDragged(event)) {
             return true;
         }
@@ -973,6 +1015,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** Releases over the grid or scroll bar are ours; vanilla would treat them as a click on "no slot". */
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (sendWindow.mouseReleased()) return true;
+        if (sendWindow.contains(event.x(), event.y())) return super.mouseReleased(event);
         if (craftWindow.mouseReleased()) {
             return true;
         }
@@ -990,6 +1034,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
+        if (sendWindow.contains(x, y)) {
+            return sendWindow.mouseScrolled(x, y, scrollY);
+        }
         if (jobsWindow.contains(x, y)) {
             return jobsWindow.mouseScrolled(scrollY);
         }
@@ -1030,6 +1077,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** While typing in the search box, keys go to the box (so "e" does not close the screen). Esc closes open settings first. */
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (sendWindow.isOpen() && event.isEscape() && !search.isFocused()) {
+            sendWindow.close();
+            return true;
+        }
         if (jobsWindow.isOpen() && jobsWindow.keyPressed(event)) {
             return true;
         }
