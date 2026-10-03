@@ -2,17 +2,13 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.storage.WaferStore;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -24,9 +20,6 @@ import org.jspecify.annotations.Nullable;
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class DeckNetwork {
-    /** Operations handled so far this tick, per player. */
-    private static final Map<UUID, long[]> RATE = new HashMap<>();
-
     private DeckNetwork() {}
 
     @SubscribeEvent
@@ -180,22 +173,12 @@ public final class DeckNetwork {
     /** At most {@code maxOpsPerTick} operations per player per tick; the rest are dropped. */
     private static boolean allow(ServerPlayer player) {
         long tick = player.level().getServer().getTickCount();
-        long[] seen = RATE.computeIfAbsent(player.getUUID(), id -> new long[] {tick, 0});
+        long[] seen = JasmServerData.of(player.level().getServer()).deckOps.computeIfAbsent(player.getUUID(), id -> new long[] {tick, 0});
         if (seen[0] != tick) {
             seen[0] = tick;
             seen[1] = 0;
         }
         return ++seen[1] <= JasmConfig.DECK_MAX_OPS_PER_TICK.getAsInt();
-    }
-
-    @SubscribeEvent
-    static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        RATE.remove(event.getEntity().getUUID());
-    }
-
-    @SubscribeEvent
-    static void onServerStopped(ServerStoppedEvent event) {
-        RATE.clear();
     }
 
     // --- client ---

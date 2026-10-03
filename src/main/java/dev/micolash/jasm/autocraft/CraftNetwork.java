@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.CraftPlanner;
+import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckView;
@@ -11,7 +12,6 @@ import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,8 +44,6 @@ import org.jspecify.annotations.Nullable;
 public final class CraftNetwork {
     private static final int STATUS_EVERY = 20;
     private static final Map<DeckMenu, CraftPayloads.Status> SENT = new WeakHashMap<>();
-    /** When each player last asked for a plan, in server ticks: planning is expensive, so at most a few a second. */
-    private static final Map<UUID, Long> LAST_ASK = new HashMap<>();
 
     private CraftNetwork() {}
 
@@ -92,12 +90,14 @@ public final class CraftNetwork {
     public static void ask(ServerPlayer player, CraftPayloads.Ask payload) {
         DeckMenu menu = craftingMenu(player, payload.containerId());
         long now = player.level().getServer().getTickCount();
-        Long last = LAST_ASK.get(player.getUUID());
+        Map<UUID, Long> asked = JasmServerData.of(player.level().getServer()).planAsked;
+        // Planning is expensive, so a player gets at most a few plans a second.
+        Long last = asked.get(player.getUUID());
         // The tick count starts again with each world, so an older time than now is from a world left earlier.
         if (menu == null || payload.target().isEmpty() || last != null && now >= last && now - last < 4) {
             return;
         }
-        LAST_ASK.put(player.getUUID(), now);
+        asked.put(player.getUUID(), now);
         Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
         CraftPlanner.Plan<ItemResource> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
@@ -182,7 +182,7 @@ public final class CraftNetwork {
             if (index < 0 || index >= rules.size()) {
                 return false;
             }
-            Rules.forget(rules.remove(index).id());
+            JasmServerData.of(player.level().getServer()).forgetRule(rules.remove(index).id());
         } else {
             CraftRule rule = payload.rule().get().cleaned();
             if (index >= 0 && index < rules.size()) {
@@ -291,7 +291,6 @@ public final class CraftNetwork {
 
     @SubscribeEvent
     static void onServerStopped(ServerStoppedEvent event) {
-        LAST_ASK.clear();
         SENT.clear();
     }
 

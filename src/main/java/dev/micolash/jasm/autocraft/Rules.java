@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -16,7 +17,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 /**
@@ -28,12 +28,6 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class Rules {
     private static final int EVERY = 20;
-
-    /** How far each timed rule has counted, and when a rule that couldn't start may try again. Not saved. */
-    private static final Map<UUID, Integer> COUNTED = new HashMap<>();
-    private static final Map<UUID, Long> RETRY_AT = new HashMap<>();
-    /** Rules that tried and couldn't go ahead, with the message saying why. Cleared once one starts, or has nothing to do. */
-    private static final Map<UUID, String> STALLED = new HashMap<>();
 
     private Rules() {}
 
@@ -73,9 +67,14 @@ public final class Rules {
 
     /** One second of one Deck's rules. */
     public static void run(ServerPlayer player, ItemStack deck, long now) {
+        // How far each timed rule has counted, when one may try again, and why one is stuck (cleared once it starts or has nothing to do).
+        JasmServerData data = JasmServerData.of(player.level().getServer());
+        Map<UUID, Integer> counted = data.ruleCounted;
+        Map<UUID, Long> retryAt = data.ruleRetryAt;
+        Map<UUID, String> stalled = data.ruleStalled;
         var terminal = Jobs.terminalOf(player.level().getServer(), deck);
         if (!DeckItem.worksIn(deck, player.level()) || terminal != null && !DeckItem.worksIn(deck, terminal.getLevel())) {
-            of(deck).stream().filter(CraftRule::enabled).forEach(rule -> STALLED.put(rule.id(), "message.jasm.deck.dimension_upgrade"));
+            of(deck).stream().filter(CraftRule::enabled).forEach(rule -> stalled.put(rule.id(), "message.jasm.deck.dimension_upgrade"));
             return;
         }
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
@@ -87,44 +86,44 @@ public final class Rules {
         List<CraftRule> rules = of(deck);
         for (int r = 0; r < Math.min(rules.size(), limit(deck)); r++) {
             CraftRule rule = rules.get(r);
-            if ("message.jasm.deck.dimension_upgrade".equals(STALLED.get(rule.id()))) STALLED.remove(rule.id());
+            if ("message.jasm.deck.dimension_upgrade".equals(stalled.get(rule.id()))) stalled.remove(rule.id());
             if (!rule.enabled() || rule.item().isEmpty()) {
-                STALLED.remove(rule.id());
+                stalled.remove(rule.id());
                 continue;
             }
             if (busy(player.level().getServer(), deckId, rule.id())) {
                 continue;
             }
             if (rule.timed()) {
-                int counted = COUNTED.merge(rule.id(), EVERY, Integer::sum);
-                if (counted < rule.seconds() * 20) {
+                int seconds = counted.merge(rule.id(), EVERY, Integer::sum);
+                if (seconds < rule.seconds() * 20) {
                     continue;
                 }
             } else if (have(player, deck, rule) >= rule.threshold()) {
-                STALLED.remove(rule.id());
+                stalled.remove(rule.id());
                 continue;
             }
-            if (now < RETRY_AT.getOrDefault(rule.id(), 0L)) {
+            if (now < retryAt.getOrDefault(rule.id(), 0L)) {
                 continue;
             }
             if (!hasRoom(player, deck, rule)) {
-                STALLED.put(rule.id(), PauseReason.WAITING_SPACE.key());
+                stalled.put(rule.id(), PauseReason.WAITING_SPACE.key());
                 // Nowhere to put the results: a timed rule lets this turn go and counts again; the other waits and looks again.
                 if (rule.timed()) {
-                    COUNTED.remove(rule.id());
+                    counted.remove(rule.id());
                 } else {
-                    RETRY_AT.put(rule.id(), now + JasmConfig.RULE_RETRY_SECONDS.getAsInt() * 20L);
+                    retryAt.put(rule.id(), now + JasmConfig.RULE_RETRY_SECONDS.getAsInt() * 20L);
                 }
                 continue;
             }
             String problem = Jobs.start(player, deck, rule.item(), rule.amount(), null, rule.id(), rule.toPlayer());
             if (problem == null) {
-                COUNTED.remove(rule.id());
-                RETRY_AT.remove(rule.id());
-                STALLED.remove(rule.id());
+                counted.remove(rule.id());
+                retryAt.remove(rule.id());
+                stalled.remove(rule.id());
             } else {
-                STALLED.put(rule.id(), problem);
-                RETRY_AT.put(rule.id(), now + JasmConfig.RULE_RETRY_SECONDS.getAsInt() * 20L);
+                stalled.put(rule.id(), problem);
+                retryAt.put(rule.id(), now + JasmConfig.RULE_RETRY_SECONDS.getAsInt() * 20L);
             }
         }
     }
@@ -166,30 +165,16 @@ public final class Rules {
         return DeckStorage.checked(store, deck, player).room(rule.item(), rule.amount()) >= rule.amount();
     }
 
-    /** A rule that was deleted takes its count and its last problem with it. */
-    public static void forget(UUID ruleId) {
-        COUNTED.remove(ruleId);
-        RETRY_AT.remove(ruleId);
-        STALLED.remove(ruleId);
-    }
-
-    /** Times count in the server's ticks, which start again with each world. */
-    @SubscribeEvent
-    static void onServerStopped(ServerStoppedEvent event) {
-        COUNTED.clear();
-        RETRY_AT.clear();
-        STALLED.clear();
-    }
-
     /**
      * This Deck's rules that can't go ahead: the last try failed (no room, missing ingredients, no free server...), or
      * their job's results are waiting for room.
      */
     public static Map<UUID, String> stalled(MinecraftServer server, ItemStack deck) {
         Map<UUID, String> stalled = new HashMap<>();
+        Map<UUID, String> known = JasmServerData.of(server).ruleStalled;
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
         for (CraftRule rule : of(deck)) {
-            String why = STALLED.get(rule.id());
+            String why = known.get(rule.id());
             if (rule.enabled() && why != null) {
                 stalled.put(rule.id(), why);
             }

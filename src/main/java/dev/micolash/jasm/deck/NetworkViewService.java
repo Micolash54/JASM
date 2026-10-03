@@ -7,6 +7,8 @@ import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
+import dev.micolash.jasm.core.JasmServerData.NetworkAnswer;
+import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.core.NetworkTree;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
@@ -34,8 +36,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import org.jspecify.annotations.Nullable;
@@ -48,10 +48,6 @@ import org.jspecify.annotations.Nullable;
 public final class NetworkViewService {
     /** Server ticks between two answers to the same player: the walk over a big network isn't free. */
     private static final int ASK_EVERY = 20;
-    /** When each player was last answered, in server ticks, and for which screen. */
-    private static final Map<UUID, Answered> LAST_ASK = new HashMap<>();
-
-    private record Answered(long tick, int containerId) {}
 
     private NetworkViewService() {}
 
@@ -76,13 +72,14 @@ public final class NetworkViewService {
     public static boolean ask(ServerPlayer player, NetworkViewPayloads.Ask payload) {
         DeckMenu menu = openMenu(player, payload.containerId());
         long now = player.level().getServer().getTickCount();
-        Answered last = LAST_ASK.get(player.getUUID());
+        Map<UUID, NetworkAnswer> asked = JasmServerData.of(player.level().getServer()).networkAsked;
+        NetworkAnswer last = asked.get(player.getUUID());
         // The tick count starts again with each world, so an older time than now is from a world left earlier.
         if (menu == null || last != null && last.containerId() == payload.containerId() && now >= last.tick()
                 && now - last.tick() < ASK_EVERY) {
             return false;
         }
-        LAST_ASK.put(player.getUUID(), new Answered(now, payload.containerId()));
+        asked.put(player.getUUID(), new NetworkAnswer(now, payload.containerId()));
         NetworkViewPayloads.View view = build(player, menu.deck(), payload.containerId());
         if (player.connection.hasChannel(NetworkViewPayloads.View.TYPE)) {
             PacketDistributor.sendToPlayer(player, view);
@@ -305,13 +302,4 @@ public final class NetworkViewService {
         return port.getDisplayName();
     }
 
-    @SubscribeEvent
-    static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        LAST_ASK.remove(event.getEntity().getUUID());
-    }
-
-    @SubscribeEvent
-    static void onServerStopped(ServerStoppedEvent event) {
-        LAST_ASK.clear();
-    }
 }
