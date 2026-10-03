@@ -5,19 +5,25 @@ import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
@@ -33,7 +39,13 @@ public final class NetworkPanel {
     private static final int INDENT = 8;
     /** The tree stops stepping in here, so deep rows keep room for their names. */
     private static final int MAX_INDENT = 72;
-    private static final int KEY = 16;
+    /** The list/tree key: wide and tall enough to hold its 11 px icon inside the button's rim. */
+    private static final int KEY_WIDTH = 21;
+    private static final int KEY_HEIGHT = 19;
+    /** The strip above the rows: just under one row, so the list loses one row to it. */
+    private static final int HEADER = 19;
+    /** The little box that folds a junction's rows away. */
+    private static final int FOLD = 7;
     private static final int DOT = 4;
     /** Junction icons are drawn through a half-clear coat of the well's colour. */
     private static final int FADE = 0x801E1E2E;
@@ -57,6 +69,16 @@ public final class NetworkPanel {
     private boolean builtTree;
     /** The nodes as shown, in order, with their index in the view (for the tree's lines). */
     private List<Integer> shown = List.of();
+    /** Where each node of the view sits in {@link #shown}, or -1 when a folded junction hides it. */
+    private int[] position = new int[0];
+    /** Whether each node of the view has rows hanging under it. */
+    private boolean[] hasKids = new boolean[0];
+    /** The junctions folded shut. Only this panel knows them, and they go when it closes. */
+    private final Set<NodeKey> folded = new HashSet<>();
+    private int foldVersion;
+    private int builtFold;
+
+    private record NodeKey(ResourceKey<Level> dimension, BlockPos pos) {}
 
     public NetworkPanel(DeckMenu menu, Font font) {
         this.menu = menu;
@@ -73,6 +95,7 @@ public final class NetworkPanel {
     /** The Deck screen closed: its view goes with it. */
     public void close() {
         latest = null;
+        folded.clear();
     }
 
     /** The network the Deck in hand is linked to, as the client has it now. */
@@ -95,7 +118,7 @@ public final class NetworkPanel {
             tree = !tree;
             b.setMessage(viewLabel());
             b.setTooltip(Tooltip.create(viewLabel()));
-        }, x + this.width - KEY, y + 1, KEY, KEY);
+        }, x + this.width - KEY_WIDTH, y, KEY_WIDTH, KEY_HEIGHT);
         key.setTooltip(Tooltip.create(viewLabel()));
     }
 
@@ -140,13 +163,15 @@ public final class NetworkPanel {
         return view != null && view.header().state() == 0;
     }
 
-    private int headerRows() {
+    /** The strip above the rows: one short one, or two rows' worth when the view is partial. */
+    private int headerHeight() {
         NetworkViewPayloads.View view = view();
-        return view != null && view.header().partial() ? 2 : 1;
+        return view != null && view.header().partial() ? 2 * ROW : HEADER;
     }
 
+    /** Rows are 17 px of content on an 18 px step, so the last one needs no gap under it. */
     private int listRows() {
-        return Math.max(0, rows - headerRows());
+        return Math.max(0, (rows * ROW - headerHeight() + 1) / ROW);
     }
 
     public int maxScroll() {
@@ -156,15 +181,32 @@ public final class NetworkPanel {
 
     private void rebuild() {
         NetworkViewPayloads.View view = view();
-        if (view == builtFrom && tree == builtTree) {
+        if (view == builtFrom && tree == builtTree && foldVersion == builtFold) {
             return;
         }
         builtFrom = view;
         builtTree = tree;
+        builtFold = foldVersion;
         List<Integer> order = new ArrayList<>();
+        int size = view == null ? 0 : view.nodes().size();
+        position = new int[size];
+        hasKids = new boolean[size];
+        Arrays.fill(position, -1);
         if (view != null) {
-            for (int i = 0; i < view.nodes().size(); i++) {
-                if (tree || !view.nodes().get(i).junction()) order.add(i);
+            boolean[] hidden = new boolean[size];
+            for (int i = 0; i < size; i++) {
+                NetworkViewPayloads.Node node = view.nodes().get(i);
+                // Rows come parents first, so a parent's own state is known by now.
+                int parent = node.parent();
+                if (parent >= 0 && parent < i) {
+                    hasKids[parent] = true;
+                    hidden[i] = hidden[parent] || tree && isFolded(view.nodes().get(parent));
+                }
+                if (hidden[i]) continue;
+                if (tree || !node.junction()) {
+                    position[i] = order.size();
+                    order.add(i);
+                }
             }
             if (!tree) {
                 List<NetworkViewPayloads.Node> nodes = view.nodes();
@@ -193,8 +235,12 @@ public final class NetworkPanel {
         return tree ? Math.min(MAX_INDENT, INDENT * node.depth()) : 0;
     }
 
+    private boolean isFolded(NetworkViewPayloads.Node node) {
+        return node.junction() && folded.contains(new NodeKey(node.dimension(), node.pos()));
+    }
+
     private int rowY(int listIndex, int scroll) {
-        return y + (headerRows() + listIndex - scroll) * ROW;
+        return y + headerHeight() + (listIndex - scroll) * ROW;
     }
 
     /** The shown node under the mouse, as its index in the view, or -1. */
@@ -202,7 +248,7 @@ public final class NetworkPanel {
         if (!showing() || mouseX < x || mouseX >= x + width) {
             return -1;
         }
-        int listTop = y + headerRows() * ROW;
+        int listTop = y + headerHeight();
         if (mouseY < listTop || mouseY >= y + rows * ROW) {
             return -1;
         }
@@ -238,7 +284,7 @@ public final class NetworkPanel {
         int hovered = nodeAt(mouseX, mouseY, scroll);
         for (int row = 0; row < listRows() && scroll + row < shown.size(); row++) {
             int index = shown.get(scroll + row);
-            drawRow(graphics, view.nodes().get(index), rowY(scroll + row, scroll), index == hovered);
+            drawRow(graphics, view.nodes().get(index), rowY(scroll + row, scroll), index == hovered, hasKids[index]);
         }
         if (hovered >= 0 && menu.getCarried().isEmpty()) {
             graphics.setTooltipForNextFrame(font, tooltip(view.nodes().get(hovered)), mouseX, mouseY);
@@ -263,7 +309,7 @@ public final class NetworkPanel {
             state = Component.translatable("screen.jasm.network.working");
             colour = JasmGui.GOOD;
         }
-        graphics.text(font, state, x + width - KEY - 4 - font.width(state), y, colour, false);
+        graphics.text(font, state, x + width - KEY_WIDTH - 4 - font.width(state), y, colour, false);
         graphics.text(font, Component.translatable("screen.jasm.network.machines", header.count(), header.limit()), x + 1, y + 9,
                 JasmGui.SUBTEXT, false);
         if (header.partial()) {
@@ -274,15 +320,16 @@ public final class NetworkPanel {
 
     /** Each row hangs from a line down from its parent, with a short tick into it. */
     private void drawLines(GuiGraphicsExtractor graphics, List<NetworkViewPayloads.Node> nodes, int scroll) {
-        int top = y + headerRows() * ROW;
+        int top = y + headerHeight();
         int bottom = y + rows * ROW;
         for (int i = 0; i < nodes.size(); i++) {
             NetworkViewPayloads.Node node = nodes.get(i);
             // Past the deepest indent a row sits right under its parent's icon: no line would fit, so none is drawn.
-            if (node.parent() < 0 || indent(node) <= indent(nodes.get(node.parent()))) continue;
+            if (position[i] < 0 || node.parent() < 0 || position[node.parent()] < 0
+                    || indent(node) <= indent(nodes.get(node.parent()))) continue;
             int lineX = x + indent(nodes.get(node.parent())) + 3;
-            int childY = rowY(i, scroll) + 8;
-            int from = Math.max(top, rowY(node.parent(), scroll) + 17);
+            int childY = rowY(position[i], scroll) + 8;
+            int from = Math.max(top, rowY(position[node.parent()], scroll) + 17);
             int to = Math.min(bottom, childY + 1);
             if (from < to) graphics.fill(lineX, from, lineX + 1, to, JasmGui.MUTED);
             int tickEnd = x + indent(node) - 1;
@@ -290,7 +337,7 @@ public final class NetworkPanel {
         }
     }
 
-    private void drawRow(GuiGraphicsExtractor graphics, NetworkViewPayloads.Node node, int ry, boolean hovered) {
+    private void drawRow(GuiGraphicsExtractor graphics, NetworkViewPayloads.Node node, int ry, boolean hovered, boolean foldable) {
         if (hovered) {
             graphics.fill(x, ry, x + width, ry + ROW - 1, JasmGui.HOVER);
         }
@@ -304,6 +351,12 @@ public final class NetworkPanel {
         int whereX = x + width - 1 - font.width(where);
         graphics.text(font, where, whereX, ry + 5, JasmGui.SUBTEXT, false);
         int nameEnd = whereX - 4;
+        if (node.junction() && tree && foldable) {
+            // Junctions have no status dot, so their fold box takes the dot's place.
+            int boxX = foldX(whereX);
+            drawFold(graphics, boxX, ry + 5, isFolded(node), hovered ? JasmGui.TEXT : JasmGui.SUBTEXT);
+            nameEnd = boxX - 3;
+        }
         if (!node.junction()) {
             int dotX = whereX - 4 - DOT;
             int colour = switch (node.status()) {
@@ -319,16 +372,26 @@ public final class NetworkPanel {
                 node.junction() ? JasmGui.MUTED : JasmGui.TEXT, false);
     }
 
+    /** Right edge of the fold box lines up with the right edge of the status dots. */
+    private static int foldX(int whereX) {
+        return whereX - 4 - FOLD;
+    }
+
+    /** A small square with a minus in it, or a plus while the junction's rows are folded away. */
+    private static void drawFold(GuiGraphicsExtractor graphics, int bx, int by, boolean folded, int colour) {
+        graphics.fill(bx, by, bx + FOLD, by + 1, colour);
+        graphics.fill(bx, by + FOLD - 1, bx + FOLD, by + FOLD, colour);
+        graphics.fill(bx, by + 1, bx + 1, by + FOLD - 1, colour);
+        graphics.fill(bx + FOLD - 1, by + 1, bx + FOLD, by + FOLD - 1, colour);
+        graphics.fill(bx + 2, by + 3, bx + FOLD - 2, by + 4, colour);
+        if (folded) graphics.fill(bx + 3, by + 2, bx + 4, by + FOLD - 2, colour);
+    }
+
     private List<FormattedCharSequence> tooltip(NetworkViewPayloads.Node node) {
         List<FormattedCharSequence> lines = new ArrayList<>();
         lines.add(node.name().getVisualOrderText());
         lines.add(Component.translatable("screen.jasm.network.pos", node.pos().getX(), node.pos().getY(), node.pos().getZ())
                 .withColor(JasmGui.SUBTEXT & 0xFFFFFF).getVisualOrderText());
-        lines.add(Component.literal(node.dimension().identifier().toString()).withColor(JasmGui.SUBTEXT & 0xFFFFFF).getVisualOrderText());
-        int distance = distance(node);
-        if (distance >= 0) {
-            lines.add(Component.translatable("screen.jasm.network.distance", distance).withColor(JasmGui.SUBTEXT & 0xFFFFFF).getVisualOrderText());
-        }
         if (!node.junction()) {
             Component status = switch (node.status()) {
                 case 0 -> Component.translatable("screen.jasm.network.status.working").withColor(JasmGui.GOOD & 0xFFFFFF);
@@ -347,12 +410,23 @@ public final class NetworkPanel {
 
     // --- input ---
 
-    /** A click on a row lights that block up in the world. */
+    /** A click on a row lights that block up in the world; on a junction with rows under it, it folds or opens them instead. */
     public void mouseClicked(double mouseX, double mouseY, int scrollRow) {
         int index = nodeAt(mouseX, mouseY, Math.min(scrollRow, maxScroll()));
         NetworkViewPayloads.View view = view();
+        if (index < 0 || view == null) {
+            return;
+        }
+        NetworkViewPayloads.Node node = view.nodes().get(index);
+        if (tree && node.junction() && hasKids[index]) {
+            NodeKey key = new NodeKey(node.dimension(), node.pos());
+            if (!folded.remove(key)) folded.add(key);
+            foldVersion++;
+            AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
+            return;
+        }
         // A block in another dimension can't be lit up from here.
-        if (index < 0 || view == null || distance(view.nodes().get(index)) < 0) {
+        if (distance(node) < 0) {
             return;
         }
         AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());

@@ -625,6 +625,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     private int handleOffset() {
         int travel = trackHeight() - HANDLE_HEIGHT;
+        // The Network tab's list can get shorter between two frames, when a junction is folded.
+        scrollRow = Math.min(scrollRow, maxScroll());
         return maxScroll() == 0 ? 0 : Math.round(travel * scrollRow / (float) maxScroll());
     }
 
