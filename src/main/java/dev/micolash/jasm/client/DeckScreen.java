@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
+import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.autocraft.Rules;
 import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.core.GridEntries;
@@ -786,7 +787,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             typesUsed += slot.typesUsed();
             types += slot.types();
         }
-        if (menu.view().jobs().stream().anyMatch(job -> job.pause() == 4)) {
+        if (menu.view().jobs().stream().anyMatch(job -> PauseReason.of(job.pause()) == PauseReason.WAITING_SPACE)) {
             // A job's results are waiting for room: say so until they are delivered.
             Component banner = Component.translatable("screen.jasm.craft.banner_full");
             graphics.text(font, banner, mainX + 6, statusY, JasmGui.BAD, false);

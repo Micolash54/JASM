@@ -108,7 +108,7 @@ public final class Rules {
                 continue;
             }
             if (!hasRoom(player, deck, rule)) {
-                STALLED.put(rule.id(), "screen.jasm.server.pause.waiting_space");
+                STALLED.put(rule.id(), PauseReason.WAITING_SPACE.key());
                 // Nowhere to put the results: a timed rule lets this turn go and counts again; the other waits and looks again.
                 if (rule.timed()) {
                     COUNTED.remove(rule.id());
@@ -201,8 +201,8 @@ public final class Rules {
             }
             net.minecraft.server.level.ServerLevel level = server.getLevel(job.server().dimension());
             if (level != null && level.isLoaded(job.server().pos()) && level.getBlockEntity(job.server().pos()) instanceof CraftingServerBlockEntity crafting
-                    && crafting.job() != null && crafting.job().id().equals(job.id()) && crafting.job().pause().equals("waiting_space")) {
-                stalled.put(job.rule().get(), "screen.jasm.server.pause.waiting_space");
+                    && crafting.job() != null && crafting.job().id().equals(job.id()) && crafting.job().pause() == PauseReason.WAITING_SPACE) {
+                stalled.put(job.rule().get(), PauseReason.WAITING_SPACE.key());
             }
         }
         return stalled;

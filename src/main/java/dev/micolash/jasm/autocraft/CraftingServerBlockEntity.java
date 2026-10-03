@@ -59,7 +59,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
                 case CraftingServerMenu.DATA_PHASE -> j == null ? 0 : j.phase().ordinal() + 1;
                 case CraftingServerMenu.DATA_PROGRESS -> j == null ? 0 : Math.round(j.progress() * 1000);
                 case CraftingServerMenu.DATA_ACTIVE -> j == null ? 0 : j.runningCount();
-                case CraftingServerMenu.DATA_PAUSE -> j == null ? 0 : Jobs.pauseCode(j.pause());
+                case CraftingServerMenu.DATA_PAUSE -> j == null ? 0 : j.pause().code();
                 case CraftingServerMenu.DATA_AMOUNT_LOW -> j == null ? 0 : (int) Math.min(Integer.MAX_VALUE, j.amount()) & 0xFFFF;
                 case CraftingServerMenu.DATA_AMOUNT_HIGH -> j == null ? 0 : (int) Math.min(Integer.MAX_VALUE, j.amount()) >>> 16;
                 default -> 0;

@@ -196,7 +196,7 @@ public final class CraftingJob {
     final boolean toPlayer;
     Phase phase;
     /** Why nothing is happening right now, for screens; not saved. */
-    String pause = "";
+    PauseReason pause = PauseReason.NONE;
     /** The machine the job has waited on longest, for screens; not saved. */
     @Nullable Waiting waiting;
     /** Ticks in a row with nothing running and nothing able to start; not saved. */
@@ -303,7 +303,7 @@ public final class CraftingJob {
         return waiting;
     }
 
-    public String pause() {
+    public PauseReason pause() {
         return pause;
     }
 

@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
+import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.core.GridEntries;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -145,25 +146,15 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             stateRoom = room - width - 6;
         }
         graphics.text(font, trim(state.getString(), stateRoom), tx, CraftingServerMenu.JOB_Y + 20, JasmGui.SUBTEXT, false);
-        Component detail = switch (menu.pause()) {
-            case 1 -> Component.translatable("screen.jasm.server.pause.no_power");
-            case 2 -> Component.translatable("screen.jasm.server.pause.no_card");
-            case 3 -> Component.translatable("screen.jasm.server.pause.waiting_player");
-            case 4 -> Component.translatable("screen.jasm.server.pause.waiting_space");
-            case 5 -> Component.translatable("screen.jasm.server.pause.no_network");
-            case 6 -> Component.translatable("screen.jasm.server.pause.machine_busy");
-            case 7 -> Component.translatable("screen.jasm.server.pause.no_machine");
-            case 8 -> Component.translatable("screen.jasm.server.pause.dimension_upgrade");
-            case 9 -> Component.translatable("screen.jasm.server.pause.deck_charge");
-            case 10 -> Component.translatable("screen.jasm.server.pause.network_full");
-            default -> phase == CraftingJob.Phase.RETURNING ? Component.empty()
-                    : menu.waiting() != null ? menu.waiting()
-                    : Component.translatable("screen.jasm.server.active", menu.active());
-        };
+        PauseReason pause = menu.pause();
+        Component detail = pause != PauseReason.NONE ? Component.translatable(pause.key())
+                : phase == CraftingJob.Phase.RETURNING ? Component.empty()
+                : menu.waiting() != null ? menu.waiting()
+                : Component.translatable("screen.jasm.server.active", menu.active());
         // Up to two lines, so a long reason is read, not cut.
         List<FormattedCharSequence> lines = font.split(detail, room);
         for (int i = 0; i < Math.min(2, lines.size()); i++) {
-            graphics.text(font, lines.get(i), tx, CraftingServerMenu.JOB_Y + 30 + i * 9, menu.pause() == 0 ? JasmGui.MUTED : JasmGui.BAD, false);
+            graphics.text(font, lines.get(i), tx, CraftingServerMenu.JOB_Y + 30 + i * 9, pause == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD, false);
         }
     }
 

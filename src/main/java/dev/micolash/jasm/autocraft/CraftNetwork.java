@@ -382,7 +382,7 @@ public final class CraftNetwork {
                 CraftingJob job = crafting.job();
                 ItemResource target = job.target() == null ? ItemResource.EMPTY : ItemResource.of(job.target().create());
                 views.add(new CraftPayloads.JobView(pos, target, job.amount(), job.phase().ordinal(), Math.round(job.progress() * 1000),
-                        Jobs.pauseCode(job.pause()), java.util.Optional.ofNullable(job.waiting()).map(CraftingJob.Waiting::line)));
+                        job.pause().code(), java.util.Optional.ofNullable(job.waiting()).map(CraftingJob.Waiting::line)));
             }
             if (views.size() >= 64) {
                 break;

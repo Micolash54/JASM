@@ -301,7 +301,7 @@ public final class Jobs {
         }
         if (!powered) {
             if (level.getGameTime() % DELIVER_EVERY == 0 && deliverTarget(level, server, job, record, store)) server.setChanged();
-            job.pause = server.stopped() ? "network_full" : "no_power";
+            job.pause = server.stopped() ? PauseReason.NETWORK_FULL : PauseReason.NO_POWER;
             return;
         }
         CableNetwork network = Networks.at(level, server.getBlockPos());
@@ -316,12 +316,12 @@ public final class Jobs {
         boolean started = false;
         boolean missingCard = false;
         // A machine that can't be used right now: the job waits for it rather than giving up.
-        String machineBlocked = "";
+        PauseReason machineBlocked = PauseReason.NONE;
         ServerPlayer requester = level.getServer().getPlayerList().getPlayer(job.requester);
         ItemStack requesterDeck = requester == null ? ItemStack.EMPTY : findDeck(requester, job.deck);
         boolean dimensionBlocked = !requesterDeck.isEmpty()
                 && (!DeckItem.worksIn(requesterDeck, requester.level()) || !DeckItem.worksIn(requesterDeck, level));
-        if (job.phase == CraftingJob.Phase.CRAFTING && dimensionBlocked) machineBlocked = "dimension_upgrade";
+        if (job.phase == CraftingJob.Phase.CRAFTING && dimensionBlocked) machineBlocked = PauseReason.DIMENSION_UPGRADE;
         if (job.phase == CraftingJob.Phase.CRAFTING && !dimensionBlocked) {
             int free = server.parallel() - job.running.size() - job.sent.size();
             Map<ItemResource, Long> reserved = reserved(job);
@@ -338,7 +338,7 @@ public final class Jobs {
                     Sending sending = send(level, network, job, i, processing, record, store, reserved, free);
                     free -= sending.sent();
                     started |= sending.sent() > 0;
-                    if (machineBlocked.isEmpty()) {
+                    if (machineBlocked == PauseReason.NONE) {
                         machineBlocked = sending.blocked();
                     }
                     continue;
@@ -368,20 +368,20 @@ public final class Jobs {
             server.setChanged();
         }
         boolean idle = job.running.isEmpty() && job.sent.isEmpty();
-        job.pause = !idle ? "" : missingCard ? "no_card" : machineBlocked;
+        job.pause = !idle ? PauseReason.NONE : missingCard ? PauseReason.NO_CARD : machineBlocked;
         job.waiting = waiting(level, network, job);
         boolean stepsLeft = job.steps.stream().anyMatch(s -> s.left > 0);
-        if (!machineBlocked.isEmpty()) {
+        if (machineBlocked != PauseReason.NONE) {
             job.stuck = 0;
         }
         if (idle) {
             if (job.phase == CraftingJob.Phase.CANCELLING || !stepsLeft) {
                 job.phase = CraftingJob.Phase.RETURNING;
-                job.pause = "";
+                job.pause = PauseReason.NONE;
                 server.setChanged();
-            } else if (!missingCard && machineBlocked.isEmpty() && !started && ++job.stuck >= STUCK_TICKS) {
+            } else if (!missingCard && machineBlocked == PauseReason.NONE && !started && ++job.stuck >= STUCK_TICKS) {
                 job.phase = CraftingJob.Phase.RETURNING;
-                job.pause = "";
+                job.pause = PauseReason.NONE;
                 server.setChanged();
             }
         } else {
@@ -433,10 +433,10 @@ public final class Jobs {
 
     /**
      * How sending went: how many sets went, and, when the ingredients were there but nothing could go, why:
-     * {@code "no_machine"} (none of the card's machines can be reached) or {@code "machine_busy"} (they are taken by
-     * another card, full, or their port has no power). Empty otherwise.
+     * {@link PauseReason#NO_MACHINE} (none of the card's machines can be reached) or {@link PauseReason#MACHINE_BUSY}
+     * (they are taken by another card, full, or their port has no power). {@link PauseReason#NONE} otherwise.
      */
-    private record Sending(int sent, String blocked) {}
+    private record Sending(int sent, PauseReason blocked) {}
 
     /** A machine a set can go to right now. */
     private record Target(AccessPortBlockEntity port, Direction side) {
@@ -469,7 +469,7 @@ public final class Jobs {
         }
         List<ProcessingCard.Amount> expected = card.outputs().stream().filter(a -> !a.isEmpty()).toList();
         int sent = 0;
-        String blocked = "";
+        PauseReason blocked = PauseReason.NONE;
         while (sent < free && step.left > 0) {
             boolean enough = set.entrySet().stream()
                     .allMatch(e -> record.count(e.getKey()) - reserved.getOrDefault(e.getKey(), 0L) >= e.getValue());
@@ -477,7 +477,7 @@ public final class Jobs {
                 break;
             }
             if (targets.isEmpty()) {
-                blocked = sent > 0 ? "" : anyMachine ? "machine_busy" : "no_machine";
+                blocked = sent > 0 ? PauseReason.NONE : anyMachine ? PauseReason.MACHINE_BUSY : PauseReason.NO_MACHINE;
                 break;
             }
             targets.sort(Comparator.comparingLong(t -> job.sent.stream().filter(s -> s.at().equals(t.at())).count()));
@@ -694,16 +694,16 @@ public final class Jobs {
         ServerPlayer player = level.getServer().getPlayerList().getPlayer(job.requester);
         ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
         if (deck.isEmpty()) {
-            job.pause = "waiting_player";
+            job.pause = PauseReason.WAITING_PLAYER;
             return;
         }
         if (!DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)) {
-            job.pause = "dimension_upgrade";
+            job.pause = PauseReason.DIMENSION_UPGRADE;
             return;
         }
         if (!onDeckNetwork(deck, level, server.getBlockPos())) {
             // Results travel over the network: a server cut off from the Deck's network keeps them until it's back.
-            job.pause = "no_network";
+            job.pause = PauseReason.NO_NETWORK;
             return;
         }
         if (job.toPlayer) {
@@ -711,12 +711,12 @@ public final class Jobs {
             if (record.contents().isEmpty()) {
                 finish(level, server, job);
             } else {
-                job.pause = "waiting_space";
+                job.pause = PauseReason.WAITING_SPACE;
             }
             return;
         }
         if (!DeckStorage.hasPower(deck)) {
-            job.pause = "deck_charge";
+            job.pause = PauseReason.DECK_CHARGE;
             return;
         }
         moveToDeck(player, deck, record, store, new LinkedHashMap<>(record.contents()));
@@ -724,7 +724,7 @@ public final class Jobs {
             finish(level, server, job);
         } else {
             // The Deck's screen shows it: a banner, and the job in its list.
-            job.pause = DeckStorage.hasPower(deck) ? "waiting_space" : "deck_charge";
+            job.pause = DeckStorage.hasPower(deck) ? PauseReason.WAITING_SPACE : PauseReason.DECK_CHARGE;
         }
     }
 
@@ -932,22 +932,5 @@ public final class Jobs {
             }
         }
         return expected;
-    }
-
-    /** A short code for why a job waits, for the server's screen. */
-    public static int pauseCode(String pause) {
-        return switch (pause) {
-            case "no_power" -> 1;
-            case "no_card" -> 2;
-            case "waiting_player" -> 3;
-            case "waiting_space" -> 4;
-            case "no_network" -> 5;
-            case "machine_busy" -> 6;
-            case "no_machine" -> 7;
-            case "dimension_upgrade" -> 8;
-            case "deck_charge" -> 9;
-            case "network_full" -> 10;
-            default -> 0;
-        };
     }
 }

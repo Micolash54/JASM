@@ -214,9 +214,9 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         return data.get(DATA_ACTIVE);
     }
 
-    /** 0 when nothing is holding the job up; see {@link Jobs#pauseCode}. */
-    public int pause() {
-        return data.get(DATA_PAUSE);
+    /** 0 when nothing is holding the job up; see {@link PauseReason}. */
+    public PauseReason pause() {
+        return PauseReason.of(data.get(DATA_PAUSE));
     }
 
     public boolean busy() {

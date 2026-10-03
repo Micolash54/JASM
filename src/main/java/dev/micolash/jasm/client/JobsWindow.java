@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
+import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckMenu;
 import java.util.List;
@@ -101,7 +102,7 @@ final class JobsWindow {
             String what = GridEntries.abbreviate(job.amount()) + " × " + shown.getHoverName().getString();
             graphics.text(font, trim(what, width - 36 - BAR_WIDTH - 6), x + 28, ry + 2, JasmGui.TEXT, false);
             Component state = state(job);
-            graphics.text(font, trim(state.getString(), width - 36), x + 28, ry + 11, job.pause() == 0 ? JasmGui.MUTED : JasmGui.BAD, false);
+            graphics.text(font, trim(state.getString(), width - 36), x + 28, ry + 11, PauseReason.of(job.pause()) == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD, false);
             if (job.phase() == 0) {
                 JasmGui.bar(graphics, x + width - 10 - BAR_WIDTH, ry + 4, BAR_WIDTH, 5, job.progress() / 1000.0);
             }
@@ -113,22 +114,14 @@ final class JobsWindow {
 
     /** What the job is doing, or what holds it up. */
     static Component state(CraftPayloads.JobView job) {
-        return switch (job.pause()) {
-            case 1 -> Component.translatable("screen.jasm.server.pause.no_power");
-            case 2 -> Component.translatable("screen.jasm.server.pause.no_card");
-            case 3 -> Component.translatable("screen.jasm.server.pause.waiting_player");
-            case 4 -> Component.translatable("screen.jasm.server.pause.waiting_space");
-            case 5 -> Component.translatable("screen.jasm.server.pause.no_network");
-            case 6 -> Component.translatable("screen.jasm.server.pause.machine_busy");
-            case 7 -> Component.translatable("screen.jasm.server.pause.no_machine");
-            case 8 -> Component.translatable("screen.jasm.server.pause.dimension_upgrade");
-            case 9 -> Component.translatable("screen.jasm.server.pause.deck_charge");
-            case 10 -> Component.translatable("screen.jasm.server.pause.network_full");
-            default -> job.phase() == 0 && job.waiting().isPresent() ? job.waiting().get() : switch (job.phase()) {
-                case 0 -> Component.translatable("screen.jasm.server.crafting", Math.round(job.progress() / 10F));
-                case 1 -> Component.translatable("screen.jasm.server.cancelling");
-                default -> Component.translatable("screen.jasm.server.returning");
-            };
+        PauseReason pause = PauseReason.of(job.pause());
+        if (pause != PauseReason.NONE) {
+            return Component.translatable(pause.key());
+        }
+        return job.phase() == 0 && job.waiting().isPresent() ? job.waiting().get() : switch (job.phase()) {
+            case 0 -> Component.translatable("screen.jasm.server.crafting", Math.round(job.progress() / 10F));
+            case 1 -> Component.translatable("screen.jasm.server.cancelling");
+            default -> Component.translatable("screen.jasm.server.returning");
         };
     }
 
