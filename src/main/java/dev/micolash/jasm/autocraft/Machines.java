@@ -6,6 +6,7 @@ import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -116,16 +117,31 @@ public final class Machines {
      * whether it went in. The machine decides where each item goes, as with a hopper.
      */
     public static boolean push(AccessPortBlockEntity port, Direction side, List<ProcessingCard.Amount> set) {
-        int count = set.stream().mapToInt(ProcessingCard.Amount::count).sum();
+        // A fluid counts in shares (an eighth of a bucket each) against the port's allowance, like an item.
+        long shares = 0;
+        boolean items = false;
+        boolean fluids = false;
+        for (ProcessingCard.Amount amount : set) {
+            if (amount.isFluid()) {
+                fluids = true;
+                shares += FluidAmounts.shares(amount.count());
+            } else {
+                items = true;
+                shares += amount.count();
+            }
+        }
+        int count = (int) Math.min(shares, Integer.MAX_VALUE);
         if (!port.canSendBatch(count)) return false;
-        ResourceHandler<ItemResource> inlet = inlet(port, side);
-        if (inlet == null) {
+        ResourceHandler<ItemResource> inlet = items ? inlet(port, side) : null;
+        ResourceHandler<FluidResource> tank = fluids ? fluidInlet(port, side) : null;
+        if (items && inlet == null || fluids && tank == null) {
             return false;
         }
-        if (port.blockingMode() && containsIngredient(inlet, set)) return false;
+        if (port.blockingMode() && (inlet != null && containsIngredient(inlet, set) || tank != null && containsFluid(tank, set))) return false;
         try (Transaction tx = Transaction.openRoot()) {
             for (ProcessingCard.Amount amount : set) {
-                if (inlet.insert(amount.item(), amount.count(), tx) != amount.count()) {
+                int taken = amount.isFluid() ? tank.insert(amount.fluid(), amount.count(), tx) : inlet.insert(amount.item(), amount.count(), tx);
+                if (taken != amount.count()) {
                     return false;
                 }
             }
@@ -133,6 +149,22 @@ public final class Machines {
             port.transferred(count);
             return true;
         }
+    }
+
+    /** Where fluids go into the machine on a port's {@code side}, or null if nothing there takes fluids. */
+    public static @Nullable ResourceHandler<FluidResource> fluidInlet(AccessPortBlockEntity port, Direction side) {
+        if (!(port.getLevel() instanceof ServerLevel level)) {
+            return null;
+        }
+        return fluidInlet(level, port.getBlockPos().relative(side), side.getOpposite());
+    }
+
+    private static boolean containsFluid(ResourceHandler<FluidResource> tank, List<ProcessingCard.Amount> set) {
+        for (int slot = 0; slot < tank.size(); slot++) {
+            FluidResource held = tank.getResource(slot);
+            if (!held.isEmpty() && tank.getAmountAsLong(slot) > 0 && set.stream().anyMatch(amount -> held.equals(amount.fluid()))) return true;
+        }
+        return false;
     }
 
     private static boolean containsIngredient(ResourceHandler<ItemResource> inlet, List<ProcessingCard.Amount> set) {

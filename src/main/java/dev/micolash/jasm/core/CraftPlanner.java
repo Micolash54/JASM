@@ -39,6 +39,11 @@ public final class CraftPlanner<K> {
     /** Which patterns make an item; the first is used. */
     public interface Book<K> {
         List<Pattern<K>> patternsFor(K key);
+
+        /** How much room {@code amount} of {@code key} takes in a server; a bucket of fluid takes as much as one item. */
+        default long space(K key, long amount) {
+            return amount;
+        }
     }
 
     /** One pattern to run {@code crafts} times. Steps are listed ingredients first. */
@@ -96,8 +101,11 @@ public final class CraftPlanner<K> {
         planner.making.pop();
         long made = crafts * pattern.outputCount();
         Problem problem = planner.tooComplex ? Problem.TOO_COMPLEX : planner.missing.isEmpty() ? Problem.NONE : Problem.MISSING;
-        long takenTotal = planner.taken.values().stream().mapToLong(Long::longValue).sum();
-        return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(planner.steps), takenTotal + planner.size, made);
+        long takenTotal = 0;
+        for (Map.Entry<K, Long> entry : planner.taken.entrySet()) {
+            takenTotal = saturatingAdd(takenTotal, book.space(entry.getKey(), entry.getValue()));
+        }
+        return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(planner.steps), saturatingAdd(takenTotal, planner.size), made);
     }
 
     /** Gathers the ingredients for {@code crafts} of {@code pattern}, then adds the step. */
@@ -118,10 +126,10 @@ public final class CraftPlanner<K> {
         if (tooComplex) {
             return;
         }
-        size = saturatingAdd(size, saturatingMul(crafts, pattern.outputCount()));
+        size = saturatingAdd(size, book.space(pattern.output(), saturatingMul(crafts, pattern.outputCount())));
         for (Map.Entry<K, Long> left : pattern.remainders().entrySet()) {
             long amount = saturatingMul(crafts, left.getValue());
-            size = saturatingAdd(size, amount);
+            size = saturatingAdd(size, book.space(left.getKey(), amount));
             spare.merge(left.getKey(), amount, Long::sum);
         }
     }

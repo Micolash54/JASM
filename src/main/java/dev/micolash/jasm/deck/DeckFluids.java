@@ -182,6 +182,15 @@ public final class DeckFluids {
 
     /** The first fluid the stack holds (a bucket of water, a filled tank), or null if it holds none or isn't a container. */
     public static @Nullable FluidResource contained(ItemStack stack) {
+        Held held = held(stack);
+        return held == null ? null : held.fluid();
+    }
+
+    /** A fluid inside a container, and how many millibuckets of it. */
+    public record Held(FluidResource fluid, int amount) {}
+
+    /** The first fluid one of the stack's containers holds, with its amount; null if it holds none or isn't a container. */
+    public static @Nullable Held held(ItemStack stack) {
         if (stack.isEmpty()) {
             return null;
         }
@@ -192,8 +201,9 @@ public final class DeckFluids {
         // Read, not a test pour: a loose bucket can't turn into an empty one, so a test pour would always fail.
         for (int index = 0; index < container.size(); index++) {
             FluidResource resource = container.getResource(index);
-            if (!resource.isEmpty() && container.getAmountAsLong(index) > 0) {
-                return resource;
+            long amount = container.getAmountAsLong(index);
+            if (!resource.isEmpty() && amount > 0) {
+                return new Held(resource, (int) Math.min(amount, Integer.MAX_VALUE));
             }
         }
         return null;

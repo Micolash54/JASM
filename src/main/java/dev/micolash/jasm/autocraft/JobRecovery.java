@@ -30,6 +30,7 @@ final class JobRecovery {
         AutocraftState.Job entry = AutocraftState.get(server).job(jobId).orElse(null);
         if (store != null && entry != null) {
             store.jobRecord(entry.serial(), entry.recordId()).ifPresent(store::writeNow);
+            entry.fluidRecordId().flatMap(id -> store.jobRecord(entry.fluidSerial(), id)).ifPresent(store::writeNow);
         }
     }
 
@@ -48,7 +49,8 @@ final class JobRecovery {
                 continue;
             }
             WaferRecord record = store.jobRecord(entry.serial(), entry.recordId()).orElse(null);
-            if (record != null && !record.contents().isEmpty()) {
+            WaferRecord fluids = entry.fluidRecordId().flatMap(id -> store.jobRecord(entry.fluidSerial(), id)).orElse(null);
+            if (record != null && !record.contents().isEmpty() || fluids != null && !fluids.fluids().isEmpty()) {
                 Jasm.LOGGER.warn("Crafting Server at {} lost its job {} in a crash; returning its items", here, entry.id());
                 server.setJob(CraftingJob.adopted(entry));
                 return;
@@ -76,16 +78,27 @@ final class JobRecovery {
                 continue;
             }
             WaferRecord record = store.jobRecord(entry.serial(), entry.recordId()).orElse(null);
-            if (record == null) {
+            WaferRecord fluids = entry.fluidRecordId().flatMap(id -> store.jobRecord(entry.fluidSerial(), id)).orElse(null);
+            if (record == null && fluids == null) {
                 state.removeJob(entry.id());
-            } else if (!record.isDirty() && record.isEmpty()) {
-                store.deleteJob(record);
-                state.removeJob(entry.id());
-            } else if (!record.isDirty()) {
-                Jasm.LOGGER.warn("Finished crafting job {} still holds {} items in record #{}; they are kept", entry.id(), record.used(),
-                        record.serial());
-                state.removeJob(entry.id());
+                continue;
             }
+            if (record != null && record.isDirty() || fluids != null && fluids.isDirty()) {
+                continue;
+            }
+            // Empty records give up their slots; one that still holds something is kept for an admin, and the job leaves the list.
+            for (WaferRecord held : new WaferRecord[] {record, fluids}) {
+                if (held == null) {
+                    continue;
+                }
+                if (held.isEmpty()) {
+                    store.deleteJob(held);
+                } else {
+                    Jasm.LOGGER.warn("Finished crafting job {} still holds {} in record #{}; it is kept", entry.id(), held.used(),
+                            held.serial());
+                }
+            }
+            state.removeJob(entry.id());
         }
     }
 
@@ -103,7 +116,7 @@ final class JobRecovery {
                 return null;
             for (var sent : server.job().sent) {
                 if (sent.port.equals(port.getBlockPos()) && port.lock(sent.side) != null) {
-                    sent.waiting.forEach(amount -> expected.add(amount.item()));
+                    sent.waiting.stream().filter(amount -> !amount.isFluid()).forEach(amount -> expected.add(amount.item()));
                 }
             }
         }

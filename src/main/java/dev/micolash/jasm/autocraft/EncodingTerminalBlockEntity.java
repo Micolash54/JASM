@@ -342,10 +342,20 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         return there.isEmpty() ? 0 : Math.max(1, amounts[slot]);
     }
 
+    /** The example in processing slot {@code slot} (0-8 the grid, 9-11 the outputs). */
+    private ItemStack example(int slot) {
+        return slot < 9 ? ghost.getItem(slot) : outputs.getItem(slot - 9);
+    }
+
+    /** Whether processing slot {@code slot} holds a fluid. */
+    public boolean isFluid(int slot) {
+        return slot >= 0 && slot < AMOUNTS && FluidMarkerItem.isMarker(example(slot));
+    }
+
     /** Sets the amount of processing slot {@code slot}, within 1 and the most a card holds. */
     public void setAmount(int slot, int amount) {
         if (slot >= 0 && slot < AMOUNTS) {
-            amounts[slot] = Math.clamp(amount, 1, ProcessingCard.MAX_AMOUNT);
+            amounts[slot] = Math.clamp(amount, 1, ProcessingCard.Amount.max(isFluid(slot)));
             setChanged();
         }
     }
@@ -355,7 +365,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (slot < 0 || slot >= AMOUNTS) {
             return;
         }
-        amounts[slot] = stack.isEmpty() ? 0 : Math.clamp(amount, 1, ProcessingCard.MAX_AMOUNT);
+        amounts[slot] = stack.isEmpty() ? 0 : Math.clamp(amount, 1, ProcessingCard.Amount.max(FluidMarkerItem.isMarker(stack)));
         ItemStack example = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
         if (slot < 9) {
             ghost.setItem(slot, example);
@@ -368,12 +378,11 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public CardRecipes.Encoding encodeProcessing(ServerLevel level) {
         List<ProcessingCard.Amount> in = new ArrayList<>();
         for (int i = 0; i < ProcessingCard.INPUTS; i++) {
-            in.add(ProcessingCard.Amount.of(ghost.getItem(i).isEmpty() ? ItemStack.EMPTY : ghost.getItem(i).copyWithCount(amount(i))));
+            in.add(ProcessingCard.Amount.of(ghost.getItem(i), amount(i)));
         }
         List<ProcessingCard.Amount> out = new ArrayList<>();
         for (int i = 0; i < ProcessingCard.OUTPUTS; i++) {
-            ItemStack there = outputs.getItem(i);
-            out.add(ProcessingCard.Amount.of(there.isEmpty() ? ItemStack.EMPTY : there.copyWithCount(amount(9 + i))));
+            out.add(ProcessingCard.Amount.of(outputs.getItem(i), amount(9 + i)));
         }
         if (in.stream().allMatch(ProcessingCard.Amount::isEmpty)) {
             return new CardRecipes.Encoding.Refused("message.jasm.terminal.empty_grid");

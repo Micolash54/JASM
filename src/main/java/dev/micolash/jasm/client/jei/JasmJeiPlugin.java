@@ -141,6 +141,8 @@ public class JasmJeiPlugin implements IModPlugin {
     /** Fuel burn times are only known once JEI has worked out its own furnace fuel list, so the pages are added then. */
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
+        // The terminal's fluid marker is not a real item: keep it out of the item list.
+        runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, List.of(new ItemStack(JasmItems.FLUID_MARKER.get())));
         IRecipeManager recipes = runtime.getRecipeManager();
         List<GeneratorFuelCategory.Fuel> fuels = recipes.createRecipeLookup(RecipeTypes.SMELTING_FUEL).get()
                 .map(fuel -> new GeneratorFuelCategory.Fuel(fuel.getInputs(), fuel.getBurnTime()))
@@ -152,13 +154,20 @@ public class JasmJeiPlugin implements IModPlugin {
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         registration.addGhostIngredientHandler(EncodingTerminalScreen.class, new IGhostIngredientHandler<>() {
-            /** Items dragged out of JEI can be dropped onto the terminal's ghost grid. */
+            /** Items and fluids dragged out of JEI can be dropped onto the terminal's ghost grid (fluids only where a machine is chosen). */
             @Override
             public <I> List<Target<I>> getTargetsTyped(EncodingTerminalScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
                 Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK);
+                if (stack.isEmpty()) {
+                    stack = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(fluid -> !fluid.isEmpty() && screen.getMenu().processing())
+                            .map(ProcessingTransferHandler::marker);
+                } else if (!stack.get().isEmpty()) {
+                    stack = Optional.of(stack.get().copyWithCount(1));
+                }
                 if (stack.isEmpty() || stack.get().isEmpty()) {
                     return List.of();
                 }
+                ItemStack dropping = stack.get();
                 List<Target<I>> targets = new ArrayList<>();
                 for (int i = 0; i < screen.ghostSlots(); i++) {
                     int slot = i;
@@ -172,7 +181,7 @@ public class JasmJeiPlugin implements IModPlugin {
                         @Override
                         public void accept(I dropped) {
                             ClientPacketDistributor
-                                    .sendToServer(new CraftPayloads.Ghost(screen.getMenu().containerId, slot, List.of(stack.get().copyWithCount(1))));
+                                    .sendToServer(new CraftPayloads.Ghost(screen.getMenu().containerId, slot, List.of(dropping)));
                         }
                     });
                 }

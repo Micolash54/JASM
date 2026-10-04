@@ -22,6 +22,11 @@ public final class FluidAmounts {
         return (mb + PER_SHARE - 1) / PER_SHARE;
     }
 
+    /** "250 mB" under a bucket, "1.5 B" from a bucket up. */
+    public static String label(long mb) {
+        return mb < PER_BUCKET ? mb + " mB" : buckets(mb) + " B";
+    }
+
     /** "12.5" or "1,024" for an amount in buckets; at most one decimal. */
     public static String buckets(long mb) {
         DecimalFormat format = new DecimalFormat("#,##0.#", DecimalFormatSymbols.getInstance(Locale.ROOT));

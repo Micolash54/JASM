@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -7,6 +8,7 @@ import dev.micolash.jasm.deck.DeckViewTracker;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +18,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Containers;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -48,7 +52,8 @@ final class JobReturns {
             if (step.left <= 0) continue;
             long perCraft = 0;
             if (step.card instanceof ProcessingCard card) {
-                perCraft = card.usedInputs().stream().filter(input -> input.item().equals(target)).mapToLong(ProcessingCard.Amount::count).sum();
+                perCraft = card.usedInputs().stream().filter(input -> !input.isFluid() && input.item().equals(target))
+                        .mapToLong(ProcessingCard.Amount::count).sum();
             } else {
                 CardRecipes.Resolved card = job.resolved(level, stepIndex);
                 if (card == null) return Long.MAX_VALUE;
@@ -74,9 +79,29 @@ final class JobReturns {
         return moved;
     }
 
+    /** Moves the job's fluids onto the Deck's fluid wafers, as far as they have room and the Deck has charge. Returns the millibuckets moved. */
+    static long moveFluidsToDeck(ServerPlayer player, ItemStack deck, WaferRecord fluids, WaferStore store) {
+        var storage = DeckStorage.checked(store, deck, player);
+        long moved = 0;
+        for (var held : List.copyOf(fluids.fluids().entrySet())) {
+            long in = storage.depositFluid(held.getKey(), held.getValue());
+            if (in > 0) {
+                store.extractFluid(fluids, held.getKey(), in, false, player);
+                moved += in;
+            }
+        }
+        refreshOpenDeck(player, deck);
+        return moved;
+    }
+
+    private static boolean holds(@Nullable WaferRecord fluids) {
+        return fluids != null && !fluids.fluids().isEmpty();
+    }
+
     /** Puts what the job holds onto the requester's Crafting Deck, if they are online with it. */
     static void deliver(ServerLevel level, CraftingServerBlockEntity server, CraftingJob job, WaferRecord record, WaferStore store) {
-        if (record.contents().isEmpty()) {
+        WaferRecord fluids = JobRunner.fluidRecord(store, job);
+        if (record.contents().isEmpty() && !holds(fluids)) {
             finish(level, server, job);
             return;
         }
@@ -97,7 +122,11 @@ final class JobReturns {
         }
         if (job.toPlayer) {
             moveToInventory(player, record, store);
-            if (record.contents().isEmpty()) {
+            // Fluids never go into an inventory: they go onto the Deck's fluid wafers.
+            if (holds(fluids) && DeckStorage.hasPower(deck)) {
+                moveFluidsToDeck(player, deck, fluids, store);
+            }
+            if (record.contents().isEmpty() && !holds(fluids)) {
                 finish(level, server, job);
             } else {
                 job.pause = PauseReason.WAITING_SPACE;
@@ -109,7 +138,10 @@ final class JobReturns {
             return;
         }
         moveToDeck(player, deck, record, store, new LinkedHashMap<>(record.contents()));
-        if (record.contents().isEmpty()) {
+        if (holds(fluids)) {
+            moveFluidsToDeck(player, deck, fluids, store);
+        }
+        if (record.contents().isEmpty() && !holds(fluids)) {
             finish(level, server, job);
         } else {
             // The Deck's screen shows it: a banner, and the job in its list.
@@ -153,7 +185,42 @@ final class JobReturns {
         if (record == null) {
             return 0;
         }
-        return moveToInventory(player, record, store);
+        long moved = moveToInventory(player, record, store);
+        WaferRecord fluids = JobRunner.fluidRecord(store, job);
+        return fluids == null ? moved : moved + fluidsToBuckets(fluids, store, player, null, 0, 0, 0);
+    }
+
+    /** Most filled buckets dropped when a server with fluids in it is broken. */
+    static final int MAX_DROPPED_BUCKETS = 256;
+
+    /**
+     * Turns the job's fluids into filled buckets, a whole bucket at a time, into the player's inventory (or, with no
+     * player, onto the ground at the given spot). What is left over, less than a bucket of each fluid or a fluid
+     * with no bucket, stays in the record. Returns how many buckets there were.
+     */
+    static long fluidsToBuckets(WaferRecord fluids, WaferStore store, @Nullable ServerPlayer player, @Nullable ServerLevel level, double x,
+            double y, double z) {
+        long made = 0;
+        for (var held : List.copyOf(fluids.fluids().entrySet())) {
+            Item bucket = held.getKey().getFluid().getBucket();
+            if (bucket == Items.AIR) {
+                continue;
+            }
+            long buckets = Math.min(held.getValue() / FluidAmounts.PER_BUCKET, MAX_DROPPED_BUCKETS);
+            for (long i = 0; i < buckets; i++) {
+                ItemStack stack = new ItemStack(bucket);
+                if (player != null) {
+                    if (!player.getInventory().add(stack)) {
+                        return made;
+                    }
+                } else {
+                    Containers.dropItemStack(level, x, y, z, stack);
+                }
+                store.extractFluid(fluids, held.getKey(), FluidAmounts.PER_BUCKET, false, player);
+                made++;
+            }
+        }
+        return made;
     }
 
     /** Moves what the job holds into the player's inventory, as far as it fits. Returns how many items went in. */
@@ -205,6 +272,17 @@ final class JobReturns {
                     left -= size;
                 }
                 store.extract(record, held.getKey(), held.getValue(), false, null);
+            }
+        }
+        WaferRecord fluids = JobRunner.fluidRecord(store, job);
+        if (fluids != null) {
+            BlockPos pos = server.getBlockPos();
+            fluidsToBuckets(fluids, store, null, level, pos.getX(), pos.getY(), pos.getZ());
+            if (holds(fluids)) {
+                Jasm.LOGGER.warn("Crafting Server at {} broke with fluids in its job that don't fill a bucket; they are lost", pos);
+                for (var held : List.copyOf(fluids.fluids().entrySet())) {
+                    store.extractFluid(fluids, held.getKey(), held.getValue(), false, null);
+                }
             }
         }
         finish(level, server, job);

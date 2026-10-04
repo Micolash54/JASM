@@ -1,6 +1,8 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -55,20 +57,24 @@ public class RecipeCardItem extends Item {
     private static void processing(ProcessingCard card, Consumer<Component> builder) {
         ProcessingCard.Amount main = card.main();
         if (!main.isEmpty()) {
-            builder.accept(Component.translatable("tooltip.jasm.card.makes", main.count(), main.stack().getHoverName())
-                    .withStyle(ChatFormatting.GRAY));
+            builder.accept(Component.translatable(main.isFluid() ? "tooltip.jasm.card.makes_fluid" : "tooltip.jasm.card.makes", main.label(),
+                    main.stack().getHoverName()).withStyle(ChatFormatting.GRAY));
         }
         for (ProcessingCard.Amount extra : card.extras()) {
-            builder.accept(Component.translatable("tooltip.jasm.card.also", extra.count(), extra.stack().getHoverName())
-                    .withStyle(ChatFormatting.GRAY));
+            builder.accept(Component.translatable(extra.isFluid() ? "tooltip.jasm.card.also_fluid" : "tooltip.jasm.card.also", extra.label(),
+                    extra.stack().getHoverName()).withStyle(ChatFormatting.GRAY));
         }
         builder.accept(Component.translatable("tooltip.jasm.card.processing").withStyle(ChatFormatting.LIGHT_PURPLE));
-        Map<ItemResource, Integer> counts = new LinkedHashMap<>();
+        Map<GridKey, Integer> counts = new LinkedHashMap<>();
         for (ProcessingCard.Amount input : card.usedInputs()) {
-            counts.merge(input.item(), input.count(), Integer::sum);
+            counts.merge(input.key(), input.count(), Integer::sum);
         }
-        counts.forEach((item, n) -> builder.accept(
-                Component.translatable("tooltip.jasm.card.input", n, item.toStack(1).getHoverName()).withStyle(ChatFormatting.DARK_GRAY)));
+        counts.forEach((key, n) -> {
+            boolean fluid = key instanceof GridKey.Fluid;
+            builder.accept(Component.translatable(fluid ? "tooltip.jasm.card.input_fluid" : "tooltip.jasm.card.input",
+                    fluid ? FluidAmounts.label(n) : String.valueOf(n), ProcessingCard.Amount.of(key, 1).stack().getHoverName())
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        });
         for (ProcessingCard.Machine machine : card.machines()) {
             builder.accept(Component.translatable("tooltip.jasm.card.machine", machine.name(), machine.pos().getX(), machine.pos().getY(),
                     machine.pos().getZ()).withStyle(ChatFormatting.DARK_AQUA));

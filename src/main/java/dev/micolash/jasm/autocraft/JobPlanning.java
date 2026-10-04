@@ -3,6 +3,8 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.autocraft.Jobs.Preview;
 import dev.micolash.jasm.autocraft.Jobs.ServerOption;
 import dev.micolash.jasm.core.CraftPlanner;
+import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.deck.DeckFluidStorage;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.CableNetwork;
@@ -12,20 +14,24 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.LongPredicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -94,7 +100,7 @@ final class JobPlanning {
 
     /** Plans {@code amount} of {@code target} for {@code player}'s Crafting Deck, without changing anything. */
     public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
-        CraftPlanner.Plan<ItemResource> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
+        CraftPlanner.Plan<GridKey> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
         if (!DeckItem.isCrafting(deck)) {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.not_crafting_deck");
         }
@@ -124,9 +130,16 @@ final class JobPlanning {
         }
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
-        Map<ItemResource, Long> stock = DeckStorage.contents(store, deck);
-        CardBook book = new CardBook(level, cards(network, player), stock.keySet(), card -> reachable(level, network, card));
-        CraftPlanner.Plan<ItemResource> plan = CraftPlanner.plan(target, Math.max(1, amount), stock, book);
+        Map<ItemResource, Long> items = DeckStorage.contents(store, deck);
+        Map<GridKey, Long> stock = new LinkedHashMap<>();
+        items.forEach((key, count) -> stock.put(new GridKey.Item(key), count));
+        DeckFluidStorage.contents(store, deck).forEach((key, mb) -> stock.put(new GridKey.Fluid(key), mb));
+        CardBook book = new CardBook(level, cards(network, player), items.keySet(), card -> reachable(level, network, card));
+        FluidResource fluidTarget = FluidMarkerItem.fluidOf(target.toStack(1));
+        GridKey goal = fluidTarget != null ? new GridKey.Fluid(fluidTarget) : new GridKey.Item(target);
+        // A fluid is asked for in buckets.
+        long units = fluidTarget != null ? Math.multiplyExact(Math.min(amount, Integer.MAX_VALUE), (long) FluidAmounts.PER_BUCKET) : amount;
+        CraftPlanner.Plan<GridKey> plan = CraftPlanner.plan(goal, Math.max(1, units), stock, book);
         List<ServerOption> servers = new ArrayList<>();
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
             if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
@@ -143,7 +156,7 @@ final class JobPlanning {
             }
         }
         String problem = switch (plan.problem()) {
-            case NO_PATTERN -> book.unreachable(target) ? "message.jasm.craft.machine_missing" : "message.jasm.craft.no_card";
+            case NO_PATTERN -> book.unreachable(goal) ? "message.jasm.craft.machine_missing" : "message.jasm.craft.no_card";
             case MISSING -> plan.missing().keySet().stream().anyMatch(book::unreachable)
                     ? "message.jasm.craft.machine_missing"
                     : "message.jasm.craft.missing";
@@ -191,11 +204,13 @@ final class JobPlanning {
         List<WaferRecord> wafers = DeckStorage.records(store, deck);
         // Take everything, or nothing.
         List<Taken> taken = new ArrayList<>();
-        for (Map.Entry<ItemResource, Long> need : preview.plan().taken().entrySet()) {
+        for (Map.Entry<GridKey, Long> need : preview.plan().taken().entrySet()) {
             long left = need.getValue();
             for (WaferRecord wafer : wafers) {
                 if (wafer != null && left > 0) {
-                    long got = store.extract(wafer, need.getKey(), left, false, player);
+                    long got = need.getKey() instanceof GridKey.Fluid fluid
+                            ? store.extractFluid(wafer, fluid.resource(), left, false, player)
+                            : store.extract(wafer, need.getKey().item(), left, false, player);
                     if (got > 0) {
                         taken.add(new Taken(wafer, need.getKey(), got));
                         left -= got;
@@ -203,14 +218,21 @@ final class JobPlanning {
                 }
             }
             if (left > 0) {
-                taken.forEach(t -> store.insert(t.wafer(), t.key(), t.amount(), false, player));
+                taken.forEach(t -> putBack(store, t.wafer(), t.key(), t.amount(), player));
                 return "message.jasm.craft.missing";
             }
         }
         AutocraftState state = AutocraftState.get(level.getServer());
-        WaferRecord record = store.createJob(player, serial -> state.jobs().stream().anyMatch(j -> j.serial() == serial));
+        LongPredicate claimed = serial -> state.jobs().stream().anyMatch(j -> j.holds(serial));
+        WaferRecord record = store.createJob(player, claimed);
+        // Fluids need a record of their own, made when anything in the job is a fluid.
+        boolean fluids = preview.plan().taken().keySet().stream().anyMatch(k -> k instanceof GridKey.Fluid)
+                || preview.plan().steps().stream().anyMatch(s -> ((CardBook.Entry) s.pattern()).card() instanceof ProcessingCard card
+                        && (card.usedInputs().stream().anyMatch(ProcessingCard.Amount::isFluid)
+                                || card.outputs().stream().anyMatch(ProcessingCard.Amount::isFluid)));
+        WaferRecord fluidRecord = fluids ? store.createFluidJob(player, serial -> serial == record.serial() || claimed.test(serial)) : null;
         for (Taken t : taken) {
-            store.insert(record, t.key(), t.amount(), false, player);
+            putBack(store, t.key() instanceof GridKey.Fluid ? fluidRecord : record, t.key(), t.amount(), player);
         }
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
         if (deckId == null) {
@@ -218,20 +240,31 @@ final class JobPlanning {
             deck.set(JasmComponents.DECK_ID.get(), deckId);
         }
         List<CraftingJob.Step> steps = new ArrayList<>();
-        for (CraftPlanner.Step<ItemResource> step : preview.plan().steps()) {
+        for (CraftPlanner.Step<GridKey> step : preview.plan().steps()) {
             steps.add(CraftingJob.step(((CardBook.Entry) step.pattern()).card(), step.crafts()));
         }
         UUID id = UUID.randomUUID();
         CraftingJob job = CraftingJob.start(id, record.serial(), record.id(), player.getUUID(), player.getPlainTextName(), deckId,
                 ItemStackTemplate.fromNonEmptyStack(target.toStack(1)),
-                preview.plan().made(), steps, toPlayer);
+                preview.plan().made(), steps, toPlayer, fluidRecord == null ? 0 : fluidRecord.serial(),
+                Optional.ofNullable(fluidRecord).map(WaferRecord::id));
         server.setJob(job);
         state.addJob(new AutocraftState.Job(id, record.serial(), record.id(), new ArchiveRecord.Placement(level.dimension(), server.getBlockPos()),
-                player.getUUID(), player.getPlainTextName(), Optional.of(deckId), false, Optional.ofNullable(rule)));
+                player.getUUID(), player.getPlainTextName(), Optional.of(deckId), false, Optional.ofNullable(rule),
+                fluidRecord == null ? 0 : fluidRecord.serial(), Optional.ofNullable(fluidRecord).map(WaferRecord::id)));
         state.saveNow(level.getServer());
         JobReturns.refreshOpenDeck(player, deck);
         return null;
     }
 
-    private record Taken(WaferRecord wafer, ItemResource key, long amount) {}
+    /** Puts an item or a fluid into a record. */
+    private static void putBack(WaferStore store, WaferRecord into, GridKey key, long amount, ServerPlayer player) {
+        if (key instanceof GridKey.Fluid fluid) {
+            store.insertFluid(into, fluid.resource(), amount, false, player);
+        } else {
+            store.insert(into, key.item(), amount, false, player);
+        }
+    }
+
+    private record Taken(WaferRecord wafer, GridKey key, long amount) {}
 }

@@ -2,6 +2,8 @@ package dev.micolash.jasm.autocraft;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -124,16 +126,16 @@ public final class CraftingJob {
         }
 
         /** Counts {@code amount} of {@code key} as arrived. Returns how many of them this set was waiting for. */
-        long arrive(ItemResource key, long amount) {
+        long arrive(GridKey key, long amount) {
             for (int i = 0; i < waiting.size(); i++) {
                 ProcessingCard.Amount wanted = waiting.get(i);
-                if (wanted.item().equals(key)) {
+                if (key.equals(wanted.key())) {
                     long used = Math.min(amount, wanted.count());
                     int rest = (int) (wanted.count() - used);
                     if (rest <= 0) {
                         waiting.remove(i);
                     } else {
-                        waiting.set(i, new ProcessingCard.Amount(key, rest));
+                        waiting.set(i, wanted.withCount(rest));
                     }
                     return used;
                 }
@@ -150,18 +152,30 @@ public final class CraftingJob {
         }
 
         /** How many of {@code key} this set still waits for. */
+        long wants(GridKey key) {
+            return waiting.stream().filter(a -> key.equals(a.key())).mapToLong(ProcessingCard.Amount::count).sum();
+        }
+
+        long arrive(ItemResource key, long amount) {
+            return arrive(new GridKey.Item(key), amount);
+        }
+
         long wants(ItemResource key) {
-            return waiting.stream().filter(a -> a.item().equals(key)).mapToLong(ProcessingCard.Amount::count).sum();
+            return wants(new GridKey.Item(key));
         }
     }
 
     /** What a job is waiting on at a machine, for screens. */
-    public record Waiting(String machine, ItemResource item, long count, long ticks) {
-        /** "Waiting on Energized Smelter: 1 × Charcoal (0:12)". */
+    public record Waiting(String machine, GridKey what, long count, long ticks) {
+        /** "Waiting on Energized Smelter: 1 × Charcoal (0:12)"; a fluid reads "250 mB Water". */
         public Component line() {
             long seconds = ticks / 20;
             String time = seconds / 60 + ":" + String.format("%02d", seconds % 60);
-            return Component.translatable("screen.jasm.server.waiting", machine, count, item.toStack(1).getHoverName(), time);
+            if (what instanceof GridKey.Fluid fluid) {
+                return Component.translatable("screen.jasm.server.waiting_fluid", machine, FluidAmounts.label(count),
+                        fluid.resource().getHoverName(), time);
+            }
+            return Component.translatable("screen.jasm.server.waiting", machine, count, what.item().toStack(1).getHoverName(), time);
         }
     }
 
@@ -178,12 +192,17 @@ public final class CraftingJob {
             Running.CODEC.listOf().optionalFieldOf("running", List.of()).forGetter(j -> j.running),
             Sent.CODEC.listOf().optionalFieldOf("sent", List.of()).forGetter(j -> j.sent),
             Phase.CODEC.optionalFieldOf("phase", Phase.CRAFTING).forGetter(j -> j.phase),
-            Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer))
+            Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer),
+            Codec.LONG.optionalFieldOf("fluid_serial", 0L).forGetter(j -> j.fluidSerial),
+            UUIDUtil.CODEC.optionalFieldOf("fluid_record").forGetter(j -> Optional.ofNullable(j.fluidRecordId)))
             .apply(i, CraftingJob::new));
 
     final UUID id;
     final long serial;
     final UUID recordId;
+    /** The job's second hidden record, for fluids; unset (0, null) when the job holds none. */
+    final long fluidSerial;
+    final @Nullable UUID fluidRecordId;
     final UUID requester;
     final String requesterName;
     final UUID deck;
@@ -212,10 +231,12 @@ public final class CraftingJob {
 
     private CraftingJob(UUID id, long serial, UUID recordId, UUID requester, String requesterName, Optional<UUID> deck,
             Optional<ItemStackTemplate> target, long amount, List<Step> steps, List<Running> running, List<Sent> sent, Phase phase,
-            boolean toPlayer) {
+            boolean toPlayer, long fluidSerial, Optional<UUID> fluidRecordId) {
         this.id = id;
         this.serial = serial;
         this.recordId = recordId;
+        this.fluidSerial = fluidSerial;
+        this.fluidRecordId = fluidRecordId.orElse(null);
         this.requester = requester;
         this.requesterName = requesterName;
         this.deck = deck.orElse(null);
@@ -229,15 +250,20 @@ public final class CraftingJob {
     }
 
     static CraftingJob start(UUID id, long serial, UUID recordId, UUID requester, String requesterName, UUID deck, ItemStackTemplate target,
-            long amount, List<Step> steps, boolean toPlayer) {
+            long amount, List<Step> steps, boolean toPlayer, long fluidSerial, Optional<UUID> fluidRecordId) {
         return new CraftingJob(id, serial, recordId, requester, requesterName, Optional.of(deck), Optional.of(target), amount, steps,
-                List.of(), List.of(), Phase.CRAFTING, toPlayer);
+                List.of(), List.of(), Phase.CRAFTING, toPlayer, fluidSerial, fluidRecordId);
+    }
+
+    /** Whether the job keeps fluids in a record of their own. */
+    boolean hasFluidRecord() {
+        return fluidRecordId != null;
     }
 
     /** A job found in the list of running jobs but missing from its server (after a crash): it only returns its items. */
     static CraftingJob adopted(AutocraftState.Job entry) {
         return new CraftingJob(entry.id(), entry.serial(), entry.recordId(), entry.requester(), entry.requesterName(), entry.deck(),
-                Optional.empty(), 0, List.of(), List.of(), List.of(), Phase.RETURNING, false);
+                Optional.empty(), 0, List.of(), List.of(), List.of(), Phase.RETURNING, false, entry.fluidSerial(), entry.fluidRecordId());
     }
 
     /** Step {@code index}'s crafting card with its recipe, or null if the recipe is gone (or it is a processing card). */

@@ -122,6 +122,18 @@ public final class JasmGui {
         graphics.fill(x + width - 1, y + 1, x + width, y + height - 1, color);
     }
 
+    /** As {@link #itemCount}, shrunk so a long count (a fluid amount like "500mB") stays inside the cell. */
+    public static void fitCount(GuiGraphicsExtractor graphics, Font font, String count, int itemX, int itemY) {
+        if (count.isEmpty()) return;
+        float scale = Math.min(ITEM_COUNT_SCALE, 17F / font.width(count));
+        graphics.nextStratum();
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(itemX + 17, itemY + 16);
+        graphics.pose().scale(scale, scale);
+        graphics.text(font, count, -font.width(count), -font.lineHeight + 1, 0xFFFFFFFF, true);
+        graphics.pose().popMatrix();
+    }
+
     /** Smaller counts anchored to the bottom right of a Deck item. */
     public static void itemCount(GuiGraphicsExtractor graphics, Font font, String count, int itemX, int itemY) {
         if (count.isEmpty()) return;

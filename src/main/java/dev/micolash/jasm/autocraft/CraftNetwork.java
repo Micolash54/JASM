@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.CraftPlanner;
+import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
@@ -102,10 +103,10 @@ public final class CraftNetwork {
         }
         asked.put(player.getUUID(), now);
         Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
-        CraftPlanner.Plan<ItemResource> plan = preview.plan();
+        CraftPlanner.Plan<GridKey> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
-        for (CraftPlanner.Step<ItemResource> step : plan.steps()) {
-            crafts.add(new DeckPayloads.Entry(step.pattern().output(), step.crafts() * step.pattern().outputCount()));
+        for (CraftPlanner.Step<GridKey> step : plan.steps()) {
+            crafts.add(entry(step.pattern().output(), step.crafts() * step.pattern().outputCount()));
         }
         List<CraftPayloads.ServerView> servers = preview.servers().stream()
                 .map(o -> new CraftPayloads.ServerView(o.pos(), o.memory(), o.parallel(), o.busy(), o.fits())).toList();
@@ -303,8 +304,14 @@ public final class CraftNetwork {
         return Math.clamp(amount, 1, JasmConfig.MAX_REQUEST.getAsInt());
     }
 
-    private static List<DeckPayloads.Entry> entries(Map<ItemResource, Long> map) {
-        return limit(map.entrySet().stream().map(e -> new DeckPayloads.Entry(e.getKey(), e.getValue())).toList());
+    /** A line of the answer. A fluid travels as its marker item, with the millibuckets as the count. */
+    private static DeckPayloads.Entry entry(GridKey key, long count) {
+        ItemResource shown = key instanceof GridKey.Fluid fluid ? ItemResource.of(FluidMarkerItem.of(fluid.resource())) : key.item();
+        return new DeckPayloads.Entry(shown, count);
+    }
+
+    private static List<DeckPayloads.Entry> entries(Map<GridKey, Long> map) {
+        return limit(map.entrySet().stream().map(e -> entry(e.getKey(), e.getValue())).toList());
     }
 
     private static <T> List<T> limit(List<T> list) {

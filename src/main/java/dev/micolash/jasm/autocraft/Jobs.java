@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.CraftPlanner;
+import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.network.CableNetwork;
 import java.util.List;
 import java.util.Set;
@@ -30,7 +31,7 @@ public final class Jobs {
     public record ServerOption(BlockPos pos, int memory, int parallel, boolean busy, boolean fits) {}
 
     /** A planned request: the plan, the servers, and which one it would go to (-1 when none can take it). */
-    public record Preview(CraftPlanner.Plan<ItemResource> plan, List<ServerOption> servers, int chosen, @Nullable String problem) {}
+    public record Preview(CraftPlanner.Plan<GridKey> plan, List<ServerOption> servers, int chosen, @Nullable String problem) {}
 
     /** The network a paired Deck belongs to, if its terminal stands in a loaded spot and has power. */
     public static @Nullable EncodingTerminalBlockEntity terminalOf(MinecraftServer server, ItemStack deck) {

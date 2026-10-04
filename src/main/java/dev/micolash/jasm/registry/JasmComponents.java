@@ -21,6 +21,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 
 public final class JasmComponents {
     public static final DeferredRegister.DataComponents COMPONENTS = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE,
@@ -49,6 +50,10 @@ public final class JasmComponents {
     /** The upgrade installed in a Deck. */
     public static final Supplier<DataComponentType<ItemContainerContents>> DECK_UPGRADE = COMPONENTS.registerComponentType(
             "deck_upgrade", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
+    /** The fluid a fluid marker stands for. */
+    public static final Supplier<DataComponentType<FluidResource>> FLUID_MARKER = COMPONENTS.registerComponentType(
+            "fluid_marker", b -> b.persistent(FluidResource.CODEC).networkSynchronized(FluidResource.STREAM_CODEC));
 
     /** A Filled Recipe Card's recipe. */
     public static final Supplier<DataComponentType<RecipeCard>> RECIPE_CARD = COMPONENTS.registerComponentType(

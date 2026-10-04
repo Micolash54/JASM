@@ -2,16 +2,19 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +26,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 /** Running a server's job: starting crafts, sending sets to machines, and taking results back in. */
@@ -86,8 +92,9 @@ final class JobRunner {
         }
         CableNetwork network = Networks.at(level, server.getBlockPos());
         Set<Card> cards = network == null ? Set.of() : allCards(level, network);
+        WaferRecord fluids = fluidRecord(store, job);
         boolean changed = finishCrafts(level, job, record, store);
-        changed |= collect(level, network, job, record, store);
+        changed |= collect(level, network, job, record, fluids, store);
         if (job.phase == CraftingJob.Phase.CANCELLING && !job.sent.isEmpty()) {
             // Whatever is out in machines stays there; the job stops waiting for it.
             release(level, job);
@@ -115,7 +122,7 @@ final class JobRunner {
                     continue;
                 }
                 if (step.card instanceof ProcessingCard processing) {
-                    Sending sending = send(level, network, job, i, processing, record, store, reserved, free);
+                    Sending sending = send(level, network, job, i, processing, record, fluids, store, reserved, free);
                     free -= sending.sent();
                     started |= sending.sent() > 0;
                     if (machineBlocked == PauseReason.NONE) {
@@ -230,7 +237,7 @@ final class JobRunner {
      * the fewest sets out, while there are free Processor slots and ingredients.
      */
     static Sending send(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, int stepIndex, ProcessingCard card,
-            WaferRecord record, WaferStore store, Map<ItemResource, Long> reserved, int free) {
+            WaferRecord record, @Nullable WaferRecord fluids, WaferStore store, Map<ItemResource, Long> reserved, int free) {
         CraftingJob.Step step = job.steps.get(stepIndex);
         List<Target> targets = new ArrayList<>();
         boolean anyMachine = false;
@@ -244,8 +251,13 @@ final class JobRunner {
             }
         }
         Map<ItemResource, Long> set = new HashMap<>();
+        Map<FluidResource, Long> fluidSet = new HashMap<>();
         for (ProcessingCard.Amount input : card.usedInputs()) {
-            set.merge(input.item(), (long) input.count(), Long::sum);
+            if (input.isFluid()) {
+                fluidSet.merge(input.fluid(), (long) input.count(), Long::sum);
+            } else {
+                set.merge(input.item(), (long) input.count(), Long::sum);
+            }
         }
         List<ProcessingCard.Amount> expected = card.outputs().stream().filter(a -> !a.isEmpty()).toList();
         Map<Machines.At, Long> out = new HashMap<>();
@@ -256,7 +268,8 @@ final class JobRunner {
         PauseReason blocked = PauseReason.NONE;
         while (sent < free && step.left > 0) {
             boolean enough = set.entrySet().stream()
-                    .allMatch(e -> record.count(e.getKey()) - reserved.getOrDefault(e.getKey(), 0L) >= e.getValue());
+                    .allMatch(e -> record.count(e.getKey()) - reserved.getOrDefault(e.getKey(), 0L) >= e.getValue())
+                    && fluidSet.entrySet().stream().allMatch(e -> fluids != null && fluids.countFluid(e.getKey()) >= e.getValue());
             if (!enough) {
                 break;
             }
@@ -272,6 +285,7 @@ final class JobRunner {
                 continue;
             }
             set.forEach((key, n) -> store.extract(record, key, n, false, null));
+            fluidSet.forEach((key, n) -> store.extractFluid(fluids, key, n, false, null));
             job.sent.add(new CraftingJob.Sent(stepIndex, target.port().getBlockPos(), target.side(), expected, level.getGameTime()));
             out.merge(target.at(), 1L, Long::sum);
             target.port().lock(target.side(), job.id, stepIndex);
@@ -287,7 +301,8 @@ final class JobRunner {
      * anything else only when it is the one job using the port. A set with nothing left to wait for frees its
      * Processor slot, and a machine with no sets left is free again. Returns whether anything arrived.
      */
-    static boolean collect(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, WaferRecord record, WaferStore store) {
+    static boolean collect(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, WaferRecord record,
+            @Nullable WaferRecord fluids, WaferStore store) {
         if (job.sent.isEmpty()) {
             return false;
         }
@@ -326,11 +341,62 @@ final class JobRunner {
                     left -= set.arrive(key, left);
                 }
             }
+            any |= pullFluids(port, here, fluids, store);
             job.sent.removeIf(CraftingJob.Sent::done);
             for (CraftingJob.Sent set : here) {
                 AccessPortBlockEntity.Lock lock = port.lock(set.side);
                 if (lock != null && lock.job().equals(job.id) && job.sent.stream().noneMatch(s -> s.at().equals(set.at()))) {
                     port.unlock(set.side);
+                }
+            }
+        }
+        return any;
+    }
+
+    /**
+     * Takes the fluids the sets on this port wait for out of their machines' tanks, as far as the port's allowance goes
+     * (an eighth of a bucket for each share), and counts them toward the oldest sets first. Only what is waited for is
+     * taken. Returns whether any came.
+     */
+    private static boolean pullFluids(AccessPortBlockEntity port, List<CraftingJob.Sent> here, @Nullable WaferRecord fluids, WaferStore store) {
+        if (fluids == null) {
+            return false;
+        }
+        boolean any = false;
+        for (Direction side : here.stream().map(s -> s.side).distinct().toList()) {
+            List<CraftingJob.Sent> onSide = here.stream().filter(s -> s.side == side).toList();
+            Set<FluidResource> wanted = new LinkedHashSet<>();
+            onSide.forEach(s -> s.waiting.stream().filter(ProcessingCard.Amount::isFluid).forEach(a -> wanted.add(a.fluid())));
+            ResourceHandler<FluidResource> tank = wanted.isEmpty() ? null : Machines.fluidInlet(port, side);
+            if (tank == null) {
+                continue;
+            }
+            for (FluidResource fluid : wanted) {
+                GridKey key = new GridKey.Fluid(fluid);
+                long most = Math.min(onSide.stream().mapToLong(s -> s.wants(key)).sum(), (long) port.transferBudget() * FluidAmounts.PER_SHARE);
+                most = Math.min(most, store.insertFluid(fluids, fluid, Math.min(most, Integer.MAX_VALUE), true, null));
+                if (most <= 0) {
+                    continue;
+                }
+                int got;
+                try (Transaction tx = Transaction.openRoot()) {
+                    got = tank.extract(fluid, (int) most, tx);
+                    if (got > 0) {
+                        tx.commit();
+                    }
+                }
+                if (got <= 0) {
+                    continue;
+                }
+                store.insertFluid(fluids, fluid, got, false, null);
+                port.transferred((int) FluidAmounts.shares(got));
+                any = true;
+                long left = got;
+                for (CraftingJob.Sent set : onSide) {
+                    if (left <= 0) {
+                        break;
+                    }
+                    left -= set.arrive(key, left);
                 }
             }
         }
@@ -354,18 +420,18 @@ final class JobRunner {
         if (oldest == null || oldest.waiting.isEmpty()) {
             return null;
         }
-        ItemResource item = oldest.waiting.getFirst().item();
+        GridKey what = oldest.waiting.getFirst().key();
         long count = 0;
         for (CraftingJob.Sent set : job.sent) {
             if (set.at().equals(oldest.at())) {
-                count += set.wants(item);
+                count += set.wants(what);
             }
         }
         AccessPortBlockEntity port = Machines.port(level, network, oldest.port, oldest.side);
         String name = port == null
                 ? Machines.blockName(level, oldest.port.relative(oldest.side)).getString()
                 : port.machineName(oldest.side).getString();
-        return new CraftingJob.Waiting(name, item, count, Math.max(0, level.getGameTime() - oldest.since));
+        return new CraftingJob.Waiting(name, what, count, Math.max(0, level.getGameTime() - oldest.since));
     }
 
     /** Ingredients running crafts have set aside. */
@@ -432,5 +498,10 @@ final class JobRunner {
 
     static @Nullable WaferRecord record(WaferStore store, CraftingJob job) {
         return store.jobRecord(job.serial, job.recordId).orElse(null);
+    }
+
+    /** The job's record of fluids; null when it has none (or it can't be read). */
+    static @Nullable WaferRecord fluidRecord(WaferStore store, CraftingJob job) {
+        return job.fluidRecordId == null ? null : store.jobRecord(job.fluidSerial, job.fluidRecordId).orElse(null);
     }
 }

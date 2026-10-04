@@ -4,13 +4,17 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A recipe for a machine behind an Access Port: what goes in (nine slots, any amount each, positions only for
@@ -23,36 +27,118 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     /** Most of one item in one slot. */
     public static final int MAX_AMOUNT = 999;
 
-    /** Some of one item; empty where a slot is empty. */
-    public record Amount(ItemResource item, int count) {
-        public static final Amount EMPTY = new Amount(ItemResource.EMPTY, 0);
+    /** Most millibuckets of one fluid in one slot. */
+    public static final int MAX_FLUID = 32_000;
 
-        static final Codec<Amount> CODEC = RecordCodecBuilder.create(i -> i.group(
-                ItemResource.OPTIONAL_CODEC.fieldOf("item").forGetter(Amount::item),
+    /** Some of one item, or some millibuckets of one fluid; empty where a slot is empty. */
+    public record Amount(ItemResource item, FluidResource fluid, int count) {
+        public static final Amount EMPTY = new Amount(ItemResource.EMPTY, FluidResource.EMPTY, 0);
+
+        /** Some of one item, as before fluids. */
+        public Amount(ItemResource item, int count) {
+            this(item, FluidResource.EMPTY, count);
+        }
+
+        public static final Codec<Amount> CODEC = RecordCodecBuilder.create(i -> i.group(
+                ItemResource.OPTIONAL_CODEC.optionalFieldOf("item", ItemResource.EMPTY).forGetter(Amount::item),
+                FluidResource.CODEC.optionalFieldOf("fluid", FluidResource.EMPTY).forGetter(Amount::fluid),
                 Codec.INT.optionalFieldOf("count", 0).forGetter(Amount::count))
                 .apply(i, Amount::of));
 
-        static final StreamCodec<RegistryFriendlyByteBuf, Amount> STREAM_CODEC = StreamCodec.composite(
-                ItemResource.STREAM_CODEC, Amount::item,
-                ByteBufCodecs.VAR_INT, Amount::count,
-                Amount::of);
+        static final StreamCodec<RegistryFriendlyByteBuf, Amount> STREAM_CODEC = StreamCodec.of(
+                (buf, amount) -> {
+                    buf.writeBoolean(amount.isFluid());
+                    if (amount.isFluid()) {
+                        FluidResource.STREAM_CODEC.encode(buf, amount.fluid);
+                    } else {
+                        ItemResource.STREAM_CODEC.encode(buf, amount.item);
+                    }
+                    ByteBufCodecs.VAR_INT.encode(buf, amount.count);
+                },
+                buf -> {
+                    boolean fluid = buf.readBoolean();
+                    ItemResource item = fluid ? ItemResource.EMPTY : ItemResource.STREAM_CODEC.decode(buf);
+                    FluidResource resource = fluid ? FluidResource.STREAM_CODEC.decode(buf) : FluidResource.EMPTY;
+                    return of(item, resource, ByteBufCodecs.VAR_INT.decode(buf));
+                });
 
-        /** Empty unless both an item and a count are there; the count kept within 1 and {@link #MAX_AMOUNT}. */
-        public static Amount of(ItemResource item, int count) {
-            return item.isEmpty() || count <= 0 ? EMPTY : new Amount(item, Math.min(count, MAX_AMOUNT));
+        /**
+         * Empty unless both something and a count are there; the count kept within 1 and {@link #MAX_AMOUNT} (or
+         * {@link #MAX_FLUID} millibuckets). An item wins over a fluid on a card that somehow has both.
+         */
+        public static Amount of(ItemResource item, FluidResource fluid, int count) {
+            if (count <= 0) {
+                return EMPTY;
+            }
+            if (!item.isEmpty()) {
+                return new Amount(item, FluidResource.EMPTY, Math.min(count, MAX_AMOUNT));
+            }
+            return fluid.isEmpty() ? EMPTY : new Amount(ItemResource.EMPTY, fluid, Math.min(count, MAX_FLUID));
         }
 
+        public static Amount of(ItemResource item, int count) {
+            return of(item, FluidResource.EMPTY, count);
+        }
+
+        public static Amount of(FluidResource fluid, int millibuckets) {
+            return of(ItemResource.EMPTY, fluid, millibuckets);
+        }
+
+        /** The stack's item and its count; a fluid marker is its fluid, and the count is the millibuckets. */
         public static Amount of(ItemStack stack) {
-            return stack.isEmpty() ? EMPTY : of(ItemResource.of(stack), stack.getCount());
+            return of(stack, stack.getCount());
+        }
+
+        /** What an example stack stands for, in some amount: an item (count) or a fluid marker's fluid (millibuckets). */
+        public static Amount of(ItemStack example, int count) {
+            if (example.isEmpty()) {
+                return EMPTY;
+            }
+            FluidResource fluid = FluidMarkerItem.fluidOf(example);
+            return fluid != null ? of(fluid, count) : of(ItemResource.of(example), count);
+        }
+
+        public static Amount of(GridKey key, int count) {
+            return key instanceof GridKey.Fluid fluid ? of(fluid.resource(), count) : of(((GridKey.Item) key).resource(), count);
         }
 
         public boolean isEmpty() {
-            return item.isEmpty();
+            return item.isEmpty() && fluid.isEmpty();
         }
 
-        /** As a stack to show; the count may be more than a stack holds. */
+        public boolean isFluid() {
+            return !fluid.isEmpty();
+        }
+
+        /** What the slot holds, or null when empty. */
+        public @Nullable GridKey key() {
+            if (isFluid()) {
+                return new GridKey.Fluid(fluid);
+            }
+            return item.isEmpty() ? null : new GridKey.Item(item);
+        }
+
+        /** The most a slot of this kind holds. */
+        public static int max(boolean fluid) {
+            return fluid ? MAX_FLUID : MAX_AMOUNT;
+        }
+
+        /** As a stack to show; the count may be more than a stack holds. A fluid shows as its marker. */
         public ItemStack stack() {
+            if (isFluid()) {
+                return FluidMarkerItem.of(fluid);
+            }
             return isEmpty() ? ItemStack.EMPTY : item.toStack(count);
+        }
+
+        /** The same thing in another amount. Empty when nothing is left. */
+        public Amount withCount(int count) {
+            return of(item, fluid, count);
+        }
+
+        /** The amount for people: "3" for items, "250 mB" or "1.5 B" for fluids. */
+        public String label() {
+            return isFluid() ? FluidAmounts.label(count) : String.valueOf(count);
         }
     }
 

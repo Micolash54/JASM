@@ -469,11 +469,23 @@ public final class WaferStore {
      * still claimed by a job the autocrafter knows about, so a slot isn't handed out twice.
      */
     public WaferRecord createJob(@Nullable Player actor, LongPredicate taken) {
+        return newJob(actor, taken, false);
+    }
+
+    /** As {@link #createJob}, for the fluids a job holds: a second slot, with a fluid record in it. */
+    public WaferRecord createFluidJob(@Nullable Player actor, LongPredicate taken) {
+        return newJob(actor, taken, true);
+    }
+
+    private WaferRecord newJob(@Nullable Player actor, LongPredicate taken, boolean fluid) {
         long serial = 1;
         while (jobs.records.containsKey(serial) || jobs.writing(serial) || taken.test(serial) || jobs.load(serial).status() != Status.MISSING) {
             serial++;
         }
         WaferRecord record = fresh(serial, Integer.MAX_VALUE, actor);
+        if (fluid) {
+            record.makeFluid();
+        }
         jobs.put(record);
         return record;
     }

@@ -2,9 +2,11 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
+import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -233,10 +236,11 @@ final class CraftRequestWindow {
         JasmGui.panel(graphics, x, y, width, height);
         graphics.fill(x + 3, y + 3, x + width - 3, y + height - 3, BACKGROUND);
         ItemStack shown = target.toStack(1);
-        graphics.item(shown, x + 6, y + 4);
+        FluidGrid.drawStack(graphics, shown, x + 6, y + 4);
         graphics.text(font, trim(shown.getHoverName().getString(), width - 44), x + 26, y + 8, JasmGui.TEXT, false);
         graphics.fill(x + 4, y + 22, x + width - 4, y + 23, JasmGui.SELECTED);
-        graphics.text(font, Component.translatable("screen.jasm.craft.amount"), x + 7, y + 30, JasmGui.SUBTEXT, false);
+        graphics.text(font, Component.translatable(FluidMarkerItem.isMarker(shown) ? "screen.jasm.craft.amount_fluid" : "screen.jasm.craft.amount"),
+                x + 7, y + 30, JasmGui.SUBTEXT, false);
         amount.extractRenderState(graphics, mouseX, mouseY, a);
         for (Placed placed : buttons) {
             placed.button().extractRenderState(graphics, mouseX, mouseY, a);
@@ -258,8 +262,8 @@ final class CraftRequestWindow {
                 continue;
             }
             ItemStack stack = line.item().toStack(1);
-            graphics.item(stack, listX + 3, ly + 1);
-            String text = GridEntries.abbreviate(line.count()) + " × " + stack.getHoverName().getString();
+            FluidGrid.drawStack(graphics, stack, listX + 3, ly + 1);
+            String text = FluidGrid.describe(stack, line.count());
             graphics.text(font, trim(text, listW - 28), listX + 23, ly + 5, line.color(), false);
             if (mouseX >= listX && mouseX < listX + listW && mouseY >= ly && mouseY < ly + ROW) {
                 hovered = stack;

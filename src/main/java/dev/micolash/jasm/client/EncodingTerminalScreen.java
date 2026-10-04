@@ -5,7 +5,9 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
+import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +30,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -646,8 +649,17 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                 }
             }
         }
+        drawFluids(graphics);
         if (menu.processing()) {
             drawAmounts(graphics);
+        }
+        if (hoveredSlot != null && processingSlot(hoveredSlot) >= 0 && hoveredSlot.isActive() && menu.getCarried().isEmpty()) {
+            FluidResource hoveredFluid = FluidMarkerItem.fluidOf(hoveredSlot.getItem());
+            if (hoveredFluid != null) {
+                graphics.setTooltipForNextFrame(font, List.of(hoveredFluid.getHoverName(),
+                        Component.literal(FluidAmounts.label(menu.amount(processingSlot(hoveredSlot)))).withStyle(ChatFormatting.GRAY)),
+                        Optional.empty(), mouseX, mouseY);
+            }
         }
         if (trustWindow.isOpen()) {
             graphics.nextStratum();
@@ -697,7 +709,22 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
     }
 
-    /** The amount written on each filled processing slot, over its item. */
+    /** Slots that hold a fluid have no item to draw: the fluid itself fills the cell. */
+    private void drawFluids(GuiGraphicsExtractor graphics) {
+        graphics.nextStratum();
+        for (Slot slot : menu.slots) {
+            int index = processingSlot(slot);
+            FluidResource fluid = index < 0 || !slot.isActive() ? null : FluidMarkerItem.fluidOf(slot.getItem());
+            if (fluid != null) {
+                FluidGrid.draw(graphics, fluid, leftPos + slot.x, topPos + slot.y);
+                if (slot == hoveredSlot) {
+                    graphics.fill(leftPos + slot.x, topPos + slot.y, leftPos + slot.x + 16, topPos + slot.y + 16, JasmGui.HOVER);
+                }
+            }
+        }
+    }
+
+    /** The amount written on each filled processing slot, over its item: "250 mB" or "1.5 B" for a fluid. */
     private void drawAmounts(GuiGraphicsExtractor graphics) {
         graphics.nextStratum();
         for (int slot = 0; slot < EncodingTerminalBlockEntity.AMOUNTS; slot++) {
@@ -706,6 +733,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                 continue;
             }
             Rect2i area = ghostSlotArea(slot);
+            if (menu.fluid(slot)) {
+                JasmGui.fitCount(graphics, font, FluidAmounts.label(amount).replace(" ", ""), area.getX(), area.getY());
+                continue;
+            }
             String text = String.valueOf(amount);
             graphics.text(font, text, area.getX() + 17 - font.width(text), area.getY() + 9, 0xFFFFFFFF, true);
         }

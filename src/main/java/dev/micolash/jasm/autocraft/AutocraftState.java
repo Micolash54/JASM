@@ -39,7 +39,13 @@ public final class AutocraftState extends SavedData {
 
     /** A running job: its hidden record of items, its server, and who asked for it with which Deck. */
     public record Job(UUID id, long serial, UUID recordId, ArchiveRecord.Placement server, UUID requester, String requesterName,
-            Optional<UUID> deck, boolean finished, Optional<UUID> rule) {
+            Optional<UUID> deck, boolean finished, Optional<UUID> rule, long fluidSerial, Optional<UUID> fluidRecordId) {
+        /** A job that holds no fluids. */
+        public Job(UUID id, long serial, UUID recordId, ArchiveRecord.Placement server, UUID requester, String requesterName,
+                Optional<UUID> deck, boolean finished, Optional<UUID> rule) {
+            this(id, serial, recordId, server, requester, requesterName, deck, finished, rule, 0, Optional.empty());
+        }
+
         static final Codec<Job> CODEC = RecordCodecBuilder.create(i -> i.group(
                 UUIDUtil.CODEC.fieldOf("id").forGetter(Job::id),
                 Codec.LONG.fieldOf("serial").forGetter(Job::serial),
@@ -49,11 +55,18 @@ public final class AutocraftState extends SavedData {
                 Codec.STRING.optionalFieldOf("requester_name", "").forGetter(Job::requesterName),
                 UUIDUtil.CODEC.optionalFieldOf("deck").forGetter(Job::deck),
                 Codec.BOOL.optionalFieldOf("finished", false).forGetter(Job::finished),
-                UUIDUtil.CODEC.optionalFieldOf("rule").forGetter(Job::rule))
+                UUIDUtil.CODEC.optionalFieldOf("rule").forGetter(Job::rule),
+                Codec.LONG.optionalFieldOf("fluid_serial", 0L).forGetter(Job::fluidSerial),
+                UUIDUtil.CODEC.optionalFieldOf("fluid_record").forGetter(Job::fluidRecordId))
                 .apply(i, Job::new));
 
         Job asFinished() {
-            return new Job(id, serial, recordId, server, requester, requesterName, deck, true, rule);
+            return new Job(id, serial, recordId, server, requester, requesterName, deck, true, rule, fluidSerial, fluidRecordId);
+        }
+
+        /** Whether this job holds the job slot {@code slot}, with its items or its fluids. */
+        boolean holds(long slot) {
+            return serial == slot || fluidRecordId.isPresent() && fluidSerial == slot;
         }
     }
 

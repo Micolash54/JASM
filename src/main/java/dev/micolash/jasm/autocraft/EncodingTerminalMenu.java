@@ -3,6 +3,7 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.ContainerWords;
+import dev.micolash.jasm.deck.DeckFluids;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -15,6 +16,7 @@ import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -402,8 +404,17 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 boolean clear = carried.isEmpty() || buttonNum == 1 || input == ContainerInput.QUICK_MOVE;
                 int slot = grid ? slotIndex - SLOT_GHOST : 9 + slotIndex - SLOT_OUTPUTS;
                 ItemStack example = clear ? ItemStack.EMPTY : carried;
+                int count = carried.getCount();
+                // Right-click with a filled bucket or tank: the fluid inside, as much as the container holds.
+                DeckFluids.Held held = terminal != null && processing() && buttonNum == 1 && input == ContainerInput.PICKUP
+                        ? DeckFluids.held(carried)
+                        : null;
+                if (held != null) {
+                    example = FluidMarkerItem.of(held.fluid());
+                    count = held.amount();
+                }
                 if (terminal != null && processing()) {
-                    terminal.setProcessingSlot(slot, example, carried.getCount());
+                    terminal.setProcessingSlot(slot, example, count);
                 } else if (grid) {
                     ghost.setItem(slot, example.isEmpty() ? ItemStack.EMPTY : example.copyWithCount(1));
                 }
@@ -432,7 +443,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public void setGhost(int slot, ItemStack stack) {
         if (terminal != null && processing() && slot >= 0 && slot < EncodingTerminalBlockEntity.AMOUNTS) {
             terminal.setProcessingSlot(slot, stack, stack.getCount());
-        } else if (slot >= 0 && slot < 9) {
+        } else if (slot >= 0 && slot < 9 && !FluidMarkerItem.isMarker(stack)) {
             ghost.setItem(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
         }
     }
@@ -485,14 +496,20 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
         if (id >= BUTTON_AMOUNT && id < BUTTON_AMOUNT + EncodingTerminalBlockEntity.AMOUNTS * 4) {
             int slot = (id - BUTTON_AMOUNT) / 4;
+            // Items go up by 1 or 10; fluids by an eighth of a bucket or a whole one.
+            boolean fluid = terminal.isFluid(slot);
+            int small = fluid ? FluidAmounts.PER_SHARE : 1;
+            int big = fluid ? FluidAmounts.PER_BUCKET : 10;
             int change = switch ((id - BUTTON_AMOUNT) % 4) {
-                case 0 -> 1;
-                case 1 -> -1;
-                case 2 -> 10;
-                default -> -10;
+                case 0 -> small;
+                case 1 -> -small;
+                case 2 -> big;
+                default -> -big;
             };
             if (processing() && terminal.amount(slot) > 0) {
-                terminal.setAmount(slot, terminal.amount(slot) + change);
+                int now = terminal.amount(slot);
+                // Going down stops at one step (or where it already is, if lower), never at nothing.
+                terminal.setAmount(slot, change < 0 ? Math.max(now + change, Math.min(now, small)) : now + change);
             }
             return true;
         }
@@ -524,6 +541,14 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     /** Whether the terminal writes processing cards (some machine is chosen). */
     public boolean processing() {
         return data.get(DATA_PROCESSING) != 0;
+    }
+
+    /** Whether processing slot {@code slot} (0-8 the grid, 9-11 the outputs) holds a fluid. */
+    public boolean fluid(int slot) {
+        if (slot < 0 || slot >= EncodingTerminalBlockEntity.AMOUNTS) {
+            return false;
+        }
+        return FluidMarkerItem.isMarker(slot < 9 ? ghost.getItem(slot) : outputs.getItem(slot - 9));
     }
 
     /** How many of processing slot {@code slot} (0-8 the grid, 9-11 the outputs); 0 where empty. */

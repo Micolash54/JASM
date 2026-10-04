@@ -405,7 +405,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 && there.getValue(HopperBlock.FACING) == side.getOpposite()) {
             return false;
         }
-        return Machines.inlet(level, pos, side.getOpposite()) != null;
+        return Machines.inlet(level, pos, side.getOpposite()) != null || Machines.fluidInlet(level, pos, side.getOpposite()) != null;
     }
 
     /**

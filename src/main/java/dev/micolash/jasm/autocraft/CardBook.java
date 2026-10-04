@@ -1,6 +1,8 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.CraftPlanner;
+import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -23,17 +25,17 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 /**
  * The cards a network knows, as the planner sees them. Each slot of a crafting card accepts its encoded item and any
  * other item that is stored or can be crafted, as long as the recipe still matches with it there. A processing card
- * takes exactly the items written on it, and only counts while one of its machines can be reached.
+ * takes exactly the items and fluids written on it, and only counts while one of its machines can be reached.
  */
-public final class CardBook implements CraftPlanner.Book<ItemResource> {
+public final class CardBook implements CraftPlanner.Book<GridKey> {
     /** A pattern made from a card. */
-    public interface Entry extends CraftPlanner.Pattern<ItemResource> {
+    public interface Entry extends CraftPlanner.Pattern<GridKey> {
         Card card();
     }
 
-    private final Map<ItemResource, List<CraftPlanner.Pattern<ItemResource>>> byOutput = new LinkedHashMap<>();
+    private final Map<GridKey, List<CraftPlanner.Pattern<GridKey>>> byOutput = new LinkedHashMap<>();
     /** What processing cards whose machines can't be reached would make. */
-    private final Set<ItemResource> unreachable = new HashSet<>();
+    private final Set<GridKey> unreachable = new HashSet<>();
 
     /**
      * {@code cards} as found on the network; {@code stored} are the items worth trying in a crafting slot;
@@ -56,13 +58,17 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
                 if (reachable.test(p)) {
                     processing.add(p);
                 } else {
-                    unreachable.add(p.main().item());
+                    unreachable.add(p.main().key());
                 }
             }
         }
         Set<ItemResource> candidates = new LinkedHashSet<>(stored);
         resolved.forEach(r -> candidates.add(r.outputKey()));
-        processing.forEach(p -> candidates.add(p.main().item()));
+        processing.forEach(p -> {
+            if (!p.main().isFluid()) {
+                candidates.add(p.main().item());
+            }
+        });
         for (CardRecipes.Resolved r : resolved) {
             add(new CardPattern(level, r, candidates));
         }
@@ -82,25 +88,31 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
     }
 
     @Override
-    public List<CraftPlanner.Pattern<ItemResource>> patternsFor(ItemResource key) {
+    public List<CraftPlanner.Pattern<GridKey>> patternsFor(GridKey key) {
         return byOutput.getOrDefault(key, List.of());
     }
 
-    /** Every item some card makes. */
-    public Set<ItemResource> outputs() {
+    /** A bucket of fluid takes the room of one item; less than a bucket takes one all the same. */
+    @Override
+    public long space(GridKey key, long amount) {
+        return key instanceof GridKey.Fluid ? (amount + FluidAmounts.PER_BUCKET - 1) / FluidAmounts.PER_BUCKET : amount;
+    }
+
+    /** Every item and fluid some card makes. */
+    public Set<GridKey> outputs() {
         return byOutput.keySet();
     }
 
     /** Whether {@code key} is made only by processing cards none of whose machines can be reached. */
-    public boolean unreachable(ItemResource key) {
+    public boolean unreachable(GridKey key) {
         return unreachable.contains(key);
     }
 
     /** One crafting card as a planner pattern. */
     public static final class CardPattern implements Entry {
         private final CardRecipes.Resolved card;
-        private final List<List<ItemResource>> slots = new ArrayList<>();
-        private final Map<ItemResource, Long> remainders = new LinkedHashMap<>();
+        private final List<List<GridKey>> slots = new ArrayList<>();
+        private final Map<GridKey, Long> remainders = new LinkedHashMap<>();
 
         CardPattern(ServerLevel level, CardRecipes.Resolved card, Collection<ItemResource> candidates) {
             this.card = card;
@@ -125,7 +137,7 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
                         options.add(candidate);
                     }
                 }
-                slots.add(List.copyOf(options));
+                slots.add(options.stream().<GridKey>map(GridKey.Item::new).toList());
             }
             NonNullList<ItemStack> inputs = NonNullList.withSize(9, ItemStack.EMPTY);
             for (int i = 0; i < 9; i++) {
@@ -133,7 +145,7 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
             }
             for (ItemStack left : card.recipe().getRemainingItems(CraftingInput.of(3, 3, inputs))) {
                 if (!left.isEmpty()) {
-                    remainders.merge(ItemResource.of(left), (long) left.getCount(), Long::sum);
+                    remainders.merge(new GridKey.Item(ItemResource.of(left)), (long) left.getCount(), Long::sum);
                 }
             }
         }
@@ -148,8 +160,8 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
         }
 
         @Override
-        public ItemResource output() {
-            return card.outputKey();
+        public GridKey output() {
+            return new GridKey.Item(card.outputKey());
         }
 
         @Override
@@ -158,12 +170,12 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
         }
 
         @Override
-        public List<List<ItemResource>> slots() {
+        public List<List<GridKey>> slots() {
             return slots;
         }
 
         @Override
-        public Map<ItemResource, Long> remainders() {
+        public Map<GridKey, Long> remainders() {
             return remainders;
         }
     }
@@ -171,18 +183,18 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
     /** One processing card as a planner pattern: its first output is what it makes, the others come along. */
     public static final class ProcessingPattern implements Entry {
         private final ProcessingCard card;
-        private final List<List<ItemResource>> slots = new ArrayList<>();
+        private final List<List<GridKey>> slots = new ArrayList<>();
         private final List<Long> amounts = new ArrayList<>();
-        private final Map<ItemResource, Long> extras = new LinkedHashMap<>();
+        private final Map<GridKey, Long> extras = new LinkedHashMap<>();
 
         ProcessingPattern(ProcessingCard card) {
             this.card = card;
             for (ProcessingCard.Amount input : card.usedInputs()) {
-                slots.add(List.of(input.item()));
+                slots.add(List.of(input.key()));
                 amounts.add((long) input.count());
             }
             for (ProcessingCard.Amount extra : card.extras()) {
-                extras.merge(extra.item(), (long) extra.count(), Long::sum);
+                extras.merge(extra.key(), (long) extra.count(), Long::sum);
             }
         }
 
@@ -192,8 +204,8 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
         }
 
         @Override
-        public ItemResource output() {
-            return card.main().item();
+        public GridKey output() {
+            return card.main().key();
         }
 
         @Override
@@ -202,7 +214,7 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
         }
 
         @Override
-        public List<List<ItemResource>> slots() {
+        public List<List<GridKey>> slots() {
             return slots;
         }
 
@@ -212,7 +224,7 @@ public final class CardBook implements CraftPlanner.Book<ItemResource> {
         }
 
         @Override
-        public Map<ItemResource, Long> remainders() {
+        public Map<GridKey, Long> remainders() {
             return extras;
         }
     }

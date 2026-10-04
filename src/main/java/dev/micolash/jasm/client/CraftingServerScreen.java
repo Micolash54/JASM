@@ -2,8 +2,10 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
+import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.core.GridEntries;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -132,7 +134,11 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         }
         ItemStack target = menu.getSlot(CraftingServerMenu.SLOT_SHOWN).getItem();
         if (!target.isEmpty()) {
-            String what = GridEntries.abbreviate(menu.amount()) + " × " + target.getHoverName().getString();
+            FluidResource fluid = FluidMarkerItem.fluidOf(target);
+            if (fluid != null) {
+                FluidGrid.draw(graphics, fluid, CraftingServerMenu.JOB_X, CraftingServerMenu.JOB_Y);
+            }
+            String what = FluidGrid.describe(target, menu.amount());
             graphics.text(font, trim(what, room - 20), tx + 20, CraftingServerMenu.JOB_Y + 4, JasmGui.TEXT, false);
         }
         Component state = switch (phase) {

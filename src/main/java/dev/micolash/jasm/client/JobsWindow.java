@@ -98,8 +98,8 @@ final class JobsWindow {
                 graphics.fill(x + 6, ry, x + width - 6, ry + ROW - 2, JasmGui.HOVER);
             }
             ItemStack shown = job.target().toStack(1);
-            graphics.item(shown, x + 8, ry + 2);
-            String what = GridEntries.abbreviate(job.amount()) + " × " + shown.getHoverName().getString();
+            FluidGrid.drawStack(graphics, shown, x + 8, ry + 2);
+            String what = FluidGrid.describe(shown, job.amount());
             graphics.text(font, trim(what, width - 36 - BAR_WIDTH - 6), x + 28, ry + 2, JasmGui.TEXT, false);
             Component state = state(job);
             graphics.text(font, trim(state.getString(), width - 36), x + 28, ry + 11,

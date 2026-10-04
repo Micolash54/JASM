@@ -392,6 +392,11 @@ public final class WaferRecord {
         this.capacity = capacity;
     }
 
+    /** A job's hidden record for fluids: a fluid record with no limits of its own. */
+    void makeFluid() {
+        this.kind = WaferKind.FLUID;
+    }
+
     void setLimits(WaferTier tier) {
         this.kind = tier.kind();
         this.capacity = tier.capacity();
