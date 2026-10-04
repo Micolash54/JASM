@@ -8,6 +8,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /** Messages between the Deck screen and the server. */
@@ -156,6 +157,7 @@ public final class DeckPayloads {
                 ByteBufCodecs.VAR_LONG, DeckStorage.SlotStatus::typesUsed,
                 ByteBufCodecs.VAR_INT, DeckStorage.SlotStatus::types,
                 WaferSettings.STREAM_CODEC, DeckStorage.SlotStatus::settings,
+                ByteBufCodecs.BOOL, DeckStorage.SlotStatus::fluid,
                 DeckStorage.SlotStatus::new);
         public static final StreamCodec<RegistryFriendlyByteBuf, Status> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Status::containerId,
@@ -165,6 +167,97 @@ public final class DeckPayloads {
 
         @Override
         public Type<Status> type() {
+            return TYPE;
+        }
+    }
+
+    /** One kind of fluid and how many millibuckets the open Deck holds. */
+    public record FluidEntry(FluidResource key, long amount) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, FluidEntry> STREAM_CODEC = StreamCodec.composite(
+                FluidResource.STREAM_CODEC, FluidEntry::key,
+                ByteBufCodecs.VAR_LONG, FluidEntry::amount,
+                FluidEntry::new);
+        static final StreamCodec<RegistryFriendlyByteBuf, List<FluidEntry>> LIST = STREAM_CODEC.apply(ByteBufCodecs.list());
+    }
+
+    /** Server → client: part of the full fluid contents. Page 0 starts over. */
+    public record FluidSnapshot(int containerId, int page, int pages, List<FluidEntry> entries) implements CustomPacketPayload {
+        public static final Type<FluidSnapshot> TYPE = new Type<>(Jasm.id("deck_fluid_snapshot"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FluidSnapshot> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, FluidSnapshot::containerId,
+                ByteBufCodecs.VAR_INT, FluidSnapshot::page,
+                ByteBufCodecs.VAR_INT, FluidSnapshot::pages,
+                FluidEntry.LIST, FluidSnapshot::entries,
+                FluidSnapshot::new);
+
+        @Override
+        public Type<FluidSnapshot> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server → client: fluid amounts that changed; 0 means gone. */
+    public record FluidDelta(int containerId, List<FluidEntry> entries) implements CustomPacketPayload {
+        public static final Type<FluidDelta> TYPE = new Type<>(Jasm.id("deck_fluid_delta"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FluidDelta> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, FluidDelta::containerId,
+                FluidEntry.LIST, FluidDelta::entries,
+                FluidDelta::new);
+
+        @Override
+        public Type<FluidDelta> type() {
+            return TYPE;
+        }
+    }
+
+    /** What a click does with the container on the cursor and a fluid in the grid. */
+    public enum FluidMode {
+        /** Fill the container with a bucket's worth. */
+        FILL,
+        /** Fill the container completely. */
+        FILL_ALL,
+        /** Fill with a bucket's worth; the filled container goes to the inventory. */
+        FILL_TO_INVENTORY,
+        /** Fill completely; the filled container goes to the inventory. */
+        FILL_ALL_TO_INVENTORY,
+        /** Pour a bucket's worth of the container into the Deck (no fluid needed in the message). */
+        EMPTY,
+        /** Pour everything the container holds into the Deck. */
+        EMPTY_ALL;
+
+        static final StreamCodec<ByteBuf, FluidMode> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[Math.floorMod(i, values().length)],
+                FluidMode::ordinal);
+
+        public boolean fills() {
+            return this == FILL || this == FILL_ALL || this == FILL_TO_INVENTORY || this == FILL_ALL_TO_INVENTORY;
+        }
+    }
+
+    /** Client → server: fill or empty the cursor container. The fluid is only used when filling. */
+    /** Shift-right-click on a container in the player's inventory: pour it into the Deck. {@code slot} is the menu slot. */
+    public record PourSlot(int containerId, int slot) implements CustomPacketPayload {
+        public static final Type<PourSlot> TYPE = new Type<>(Jasm.id("deck_pour_slot"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PourSlot> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PourSlot::containerId,
+                ByteBufCodecs.VAR_INT, PourSlot::slot,
+                PourSlot::new);
+
+        @Override
+        public Type<PourSlot> type() {
+            return TYPE;
+        }
+    }
+
+    public record FluidAction(int containerId, FluidResource key, FluidMode mode) implements CustomPacketPayload {
+        public static final Type<FluidAction> TYPE = new Type<>(Jasm.id("deck_fluid_action"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, FluidAction> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, FluidAction::containerId,
+                FluidResource.STREAM_CODEC, FluidAction::key,
+                FluidMode.STREAM_CODEC, FluidAction::mode,
+                FluidAction::new);
+
+        @Override
+        public Type<FluidAction> type() {
             return TYPE;
         }
     }

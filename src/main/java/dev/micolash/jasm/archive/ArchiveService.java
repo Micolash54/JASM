@@ -64,7 +64,7 @@ public final class ArchiveService {
     }
 
     /** One linked wafer as the Archive screen lists it. {@code readable} is false while its record can't be read. */
-    public record Entry(long serial, String name, long used, int capacity, boolean readable) {}
+    public record Entry(long serial, String name, long used, int capacity, boolean readable, boolean fluid) {}
 
     /** Overall coverage of the held Deck, including backups made before this action. */
     public record Backup(Result result, int backedUp, int total) {}
@@ -132,7 +132,7 @@ public final class ArchiveService {
             Optional<WaferRecord> record = store.bySerial(serial);
             if (record.isEmpty()) {
                 if (store.isUnreadable(serial)) {
-                    entries.add(new Entry(serial, "", 0, 0, false));
+                    entries.add(new Entry(serial, "", 0, 0, false, false));
                 } else {
                     store.state().removeLinked(archive, serial);
                 }
@@ -140,7 +140,7 @@ public final class ArchiveService {
                 store.state().removeLinked(archive, serial);
             } else {
                 WaferRecord r = record.get();
-                entries.add(new Entry(serial, r.lastKnownName(), r.used(), r.capacity(), true));
+                entries.add(new Entry(serial, r.lastKnownName(), r.used(), r.capacity(), true, r.isFluid()));
             }
         }
         return entries;
@@ -240,7 +240,7 @@ public final class ArchiveService {
             return Result.NOT_BLANK;
         }
         WaferItem blankItem = (WaferItem) blank.getItem();
-        if (blankItem.tier().isTyped() != record.isTyped()) {
+        if (blankItem.tier().kind() != record.kind() || blankItem.tier().isTyped() != record.isTyped()) {
             return Result.WRONG_KIND;
         }
         if (!fits(record, blankItem.tier())) {
@@ -271,16 +271,18 @@ public final class ArchiveService {
 
     /** Whether a wafer's contents fit a wafer of {@code tier}: the total, and on Type Wafers the types and the biggest type. */
     private static boolean fits(WaferRecord record, WaferTier tier) {
-        if (tier.capacity() < record.used()) {
+        if (tier.capacityAmount() < record.used()) {
             return false;
         }
         if (!tier.isTyped()) {
             return true;
         }
-        long biggest = record.contents().entrySet().stream()
-                .filter(e -> !TypeRules.isSingle(e.getKey()))
-                .mapToLong(Map.Entry::getValue).max().orElse(0);
-        return record.typesUsed() <= tier.types() && biggest <= tier.perType();
+        long biggest = record.isFluid()
+                ? record.fluids().values().stream().mapToLong(Long::longValue).max().orElse(0)
+                : record.contents().entrySet().stream()
+                        .filter(e -> !TypeRules.isSingle(e.getKey()))
+                        .mapToLong(Map.Entry::getValue).max().orElse(0);
+        return record.typesUsed() <= tier.types() && biggest <= tier.perTypeAmount();
     }
 
     /** Unformatted, or formatted with nothing stored and no link (and not the wafer being recovered). */

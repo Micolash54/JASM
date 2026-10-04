@@ -7,7 +7,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.core.Stamp;
 import dev.micolash.jasm.core.StampPolicy;
 import dev.micolash.jasm.core.WaferContents;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import dev.micolash.jasm.wafer.TypeRules;
+import dev.micolash.jasm.wafer.WaferKind;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.UUIDUtil;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -37,6 +40,14 @@ public final class WaferRecord {
                 .apply(i, Entry::new));
     }
 
+    /** One stored fluid variant and its amount in millibuckets. */
+    public record FluidEntry(FluidResource fluid, long amount) {
+        public static final Codec<FluidEntry> CODEC = RecordCodecBuilder.create(i -> i.group(
+                FluidResource.CODEC.fieldOf("fluid").forGetter(FluidEntry::fluid),
+                Codec.LONG.fieldOf("amount").forGetter(FluidEntry::amount))
+                .apply(i, FluidEntry::new));
+    }
+
     /** An entry that cannot be saved keeps its item name and count, so it still takes up space and shows up for admins. */
     private static final LenientListCodec<Entry> CONTENTS_CODEC = new LenientListCodec<>(Entry.CODEC, "wafer entry",
             new LenientListCodec.Placeholder<>() {
@@ -45,6 +56,18 @@ public final class WaferRecord {
                     return ops.createMap(Map.of(
                             ops.createString("unsaveable_item"), ops.createString(String.valueOf(entry.item())),
                             ops.createString("count"), ops.createLong(entry.count()),
+                            ops.createString("error"), ops.createString(error)));
+                }
+            });
+
+    /** Same for a fluid: it keeps its name and amount, so it still takes up space and shows up for admins. */
+    private static final LenientListCodec<FluidEntry> FLUIDS_CODEC = new LenientListCodec<>(FluidEntry.CODEC, "wafer fluid",
+            new LenientListCodec.Placeholder<>() {
+                @Override
+                public <T> T encode(FluidEntry entry, String error, DynamicOps<T> ops) {
+                    return ops.createMap(Map.of(
+                            ops.createString("unsaveable_fluid"), ops.createString(String.valueOf(entry.fluid())),
+                            ops.createString("amount"), ops.createLong(entry.amount()),
                             ops.createString("error"), ops.createString(error)));
                 }
             });
@@ -65,7 +88,8 @@ public final class WaferRecord {
      * be encoded on another thread while the record keeps changing.
      */
     public record Snapshot(UUID id, long serial, int capacity, int types, int perType, Stamp stamp, Optional<Stamp> recoveryFloor,
-            Optional<UUID> archive, String lastKnownName, History history, WaferSettings settings, LenientListCodec.Lenient<Entry> contents) {
+            Optional<UUID> archive, String lastKnownName, History history, WaferSettings settings, LenientListCodec.Lenient<Entry> contents,
+            WaferKind kind, LenientListCodec.Lenient<FluidEntry> fluids) {
         public static final Codec<Snapshot> CODEC = RecordCodecBuilder.create(i -> i.group(
                 UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
                 Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
@@ -78,7 +102,9 @@ public final class WaferRecord {
                 Codec.STRING.optionalFieldOf("last_known_name", "").forGetter(Snapshot::lastKnownName),
                 History.CODEC.optionalFieldOf("history", History.NONE).forGetter(Snapshot::history),
                 WaferSettings.CODEC.optionalFieldOf("settings", WaferSettings.DEFAULT).forGetter(Snapshot::settings),
-                CONTENTS_CODEC.fieldOf("contents").forGetter(Snapshot::contents))
+                CONTENTS_CODEC.fieldOf("contents").forGetter(Snapshot::contents),
+                WaferKind.CODEC.optionalFieldOf("kind", WaferKind.ITEM).forGetter(Snapshot::kind),
+                FLUIDS_CODEC.optionalFieldOf("fluids", LenientListCodec.Lenient.of(List.of())).forGetter(Snapshot::fluids))
                 .apply(i, Snapshot::new));
     }
 
@@ -98,9 +124,14 @@ public final class WaferRecord {
     private String lastKnownName = "";
     private History history = History.NONE;
     private WaferSettings settings = WaferSettings.DEFAULT;
+    private WaferKind kind = WaferKind.ITEM;
     private final WaferContents<ItemResource> contents = new WaferContents<>();
     private final List<Dynamic<?>> quarantined = new ArrayList<>();
     private long quarantinedCount;
+    /** A fluid wafer keeps its fluids here, in millibuckets; an item wafer leaves these empty. */
+    private final WaferContents<FluidResource> fluids = new WaferContents<>();
+    private final List<Dynamic<?>> quarantinedFluid = new ArrayList<>();
+    private long quarantinedFluidCount;
     /** Players who changed this record since it was last written. */
     private final Set<UUID> changedBy = new HashSet<>();
     private boolean dirty;
@@ -125,6 +156,7 @@ public final class WaferRecord {
         record.lastKnownName = saved.lastKnownName();
         record.history = saved.history();
         record.settings = saved.settings();
+        record.kind = saved.kind();
         LenientListCodec.Lenient<Entry> stored = saved.contents();
         for (Entry entry : stored.values()) {
             if (!entry.item().isEmpty() && entry.count() > 0) {
@@ -135,6 +167,16 @@ public final class WaferRecord {
             record.quarantined.add(raw);
             record.quarantinedCount += Math.max(0, raw.get("count").asLong(0));
         }
+        LenientListCodec.Lenient<FluidEntry> storedFluids = saved.fluids();
+        for (FluidEntry entry : storedFluids.values()) {
+            if (!entry.fluid().isEmpty() && entry.amount() > 0) {
+                record.fluids.putLoaded(entry.fluid(), entry.amount());
+            }
+        }
+        for (Dynamic<?> raw : storedFluids.raw()) {
+            record.quarantinedFluid.add(raw);
+            record.quarantinedFluidCount += Math.max(0, raw.get("amount").asLong(0));
+        }
         return record;
     }
 
@@ -144,8 +186,13 @@ public final class WaferRecord {
         for (Map.Entry<ItemResource, Long> e : contents.view().entrySet()) {
             entries.add(new Entry(e.getKey(), e.getValue()));
         }
+        List<FluidEntry> fluidEntries = new ArrayList<>(fluids.view().size());
+        for (Map.Entry<FluidResource, Long> e : fluids.view().entrySet()) {
+            fluidEntries.add(new FluidEntry(e.getKey(), e.getValue()));
+        }
         return new Snapshot(id, serial, capacity, types, perType, confirmed, Optional.ofNullable(recoveryFloor), Optional.ofNullable(archiveId),
-                lastKnownName, history, settings, new LenientListCodec.Lenient<>(List.copyOf(entries), List.copyOf(quarantined)));
+                lastKnownName, history, settings, new LenientListCodec.Lenient<>(List.copyOf(entries), List.copyOf(quarantined)),
+                kind, new LenientListCodec.Lenient<>(List.copyOf(fluidEntries), List.copyOf(quarantinedFluid)));
     }
 
     public UUID id() {
@@ -173,15 +220,44 @@ public final class WaferRecord {
         return types > 0;
     }
 
-    /** Types in use; always 0 on Capacity Wafers, which don't count them. */
-    public long typesUsed() {
-        return isTyped() ? TypeRules.typesUsed(contents.view(), quarantined.size()) : 0;
+    public WaferKind kind() {
+        return kind;
     }
 
-    /** How many of {@code item} still fit: free space, and on Type Wafers the type limits too. */
+    public boolean isFluid() {
+        return kind == WaferKind.FLUID;
+    }
+
+    /** Types in use; always 0 on Capacity Wafers, which don't count them. */
+    public long typesUsed() {
+        if (!isTyped()) {
+            return 0;
+        }
+        return isFluid() ? TypeRules.fluidTypesUsed(fluids.view().size(), quarantinedFluid.size())
+                : TypeRules.typesUsed(contents.view(), quarantined.size());
+    }
+
+    /** How many of {@code item} still fit: free space, and on Type Wafers the type limits too. A fluid wafer takes none. */
     public long roomFor(ItemResource item) {
+        if (isFluid()) {
+            return 0;
+        }
         long free = Math.max(0, contentCapacity() - contents.total());
         return isTyped() ? Math.min(free, TypeRules.room(item, contents.count(item), typesUsed(), types, perType)) : free;
+    }
+
+    /** How many millibuckets of {@code fluid} still fit. An item wafer takes none. */
+    public long roomForFluid(FluidResource fluid) {
+        if (!isFluid()) {
+            return 0;
+        }
+        long free = Math.max(0, contentCapacityFluid() - fluids.total());
+        return isTyped() ? Math.min(free, TypeRules.fluidRoom(fluids.count(fluid), typesUsed(), types, FluidAmounts.roomMb(perType))) : free;
+    }
+
+    /** Total room in the wafer's own unit: items, or millibuckets on a fluid wafer. */
+    public long capacityAmount() {
+        return isFluid() ? FluidAmounts.roomMb(capacity) : capacity;
     }
 
     /** The newest stamp handed out. */
@@ -219,6 +295,15 @@ public final class WaferRecord {
         return settings;
     }
 
+    /** Read-only view of the fluids a fluid wafer holds. */
+    public Map<FluidResource, Long> fluids() {
+        return fluids.view();
+    }
+
+    public long countFluid(FluidResource key) {
+        return fluids.count(key);
+    }
+
     /** Read-only view of decodable contents. */
     public Map<ItemResource, Long> contents() {
         return contents.view();
@@ -228,17 +313,18 @@ public final class WaferRecord {
         return contents.count(key);
     }
 
+    /** Amount from removed mods that is kept but can't be read, in the wafer's own unit. */
     public long quarantinedCount() {
-        return quarantinedCount;
+        return isFluid() ? quarantinedFluidCount : quarantinedCount;
     }
 
-    /** Items counted against capacity, including quarantined ones. */
+    /** What counts against capacity, including unreadable entries: items, or millibuckets on a fluid wafer. */
     public long used() {
-        return contents.total() + quarantinedCount;
+        return isFluid() ? fluids.total() + quarantinedFluidCount : contents.total() + quarantinedCount;
     }
 
     public long free() {
-        return Math.max(0, capacity - used());
+        return Math.max(0, capacityAmount() - used());
     }
 
     public boolean isEmpty() {
@@ -266,6 +352,15 @@ public final class WaferRecord {
     /** Capacity available to decodable contents (quarantined entries keep their share). */
     long contentCapacity() {
         return Math.max(0, capacity - quarantinedCount);
+    }
+
+    WaferContents<FluidResource> mutableFluids() {
+        return fluids;
+    }
+
+    /** Room for readable fluids, in millibuckets (unreadable entries keep their share). */
+    long contentCapacityFluid() {
+        return Math.max(0, capacityAmount() - quarantinedFluidCount);
     }
 
     void setCurrent(Stamp stamp) {
@@ -298,6 +393,7 @@ public final class WaferRecord {
     }
 
     void setLimits(WaferTier tier) {
+        this.kind = tier.kind();
         this.capacity = tier.capacity();
         this.types = tier.types();
         this.perType = tier.perType();
@@ -333,6 +429,10 @@ public final class WaferRecord {
         target.quarantinedCount += quarantinedCount;
         quarantined.clear();
         quarantinedCount = 0;
+        target.quarantinedFluid.addAll(quarantinedFluid);
+        target.quarantinedFluidCount += quarantinedFluidCount;
+        quarantinedFluid.clear();
+        quarantinedFluidCount = 0;
     }
 
     void written() {

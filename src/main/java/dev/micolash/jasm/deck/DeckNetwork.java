@@ -5,6 +5,9 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.storage.WaferStore;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.inventory.Slot;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -35,6 +38,12 @@ public final class DeckNetwork {
                         (payload, context) -> clearGrid((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.FillGrid.TYPE, DeckPayloads.FillGrid.STREAM_CODEC,
                         (payload, context) -> fillGrid((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.FluidAction.TYPE, DeckPayloads.FluidAction.STREAM_CODEC,
+                        (payload, context) -> fluidAction((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.PourSlot.TYPE, DeckPayloads.PourSlot.STREAM_CODEC,
+                        (payload, context) -> pourSlot((ServerPlayer) context.player(), payload))
+                .playToClient(DeckPayloads.FluidSnapshot.TYPE, DeckPayloads.FluidSnapshot.STREAM_CODEC, DeckNetwork::onFluidSnapshot)
+                .playToClient(DeckPayloads.FluidDelta.TYPE, DeckPayloads.FluidDelta.STREAM_CODEC, DeckNetwork::onFluidDelta)
                 .playToClient(DeckPayloads.Snapshot.TYPE, DeckPayloads.Snapshot.STREAM_CODEC, DeckNetwork::onSnapshot)
                 .playToClient(DeckPayloads.Delta.TYPE, DeckPayloads.Delta.STREAM_CODEC, DeckNetwork::onDelta)
                 .playToClient(DeckPayloads.Status.TYPE, DeckPayloads.Status.STREAM_CODEC, DeckNetwork::onStatus);
@@ -96,6 +105,47 @@ public final class DeckNetwork {
             moved = DeckStorage.deposit(store, menu.deck(), carried, player);
         }
         menu.setCarried(carried);
+        finish(player, menu);
+        return moved;
+    }
+
+    /** Pours a container sitting in the player's own inventory into the Deck. Returns the millibuckets moved. */
+    public static long pourSlot(ServerPlayer player, DeckPayloads.PourSlot payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || payload.slot() < 0 || payload.slot() >= menu.slots.size() || !allow(player)) {
+            return 0;
+        }
+        Slot slot = menu.slots.get(payload.slot());
+        if (slot.container != player.getInventory()) {
+            return 0;
+        }
+        var container = ItemAccess.forPlayerSlot(player, slot.getContainerSlot()).getCapability(Capabilities.Fluid.ITEM);
+        if (container == null) {
+            return 0;
+        }
+        WaferStore store = WaferStore.get(player.level().getServer());
+        long moved = DeckFluids.pour(player, menu, DeckStorage.checked(store, menu.deck(), player), container, true);
+        finish(player, menu);
+        return moved;
+    }
+
+    /** Fills or empties the container on the cursor. Returns the millibuckets moved. */
+    public static long fluidAction(ServerPlayer player, DeckPayloads.FluidAction payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !allow(player)) {
+            return 0;
+        }
+        WaferStore store = WaferStore.get(player.level().getServer());
+        var storage = DeckStorage.checked(store, menu.deck(), player);
+        DeckPayloads.FluidMode mode = payload.mode();
+        long moved = switch (mode) {
+            case FILL -> DeckFluids.fill(player, menu, storage, payload.key(), false, false);
+            case FILL_ALL -> DeckFluids.fill(player, menu, storage, payload.key(), true, false);
+            case FILL_TO_INVENTORY -> DeckFluids.fill(player, menu, storage, payload.key(), false, true);
+            case FILL_ALL_TO_INVENTORY -> DeckFluids.fill(player, menu, storage, payload.key(), true, true);
+            case EMPTY -> DeckFluids.empty(player, menu, storage, false);
+            case EMPTY_ALL -> DeckFluids.empty(player, menu, storage, true);
+        };
         finish(player, menu);
         return moved;
     }
@@ -194,6 +244,20 @@ public final class DeckNetwork {
         DeckView view = view(context, payload.containerId());
         if (view != null) {
             view.applySnapshotPage(payload.page(), payload.entries());
+        }
+    }
+
+    private static void onFluidSnapshot(DeckPayloads.FluidSnapshot payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.applyFluidSnapshotPage(payload.page(), payload.entries());
+        }
+    }
+
+    private static void onFluidDelta(DeckPayloads.FluidDelta payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.applyFluids(payload.entries());
         }
     }
 

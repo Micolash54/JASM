@@ -87,12 +87,17 @@ public record WaferMerge(List<WaferIdentity> sources) {
                 Jasm.LOGGER.info("Wafer #{} went into a craft but has moved on since ({}); its items stay with it", source.serial(), verdict);
                 continue;
             }
+            if (record.kind() != wafer.tier().kind()) {
+                Jasm.LOGGER.warn("Wafer #{} is a {} wafer and can't go into a {} wafer; its items stay with it", source.serial(),
+                        record.kind(), wafer.tier().kind());
+                continue;
+            }
             absorbed.add(record);
             total += record.used();
         }
-        int capacity = wafer.tier().capacity();
+        long capacity = wafer.tier().capacityAmount();
         if (total > capacity) {
-            Jasm.LOGGER.error("Crafted wafer can't hold its sources ({} items, room for {}); it keeps waiting", total, capacity);
+            Jasm.LOGGER.error("Crafted wafer can't hold its sources ({} in all, room for {}); it keeps waiting", total, capacity);
             return false;
         }
         WaferRecord target = WaferValidator.formatPending(store, stack, holder);

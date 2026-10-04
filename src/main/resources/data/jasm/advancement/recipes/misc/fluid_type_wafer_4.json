@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:fluid_type_wafer_4"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_fluid_type_wafer_2": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:fluid_type_wafer_2"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_fluid_type_wafer_2"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:fluid_type_wafer_4"
+    ]
+  }
+}

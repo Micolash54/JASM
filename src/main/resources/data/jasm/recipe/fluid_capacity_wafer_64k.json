@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:blaze_rod",
+    "R": "minecraft:redstone",
+    "W": "jasm:fluid_capacity_wafer_16k",
+    "A": "jasm:advanced_memory_chip"
+  },
+  "pattern": [
+    "XAX",
+    "RWR",
+    "WAW"
+  ],
+  "source": "jasm:fluid_capacity_wafer_16k",
+  "result": {
+    "id": "jasm:fluid_capacity_wafer_64k"
+  },
+  "merge_wafers": true
+}

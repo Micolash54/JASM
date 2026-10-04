@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:diamond",
+    "R": "minecraft:redstone",
+    "W": "jasm:fluid_capacity_wafer_1k",
+    "M": "jasm:memory_chip"
+  },
+  "pattern": [
+    "XMX",
+    "RWR",
+    "WMW"
+  ],
+  "source": "jasm:fluid_capacity_wafer_1k",
+  "result": {
+    "id": "jasm:fluid_capacity_wafer_4k"
+  },
+  "merge_wafers": true
+}

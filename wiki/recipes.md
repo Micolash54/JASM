@@ -26,6 +26,30 @@ Hold a few types, each in bulk. The two wafers are used up; the new wafer holds 
 | ![32 Type Wafer](images/recipes/type_wafer_32.png) | **32 Type Wafer** | 4 × Emerald, 1 × Link Chip, 2 × Redstone, 2 × 16 Type Wafer |
 | ![64 Type Wafer](images/recipes/type_wafer_64.png) | **64 Type Wafer** | 4 × Blaze Rod, 1 × Advanced Memory Chip, 2 × Redstone, 2 × 32 Type Wafer |
 
+## Fluid Capacity Wafers
+
+Store fluids instead of items: one bucket takes the room of one item. The three wafers are used up. The new wafer holds all of their fluid and starts unlinked.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Basic Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_basic.png) | **Basic Fluid Capacity Wafer** | 4 × Copper Ingot, 3 × Redstone, 1 × Amethyst Shard, 1 × Bucket |
+| ![1K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_1k.png) | **1K Fluid Capacity Wafer** | 2 × Gold Ingot, 2 × Memory Chip, 2 × Redstone, 3 × Basic Fluid Capacity Wafer |
+| ![4K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_4k.png) | **4K Fluid Capacity Wafer** | 2 × Diamond, 2 × Memory Chip, 2 × Redstone, 3 × 1K Fluid Capacity Wafer |
+| ![16K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_16k.png) | **16K Fluid Capacity Wafer** | 2 × Emerald, 1 × Link Chip, 2 × Redstone, 3 × 4K Fluid Capacity Wafer, 1 × Memory Chip |
+| ![64K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_64k.png) | **64K Fluid Capacity Wafer** | 2 × Blaze Rod, 2 × Advanced Memory Chip, 2 × Redstone, 3 × 16K Fluid Capacity Wafer |
+
+## Fluid Type Wafers
+
+Hold a few kinds of fluid, each in bulk. The two wafers are used up; the new wafer holds all of their fluid and starts unlinked.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![1 Type Fluid Wafer](images/recipes/fluid_type_wafer_1.png) | **1 Type Fluid Wafer** | 4 × Iron Ingot, 3 × Redstone, 1 × Amethyst Shard, 1 × Cauldron |
+| ![2 Type Fluid Wafer](images/recipes/fluid_type_wafer_2.png) | **2 Type Fluid Wafer** | 4 × Gold Ingot, 1 × Memory Chip, 2 × Redstone, 2 × 1 Type Fluid Wafer |
+| ![4 Type Fluid Wafer](images/recipes/fluid_type_wafer_4.png) | **4 Type Fluid Wafer** | 4 × Diamond, 1 × Memory Chip, 2 × Redstone, 2 × 2 Type Fluid Wafer |
+| ![8 Type Fluid Wafer](images/recipes/fluid_type_wafer_8.png) | **8 Type Fluid Wafer** | 4 × Emerald, 1 × Link Chip, 2 × Redstone, 2 × 4 Type Fluid Wafer |
+| ![16 Type Fluid Wafer](images/recipes/fluid_type_wafer_16.png) | **16 Type Fluid Wafer** | 4 × Blaze Rod, 1 × Advanced Memory Chip, 2 × Redstone, 2 × 8 Type Fluid Wafer |
+
 ## Decks
 
 The old Deck is used up. The new one keeps its wafers and its charge.

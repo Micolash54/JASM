@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -16,6 +17,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class DeckView {
     private final Map<ItemResource, Long> contents = new LinkedHashMap<>();
+    private final Map<FluidResource, Long> fluids = new LinkedHashMap<>();
     private int energy;
     private List<DeckStorage.SlotStatus> slots = List.of();
     private int version;
@@ -42,6 +44,26 @@ public final class DeckView {
                 contents.remove(entry.key());
             } else {
                 contents.put(entry.key(), entry.count());
+            }
+        }
+        version++;
+    }
+
+    /** Page 0 of a fluid snapshot replaces every fluid; later pages add to it. */
+    public void applyFluidSnapshotPage(int page, List<DeckPayloads.FluidEntry> entries) {
+        if (page == 0) {
+            fluids.clear();
+        }
+        applyFluids(entries);
+    }
+
+    /** Changed amounts; an amount of 0 removes the entry. */
+    public void applyFluids(List<DeckPayloads.FluidEntry> entries) {
+        for (DeckPayloads.FluidEntry entry : entries) {
+            if (entry.amount() <= 0) {
+                fluids.remove(entry.key());
+            } else {
+                fluids.put(entry.key(), entry.amount());
             }
         }
         version++;
@@ -98,6 +120,11 @@ public final class DeckView {
 
     public Map<ItemResource, Long> contents() {
         return Collections.unmodifiableMap(contents);
+    }
+
+    /** Millibuckets of each fluid on the Deck's fluid wafers. */
+    public Map<FluidResource, Long> fluids() {
+        return Collections.unmodifiableMap(fluids);
     }
 
     public int energy() {

@@ -18,6 +18,7 @@ import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
@@ -94,6 +95,15 @@ public final class Machines {
             return new WorldlyContainerWrapper(worldly, side);
         }
         return level.getBlockEntity(pos) instanceof Container container ? VanillaContainerWrapper.of(container) : null;
+    }
+
+    /** Where fluids go into the block at {@code pos} through its {@code side}, or null if it takes none. */
+    public static @Nullable ResourceHandler<FluidResource> fluidInlet(Level level, BlockPos pos, Direction side) {
+        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity
+                || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
+            return null;
+        }
+        return level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
     }
 
     /** Whether any block touching the port takes items. */

@@ -118,7 +118,7 @@ public final class JasmCommands {
             return 0;
         }
         WaferRecord record = found.get();
-        Optional<WaferTier> tier = WaferTier.byLimits(record.capacity(), record.types());
+        Optional<WaferTier> tier = WaferTier.byLimits(record.kind(), record.capacity(), record.types());
         if (tier.isEmpty()) {
             source.sendFailure(Component.literal("No wafer tier holds " + record.capacity() + " items in " + record.types() + " types"));
             return 0;

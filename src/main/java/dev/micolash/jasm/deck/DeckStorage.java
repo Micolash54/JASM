@@ -8,6 +8,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
@@ -26,6 +27,7 @@ import java.util.UUID;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -35,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class DeckStorage {
     /** What one wafer slot can do right now. A blank wafer is usable and gets set up on its first deposit. */
-    private record SlotView(ItemStack wafer, @Nullable WaferRecord record) implements DepositRouter.Slot<ItemResource> {
+    record SlotView(ItemStack wafer, @Nullable WaferRecord record) implements DepositRouter.Slot<ItemResource> {
         @Override
         public boolean usable() {
             return record != null || isBlank();
@@ -60,6 +62,9 @@ public final class DeckStorage {
                 return 0;
             }
             WaferTier tier = ((WaferItem) wafer.getItem()).tier();
+            if (tier.isFluid()) {
+                return 0;
+            }
             return tier.isTyped() ? Math.min(tier.capacity(), TypeRules.room(key, 0, 0, tier.types(), tier.perType())) : tier.capacity();
         }
 
@@ -68,10 +73,13 @@ public final class DeckStorage {
         }
     }
 
-    /** One wafer slot as shown on the Deck screen. {@code types} is 0 for Capacity Wafers. */
+    /**
+     * One wafer slot as shown on the Deck screen. {@code types} is 0 for Capacity Wafers. Amounts are in the wafer's
+     * own unit: items, or millibuckets when {@code fluid} is set.
+     */
     public record SlotStatus(boolean present, long used, long capacity, long fromMissingMods, boolean linked, long typesUsed, int types,
-            WaferSettings settings) {
-        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT);
+            WaferSettings settings, boolean fluid) {
+        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT, false);
     }
 
     private DeckStorage() {}
@@ -134,6 +142,33 @@ public final class DeckStorage {
             long moved = DeckStorage.depositAmount(store, deck, key, amount, player, this);
             if (moved > 0) remember();
             return moved;
+        }
+
+        public long countFluid(FluidResource key) {
+            check();
+            return DeckFluidStorage.count(store, deck, key);
+        }
+
+        public Map<FluidResource, Long> fluidContents() {
+            check();
+            return DeckFluidStorage.contents(store, deck);
+        }
+
+        /** Millibuckets of {@code key}, up to {@code amount}, the Deck's wafers would take. */
+        public long roomFluid(FluidResource key, long amount) {
+            return DeckFluidStorage.room(store, deck, key, amount, player, this);
+        }
+
+        /** Stores up to {@code amount} millibuckets, as far as the charge pays for. Returns the amount stored. */
+        public long depositFluid(FluidResource key, long amount) {
+            long moved = DeckFluidStorage.deposit(store, deck, key, amount, player, this);
+            if (moved > 0) remember();
+            return moved;
+        }
+
+        /** Takes up to {@code amount} millibuckets out, as far as the charge pays for. Returns the amount taken. */
+        public long withdrawFluid(FluidResource key, long amount, boolean tell) {
+            return DeckFluidStorage.withdraw(store, deck, key, amount, player, tell, this);
         }
 
         public Map<ItemResource, Long> depositAmounts(Map<ItemResource, Long> items) {
@@ -449,9 +484,10 @@ public final class DeckStorage {
             }
             WaferRecord record = usableRecord(store, wafer);
             status.add(record == null
-                    ? new SlotStatus(true, 0, item.tier().capacity(), 0, false, 0, item.tier().types(), WaferSettings.DEFAULT)
-                    : new SlotStatus(true, record.used(), record.capacity(), record.quarantinedCount(), record.archiveId() != null,
-                            record.typesUsed(), record.types(), record.settings()));
+                    ? new SlotStatus(true, 0, item.tier().capacityAmount(), 0, false, 0, item.tier().types(), WaferSettings.DEFAULT,
+                            item.tier().isFluid())
+                    : new SlotStatus(true, record.used(), record.capacityAmount(), record.quarantinedCount(), record.archiveId() != null,
+                            record.typesUsed(), record.types(), record.settings(), record.isFluid()));
         }
         return status;
     }
@@ -467,8 +503,14 @@ public final class DeckStorage {
         return cost <= 0 ? Long.MAX_VALUE : DeckItem.energy(deck) / cost;
     }
 
+    /** How many millibuckets the charge pays for right now: an item's charge moves one share of fluid. */
+    public static long affordableFluid(ItemStack deck) {
+        long items = affordable(deck);
+        return items > Long.MAX_VALUE / FluidAmounts.PER_SHARE ? Long.MAX_VALUE : items * FluidAmounts.PER_SHARE;
+    }
+
     /** Takes the charge for {@code items} moved in or out. */
-    private static void pay(ItemStack deck, long items) {
+    static void pay(ItemStack deck, long items) {
         long cost = items * JasmConfig.DECK_ENERGY_PER_ITEM.getAsInt();
         if (cost > 0) {
             deck.set(JasmComponents.ENERGY.get(), (int) Math.max(0, DeckItem.energy(deck) - cost));
@@ -479,7 +521,7 @@ public final class DeckStorage {
         return views(store, deck, player, null);
     }
 
-    private static List<SlotView> views(WaferStore store, ItemStack deck, ServerPlayer player, @Nullable Checked checked) {
+    static List<SlotView> views(WaferStore store, ItemStack deck, ServerPlayer player, @Nullable Checked checked) {
         if (checked == null) checkAll(store, deck, player);
         else checked.check();
         return viewsUnchecked(store, deck);
@@ -510,13 +552,14 @@ public final class DeckStorage {
         }
         WaferRecord record = WaferValidator.record(store, wafer).orElse(null);
         if (record == null || record.capacity() != item.tier().capacity() || record.types() != item.tier().types()
+                || record.kind() != item.tier().kind()
                 || !record.current().equals(wafer.get(JasmComponents.WAFER_IDENTITY.get()).stamp())) {
             return null;
         }
         return record;
     }
 
-    private static boolean canAfford(ItemStack deck, ServerPlayer player, boolean tell) {
+    static boolean canAfford(ItemStack deck, ServerPlayer player, boolean tell) {
         if (hasPower(deck)) {
             return true;
         }
@@ -526,7 +569,7 @@ public final class DeckStorage {
         return false;
     }
 
-    private static boolean checkDimension(ItemStack deck, ServerPlayer player, boolean tell) {
+    static boolean checkDimension(ItemStack deck, ServerPlayer player, boolean tell) {
         if (DeckItem.worksIn(deck, player.level())) return true;
         if (tell) Notices.bad(player, Component.translatable("message.jasm.deck.dimension_upgrade"));
         return false;

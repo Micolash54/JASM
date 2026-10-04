@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone",
+    "A": "minecraft:amethyst_shard",
+    "H": "minecraft:bucket"
+  },
+  "pattern": [
+    "CRC",
+    "RAR",
+    "CHC"
+  ],
+  "result": {
+    "id": "jasm:fluid_capacity_wafer_basic"
+  }
+}

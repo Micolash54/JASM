@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:gold_ingot",
+    "R": "minecraft:redstone",
+    "W": "jasm:fluid_capacity_wafer_basic",
+    "M": "jasm:memory_chip"
+  },
+  "pattern": [
+    "XMX",
+    "RWR",
+    "WMW"
+  ],
+  "source": "jasm:fluid_capacity_wafer_basic",
+  "result": {
+    "id": "jasm:fluid_capacity_wafer_1k"
+  },
+  "merge_wafers": true
+}

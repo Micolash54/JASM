@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:fluid_capacity_wafer_64k"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_fluid_capacity_wafer_16k": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:fluid_capacity_wafer_16k"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_fluid_capacity_wafer_16k"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:fluid_capacity_wafer_64k"
+    ]
+  }
+}

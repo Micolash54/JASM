@@ -18,6 +18,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /**
@@ -31,6 +32,7 @@ public final class DeckViewTracker {
     /** What was last sent for one open menu. */
     private static final class Sent {
         Map<ItemResource, Long> contents;
+        Map<FluidResource, Long> fluids;
         Set<UUID> waferIds = Set.of();
         DeckWafers wafers;
         int energy = -1;
@@ -59,7 +61,7 @@ public final class DeckViewTracker {
             return;
         }
         if (listeningTo != store) {
-            store.addListener((waferId, key, count) -> SENT.values().forEach(s -> {
+            store.addListener(waferId -> SENT.values().forEach(s -> {
                 if (s.waferIds.contains(waferId)) {
                     s.dirty = true;
                 }
@@ -86,9 +88,11 @@ public final class DeckViewTracker {
             List<WaferRecord> records = DeckStorage.records(store, menu.deck()).stream().filter(Objects::nonNull).toList();
             Set<UUID> ids = new HashSet<>();
             Map<ItemResource, Long> contents = new HashMap<>();
+            Map<FluidResource, Long> fluids = new HashMap<>();
             for (WaferRecord record : records) {
                 ids.add(record.id());
                 record.contents().forEach((key, count) -> contents.merge(key, count, Long::sum));
+                record.fluids().forEach((key, amount) -> fluids.merge(key, amount, Long::sum));
             }
             sent.waferIds = ids;
             if (sent.contents == null) {
@@ -108,6 +112,7 @@ public final class DeckViewTracker {
                 }
             }
             sent.contents = contents;
+            sendFluids(player, menu.containerId, sent, fluids);
         }
         int energy = DeckItem.energy(menu.deck());
         List<DeckStorage.SlotStatus> slots = DeckStorage.status(store, menu.deck());
@@ -116,6 +121,35 @@ public final class DeckViewTracker {
             sent.slots = slots;
             PacketDistributor.sendToPlayer(player, new DeckPayloads.Status(menu.containerId, energy, slots));
         }
+    }
+
+    /** The first time everything, then only the amounts that changed. Nothing is sent while there are no fluids at all. */
+    private static void sendFluids(ServerPlayer player, int containerId, Sent sent, Map<FluidResource, Long> fluids) {
+        if (sent.fluids == null) {
+            if (!fluids.isEmpty()) {
+                List<DeckPayloads.FluidEntry> entries = fluids.entrySet().stream()
+                        .map(e -> new DeckPayloads.FluidEntry(e.getKey(), e.getValue())).toList();
+                int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+                for (int page = 0; page < pages; page++) {
+                    PacketDistributor.sendToPlayer(player, new DeckPayloads.FluidSnapshot(containerId, page, pages,
+                            entries.subList(page * PAGE_SIZE, Math.min(entries.size(), (page + 1) * PAGE_SIZE))));
+                }
+            }
+        } else {
+            List<DeckPayloads.FluidEntry> changes = new ArrayList<>();
+            fluids.forEach((key, amount) -> {
+                if (!amount.equals(sent.fluids.get(key))) {
+                    changes.add(new DeckPayloads.FluidEntry(key, amount));
+                }
+            });
+            sent.fluids.keySet().stream().filter(key -> !fluids.containsKey(key))
+                    .forEach(key -> changes.add(new DeckPayloads.FluidEntry(key, 0)));
+            for (int from = 0; from < changes.size(); from += PAGE_SIZE) {
+                PacketDistributor.sendToPlayer(player, new DeckPayloads.FluidDelta(containerId,
+                        changes.subList(from, Math.min(changes.size(), from + PAGE_SIZE))));
+            }
+        }
+        sent.fluids = fluids;
     }
 
     private static void sendSnapshot(ServerPlayer player, int containerId, Map<ItemResource, Long> contents) {

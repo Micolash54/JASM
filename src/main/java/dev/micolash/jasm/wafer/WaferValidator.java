@@ -63,8 +63,10 @@ public final class WaferValidator {
         }
         WaferRecord record = lookup.record();
         Verdict verdict = StampPolicy.judge(identity.stamp(), wafer.tier().capacity(), record == null ? null : record.view());
-        if (record != null && record.types() != wafer.tier().types() && verdict != Verdict.ORPHAN) {
-            // Same total but a different kind of wafer (an 8 Type Wafer and a 64K hold as much): never the same wafer.
+        if (record != null && (record.types() != wafer.tier().types() || record.kind() != wafer.tier().kind())
+                && verdict != Verdict.ORPHAN) {
+            // Same total but a different kind of wafer (an 8 Type Wafer and a 64K hold as much, a fluid wafer and an
+            // item wafer can match in size): never the same wafer.
             verdict = Verdict.TAMPERED;
         }
         // Locked wafers are reported when someone tries to use them, not on every background check.
@@ -81,8 +83,9 @@ public final class WaferValidator {
             }
             case TAMPERED -> {
                 if (report) {
-                    Jasm.LOGGER.error("Wafer #{} capacity mismatch (item {}, record {}); locked (holder {})",
-                            identity.serial(), wafer.tier().capacity(), record.capacity(), holderName(holder));
+                    Jasm.LOGGER.error("Wafer #{} mismatch (item {} {}, record {} {}); locked (holder {})",
+                            identity.serial(), wafer.tier().kind(), wafer.tier().capacity(), record.kind(), record.capacity(),
+                            holderName(holder));
                     notify(holder, "message.jasm.wafer.unknown");
                 }
             }

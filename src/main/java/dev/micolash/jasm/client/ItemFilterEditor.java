@@ -27,6 +27,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 
 /** Ordered item filters and the ghost input for adding one, shared by wafers and inventory ports. */
 class ItemFilterEditor {
@@ -59,6 +62,8 @@ class ItemFilterEditor {
     private final Button confirm;
     private final HashMap<Selector, List<ItemStack>> icons = new HashMap<>();
     private WaferSettings draft = WaferSettings.DEFAULT;
+    /** The kinds of row this editor offers, in the order its key steps through them. */
+    private List<Mode> modes = List.of(Mode.ITEM, Mode.TAG, Mode.MOD_ID);
     private Mode mode = Mode.ITEM;
     private boolean allow = true;
     private ItemStack ghost = ItemStack.EMPTY;
@@ -100,7 +105,7 @@ class ItemFilterEditor {
         for (Mode m : Mode.values()) keyWidth = Math.max(keyWidth, font.width(label(m.getSerializedName())));
         keyWidth += 16;
         modeButton = place(JasmButton.text(Component.empty(), b -> {
-            mode = Mode.values()[(mode.ordinal() + 1) % Mode.values().length];
+            mode = modes.get((modes.indexOf(mode) + 1) % modes.size());
             setItem(ghost);
         }, 0, 0, keyWidth, 17), 8, slotY - 24);
         action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, keyWidth, 17), 10 + keyWidth, slotY - 24);
@@ -127,6 +132,9 @@ class ItemFilterEditor {
     private Component label(String key) { return Component.translatable("screen.jasm.filter." + key); }
     private Button place(Button button, int px, int py) { buttons.add(new Placed(button, px, py)); return button; }
     boolean isOpen() { return opened; }
+    /** Which kinds of row can be added: items, fluids, or both. Takes effect when the editor is next opened. */
+    void setModes(List<Mode> modes) { this.modes = List.copyOf(modes); }
+    private boolean fluidOnly() { return !modes.contains(Mode.ITEM); }
     void setSave(Consumer<WaferSettings> save) { this.save = save; }
     void unfocus() { text.setFocused(false); }
     boolean contains(double mx, double my) { return isOpen() && mx >= x && mx < x + editorWidth && my >= y && my < y + height; }
@@ -147,7 +155,7 @@ class ItemFilterEditor {
         this.suffix = suffix;
         windowIcon = icon;
         scroll = 0;
-        mode = Mode.ITEM;
+        mode = modes.getFirst();
         allow = true;
         ghost = ItemStack.EMPTY;
         tagChoices = List.of();
@@ -229,11 +237,17 @@ class ItemFilterEditor {
         tagScroll = 0;
         if (ghost.isEmpty()) { text.setValue(""); return; }
         var id = BuiltInRegistries.ITEM.getKey(ghost.getItem());
+        FluidResource held = FluidGrid.containedFluid(ghost);
         switch (mode) {
             case ITEM -> text.setValue(id.toString());
-            case MOD_ID -> text.setValue(id.getNamespace());
+            case FLUID -> text.setValue(held == null ? "" : BuiltInRegistries.FLUID.getKey(held.getFluid()).toString());
+            case MOD_ID -> text.setValue(fluidOnly() && held != null ? BuiltInRegistries.FLUID.getKey(held.getFluid()).getNamespace() : id.getNamespace());
             case TAG -> {
-                List<String> tags = ghost.getItem().builtInRegistryHolder().tags().map(tag -> tag.location().toString()).sorted().toList();
+                java.util.stream.Stream<String> itemTags = fluidOnly() ? java.util.stream.Stream.empty()
+                        : ghost.getItem().builtInRegistryHolder().tags().map(tag -> tag.location().toString());
+                java.util.stream.Stream<String> fluidTags = held == null ? java.util.stream.Stream.empty()
+                        : held.getFluid().builtInRegistryHolder().tags().map(tag -> tag.location().toString());
+                List<String> tags = java.util.stream.Stream.concat(itemTags, fluidTags).distinct().sorted().toList();
                 text.setValue(tags.size() == 1 ? tags.getFirst() : "");
                 if (tags.size() > 1) tagChoices = tags;
             }
@@ -241,9 +255,25 @@ class ItemFilterEditor {
         update();
     }
 
+    /** A fluid dragged in from a recipe viewer fills in a Fluid row, if this editor takes them. */
+    void setFluid(Fluid fluid) {
+        if (!modes.contains(Mode.FLUID)) return;
+        mode = Mode.FLUID;
+        ghost = ItemStack.EMPTY;
+        tagChoices = List.of();
+        tagScroll = 0;
+        text.setValue(BuiltInRegistries.FLUID.getKey(fluid).toString());
+        update();
+    }
+
     private ItemStack icon(Filter rule) {
         List<ItemStack> matches = icons.computeIfAbsent(new Selector(rule.mode(), rule.value()),
-                key -> BuiltInRegistries.ITEM.stream().filter(rule::matches).map(ItemStack::new).toList());
+                key -> {
+                    List<ItemStack> items = BuiltInRegistries.ITEM.stream().filter(rule::matches).map(ItemStack::new).toList();
+                    // A fluid row shows the fluid's bucket.
+                    return !items.isEmpty() ? items : BuiltInRegistries.FLUID.stream().filter(rule::matches).map(Fluid::getBucket)
+                            .filter(bucket -> bucket != Items.AIR).distinct().map(ItemStack::new).toList();
+                });
         return matches.isEmpty() ? ItemStack.EMPTY : matches.get((int) ((Util.getMillis() / 1000) % matches.size()));
     }
     /** An item at nine tenths of its size, with its top left corner at the given spot. */

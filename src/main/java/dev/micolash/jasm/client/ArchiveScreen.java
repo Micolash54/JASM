@@ -187,7 +187,9 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
             } else if (scroll + row == hovered) {
                 graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
             }
-            String amount = entry.readable() ? GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) : "";
+            String amount = !entry.readable() ? ""
+                    : entry.fluid() ? GridEntries.abbreviateBuckets(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) + " B"
+                    : GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity());
             int amountWidth = font.width(amount);
             String number = WaferNumbers.visibleTo(minecraft.player) ? "#" + entry.serial() + " " : "";
             String label = number + (entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString());

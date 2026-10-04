@@ -18,6 +18,7 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /**
@@ -63,6 +64,21 @@ public final class WaferEligibility {
         }
         Optional<Tag> encoded = ItemResource.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), ItemResource.of(stack))
                 .result();
+        if (encoded.isEmpty()) {
+            return Result.UNSAVEABLE;
+        }
+        if (encoded.get().sizeInBytes() > JasmConfig.WAFER_MAX_ITEM_DATA_BYTES.getAsInt()) {
+            return Result.TOO_LARGE;
+        }
+        return Result.OK;
+    }
+
+    /** What a fluid wafer refuses: nothing, or a fluid whose data can't be saved or is too large. */
+    public static Result checkFluid(FluidResource fluid, HolderLookup.Provider registries) {
+        if (fluid.isEmpty()) {
+            return Result.EMPTY;
+        }
+        Optional<Tag> encoded = FluidResource.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), fluid).result();
         if (encoded.isEmpty()) {
             return Result.UNSAVEABLE;
         }

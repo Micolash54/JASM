@@ -9,6 +9,7 @@ import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -19,12 +20,15 @@ import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 
@@ -98,12 +102,16 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get())))
             return;
         var inventory = Machines.inlet(world, worldPosition.relative(face), face.getOpposite());
-        if (inventory == null) return;
+        var tank = Machines.fluidInlet(world, worldPosition.relative(face), face.getOpposite());
+        if (inventory == null && tank == null) return;
         var store = WaferStore.get(world.getServer());
         var storage = DeckStorage.checked(store, deck, player);
+        // Items and fluids share one allowance: an item is one share, and 125 mB of fluid is one share.
+        int allowance = budget;
         budget = (int) Math.min(budget, DeckStorage.affordable(deck));
+        int itemBudget = budget;
         // Output takes the shared allowance first. Neither filter list disables the other direction.
-        if (kind.exports() && filters.output().hasAllow()) {
+        if (inventory != null && kind.exports() && filters.output().hasAllow()) {
             var contents = storage.contents();
             var keys = new ArrayList<>(contents.keySet());
             keys.removeIf(key -> filters.output().rank(key.getItem()) < 0);
@@ -128,7 +136,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 }
             }
         }
-        if (kind.imports() && budget > 0) {
+        if (inventory != null && kind.imports() && budget > 0) {
             var unique = new LinkedHashSet<ItemResource>();
             for (int slot = 0; slot < inventory.size(); slot++) if (!inventory.getResource(slot).isEmpty()) unique.add(inventory.getResource(slot));
             var keys = new ArrayList<>(unique);
@@ -154,7 +162,86 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 }
             }
         }
+        int shares = allowance - (itemBudget - budget);
+        if (tank != null && shares > 0) {
+            if (kind.exports() && filters.output().hasAllow()) shares -= fluidsOut(tank, storage, store, deck, player, shares);
+            if (kind.imports() && shares > 0) fluidsIn(tank, storage, store, deck, player, shares);
+        }
         Jobs.refreshOpenDeck(player, deck);
+    }
+
+    /** Pours fluid from the Deck into the block, as far as it takes and the allowance and charge go. Returns the shares used. */
+    private int fluidsOut(ResourceHandler<FluidResource> tank, DeckStorage.Checked storage, WaferStore store, ItemStack deck,
+            ServerPlayer player, int shares) {
+        var contents = storage.fluidContents();
+        var keys = new ArrayList<>(contents.keySet());
+        keys.removeIf(key -> filters.output().rank(key.getFluid()) < 0);
+        keys.sort(Comparator.comparingInt(key -> filters.output().rank(key.getFluid())));
+        int used = 0;
+        for (var key : keys) {
+            long room = Math.min((long) (shares - used) * FluidAmounts.PER_SHARE, DeckStorage.affordableFluid(deck));
+            if (room <= 0) break;
+            try (var tx = Transaction.openRoot()) {
+                int accepted = tank.insert(key, (int) Math.min(room, contents.get(key)), tx);
+                if (accepted <= 0 && room < FluidAmounts.PER_BUCKET) {
+                    // Some blocks (a cauldron) only take a whole bucket: offer one and pay it back out of the next operations.
+                    long bucket = Math.min(Math.min(FluidAmounts.PER_BUCKET, contents.get(key)), DeckStorage.affordableFluid(deck));
+                    accepted = tank.insert(key, (int) bucket, tx);
+                }
+                if (accepted <= 0) continue;
+                long taken = storage.withdrawFluid(key, accepted, false);
+                if (taken == accepted) {
+                    tx.commit();
+                    int moved = (int) FluidAmounts.shares(taken);
+                    used += moved;
+                    transferred(moved);
+                } else if (taken > 0) {
+                    // Put back what was taken, even if the wafers' intake filters have changed.
+                    long remaining = taken;
+                    for (var record : DeckStorage.records(store, deck))
+                        if (record != null && remaining > 0) remaining -= store.insertFluid(record, key, remaining, false, player);
+                }
+            }
+        }
+        return used;
+    }
+
+    /** Pulls fluid from the block into the Deck, as far as the wafers have room and the allowance and charge go. */
+    private void fluidsIn(ResourceHandler<FluidResource> tank, DeckStorage.Checked storage, WaferStore store, ItemStack deck,
+            ServerPlayer player, int shares) {
+        var unique = new LinkedHashSet<FluidResource>();
+        for (int slot = 0; slot < tank.size(); slot++) if (!tank.getResource(slot).isEmpty()) unique.add(tank.getResource(slot));
+        var keys = new ArrayList<>(unique);
+        keys.removeIf(key -> filters.input().rank(key.getFluid()) < 0);
+        keys.sort(Comparator.comparingInt(key -> filters.input().rank(key.getFluid())));
+        int used = 0;
+        for (var key : keys) {
+            long most = Math.min((long) (shares - used) * FluidAmounts.PER_SHARE, DeckStorage.affordableFluid(deck));
+            if (most <= 0) break;
+            long room = storage.roomFluid(key, most);
+            if (room <= 0) continue;
+            try (var tx = Transaction.openRoot()) {
+                int taken = tank.extract(key, (int) room, tx);
+                if (taken <= 0 && most < FluidAmounts.PER_BUCKET) {
+                    // Some blocks (a cauldron) only give a whole bucket: take one and pay it back out of the next operations.
+                    long bucket = Math.min(FluidAmounts.PER_BUCKET, DeckStorage.affordableFluid(deck));
+                    long fits = storage.roomFluid(key, bucket);
+                    taken = fits < bucket ? 0 : tank.extract(key, (int) bucket, tx);
+                }
+                if (taken <= 0) continue;
+                long stored = storage.depositFluid(key, taken);
+                if (stored == taken) {
+                    tx.commit();
+                    int moved = (int) FluidAmounts.shares(taken);
+                    used += moved;
+                    transferred(moved);
+                } else if (stored > 0) {
+                    // The source transaction rolls back, so undo a partial deposit as well.
+                    for (var record : DeckStorage.records(store, deck))
+                        if (record != null && stored > 0) stored -= store.extractFluid(record, key, stored, false, player);
+                }
+            }
+        }
     }
     @Override
     protected void saveAdditional(ValueOutput output) {

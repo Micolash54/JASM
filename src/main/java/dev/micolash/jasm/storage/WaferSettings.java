@@ -15,6 +15,8 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import org.jspecify.annotations.Nullable;
 
 /** One wafer's ordered filters. The first enabled match decides; without an Allow row everything else is accepted. */
@@ -22,7 +24,8 @@ public record WaferSettings(List<Filter> rules) {
     public enum Mode implements StringRepresentable {
         ITEM,
         TAG,
-        MOD_ID;
+        MOD_ID,
+        FLUID;
         public static final Codec<Mode> CODEC = StringRepresentable.fromEnum(Mode::values);
         public static final StreamCodec<ByteBuf, Mode> STREAM_CODEC = ByteBufCodecs.STRING_UTF8.map(
                 value -> Mode.valueOf(value.toUpperCase(Locale.ROOT)), Mode::getSerializedName);
@@ -44,6 +47,8 @@ public record WaferSettings(List<Filter> rules) {
         private final boolean enabled;
         private final @Nullable Item item;
         private final @Nullable TagKey<Item> tag;
+        private final @Nullable Fluid fluid;
+        private final @Nullable TagKey<Fluid> fluidTag;
 
         public Filter(Mode mode, String value, boolean allow, boolean enabled) {
             this.mode = mode;
@@ -53,6 +58,8 @@ public record WaferSettings(List<Filter> rules) {
             Identifier id = mode == Mode.MOD_ID ? null : Identifier.tryParse(this.value);
             item = mode == Mode.ITEM && id != null ? BuiltInRegistries.ITEM.getOptional(id).orElse(null) : null;
             tag = mode == Mode.TAG && id != null ? TagKey.create(Registries.ITEM, id) : null;
+            fluid = mode == Mode.FLUID && id != null ? BuiltInRegistries.FLUID.getOptional(id).orElse(null) : null;
+            fluidTag = mode == Mode.TAG && id != null ? TagKey.create(Registries.FLUID, id) : null;
         }
 
         public Mode mode() { return mode; }
@@ -76,16 +83,27 @@ public record WaferSettings(List<Filter> rules) {
 
         public boolean valid() {
             if (mode == Mode.MOD_ID)
-                return !value.isEmpty() && BuiltInRegistries.ITEM.stream()
-                        .anyMatch(item -> BuiltInRegistries.ITEM.getKey(item).getNamespace().equals(value));
+                return !value.isEmpty() && (BuiltInRegistries.ITEM.stream()
+                        .anyMatch(item -> BuiltInRegistries.ITEM.getKey(item).getNamespace().equals(value))
+                        || BuiltInRegistries.FLUID.stream()
+                                .anyMatch(fluid -> BuiltInRegistries.FLUID.getKey(fluid).getNamespace().equals(value)));
+            if (mode == Mode.FLUID) return fluid != null && fluid != Fluids.EMPTY;
             return mode == Mode.ITEM
                     ? item != null && item != Items.AIR
-                    : tag != null && BuiltInRegistries.ITEM.get(tag).filter(items -> items.size() > 0).isPresent();
+                    : tag != null && BuiltInRegistries.ITEM.get(tag).filter(items -> items.size() > 0).isPresent()
+                            || fluidTag != null && BuiltInRegistries.FLUID.get(fluidTag).filter(fluids -> fluids.size() > 0).isPresent();
         }
 
         public boolean matches(Item item) {
+            if (mode == Mode.FLUID) return false;
             if (mode == Mode.MOD_ID) return BuiltInRegistries.ITEM.getKey(item).getNamespace().equals(value);
             return mode == Mode.ITEM ? this.item == item : tag != null && item.builtInRegistryHolder().is(tag);
+        }
+
+        public boolean matches(Fluid fluid) {
+            if (mode == Mode.ITEM) return false;
+            if (mode == Mode.MOD_ID) return BuiltInRegistries.FLUID.getKey(fluid).getNamespace().equals(value);
+            return mode == Mode.FLUID ? this.fluid == fluid : fluidTag != null && fluid.builtInRegistryHolder().is(fluidTag);
         }
     }
 
@@ -108,6 +126,14 @@ public record WaferSettings(List<Filter> rules) {
         for (int i = 0; i < rules.size(); i++) {
             Filter rule = rules.get(i);
             if (rule.enabled() && rule.matches(item)) return rule.allow() ? i : -1;
+        }
+        return hasAllow() ? -1 : Integer.MAX_VALUE;
+    }
+    /** The same decision for a fluid: Fluid rows, fluid tags and mods; Item rows never match. */
+    public int rank(Fluid fluid) {
+        for (int i = 0; i < rules.size(); i++) {
+            Filter rule = rules.get(i);
+            if (rule.enabled() && rule.matches(fluid)) return rule.allow() ? i : -1;
         }
         return hasAllow() ? -1 : Integer.MAX_VALUE;
     }

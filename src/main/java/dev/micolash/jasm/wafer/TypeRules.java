@@ -38,4 +38,17 @@ public final class TypeRules {
         }
         return freeTypes > 0 ? perType : 0;
     }
+
+    /** Types taken by a fluid wafer's contents: one per stored variant, plus one per unreadable entry. */
+    public static long fluidTypesUsed(int stored, int unreadableEntries) {
+        return (long) stored + unreadableEntries;
+    }
+
+    /** How many millibuckets of a fluid still fit by types alone: a stored variant grows to the limit, a new one needs a free type. */
+    public static long fluidRoom(long stored, long typesUsed, int types, long perTypeMb) {
+        if (stored > 0) {
+            return Math.max(0, perTypeMb - stored);
+        }
+        return types - typesUsed > 0 ? perTypeMb : 0;
+    }
 }

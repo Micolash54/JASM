@@ -45,6 +45,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.chunk.storage.SimpleRegionStorage;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -60,9 +61,9 @@ import org.jspecify.annotations.Nullable;
  * slots are reused: a finished job's record is deleted once it is empty and on disk.
  */
 public final class WaferStore {
-    /** Notified after a wafer's count for one variant changes. */
+    /** Notified after a wafer's contents change. */
     public interface WaferChangeListener {
-        void onWaferChanged(UUID waferId, ItemResource key, long newCount);
+        void onWaferChanged(UUID waferId);
     }
 
     /** The result of looking up a wafer's record. */
@@ -507,19 +508,53 @@ public final class WaferStore {
      * actor means no player was involved.
      */
     public long insert(WaferRecord record, ItemResource key, long amount, boolean simulate, @Nullable Player actor) {
+        if (record.isFluid()) {
+            return 0;
+        }
         long fits = record.isTyped() ? Math.min(amount, record.roomFor(key)) : amount;
         long accepted = record.mutableContents().insert(key, fits, record.contentCapacity(), simulate);
         if (!simulate && accepted > 0) {
-            contentsChanged(record, key, actor);
+            contentsChanged(record, actor);
         }
         return accepted;
     }
 
     /** Removes up to {@code amount}; returns the removed amount. A null actor means no player was involved. */
     public long extract(WaferRecord record, ItemResource key, long amount, boolean simulate, @Nullable Player actor) {
+        if (record.isFluid()) {
+            return 0;
+        }
         long taken = record.mutableContents().extract(key, amount, simulate);
         if (!simulate && taken > 0) {
-            contentsChanged(record, key, actor);
+            contentsChanged(record, actor);
+        }
+        return taken;
+    }
+
+    /**
+     * Stores up to {@code amount} millibuckets on a fluid wafer; returns the accepted amount. Type Wafers also keep
+     * to their type limits. An item wafer takes none.
+     */
+    public long insertFluid(WaferRecord record, FluidResource key, long amount, boolean simulate, @Nullable Player actor) {
+        if (!record.isFluid()) {
+            return 0;
+        }
+        long fits = Math.min(amount, record.roomForFluid(key));
+        long accepted = record.mutableFluids().insert(key, fits, record.contentCapacityFluid(), simulate);
+        if (!simulate && accepted > 0) {
+            contentsChanged(record, actor);
+        }
+        return accepted;
+    }
+
+    /** Removes up to {@code amount} millibuckets; returns the removed amount. */
+    public long extractFluid(WaferRecord record, FluidResource key, long amount, boolean simulate, @Nullable Player actor) {
+        if (!record.isFluid()) {
+            return 0;
+        }
+        long taken = record.mutableFluids().extract(key, amount, simulate);
+        if (!simulate && taken > 0) {
+            contentsChanged(record, actor);
         }
         return taken;
     }
@@ -530,8 +565,21 @@ public final class WaferStore {
      * from it again. Used when wafers are crafted into a bigger one; the caller checks everything fits.
      */
     public void absorb(WaferRecord target, WaferRecord source, @Nullable Player actor) {
+        if (target.kind() != source.kind()) {
+            Jasm.LOGGER.error("Wafer #{} is a {} wafer and can't take wafer #{}, a {} wafer; nothing moved", target.serial(),
+                    target.kind(), source.serial(), source.kind());
+            return;
+        }
         source.moveQuarantinedTo(target);
         target.changed(uuid(actor));
+        for (Map.Entry<FluidResource, Long> entry : List.copyOf(source.fluids().entrySet())) {
+            long moved = insertFluid(target, entry.getKey(), entry.getValue(), false, actor);
+            extractFluid(source, entry.getKey(), moved, false, actor);
+            if (moved < entry.getValue()) {
+                Jasm.LOGGER.error("Wafer #{} had no room for {} mB of {} from wafer #{}; they stay on #{}", target.serial(),
+                        entry.getValue() - moved, entry.getKey(), source.serial(), source.serial());
+            }
+        }
         for (Map.Entry<ItemResource, Long> entry : List.copyOf(source.contents().entrySet())) {
             long moved = insert(target, entry.getKey(), entry.getValue(), false, actor);
             extract(source, entry.getKey(), moved, false, actor);
@@ -570,11 +618,10 @@ public final class WaferStore {
         listeners.remove(listener);
     }
 
-    private void contentsChanged(WaferRecord record, ItemResource key, @Nullable Player actor) {
+    private void contentsChanged(WaferRecord record, @Nullable Player actor) {
         used(record, actor);
-        long now = record.count(key);
         for (WaferChangeListener listener : listeners) {
-            listener.onWaferChanged(record.id(), key, now);
+            listener.onWaferChanged(record.id());
         }
     }
 
