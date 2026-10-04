@@ -1,10 +1,13 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.network.LinkWindowCover;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import org.jspecify.annotations.Nullable;
 
@@ -14,6 +17,22 @@ public abstract class JasmScreen<T extends AbstractContainerMenu> extends Abstra
 
     protected JasmScreen(T menu, Inventory inventory, Component title, int width, int height) {
         super(menu, inventory, title, width, height);
+    }
+
+    /** Where the Deck Link window lies, for a screen that has one; null for the rest. */
+    protected @Nullable LinkWindowCover linkCover() {
+        return null;
+    }
+
+    /** A Deck shift-clicked in from the inventory only goes to the link slots while their window is open. */
+    @Override
+    protected void slotClicked(@Nullable Slot slot, int slotId, int buttonNum, ContainerInput input) {
+        LinkWindowCover cover = linkCover();
+        if (input == ContainerInput.QUICK_MOVE && slot != null && cover != null && !cover.open()
+                && slot.container instanceof Inventory && DeckItem.isDeck(slot.getItem())) {
+            return;
+        }
+        super.slotClicked(slot, slotId, buttonNum, input);
     }
 
     @Override

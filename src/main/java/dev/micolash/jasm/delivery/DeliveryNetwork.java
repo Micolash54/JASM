@@ -87,8 +87,9 @@ public final class DeliveryNetwork {
             boolean outgoing = trip.from().equals(player) && !trip.returning();
             if (!outgoing && !trip.to().equals(player)) continue;
             ItemStack icon = trip.items().values().isEmpty() ? ItemStack.EMPTY : trip.items().values().getFirst().copyWithCount(1);
+            List<ItemStack> stacks = trip.items().values().stream().limit(DeliveryPayloads.MAX_STACKS).map(ItemStack::copy).toList();
             views.add(new DeliveryPayloads.TripView(trip.id(), outgoing, trip.returning(), outgoing ? trip.toName() : trip.fromName(), icon,
-                    trip.count(), (int) Math.max(0, trip.arrive() - now), (int) Math.max(1, trip.arrive() - trip.start())));
+                    trip.count(), (int) Math.max(0, trip.arrive() - now), (int) Math.max(1, trip.arrive() - trip.start()), stacks));
         }
         views.sort((a, b) -> Integer.compare(a.left(), b.left()));
         return views.size() > DeliveryPayloads.MAX_TRIPS ? views.subList(0, DeliveryPayloads.MAX_TRIPS) : views;

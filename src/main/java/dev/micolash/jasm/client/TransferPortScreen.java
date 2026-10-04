@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import dev.micolash.jasm.transfer.RedstoneMode;
@@ -43,6 +44,11 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         inventoryLabelX = (TransferPortMenu.WIDTH - 162) / 2;
         inventoryLabelY = menu.inventoryY() - 11;
     }
+    @Override
+    protected LinkWindowCover linkCover() {
+        return menu.linkCover();
+    }
+
     @Override
     protected void init() {
         super.init();

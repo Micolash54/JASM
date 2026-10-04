@@ -7,6 +7,7 @@ import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.delivery.Deliveries;
 import dev.micolash.jasm.delivery.DeliveryPayloads;
 import dev.micolash.jasm.delivery.DeliveryView;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.gui.Font;
@@ -264,8 +265,35 @@ final class DeckSendWindow {
                     graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.send.cancel"), mouseX, mouseY);
                 }
                 graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CLOSE.sprite(), cx + 2, cy + 2, 5, 5);
+                if (hover) continue;
+            }
+            if (mouseX >= rx && mouseX < right && mouseY >= ry && mouseY < ry + ROW - 1) {
+                graphics.setTooltipForNextFrame(font, contents(trip), mouseX, mouseY);
             }
         }
+    }
+
+    /** One line per kind of item a trip carries, with how many. */
+    private List<FormattedCharSequence> contents(DeliveryPayloads.TripView trip) {
+        List<ItemStack> kinds = new ArrayList<>();
+        List<Integer> counts = new ArrayList<>();
+        for (ItemStack stack : trip.items()) {
+            int at = -1;
+            for (int i = 0; i < kinds.size() && at < 0; i++) {
+                if (ItemStack.isSameItemSameComponents(kinds.get(i), stack)) at = i;
+            }
+            if (at < 0) {
+                kinds.add(stack);
+                counts.add(stack.getCount());
+            } else {
+                counts.set(at, counts.get(at) + stack.getCount());
+            }
+        }
+        List<FormattedCharSequence> lines = new ArrayList<>();
+        for (int i = 0; i < kinds.size(); i++) {
+            lines.addAll(font.split(Component.literal(counts.get(i) + " × ").append(kinds.get(i).getHoverName()), 180));
+        }
+        return lines;
     }
 
     private void drawPeople(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -296,6 +324,11 @@ final class DeckSendWindow {
                     ? Component.translatable("screen.jasm.send.takes", time(person.ticks()))
                     : Component.translatable(person.reason().key());
             graphics.text(font, trimmed(line.getString(), LIST_WIDTH - 8), rx + 3, ry + 10, ok ? JasmGui.SUBTEXT : JasmGui.BAD, false);
+            // The row only has room for a short word; the sentence behind it shows on hover.
+            boolean upgrade = person.reason() == Deliveries.Refusal.NEEDS_UPGRADE || person.reason() == Deliveries.Refusal.THEY_NEED_UPGRADE;
+            if (upgrade && scroll + row == hovered) {
+                graphics.setTooltipForNextFrame(font, font.split(Component.translatable(person.reason().key() + ".hint"), 180), mouseX, mouseY);
+            }
         }
     }
 

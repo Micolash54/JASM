@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftPayloads;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import java.util.List;
@@ -54,6 +55,11 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, menu.inventoryY() + 84);
         inventoryLabelY = menu.inventoryY() - 10;
         inventoryLabelX = (WIDTH - 162) / 2;
+    }
+
+    @Override
+    protected LinkWindowCover linkCover() {
+        return menu.linkCover();
     }
 
     @Override

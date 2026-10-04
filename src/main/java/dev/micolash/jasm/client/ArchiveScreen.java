@@ -5,6 +5,7 @@ import dev.micolash.jasm.archive.ArchiveMenu;
 import dev.micolash.jasm.archive.ArchivePayloads;
 import dev.micolash.jasm.archive.ArchiveService;
 import dev.micolash.jasm.core.GridEntries;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.wafer.WaferNumbers;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +59,11 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, HEIGHT);
         this.inventoryLabelY = ArchiveMenu.INVENTORY_Y - 10;
         this.inventoryLabelX = ArchiveMenu.INVENTORY_X;
+    }
+
+    @Override
+    protected LinkWindowCover linkCover() {
+        return menu.linkCover();
     }
 
     @Override

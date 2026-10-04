@@ -6,6 +6,7 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
@@ -99,6 +100,11 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         super(menu, inventory, title, WIDTH, HEIGHT);
         this.inventoryLabelY = EncodingTerminalMenu.INVENTORY_Y - 10;
         this.seenCount = menu.messageCount();
+    }
+
+    @Override
+    protected LinkWindowCover linkCover() {
+        return menu.linkCover();
     }
 
     @Override

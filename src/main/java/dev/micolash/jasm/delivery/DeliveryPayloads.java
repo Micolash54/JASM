@@ -19,8 +19,15 @@ public final class DeliveryPayloads {
 
     private DeliveryPayloads() {}
 
-    /** A trip as the window shows it: who it's with, its first item, how many in all, and how far along it is. */
-    public record TripView(UUID id, boolean outgoing, boolean returning, String other, ItemStack icon, int count, int left, int total) {
+    /** Most stacks one trip lists: what the send grid holds. */
+    public static final int MAX_STACKS = SendContainer.SIZE;
+
+    /**
+     * A trip as the window shows it: who it's with, its first item, how many in all, how far along it is, and every
+     * stack it carries for the hover text.
+     */
+    public record TripView(UUID id, boolean outgoing, boolean returning, String other, ItemStack icon, int count, int left, int total,
+            List<ItemStack> items) {
         static final StreamCodec<RegistryFriendlyByteBuf, TripView> STREAM_CODEC = StreamCodec.composite(
                 UUIDUtil.STREAM_CODEC, TripView::id,
                 ByteBufCodecs.BOOL, TripView::outgoing,
@@ -30,6 +37,7 @@ public final class DeliveryPayloads {
                 ByteBufCodecs.VAR_INT, TripView::count,
                 ByteBufCodecs.VAR_INT, TripView::left,
                 ByteBufCodecs.VAR_INT, TripView::total,
+                ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list(MAX_STACKS)), TripView::items,
                 TripView::new);
 
         /** Here, but the inbox has no room for it yet. */
