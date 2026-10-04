@@ -230,6 +230,34 @@ public final class DeckFluidStorage {
         return moved;
     }
 
+    /** Whether a Void row would destroy {@code key}: the Deck works here, the fluid is allowed in, and a usable fluid wafer's deciding row is Allow with Void. */
+    static boolean canVoid(WaferStore store, ItemStack deck, FluidResource key, ServerPlayer player, DeckStorage.@Nullable Checked checked) {
+        if (key.isEmpty() || !DeckItem.worksIn(deck, player.level())) return false;
+        if (!WaferEligibility.checkFluid(key, player.level().registryAccess()).accepted()) return false;
+        for (DeckStorage.SlotView view : DeckStorage.views(store, deck, player, checked)) {
+            // Rows on an item wafer are about items; that wafer never holds fluid.
+            if (view.record() != null && view.record().isFluid() && view.record().settings().voidsExcess(key.getFluid())) return true;
+        }
+        return false;
+    }
+
+    /** Destroys {@code left} millibuckets of {@code key} when a Void row says so, as far as the charge pays. Returns how many were destroyed. */
+    private static long voidLeft(WaferStore store, ItemStack deck, ServerPlayer player, DeckStorage.@Nullable Checked checked, FluidResource key,
+            long left) {
+        left = Math.min(left, DeckStorage.affordableFluid(deck));
+        if (left <= 0 || !canVoid(store, deck, key, player, checked)) return 0;
+        DeckStorage.pay(deck, FluidAmounts.shares(left));
+        return left;
+    }
+
+    /** As {@link #deposit}, with a Void row destroying what no wafer has room for. */
+    public static DeckStorage.Deposit depositResult(WaferStore store, ItemStack deck, FluidResource key, long amount, ServerPlayer player,
+            DeckStorage.Excess excess, DeckStorage.@Nullable Checked checked) {
+        long stored = deposit(store, deck, key, amount, player, checked);
+        long gone = excess == DeckStorage.Excess.VOID ? voidLeft(store, deck, player, checked, key, amount - stored) : 0;
+        return new DeckStorage.Deposit(stored, gone);
+    }
+
     /** Takes up to {@code amount} millibuckets of {@code key} out, as far as the charge pays for. Returns the amount taken. */
     public static long withdraw(WaferStore store, ItemStack deck, FluidResource key, long amount, ServerPlayer player, boolean tell,
             DeckStorage.@Nullable Checked checked) {

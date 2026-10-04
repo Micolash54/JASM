@@ -281,7 +281,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack)))
                 incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
-        var accepted = storage.depositAmounts(incoming, budget);
+        var accepted = storage.depositAmounts(incoming, budget, DeckStorage.Excess.VOID);
         transferred((int) accepted.values().stream().mapToLong(Long::longValue).sum());
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);

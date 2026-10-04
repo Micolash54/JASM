@@ -431,7 +431,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             moveItemStackTo(stack, 0, waferSlots, false);
             slot.setChanged();
         } else if (player instanceof ServerPlayer serverPlayer) {
-            DeckStorage.deposit(WaferStore.get(serverPlayer.level().getServer()), deck, stack, serverPlayer);
+            DeckStorage.deposit(WaferStore.get(serverPlayer.level().getServer()), deck, stack, serverPlayer, DeckStorage.Excess.VOID);
             slot.setChanged();
         }
         return ItemStack.EMPTY;
@@ -517,7 +517,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Stores {@code stack} on the wafers, shrinking it by what fit. */
     private void store(ServerPlayer player, ItemStack stack) {
-        DeckStorage.depositQuietly(WaferStore.get(player.level().getServer()), deck, stack, player);
+        DeckStorage.depositQuietly(WaferStore.get(player.level().getServer()), deck, stack, player, DeckStorage.Excess.VOID);
     }
 
     /** After a craft: every grid slot that ran out gets one more of what was there, if the wafers have it. */
@@ -560,8 +560,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         var accepted = DeckStorage.hasPower(deck)
                 ? (storage == null
-                        ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player)
-                        : storage.depositAmounts(incoming))
+                        ? DeckStorage.depositAmounts(WaferStore.get(player.level().getServer()), deck, incoming, player, Long.MAX_VALUE,
+                                DeckStorage.Excess.VOID)
+                        : storage.depositAmounts(incoming, DeckStorage.Excess.VOID))
                 : new LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
             ItemStack stack = grid.getItem(i);
@@ -697,17 +698,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         super.broadcastChanges();
     }
 
-    /**
-     * The grid goes back onto the wafers; what doesn't fit stays in it, saved on the Deck. Not when logging out: the
-     * player's file is already written by then, and moving items after that could leave them in both places.
-     */
+    /** The grid stays as it is, saved on the Deck, until the player sends it somewhere. */
     @Override
     public void removed(Player player) {
         super.removed(player);
         if (!player.level().isClientSide()) {
-            if (player instanceof ServerPlayer serverPlayer && grid != null && stillValid(player) && !serverPlayer.hasDisconnected()) {
-                returnGrid(serverPlayer);
-            }
             upgrade.flush();
             send.flush();
             if (grid != null) {

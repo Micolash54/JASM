@@ -87,6 +87,14 @@ public final class DeckStorage {
         public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT, false);
     }
 
+    /** What happens to items no wafer has room for: they stay where they were, or a Void row destroys them. */
+    public enum Excess { KEEP, VOID }
+
+    /** What a deposit did: {@code stored} on the wafers (or Storage Ports), {@code voided} destroyed. */
+    public record Deposit(long stored, long voided) {
+        public long total() { return stored + voided; }
+    }
+
     private DeckStorage() {}
 
     /** Shares one wafer check between the reads and transfers in an operation. */
@@ -213,9 +221,43 @@ public final class DeckStorage {
         }
 
         public Map<ItemResource, Long> depositAmounts(Map<ItemResource, Long> items, long limit) {
-            Map<ItemResource, Long> moved = DeckStorage.depositAmounts(store, deck, items, player, limit, this);
+            return depositAmounts(items, limit, Excess.KEEP);
+        }
+
+        public Map<ItemResource, Long> depositAmounts(Map<ItemResource, Long> items, Excess excess) {
+            return depositAmounts(items, Long.MAX_VALUE, excess);
+        }
+
+        public Map<ItemResource, Long> depositAmounts(Map<ItemResource, Long> items, long limit, Excess excess) {
+            Map<ItemResource, Long> moved = DeckStorage.depositAmounts(store, deck, items, player, limit, this, excess);
             if (!moved.isEmpty()) remember();
             return moved;
+        }
+
+        /** As {@link #room(ItemResource, long)}; with {@code Excess.VOID} a voiding item counts as having room for all of {@code amount}. */
+        public long room(ItemResource key, long amount, Excess excess) {
+            long room = room(key, amount);
+            if (excess != Excess.VOID || room >= amount || !DeckStorage.canVoid(store, deck, key, player, this)) return room;
+            return Math.min(amount, DeckStorage.affordable(deck));
+        }
+
+        public Deposit depositResult(ItemResource key, long amount, Excess excess) {
+            Deposit done = DeckStorage.depositResult(store, deck, key, amount, player, excess, this);
+            if (done.stored() > 0) remember();
+            return done;
+        }
+
+        /** As {@link #roomFluid(FluidResource, long)}; with {@code Excess.VOID} a voiding fluid counts as having room for all of {@code amount}. */
+        public long roomFluid(FluidResource key, long amount, Excess excess) {
+            long room = roomFluid(key, amount);
+            if (excess != Excess.VOID || room >= amount || !DeckFluidStorage.canVoid(store, deck, key, player, this)) return room;
+            return Math.min(amount, DeckStorage.affordableFluid(deck));
+        }
+
+        public Deposit depositFluidResult(FluidResource key, long amount, Excess excess) {
+            Deposit done = DeckFluidStorage.depositResult(store, deck, key, amount, player, excess, this);
+            if (done.stored() > 0) remember();
+            return done;
         }
     }
 
@@ -257,15 +299,32 @@ public final class DeckStorage {
      * stored. Returns the amount stored.
      */
     public static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player) {
-        return deposit(store, deck, source, player, true);
+        return deposit(store, deck, source, player, true, Excess.KEEP);
+    }
+
+    /** As {@link #deposit}; with {@code Excess.VOID} a Void row destroys what no wafer has room for. Returns the amount taken from {@code source}. */
+    public static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, Excess excess) {
+        return deposit(store, deck, source, player, true, excess);
     }
 
     /** As {@link #deposit}, but says nothing when an item is refused or the charge is empty (the crafting grid). */
     public static long depositQuietly(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player) {
-        return deposit(store, deck, source, player, false);
+        return deposit(store, deck, source, player, false, Excess.KEEP);
     }
 
-    private static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, boolean tell) {
+    public static long depositQuietly(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, Excess excess) {
+        return deposit(store, deck, source, player, false, excess);
+    }
+
+    private static long deposit(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, boolean tell, Excess excess) {
+        long stored = depositToWafers(store, deck, source, player, tell);
+        if (excess != Excess.VOID || source.isEmpty()) return stored;
+        long gone = voidLeft(store, deck, player, null, ItemResource.of(source), source.getCount());
+        source.shrink((int) gone);
+        return stored + gone;
+    }
+
+    private static long depositToWafers(WaferStore store, ItemStack deck, ItemStack source, ServerPlayer player, boolean tell) {
         if (!checkDimension(deck, player, tell)) return 0;
         if (source.isEmpty()) {
             return 0;
@@ -376,6 +435,18 @@ public final class DeckStorage {
         return moved;
     }
 
+    /** As {@link #depositAmount}, with a Void row destroying what no wafer has room for. */
+    public static Deposit depositResult(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player, Excess excess) {
+        return depositResult(store, deck, key, amount, player, excess, null);
+    }
+
+    private static Deposit depositResult(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player, Excess excess,
+            @Nullable Checked checked) {
+        long stored = depositAmount(store, deck, key, amount, player, checked);
+        long gone = excess == Excess.VOID ? voidLeft(store, deck, player, checked, key, amount - stored) : 0;
+        return new Deposit(stored, gone);
+    }
+
     /** Fill wafers left to right, choosing each wafer's highest matching rows before other items in the batch. */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player) {
         return depositAmounts(store, deck, items, player, Long.MAX_VALUE);
@@ -387,11 +458,17 @@ public final class DeckStorage {
      */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player,
             long limit) {
-        return depositAmounts(store, deck, items, player, limit, null);
+        return depositAmounts(store, deck, items, player, limit, null, Excess.KEEP);
+    }
+
+    /** As the batch above; with {@code Excess.VOID} the map holds what was stored plus what a Void row destroyed, per item. */
+    public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player,
+            long limit, Excess excess) {
+        return depositAmounts(store, deck, items, player, limit, null, excess);
     }
 
     private static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items,
-            ServerPlayer player, long limit, @Nullable Checked checked) {
+            ServerPlayer player, long limit, @Nullable Checked checked, Excess excess) {
         if (!DeckItem.worksIn(deck, player.level())) return Map.of();
         limit = Math.min(limit, affordable(deck));
         List<PoolStore> ports = ports(player, deck, checked == null ? null : checked.avoid);
@@ -402,10 +479,13 @@ public final class DeckStorage {
                 long asked = entry.getValue();
                 if (asked <= 0 || entry.getKey().isEmpty()
                         || !WaferEligibility.check(entry.getKey().toStack(1), player.level().registryAccess()).accepted()) continue;
-                long stored = depositCombined(store, deck, entry.getKey(), Math.min(asked, limit), player, checked, ports);
-                if (stored > 0) {
-                    limit -= stored;
-                    batch.put(entry.getKey(), stored);
+                long ask = Math.min(asked, limit);
+                long stored = depositCombined(store, deck, entry.getKey(), ask, player, checked, ports);
+                long gone = excess == Excess.VOID ? voidLeft(store, deck, player, checked, entry.getKey(), ask - stored) : 0;
+                long handled = stored + gone;
+                if (handled > 0) {
+                    limit -= handled;
+                    batch.put(entry.getKey(), handled);
                 }
             }
             return batch;
@@ -445,6 +525,16 @@ public final class DeckStorage {
             }
         }
         deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
+        if (excess == Excess.VOID) {
+            for (var entry : left.entrySet()) {
+                if (limit <= 0) break;
+                long gone = Math.min(entry.getValue(), limit);
+                if (gone > 0 && canVoid(store, deck, entry.getKey(), player, checked)) {
+                    limit -= gone;
+                    moved.merge(entry.getKey(), gone, Long::sum);
+                }
+            }
+        }
         pay(deck, paid - limit);
         return moved;
     }
@@ -601,6 +691,25 @@ public final class DeckStorage {
     public static long affordableFluid(ItemStack deck) {
         long items = affordable(deck);
         return items > Long.MAX_VALUE / FluidAmounts.PER_SHARE ? Long.MAX_VALUE : items * FluidAmounts.PER_SHARE;
+    }
+
+    /** Whether a Void row would destroy {@code key}: the Deck works here, the item is allowed in, and a usable item wafer's deciding row is Allow with Void. */
+    static boolean canVoid(WaferStore store, ItemStack deck, ItemResource key, ServerPlayer player, @Nullable Checked checked) {
+        if (key.isEmpty() || !DeckItem.worksIn(deck, player.level())) return false;
+        if (!WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) return false;
+        for (SlotView view : views(store, deck, player, checked)) {
+            // Rows on a fluid wafer are about fluids; that wafer never holds items.
+            if (view.record() != null && !view.record().isFluid() && view.record().settings().voidsExcess(key.getItem())) return true;
+        }
+        return false;
+    }
+
+    /** Destroys {@code left} of {@code key} when a Void row says so, as far as the charge pays. Returns how many were destroyed. */
+    private static long voidLeft(WaferStore store, ItemStack deck, ServerPlayer player, @Nullable Checked checked, ItemResource key, long left) {
+        left = Math.min(left, affordable(deck));
+        if (left <= 0 || !canVoid(store, deck, key, player, checked)) return 0;
+        pay(deck, left);
+        return left;
     }
 
     /** Takes the charge for {@code items} moved in or out. */

@@ -1018,6 +1018,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             WaferSettings settings = status.settings();
             if (!settings.rules().isEmpty())
                 lines.add(Component.translatable("screen.jasm.filter.count", settings.rules().size()).withStyle(ChatFormatting.GRAY));
+            if (settings.hasVoid())
+                lines.add(Component.translatable("screen.jasm.filter.void_wafer").withStyle(ChatFormatting.YELLOW));
             if (status.fromMissingMods() > 0) {
                 lines.add(Component.translatable("screen.jasm.deck.missing", String.format("%,d", status.fromMissingMods()))
                         .withStyle(ChatFormatting.RED));

@@ -99,10 +99,10 @@ public final class DeckNetwork {
         long moved;
         if (payload.one()) {
             ItemStack single = carried.copyWithCount(1);
-            moved = DeckStorage.deposit(store, menu.deck(), single, player);
+            moved = DeckStorage.deposit(store, menu.deck(), single, player, DeckStorage.Excess.VOID);
             carried.shrink((int) moved);
         } else {
-            moved = DeckStorage.deposit(store, menu.deck(), carried, player);
+            moved = DeckStorage.deposit(store, menu.deck(), carried, player, DeckStorage.Excess.VOID);
         }
         menu.setCarried(carried);
         finish(player, menu);

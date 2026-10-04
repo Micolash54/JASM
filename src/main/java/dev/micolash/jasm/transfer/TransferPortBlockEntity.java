@@ -151,21 +151,23 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             keys.sort(Comparator.comparingInt(key -> filters.input().rank(key.getItem())));
             for (var key : keys) {
                 if (budget <= 0) break;
-                int room = (int) storage.room(key, budget);
+                int room = (int) storage.room(key, budget, DeckStorage.Excess.VOID);
                 if (room <= 0) continue;
                 int wanted;
                 try (var tx = Transaction.openRoot()) {
                     wanted = inventory.extract(key, room, tx);   // only asking
                 }
                 if (wanted <= 0) continue;
-                long stored = storage.depositAmount(key, wanted);
+                var put = storage.depositResult(key, wanted, DeckStorage.Excess.VOID);
+                long stored = put.total();
                 if (stored <= 0) continue;
                 int taken;
                 try (var tx = Transaction.openRoot()) {
                     taken = inventory.extract(key, (int) stored, tx);
                     if (taken > 0) tx.commit();
                 }
-                if (taken < stored) undoDeposit(player, deck, store, key, stored - taken);
+                // Only what was really stored is backed out: destroyed items were never on a wafer.
+                if (taken < stored) undoDeposit(player, deck, store, key, Math.min(put.stored(), stored - taken));
                 if (taken > 0) {
                     budget -= taken;
                     transferred(taken);
@@ -269,7 +271,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         for (var key : keys) {
             long most = Math.min((long) (shares - used) * FluidAmounts.PER_SHARE, DeckStorage.affordableFluid(deck));
             if (most <= 0) break;
-            long room = storage.roomFluid(key, most);
+            long room = storage.roomFluid(key, most, DeckStorage.Excess.VOID);
             if (room <= 0) continue;
             long wanted;
             try (var tx = Transaction.openRoot()) {
@@ -278,21 +280,23 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             if (wanted <= 0 && most < FluidAmounts.PER_BUCKET) {
                 // Some blocks (a cauldron) only give a whole bucket: take one and pay it back out of the next operations.
                 long bucket = Math.min(FluidAmounts.PER_BUCKET, DeckStorage.affordableFluid(deck));
-                if (storage.roomFluid(key, bucket) >= bucket) {
+                if (storage.roomFluid(key, bucket, DeckStorage.Excess.VOID) >= bucket) {
                     try (var tx = Transaction.openRoot()) {
                         wanted = tank.extract(key, (int) bucket, tx);   // only asking
                     }
                 }
             }
             if (wanted <= 0) continue;
-            long stored = storage.depositFluid(key, wanted);
+            var put = storage.depositFluidResult(key, wanted, DeckStorage.Excess.VOID);
+            long stored = put.total();
             if (stored <= 0) continue;
             long taken;
             try (var tx = Transaction.openRoot()) {
                 taken = tank.extract(key, (int) stored, tx);
                 if (taken > 0) tx.commit();
             }
-            if (taken < stored) undoFluidDeposit(player, deck, store, key, stored - taken);
+            // Only what was really stored is backed out: destroyed fluid was never on a wafer.
+            if (taken < stored) undoFluidDeposit(player, deck, store, key, Math.min(put.stored(), stored - taken));
             if (taken > 0) {
                 int moved = (int) FluidAmounts.shares(taken);
                 used += moved;

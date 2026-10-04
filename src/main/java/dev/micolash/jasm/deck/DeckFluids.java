@@ -107,7 +107,7 @@ public final class DeckFluids {
         }
         if (grabbedBucket && menu.getCarried().is(Items.BUCKET)) {
             ItemStack back = menu.getCarried();
-            DeckStorage.depositQuietly(WaferStore.get(player.level().getServer()), deck, back, player);
+            DeckStorage.depositQuietly(WaferStore.get(player.level().getServer()), deck, back, player, DeckStorage.Excess.VOID);
             menu.setCarried(back);
         }
         if (toInventory && moved > 0 && !menu.getCarried().isEmpty() && !menu.getCarried().is(carriedBefore)) {
@@ -153,7 +153,7 @@ public final class DeckFluids {
             if (offered <= 0) {
                 break;
             }
-            long allowed = Math.min(storage.roomFluid(key, offered), DeckStorage.affordableFluid(deck));
+            long allowed = Math.min(storage.roomFluid(key, offered, DeckStorage.Excess.VOID), DeckStorage.affordableFluid(deck));
             if (allowed <= 0) {
                 noRoom = moved == 0;
                 break;
@@ -163,13 +163,13 @@ public final class DeckFluids {
                 if (extracted <= 0) {
                     break;
                 }
-                long stored = storage.depositFluid(key, extracted);
-                if (stored != extracted) {
-                    takeBack(player, menu, key, stored);
+                var put = storage.depositFluidResult(key, extracted, DeckStorage.Excess.VOID);
+                if (put.total() != extracted) {
+                    takeBack(player, menu, key, put.stored());
                     break;
                 }
                 tx.commit();
-                moved += stored;
+                moved += put.total();
             }
         }
         if (moved > 0) {

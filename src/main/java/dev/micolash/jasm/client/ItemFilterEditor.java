@@ -33,7 +33,9 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 
 /** Ordered item filters and the ghost input for adding one, shared by wafers and inventory ports. */
 class ItemFilterEditor {
-    static final int WIDTH = 300;
+    static final int WIDTH = 332;
+    /** The width the controls were first laid out for; the port editors measure how much narrower they are from it. */
+    private static final int BASE_WIDTH = 300;
     private final int height;
     private final int listY;
     private final int editorWidth;
@@ -80,7 +82,7 @@ class ItemFilterEditor {
     private record Selector(Mode mode, String value) {}
 
     ItemFilterEditor(Font font, int rows, boolean movable, Supplier<ItemStack> carried) {
-        this(font, rows, movable, carried, movable ? WIDTH : WIDTH - 16);
+        this(font, rows, movable, carried, movable ? WIDTH : BASE_WIDTH - 16);
     }
 
     ItemFilterEditor(Font font, int rows, boolean movable, Supplier<ItemStack> carried, int editorWidth) {
@@ -93,8 +95,8 @@ class ItemFilterEditor {
         this.listY = movable ? 37 : 16;
         this.slotY = movable ? 168 - (4 - rows) * rowHeight : listY + rows * rowHeight + 28;
         this.height = slotY + (movable ? 24 : 20);
-        int shrink = WIDTH - editorWidth;
-        this.rowButtons = new Button[rows][5];
+        int shrink = BASE_WIDTH - editorWidth;
+        this.rowButtons = new Button[rows][6];
         this.font = font;
         text = new JasmField(font, 0, 0, 236 - shrink, 14, label("value"));
         text.setMaxLength(256);
@@ -111,18 +113,24 @@ class ItemFilterEditor {
         action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, keyWidth, 17), 10 + keyWidth, slotY - 24);
         confirm = place(JasmButton.icon(() -> CHECK, label("add"), b -> add(), 0, 0, 17, 17), 274 - shrink, slotY - 1);
         confirm.setTooltip(Tooltip.create(label("add")));
-        int controlsX = compact ? 10 : 163 - shrink;
+        // The wafer window has room for a Void key between the On key and the arrows.
+        int controlsX = compact ? 10 : 159;
         int toggleWidth = Math.max(Math.max(font.width(label("allow")), font.width(label("deny"))),
                 Math.max(font.width(label("on")), font.width(label("off")))) + 10;
         int actionWidth = compact ? toggleWidth : 38;
         int enabledWidth = compact ? toggleWidth : 28;
-        int arrowsX = compact ? editorWidth - 60 : controlsX + 70;
+        int arrowsX = compact ? editorWidth - 60 : controlsX + 102;
         for (int row = 0; row < rows; row++) {
             final int visible = row;
             int py = listY + row * rowHeight + (compact ? 16 : 4);
             rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 17), controlsX, py);
             rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 17),
                     controlsX + actionWidth + 2, py);
+            if (!compact) {
+                rowButtons[row][5] = place(JasmButton.text(Component.empty(), b -> change(visible, 5), 0, 0, 30, 17),
+                        controlsX + actionWidth + 2 + enabledWidth + 2, py);
+                rowButtons[row][5].setTooltip(Tooltip.create(label("void_tip")));
+            }
             rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 17), arrowsX, py);
             rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 13, 17), arrowsX + 15, py);
             rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 13, 17), arrowsX + 30, py);
@@ -196,6 +204,12 @@ class ItemFilterEditor {
             Filter rule = draft.rules().get(at);
             rowButtons[row][0].setMessage(JasmGui.state(label(rule.allow() ? "allow" : "deny"), rule.allow()));
             rowButtons[row][1].setMessage(JasmGui.state(label(rule.enabled() ? "on" : "off"), rule.enabled()));
+            Button voidKey = rowButtons[row][5];
+            if (voidKey != null) {
+                // Only an Allow row can destroy leftovers; Deny rows show no key.
+                voidKey.visible = rule.allow();
+                voidKey.setMessage(label("void").copy().withColor((rule.voidExcess() ? JasmGui.WARN : JasmGui.MUTED) & 0xFFFFFF));
+            }
             rowButtons[row][2].active = at > 0;
             rowButtons[row][3].active = at + 1 < draft.rules().size();
         }
@@ -206,8 +220,9 @@ class ItemFilterEditor {
         List<Filter> rules = new ArrayList<>(draft.rules());
         Filter rule = rules.get(at);
         switch (control) {
-            case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled()));
-            case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled()));
+            case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled(), rule.voidExcess()));
+            case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled(), rule.voidExcess()));
+            case 5 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), rule.enabled(), !rule.voidExcess()));
             case 2 -> {
                 if (at > 0) Collections.swap(rules, at, at - 1);
             }
@@ -319,10 +334,10 @@ class ItemFilterEditor {
                     graphics.text(font, kind, kindRight - font.width(kind), py + 4, JasmGui.MUTED, false);
                     graphics.text(font, font.plainSubstrByWidth(rule.value(), kindRight - font.width(kind) - 8 - (x + 30)), x + 30, py + 4, color, false);
                 } else {
-                    graphics.text(font, font.plainSubstrByWidth(rule.value(), editorWidth - 169), x + 30, py + 4, color, false);
+                    graphics.text(font, font.plainSubstrByWidth(rule.value(), editorWidth - 203), x + 30, py + 4, color, false);
                     graphics.text(font, kind, x + 30, py + 14, JasmGui.MUTED, false);
                 }
-                if (mx >= x + 8 && mx < x + editorWidth - (compact ? 13 : 135) && my >= py && my < py + (compact ? 15 : rowHeight))
+                if (mx >= x + 8 && mx < x + editorWidth - (compact ? 13 : 171) && my >= py && my < py + (compact ? 15 : rowHeight))
                     graphics.setTooltipForNextFrame(font, Component.literal(rule.value()), mx, my);
             } else {
                 if (at >= tagChoices.size()) break;

@@ -72,7 +72,7 @@ final class JobReturns {
     static long moveToDeck(ServerPlayer player, ItemStack deck, WaferRecord record, WaferStore store, Map<ItemResource, Long> items) {
         var storage = DeckStorage.checked(store, deck, player);
         long moved = 0;
-        for (var held : storage.depositAmounts(items).entrySet()) {
+        for (var held : storage.depositAmounts(items, DeckStorage.Excess.VOID).entrySet()) {
             moved += store.extract(record, held.getKey(), held.getValue(), false, player);
         }
         refreshOpenDeck(player, deck);
@@ -84,7 +84,7 @@ final class JobReturns {
         var storage = DeckStorage.checked(store, deck, player);
         long moved = 0;
         for (var held : List.copyOf(fluids.fluids().entrySet())) {
-            long in = storage.depositFluid(held.getKey(), held.getValue());
+            long in = storage.depositFluidResult(held.getKey(), held.getValue(), DeckStorage.Excess.VOID).total();
             if (in > 0) {
                 store.extractFluid(fluids, held.getKey(), in, false, player);
                 moved += in;

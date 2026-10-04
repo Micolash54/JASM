@@ -156,7 +156,7 @@ public final class DeliveryNetwork {
     }
 
     /** Moves the inbox onto the Deck's wafers, as far as they and the charge allow. What doesn't fit stays. */
-    static void storeAll(ServerPlayer player, int containerId) {
+    public static void storeAll(ServerPlayer player, int containerId) {
         DeckMenu menu = menu(player, containerId);
         if (menu == null) return;
         MinecraftServer server = player.level().getServer();
@@ -165,7 +165,7 @@ public final class DeliveryNetwork {
         long moved = 0;
         for (ItemStack stack : state.inbox(player.getUUID())) {
             if (stack.isEmpty() || !DeckMenu.allowedInGrid(stack)) continue;
-            moved += DeckStorage.depositQuietly(store, menu.deck(), stack, player);
+            moved += DeckStorage.depositQuietly(store, menu.deck(), stack, player, DeckStorage.Excess.VOID);
         }
         state.inboxChanged(player.getUUID());
         if (moved == 0 && state.hasInbox(player.getUUID())) Notices.bad(player, Component.translatable("screen.jasm.send.store_none"));

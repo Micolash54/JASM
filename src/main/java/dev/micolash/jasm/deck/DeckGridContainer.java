@@ -12,8 +12,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 
 /**
- * A Crafting Deck's 3×3 grid while its menu is open. On the server every change is stored back on the Deck at once,
- * so what sits in the grid is saved with the player's file like any other item.
+ * A Crafting Deck's 3×3 grid. On the server every change is stored back on the Deck at once, so what sits in the
+ * grid stays there, saved with the player's file like any other item, until the player moves it.
  */
 public final class DeckGridContainer implements CraftingContainer {
     public static final int SIZE = 9;
