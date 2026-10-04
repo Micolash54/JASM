@@ -1,0 +1,78 @@
+{
+  "textures": {
+    "particle": "jasm:block/bay/bay",
+    "bay": "jasm:block/bay/bay"
+  },
+  "elements": [
+    {
+      "name": "lamp_on",
+      "from": [
+        6.95,
+        13.95,
+        11.95
+      ],
+      "to": [
+        9.05,
+        14.8,
+        13.55
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            13.25,
+            10,
+            13.75,
+            10.25
+          ],
+          "texture": "#bay"
+        },
+        "south": {
+          "uv": [
+            13.25,
+            10,
+            13.75,
+            10.25
+          ],
+          "texture": "#bay"
+        },
+        "east": {
+          "uv": [
+            13.25,
+            10,
+            13.75,
+            10.25
+          ],
+          "texture": "#bay"
+        },
+        "west": {
+          "uv": [
+            13.25,
+            10,
+            13.75,
+            10.25
+          ],
+          "texture": "#bay"
+        },
+        "up": {
+          "uv": [
+            14.5,
+            7.5,
+            15,
+            8
+          ],
+          "texture": "#bay"
+        },
+        "down": {
+          "uv": [
+            14.5,
+            7.5,
+            15,
+            8
+          ],
+          "texture": "#bay"
+        }
+      }
+    }
+  ]
+}

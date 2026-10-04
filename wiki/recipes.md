@@ -181,6 +181,15 @@ Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data
 | ![Memory Chip](images/recipes/memory_chip.png) | **Memory Chip** | 1 × Unquenched Memory Chip (dropped in water) |
 | ![Crystal Foundry](images/recipes/crystal_foundry.png) | **Crystal Foundry** | 2 × Logic Chip, 1 × Amethyst Block, 2 × Memory Chip, 1 × Blast Furnace, 3 × Iron Ingot |
 
+## Deployment and Demolition Bays
+
+A Deployment Bay places blocks, seeds and fluids from its own grid and tank into the space in front of it, or throws items out. A Demolition Bay breaks the block in front into its own grid, scoops up fluids and picks up items that land on its face; enchant it like a pickaxe for Fortune, Silk Touch and Efficiency. Ports fill and empty them. They don't take up a machine place.
+
+| Recipe | Item | Ingredients |
+| --- | --- | --- |
+| ![Deployment Bay](images/recipes/deployment_bay.png) | **Deployment Bay** | 6 × Iron Ingot, 1 × Advanced Logic Chip, 1 × Dispenser, 1 × Data Cable |
+| ![Demolition Bay](images/recipes/demolition_bay.png) | **Demolition Bay** | 6 × Iron Ingot, 1 × Advanced Logic Chip, 1 × Diamond Pickaxe, 1 × Data Cable |
+
 ## Bitlings and the Chip Workshop
 
 A Bitling in the Chip Workshop turns Blank Chips into chips. Basic Bitlings aren't crafted: hand a wild Bitling a Logic, Memory or Link Chip and it becomes one. A Basic Bitling becomes a Logic, Memory or Link Bitling with chips of that type and keeps its charge. A Bitling or Nibbling with a full training bar grows up into the next stage; training starts again. The Bitling Station lets one of them roam around it.

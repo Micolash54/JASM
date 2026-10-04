@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "L": "jasm:advanced_logic_chip",
+    "I": "minecraft:iron_ingot",
+    "P": "minecraft:diamond_pickaxe",
+    "C": "jasm:data_cable"
+  },
+  "pattern": [
+    "ILI",
+    "IPI",
+    "ICI"
+  ],
+  "result": {
+    "id": "jasm:demolition_bay"
+  }
+}

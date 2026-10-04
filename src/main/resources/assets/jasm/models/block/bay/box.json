@@ -1,0 +1,77 @@
+{
+  "textures": {
+    "particle": "jasm:block/bay/bay",
+    "bay": "jasm:block/bay/bay"
+  },
+  "elements": [
+    {
+      "name": "box",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        3,
+        3,
+        3
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            10,
+            4.25,
+            11.5,
+            5.75
+          ],
+          "texture": "#bay"
+        },
+        "south": {
+          "uv": [
+            6.5,
+            4.25,
+            8,
+            5.75
+          ],
+          "texture": "#bay"
+        },
+        "east": {
+          "uv": [
+            11.75,
+            4.25,
+            13.25,
+            5.75
+          ],
+          "texture": "#bay"
+        },
+        "west": {
+          "uv": [
+            13.5,
+            4.25,
+            15,
+            5.75
+          ],
+          "texture": "#bay"
+        },
+        "up": {
+          "uv": [
+            0,
+            7.5,
+            1.5,
+            9
+          ],
+          "texture": "#bay"
+        },
+        "down": {
+          "uv": [
+            8.25,
+            4.25,
+            9.75,
+            5.75
+          ],
+          "texture": "#bay"
+        }
+      }
+    }
+  ]
+}

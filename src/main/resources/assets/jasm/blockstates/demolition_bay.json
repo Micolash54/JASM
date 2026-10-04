@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "jasm:block/demolition_bay"
+    },
+    "facing=east": {
+      "model": "jasm:block/demolition_bay",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "jasm:block/demolition_bay",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "jasm:block/demolition_bay",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "jasm:block/demolition_bay",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "jasm:block/demolition_bay",
+      "x": 90
+    }
+  }
+}

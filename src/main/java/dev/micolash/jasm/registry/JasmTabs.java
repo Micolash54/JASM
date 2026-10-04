@@ -77,6 +77,8 @@ public final class JasmTabs {
                 output.accept(JasmItems.CRYSTAL_RESONATOR);
                 output.accept(JasmItems.CHIP_WORKSHOP);
                 output.accept(JasmItems.CRYSTAL_FOUNDRY);
+                output.accept(JasmItems.DEPLOYMENT_BAY);
+                output.accept(JasmItems.DEMOLITION_BAY);
                 output.accept(JasmItems.BITLING_STATION);
                 output.accept(JasmItems.NETWORK_BRAIN);
                 output.accept(JasmItems.NETWORK_CHAMBER);

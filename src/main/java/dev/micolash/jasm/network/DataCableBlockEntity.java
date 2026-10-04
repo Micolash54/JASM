@@ -84,7 +84,7 @@ public class DataCableBlockEntity extends BlockEntity {
             return false;
         BlockPos next = worldPosition.relative(side);
         if (level.getBlockState(next).getBlock() instanceof DataCableBlock
-                || level.getBlockEntity(next) instanceof MachineBlockEntity
+                || level.getBlockEntity(next) instanceof MachineBlockEntity machine && !machine.opensToPorts()
                 || level.getBlockEntity(next) instanceof ArchiveBlockEntity
                 || level.getBlockEntity(next) instanceof NetworkPowerSource)
             return false;

@@ -1,0 +1,284 @@
+{
+  "textures": {
+    "particle": "jasm:block/bay/bay_bitling",
+    "parts": "jasm:block/bay/bay_bitling"
+  },
+  "elements": [
+    {
+      "name": "goggles_strap",
+      "from": [
+        3.25,
+        12.5,
+        2.75
+      ],
+      "to": [
+        12.75,
+        13.5,
+        11.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            8.25,
+            4.75,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            8.25,
+            4.75,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            5,
+            8.25,
+            9.25,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            5,
+            8.25,
+            9.25,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4.75,
+            4.25
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            0,
+            4.75,
+            4.25
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "goggles_lens_left",
+      "from": [
+        4.25,
+        12.25,
+        2.25
+      ],
+      "to": [
+        7.5,
+        14.5,
+        2.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            7,
+            4.5,
+            8.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            5,
+            4.5,
+            6.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            10.5,
+            4.5,
+            10.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            10.5,
+            4.5,
+            10.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            2.5,
+            9.75,
+            4.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            2.5,
+            9.75,
+            4.25,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "goggles_lens_right",
+      "from": [
+        8.5,
+        12.25,
+        2.25
+      ],
+      "to": [
+        11.75,
+        14.5,
+        2.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            7,
+            4.5,
+            8.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            5,
+            4.5,
+            6.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            10.5,
+            4.5,
+            10.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            10.5,
+            4.5,
+            10.75,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            2.5,
+            9.75,
+            4.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            2.5,
+            9.75,
+            4.25,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "goggles_bridge",
+      "from": [
+        7.5,
+        13,
+        2.35
+      ],
+      "to": [
+        8.5,
+        13.5,
+        2.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            6.75,
+            9.75,
+            7.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            6.75,
+            9.75,
+            7.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            9,
+            9.75,
+            9.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            9,
+            9.75,
+            9.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            6.75,
+            9.75,
+            7.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            6.75,
+            9.75,
+            7.25,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    }
+  ]
+}

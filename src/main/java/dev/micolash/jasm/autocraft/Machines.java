@@ -83,9 +83,9 @@ public final class Machines {
 
     /** Where items go into the block at {@code pos} through its {@code side}, or null if it takes none. */
     public static @Nullable ResourceHandler<ItemResource> inlet(Level level, BlockPos pos, Direction side) {
-        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity
+        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity machine && !machine.opensToPorts()
                 || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
-            // Another crafting block is no machine.
+            // Another crafting block is no machine. Bays are, since ports fill and empty them.
             return null;
         }
         ResourceHandler<ItemResource> handler = level.getCapability(Capabilities.Item.BLOCK, pos, side);
@@ -100,7 +100,7 @@ public final class Machines {
 
     /** Where fluids go into the block at {@code pos} through its {@code side}, or null if it takes none. */
     public static @Nullable ResourceHandler<FluidResource> fluidInlet(Level level, BlockPos pos, Direction side) {
-        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity
+        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity machine && !machine.opensToPorts()
                 || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
             return null;
         }

@@ -33,6 +33,21 @@ final class FluidGrid {
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, model.stillMaterial().sprite(), x + inset, y + inset, size, size, color);
     }
 
+    /** A tank's fill: the fluid's still texture, tinted, tiled up from the bottom of the rectangle. */
+    static void drawTank(GuiGraphicsExtractor graphics, FluidResource fluid, int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) return;
+        FluidModel model = Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.getFluid().defaultFluidState());
+        var tint = model.fluidTintSource();
+        int color = tint == null ? 0xFFFFFFFF : tint.colorAsStack(fluid.toStack(1)) | 0xFF000000;
+        graphics.enableScissor(x, y, x + width, y + height);
+        for (int ty = y + height - 16; ty > y - 16; ty -= 16) {
+            for (int tx = x; tx < x + width; tx += 16) {
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, model.stillMaterial().sprite(), tx, ty, 16, 16, color);
+            }
+        }
+        graphics.disableScissor();
+    }
+
     /** Draws a stack, or the fluid a fluid marker stands for, in a 16 × 16 cell. */
     static void drawStack(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y) {
         FluidResource fluid = FluidMarkerItem.fluidOf(stack);

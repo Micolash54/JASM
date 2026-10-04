@@ -60,6 +60,8 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), ChipWorkshopRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.NETWORK_BRAIN_ENTITY.get(), NetworkBrainRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), CrystalFoundryRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.DEPLOYMENT_BAY_ENTITY.get(), BayRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.DEMOLITION_BAY_ENTITY.get(), BayRenderer::new);
         event.registerEntityRenderer(JasmEntities.STATION_BITLING.get(), BitlingBodyRenderer::new);
         event.registerEntityRenderer(JasmEntities.WILD_BITLING.get(), BitlingBodyRenderer::new);
     }
@@ -75,6 +77,7 @@ public final class JasmClient {
         ChipWorkshopRenderer.registerModels(event);
         NetworkBrainRenderer.registerModels(event);
         CrystalFoundryRenderer.registerModels(event);
+        BayRenderer.registerModels(event);
     }
 
     @SubscribeEvent
@@ -84,6 +87,8 @@ public final class JasmClient {
         event.register(JasmMenus.CREATIVE_BATTERY.get(), CreativeBatteryScreen::new);
         event.register(JasmMenus.COMBUSTION_GENERATOR.get(), CombustionGeneratorScreen::new);
         event.register(JasmMenus.CHIP_WORKSHOP.get(), ChipWorkshopScreen::new);
+        event.register(JasmMenus.DEPLOYMENT_BAY.get(), BayScreen::new);
+        event.register(JasmMenus.DEMOLITION_BAY.get(), BayScreen::new);
         event.register(JasmMenus.CRYSTAL_FOUNDRY.get(), CrystalFoundryScreen::new);
         event.register(JasmMenus.BITLING_STATION.get(), BitlingStationScreen::new);
         event.register(JasmMenus.NETWORK_BRAIN.get(), NetworkBrainScreen::new);

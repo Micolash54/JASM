@@ -28,6 +28,14 @@ public final class JasmClientConfig {
             .defineEnum("deckSize", DeckSize.SMALL);
 
     static {
+        BUILDER.pop().push("sounds");
+    }
+
+    public static final ModConfigSpec.BooleanValue BAY_LASER_MUTED = BUILDER
+            .comment("Silences every Demolition Bay's laser")
+            .define("bayLaserMuted", false);
+
+    static {
         BUILDER.pop();
     }
 
@@ -50,6 +58,16 @@ public final class JasmClientConfig {
 
     public static void setDeckSize(DeckSize size) {
         DECK_SIZE.set(size);
+        SPEC.save();
+    }
+
+    /** Before the config has loaded, the laser is heard. */
+    public static boolean bayLaserMuted() {
+        return SPEC.isLoaded() && BAY_LASER_MUTED.get();
+    }
+
+    public static void setBayLaserMuted(boolean muted) {
+        BAY_LASER_MUTED.set(muted);
         SPEC.save();
     }
 

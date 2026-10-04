@@ -20,6 +20,8 @@
     "jasm:crystal_foundry",
     "jasm:bitling_station",
     "jasm:network_brain",
-    "jasm:network_chamber"
+    "jasm:network_chamber",
+    "jasm:deployment_bay",
+    "jasm:demolition_bay"
   ]
 }

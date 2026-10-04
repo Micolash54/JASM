@@ -2,6 +2,7 @@ package dev.micolash.jasm.network;
 
 import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
+import dev.micolash.jasm.bay.BayBlock;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -274,7 +275,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         if (neighbour.getBlock() instanceof DataCableBlock) {
             return true;
         }
-        if (neighbour.getBlock() instanceof MachineBlock) {
+        if (neighbour.getBlock() instanceof MachineBlock || neighbour.getBlock() instanceof BayBlock) {
             return true;
         }
         return level.getBlockEntity(neighbourPos) instanceof ArchiveBlockEntity

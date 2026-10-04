@@ -1,6 +1,7 @@
 package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.bay.DemolitionBayItem;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.MemoryTier;
@@ -95,6 +96,9 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> CRYSTAL_RESONATOR = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_RESONATOR);
     public static final DeferredItem<BlockItem> CHIP_WORKSHOP = ITEMS.registerSimpleBlockItem(JasmBlocks.CHIP_WORKSHOP);
     public static final DeferredItem<BlockItem> CRYSTAL_FOUNDRY = ITEMS.registerSimpleBlockItem(JasmBlocks.CRYSTAL_FOUNDRY);
+    public static final DeferredItem<BlockItem> DEPLOYMENT_BAY = ITEMS.registerSimpleBlockItem(JasmBlocks.DEPLOYMENT_BAY);
+    public static final DeferredItem<DemolitionBayItem> DEMOLITION_BAY = ITEMS.registerItem("demolition_bay",
+            properties -> new DemolitionBayItem(JasmBlocks.DEMOLITION_BAY.get(), properties.enchantable(10).useBlockDescriptionPrefix()));
     public static final DeferredItem<BlockItem> BITLING_STATION = ITEMS.registerSimpleBlockItem(JasmBlocks.BITLING_STATION);
     public static final DeferredItem<BlockItem> NETWORK_BRAIN = ITEMS.registerSimpleBlockItem(JasmBlocks.NETWORK_BRAIN);
     public static final DeferredItem<BlockItem> NETWORK_CHAMBER = ITEMS.registerSimpleBlockItem(JasmBlocks.NETWORK_CHAMBER);

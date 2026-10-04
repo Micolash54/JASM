@@ -1,0 +1,353 @@
+{
+  "textures": {
+    "particle": "jasm:block/bay/bay_bitling",
+    "parts": "jasm:block/bay/bay_bitling"
+  },
+  "elements": [
+    {
+      "name": "hat_rim",
+      "from": [
+        3.25,
+        14,
+        2
+      ],
+      "to": [
+        12.75,
+        14.5,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            6.5,
+            9,
+            11.25,
+            9.25
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            6.5,
+            9,
+            11.25,
+            9.25
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            11.5,
+            9,
+            15.75,
+            9.25
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            11.5,
+            9,
+            15.75,
+            9.25
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            5,
+            0,
+            9.75,
+            4.25
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            5,
+            0,
+            9.75,
+            4.25
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "hat_dome",
+      "from": [
+        3.75,
+        14.5,
+        3.5
+      ],
+      "to": [
+        12.25,
+        16,
+        10.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            7.25,
+            4.25,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            7.25,
+            4.25,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            8.5,
+            7.25,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            8.5,
+            7.25,
+            12,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            10.75,
+            0,
+            15,
+            3.5
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            10.75,
+            0,
+            15,
+            3.5
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "hat_crown",
+      "from": [
+        4.5,
+        16,
+        4.5
+      ],
+      "to": [
+        11.5,
+        17,
+        9.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9.5,
+            8.25,
+            13,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9.5,
+            8.25,
+            13,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            13.25,
+            8.25,
+            15.75,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            13.25,
+            8.25,
+            15.75,
+            8.75
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            4.5,
+            3.5,
+            7
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            4.5,
+            3.5,
+            7
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "hat_ridge",
+      "from": [
+        7.5,
+        16,
+        3.25
+      ],
+      "to": [
+        8.5,
+        17.5,
+        10.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            7.25,
+            13.5,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            13,
+            7.25,
+            13.5,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            4.5,
+            7.25,
+            8.25,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            4.5,
+            7.25,
+            8.25,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            10,
+            0,
+            10.5,
+            3.75
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            10,
+            0,
+            10.5,
+            3.75
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "hat_lamp",
+      "from": [
+        7,
+        14.75,
+        3.25
+      ],
+      "to": [
+        9,
+        15.75,
+        3.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            9,
+            1,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            1.25,
+            9,
+            2.25,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            6,
+            9,
+            6.25,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            6,
+            9,
+            6.25,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            4.5,
+            9.75,
+            5.5,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            4.5,
+            9.75,
+            5.5,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    }
+  ]
+}

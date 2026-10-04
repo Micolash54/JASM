@@ -5,6 +5,8 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
+import dev.micolash.jasm.bay.BayRedstone;
+import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
@@ -105,6 +107,15 @@ public final class JasmComponents {
 
     public static final Supplier<DataComponentType<RedstoneMode>> REDSTONE_MODE = COMPONENTS.registerComponentType(
             "redstone_mode", b -> b.persistent(RedstoneMode.CODEC).networkSynchronized(RedstoneMode.STREAM_CODEC));
+
+    public static final Supplier<DataComponentType<ItemContainerContents>> BAY_UPGRADES = COMPONENTS.registerComponentType(
+            "bay_upgrades", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
+    public static final Supplier<DataComponentType<BayRedstone>> BAY_REDSTONE = COMPONENTS.registerComponentType(
+            "bay_redstone", b -> b.persistent(BayRedstone.CODEC).networkSynchronized(BayRedstone.STREAM_CODEC));
+
+    public static final Supplier<DataComponentType<DeployMode>> DEPLOY_MODE = COMPONENTS.registerComponentType(
+            "deploy_mode", b -> b.persistent(DeployMode.CODEC).networkSynchronized(DeployMode.STREAM_CODEC));
 
     public static final Supplier<DataComponentType<StorageSettings>> STORAGE_SETTINGS = COMPONENTS.registerComponentType(
             "storage_settings", b -> b.persistent(StorageSettings.CODEC).networkSynchronized(StorageSettings.STREAM_CODEC));

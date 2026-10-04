@@ -16,6 +16,10 @@ import dev.micolash.jasm.autocraft.RecipeRackBlock;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlock;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
+import dev.micolash.jasm.bay.BayBlock;
+import dev.micolash.jasm.bay.BayKind;
+import dev.micolash.jasm.bay.DemolitionBayBlockEntity;
+import dev.micolash.jasm.bay.DeploymentBayBlockEntity;
 import dev.micolash.jasm.brain.NetworkBrainBlock;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlock;
@@ -160,6 +164,20 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<ChipWorkshopBlockEntity>> CHIP_WORKSHOP_ENTITY = BLOCK_ENTITIES.register(
             "chip_workshop", () -> new BlockEntityType<>(ChipWorkshopBlockEntity::new, CHIP_WORKSHOP.get()));
+
+    public static final DeferredBlock<BayBlock> DEPLOYMENT_BAY = BLOCKS.registerBlock("deployment_bay",
+            BayBlock.of(BayKind.DEPLOYMENT), p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F)
+                    .sound(SoundType.METAL).noOcclusion());
+
+    public static final Supplier<BlockEntityType<DeploymentBayBlockEntity>> DEPLOYMENT_BAY_ENTITY = BLOCK_ENTITIES.register(
+            "deployment_bay", () -> new BlockEntityType<>(DeploymentBayBlockEntity::new, DEPLOYMENT_BAY.get()));
+
+    public static final DeferredBlock<BayBlock> DEMOLITION_BAY = BLOCKS.registerBlock("demolition_bay",
+            BayBlock.of(BayKind.DEMOLITION), p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F)
+                    .sound(SoundType.METAL).noOcclusion());
+
+    public static final Supplier<BlockEntityType<DemolitionBayBlockEntity>> DEMOLITION_BAY_ENTITY = BLOCK_ENTITIES.register(
+            "demolition_bay", () -> new BlockEntityType<>(DemolitionBayBlockEntity::new, DEMOLITION_BAY.get()));
 
     public static final DeferredBlock<BitlingStationBlock> BITLING_STATION = BLOCKS.registerBlock("bitling_station",
             BitlingStationBlock::new,

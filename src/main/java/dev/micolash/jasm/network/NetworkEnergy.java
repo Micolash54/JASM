@@ -40,7 +40,7 @@ public class NetworkEnergy extends SimpleEnergyHandler {
     }
 
     /** The network just gave it {@code amount}, through a cable or a touching machine: that part isn't its own. */
-    void fromNetwork(int amount) {
+    public void fromNetwork(int amount) {
         own = Math.max(0, Math.min(own, energy) - amount);
     }
 

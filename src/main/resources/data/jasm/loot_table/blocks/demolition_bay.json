@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "jasm:demolition_bay",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy",
+                "jasm:owner",
+                "jasm:bay_upgrades",
+                "jasm:bay_redstone",
+                "minecraft:enchantments"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jasm:blocks/demolition_bay"
+}

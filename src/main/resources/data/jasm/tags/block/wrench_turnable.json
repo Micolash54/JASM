@@ -12,6 +12,8 @@
     "jasm:crystal_foundry",
     "jasm:crystal_resonator",
     "jasm:chip_workshop",
-    "jasm:bitling_station"
+    "jasm:bitling_station",
+    "jasm:deployment_bay",
+    "jasm:demolition_bay"
   ]
 }

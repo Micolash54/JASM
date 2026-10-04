@@ -1,6 +1,7 @@
 package dev.micolash.jasm.wrench;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.bay.BayBlock;
 import dev.micolash.jasm.registry.JasmTags;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -40,7 +41,8 @@ public final class Wrenching {
         BlockState state = level.getBlockState(pos);
         boolean pickUp = player.isSecondaryUseActive();
         if (pickUp ? !state.is(JasmTags.WRENCH_PICKUP)
-                : !state.is(JasmTags.WRENCH_TURNABLE) || !state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+                : !state.is(JasmTags.WRENCH_TURNABLE)
+                        || !state.hasProperty(BlockStateProperties.HORIZONTAL_FACING) && !state.hasProperty(BlockStateProperties.FACING)) {
             return;
         }
         if (!player.mayBuild() || !level.mayInteract(player, pos)) {
@@ -61,8 +63,21 @@ public final class Wrenching {
         }
     }
 
-    /** The front turns to the clicked side. Clicking the front, the top or the bottom turns it on a quarter, clockwise. */
+    /**
+     * The front turns to the clicked side. Clicking the front (or, for blocks that only face sideways, the top or bottom)
+     * turns it on: a quarter clockwise, or to the next direction for blocks that can also face up and down.
+     */
     private static BlockState turned(BlockState state, @Nullable Direction clicked) {
+        if (state.hasProperty(BlockStateProperties.FACING)) {
+            Direction front = state.getValue(BlockStateProperties.FACING);
+            Direction to = clicked != null && clicked != front ? clicked : Direction.from3DDataValue((front.get3DDataValue() + 1) % 6);
+            // Bays never face up: skip on to the next direction.
+            if (to == Direction.UP && state.getBlock() instanceof BayBlock) {
+                to = Direction.from3DDataValue((to.get3DDataValue() + 1) % 6);
+                if (to == front) to = Direction.from3DDataValue((to.get3DDataValue() + 1) % 6);
+            }
+            return state.setValue(BlockStateProperties.FACING, to);
+        }
         Direction front = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
         Direction to = clicked != null && clicked.getAxis().isHorizontal() && clicked != front ? clicked : front.getClockWise();
         return state.setValue(BlockStateProperties.HORIZONTAL_FACING, to);

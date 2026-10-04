@@ -55,6 +55,11 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return true;
     }
 
+    /** Whether ports, hoppers and Access Ports may reach this block's own slots. Only the bays. */
+    public boolean opensToPorts() {
+        return false;
+    }
+
     public boolean stopped() {
         return stopped;
     }

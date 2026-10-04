@@ -1,0 +1,629 @@
+{
+  "textures": {
+    "particle": "jasm:block/bay/bay_bitling",
+    "parts": "jasm:block/bay/bay_bitling"
+  },
+  "elements": [
+    {
+      "name": "emitter_nozzle",
+      "from": [
+        6.5,
+        7.5,
+        -7.75
+      ],
+      "to": [
+        9.5,
+        10.5,
+        -6.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            14.25,
+            4.5,
+            15,
+            5.25
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            14.25,
+            4.5,
+            15,
+            5.25
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            12.25,
+            7.25,
+            12.75,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            12.25,
+            7.25,
+            12.75,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            2.5,
+            9,
+            3.25,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            2.5,
+            9,
+            3.25,
+            9.5
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_lens",
+      "from": [
+        7,
+        8,
+        -7.85
+      ],
+      "to": [
+        9,
+        10,
+        -7.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.25,
+            9,
+            4.75,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            4.25,
+            9,
+            4.75,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            5,
+            9,
+            5.25,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            5,
+            9,
+            5.25,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            7.5,
+            9.75,
+            8,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            7.5,
+            9.75,
+            8,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_tube",
+      "from": [
+        6,
+        7,
+        -6.25
+      ],
+      "to": [
+        10,
+        11,
+        0.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            13,
+            4.5,
+            14,
+            5.5
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            13,
+            4.5,
+            14,
+            5.5
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            11,
+            4.5,
+            12.75,
+            5.5
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            11,
+            4.5,
+            12.75,
+            5.5
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            3.75,
+            4.5,
+            4.75,
+            6.25
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            3.75,
+            4.5,
+            4.75,
+            6.25
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_ring_front",
+      "from": [
+        5.5,
+        6.5,
+        -5.25
+      ],
+      "to": [
+        10.5,
+        11.5,
+        -3.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            4.5,
+            10.25,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9,
+            4.5,
+            10.25,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            15.25,
+            0,
+            15.75,
+            1.25
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            15.25,
+            0,
+            15.75,
+            1.25
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            14.25,
+            7.25,
+            15.5,
+            7.75
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            14.25,
+            7.25,
+            15.5,
+            7.75
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_ring_back",
+      "from": [
+        5.5,
+        6.5,
+        -1.75
+      ],
+      "to": [
+        10.5,
+        11.5,
+        -0.25
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9,
+            4.5,
+            10.25,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9,
+            4.5,
+            10.25,
+            5.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            15.25,
+            0,
+            15.75,
+            1.25
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            15.25,
+            0,
+            15.75,
+            1.25
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            14.25,
+            7.25,
+            15.5,
+            7.75
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            14.25,
+            7.25,
+            15.5,
+            7.75
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_cap",
+      "from": [
+        6.5,
+        7.5,
+        0.75
+      ],
+      "to": [
+        9.5,
+        10.5,
+        1.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            15.25,
+            4.5,
+            16,
+            5.25
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            15.25,
+            4.5,
+            16,
+            5.25
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            13.75,
+            7.25,
+            14,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            13.75,
+            7.25,
+            14,
+            8
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            5.75,
+            9.75,
+            6.5,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            5.75,
+            9.75,
+            6.5,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_light",
+      "from": [
+        7.5,
+        11,
+        -3.25
+      ],
+      "to": [
+        8.5,
+        11.5,
+        -1.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            9.5,
+            9.75,
+            9.75,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            9.5,
+            9.75,
+            9.75,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            8.25,
+            9.75,
+            8.75,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            8.25,
+            9.75,
+            8.75,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            5.5,
+            9,
+            5.75,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            5.5,
+            9,
+            5.75,
+            9.5
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_stem",
+      "from": [
+        7.5,
+        5.5,
+        1.25
+      ],
+      "to": [
+        8.5,
+        7,
+        2.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            15.75,
+            7.25,
+            16,
+            7.75
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            15.75,
+            7.25,
+            16,
+            7.75
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            3.5,
+            9,
+            4,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            3.5,
+            9,
+            4,
+            9.5
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            15.75,
+            7.25,
+            16,
+            7.75
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            15.75,
+            7.25,
+            16,
+            7.75
+          ],
+          "texture": "#parts"
+        }
+      }
+    },
+    {
+      "name": "emitter_bar",
+      "from": [
+        3.5,
+        5,
+        2.75
+      ],
+      "to": [
+        12.5,
+        6,
+        3.75
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            9.75,
+            2.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "south": {
+          "uv": [
+            0,
+            9.75,
+            2.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "east": {
+          "uv": [
+            9,
+            9.75,
+            9.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "west": {
+          "uv": [
+            9,
+            9.75,
+            9.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "up": {
+          "uv": [
+            0,
+            9.75,
+            2.25,
+            10
+          ],
+          "texture": "#parts"
+        },
+        "down": {
+          "uv": [
+            0,
+            9.75,
+            2.25,
+            10
+          ],
+          "texture": "#parts"
+        }
+      }
+    }
+  ]
+}

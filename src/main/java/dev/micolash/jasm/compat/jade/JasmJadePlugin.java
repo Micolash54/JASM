@@ -18,6 +18,8 @@ import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.bay.BayBlock;
+import dev.micolash.jasm.bay.BayBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopBlock;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import snownee.jade.api.BlockAccessor;
@@ -42,6 +44,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, DataCableBlockEntity.class);
         registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);
+        registration.registerBlockDataProvider(BayInfo.INSTANCE, BayBlockEntity.class);
         registration.registerBlockDataProvider(FoundryInfo.INSTANCE, CrystalFoundryBlockEntity.class);
         registration.registerBlockDataProvider(BrainInfo.INSTANCE, NetworkBrainBlockEntity.class);
         registration.registerBlockDataProvider(BrainInfo.INSTANCE, NetworkChamberBlockEntity.class);
@@ -56,6 +59,8 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, DataCableBlock.class);
         registration.registerBlockComponent(WorkshopInfo.Client.INSTANCE, ChipWorkshopBlock.class);
+        registration.registerBlockComponent(MachineInfo.Client.INSTANCE, BayBlock.class);
+        registration.registerBlockComponent(BayInfo.Client.INSTANCE, BayBlock.class);
         registration.registerBlockComponent(FoundryInfo.Client.INSTANCE, CrystalFoundryBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, AccessPortBlock.class);
         registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkBrainBlock.class);

@@ -1,5 +1,6 @@
 package dev.micolash.jasm.config;
 
+import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /** Server config. Only values that can never strand or truncate contents live here. */
@@ -254,6 +255,35 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue WILD_HEALTH = BUILDER
             .comment("Health of a wild Bitling (2 per heart)")
             .defineInRange("health", 10, 1, 100);
+
+    static {
+        BUILDER.pop().push("bays");
+    }
+
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BAY_CYCLE_TICKS = BUILDER
+            .comment("Ticks one bay action takes with 0, 1, 2 and 3 Speed Upgrades; more use the last. Under 20, two Bitlings take turns")
+            .defineList("cycleTicks", List.of(40, 30, 20, 10), () -> 20, value -> value instanceof Integer i && i >= 1);
+    public static final ModConfigSpec.IntValue BAY_ENERGY_CAPACITY = BUILDER
+            .comment("FE a bay holds")
+            .defineInRange("energyCapacity", 10_000, 1, 1_000_000);
+    public static final ModConfigSpec.IntValue BAY_TANK_BUCKETS = BUILDER
+            .comment("Buckets each bay's tank holds")
+            .defineInRange("tankBuckets", 16, 1, 1_000);
+    public static final ModConfigSpec.IntValue DEMOLITION_FE_PER_POINT = BUILDER
+            .comment("FE per point of the Demolition Bay's break cost (1 + hardness + drops, times enchantments)")
+            .defineInRange("demolitionFePerPoint", 6, 0, 100_000);
+    public static final ModConfigSpec.IntValue DEMOLITION_SCOOP_COST = BUILDER
+            .comment("FE the Demolition Bay uses to scoop one bucket of fluid")
+            .defineInRange("demolitionScoopCost", 50, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue DEPLOYMENT_COST = BUILDER
+            .comment("FE the Deployment Bay uses per block placed, fluid placed or stack thrown")
+            .defineInRange("deploymentCost", 20, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue BAY_DROP_ENTITY_LIMIT = BUILDER
+            .comment("Drop mode pauses while this many entities are near the bay")
+            .defineInRange("dropEntityLimit", 32, 1, 10_000);
+    public static final ModConfigSpec.IntValue BAY_DROP_ENTITY_RADIUS = BUILDER
+            .comment("How far, in blocks, drop mode looks for those entities")
+            .defineInRange("dropEntityRadius", 8, 1, 64);
 
     static {
         BUILDER.pop();

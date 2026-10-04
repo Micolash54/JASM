@@ -1,0 +1,6 @@
+{
+  "bay.laser": {
+    "sounds": ["jasm:bay/laser"],
+    "subtitle": "subtitles.jasm.bay.laser"
+  }
+}
