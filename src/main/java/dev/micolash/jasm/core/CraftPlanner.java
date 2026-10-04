@@ -116,8 +116,22 @@ public final class CraftPlanner<K> {
         for (int i = 0; i < slots.size(); i++) {
             groups.merge(slots.get(i), pattern.amount(i), Long::sum);
         }
+        // What each craft hands back is used again by the next one, so a mold that returns is needed once, not every time.
+        Map<K, Long> reused = new HashMap<>();
         for (Map.Entry<List<K>, Long> group : groups.entrySet()) {
-            supply(group.getKey(), saturatingMul(crafts, group.getValue()), depth);
+            long needed = saturatingMul(crafts, group.getValue());
+            if (group.getKey().size() == 1 && crafts > 1) {
+                K key = group.getKey().getFirst();
+                long back = pattern.remainders().getOrDefault(key, 0L);
+                if (back > 0) {
+                    long firstCraft = group.getValue();
+                    long later = saturatingMul(crafts - 1, Math.max(0, group.getValue() - back));
+                    long once = Math.min(needed, saturatingAdd(firstCraft, later));
+                    reused.merge(key, needed - once, Long::sum);
+                    needed = once;
+                }
+            }
+            supply(group.getKey(), needed, depth);
             if (tooComplex) {
                 return;
             }
@@ -128,7 +142,7 @@ public final class CraftPlanner<K> {
         }
         size = saturatingAdd(size, book.space(pattern.output(), saturatingMul(crafts, pattern.outputCount())));
         for (Map.Entry<K, Long> left : pattern.remainders().entrySet()) {
-            long amount = saturatingMul(crafts, left.getValue());
+            long amount = Math.max(0, saturatingMul(crafts, left.getValue()) - reused.getOrDefault(left.getKey(), 0L));
             size = saturatingAdd(size, book.space(left.getKey(), amount));
             spare.merge(left.getKey(), amount, Long::sum);
         }
