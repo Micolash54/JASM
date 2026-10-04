@@ -7,5 +7,5 @@
       { "type": "neoforge:not", "value": "#jasm:wild_bitling_excluded" }
     ]
   },
-  "spawners": { "type": "jasm:wild_bitling", "weight": 2, "minCount": 1, "maxCount": 1 }
+  "spawners": { "type": "jasm:wild_bitling", "weight": 10, "minCount": 1, "maxCount": 1 }
 }

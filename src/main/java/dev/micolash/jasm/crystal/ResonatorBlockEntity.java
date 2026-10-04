@@ -40,7 +40,7 @@ public class ResonatorBlockEntity extends MachineBlockEntity {
             BlockPos next = worldPosition.relative(side);
             BlockState there = level.getBlockState(next);
             if (there.getBlock() instanceof SeededAmethystBlock seeded) {
-                seeded.grow(there, level, next, level.getRandom());
+                seeded.grow(there, level, next, level.getRandom(), JasmConfig.RESONATOR_WEAR_CHANCE.get());
             }
         }
     }

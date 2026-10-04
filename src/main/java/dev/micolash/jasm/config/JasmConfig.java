@@ -136,7 +136,10 @@ public final class JasmConfig {
             .defineInRange("resonatorDrain", 10, 0, 1_000_000);
     public static final ModConfigSpec.IntValue RESONATOR_INTERVAL = BUILDER
             .comment("Ticks between the extra growth attempts a Crystal Resonator gives each Seeded Amethyst it touches")
-            .defineInRange("resonatorInterval", 600, 1, 72_000);
+            .defineInRange("resonatorInterval", 70, 1, 72_000);
+    public static final ModConfigSpec.DoubleValue RESONATOR_WEAR_CHANCE = BUILDER
+            .comment("Chance each time a Crystal Resonator's extra growth makes a bud grow that the Seeded Amethyst wears down one stage")
+            .defineInRange("resonatorWearChance", 0.06, 0.0, 1.0);
     public static final ModConfigSpec.IntValue QUENCH_TICKS = BUILDER
             .comment("Ticks an Unquenched chip must lie in water to become a chip")
             .defineInRange("quenchTicks", 40, 1, 12_000);
