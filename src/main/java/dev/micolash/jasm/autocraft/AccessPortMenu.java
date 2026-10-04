@@ -37,12 +37,12 @@ import org.jspecify.annotations.Nullable;
 public class AccessPortMenu extends AbstractContainerMenu implements MachineView {
     public static final int MAX_NAME = 32;
     public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
-    /** As tall as the Input Port: the inventory sits at the same height. */
-    public static final int INVENTORY_Y = 180;
+    /** Keeps the screen 240 tall, which any game window holds at its default GUI scale. */
+    public static final int INVENTORY_Y = 156;
     /** Side keys in the right-hand column: the Deck Link and blocking mode. */
     public static final int SIDE_KEYS = 2;
     public static final int BUFFER_X = (WIDTH - 8 * 18) / 2;
-    public static final int BUFFER_Y = 140;
+    public static final int BUFFER_Y = 116;
     public static final int SLOT_BUFFER = 1;
     public static final int SLOT_DECK_IN = SLOT_BUFFER + AccessPortBlockEntity.BUFFER_SLOTS;
     public static final int SLOT_DECK_OUT = SLOT_DECK_IN + 1;

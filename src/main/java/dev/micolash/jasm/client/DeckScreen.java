@@ -59,6 +59,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private static final int COLUMNS = 10;
     /** Grid rows at the smallest size; the other sizes share out the room the game window has left. */
     private static final int SMALL_ROWS = 6;
+    /** Fewest grid rows, for a game window too short to hold the usual six. */
+    private static final int LEAST_ROWS = 3;
     /** Room kept free above and below the screen at the largest size. */
     private static final int MARGIN = 16;
     /** The Rules tab lists taller rows, two lines of text each: five fit where the grid shows six. */
@@ -151,13 +153,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     }
 
     /**
-     * Grid rows for the chosen size: the smallest always shows six, the largest as many as the game window fits, and
-     * the two between split the difference.
+     * Grid rows for the chosen size: the smallest shows six, or fewer when the game window can't hold six, the largest
+     * as many as the window fits, and the two between split the difference.
      */
     private int rowsFor(JasmClientConfig.DeckSize size) {
         int fixed = menu.screenHeight() - menu.rows() * 18;
-        int most = Math.max(SMALL_ROWS, (height - 2 * MARGIN - fixed) / 18);
-        return SMALL_ROWS + (most - SMALL_ROWS) * size.ordinal() / (JasmClientConfig.DeckSize.values().length - 1);
+        int small = Math.clamp((height - fixed) / 18, LEAST_ROWS, SMALL_ROWS);
+        int most = Math.max(small, (height - 2 * MARGIN - fixed) / 18);
+        return small + (most - small) * size.ordinal() / (JasmClientConfig.DeckSize.values().length - 1);
     }
 
     /** Sizes the screen to the chosen grid height, moving everything under the grid down. */

@@ -29,12 +29,12 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final int BAR_WIDTH = 50;
     private static final int BAR_X = WIDTH - 8 - BAR_WIDTH;
     private static final int BAR_Y = 6;
-    private static final int NAME_Y = 106;
+    private static final int NAME_Y = 88;
     private static final int LIST_X = 8;
     private static final int LIST_Y = 30;
     private static final int LIST_WIDTH = WIDTH - 28;
     private static final int ROW_HEIGHT = 18;
-    private static final int ROWS = 4;
+    private static final int ROWS = 3;
     private static final int SCROLL_X = WIDTH - 15;
     private static final int HANDLE_HEIGHT = 12;
     private static final int KEY_X = PortUpgradeLayout.KEY_X;
