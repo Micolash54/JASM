@@ -32,7 +32,14 @@ public final class EncodedCardModel implements ItemModel {
         // An output can itself be a card, or contain one in another item's model.
         Card card = resolvingOutput || stack.isEmpty() ? null : Card.of(stack);
         ItemStack result = card == null ? ItemStack.EMPTY : card.result();
-        if (result.isEmpty() || !result.has(DataComponents.ITEM_MODEL) || FluidMarkerItem.isMarker(result)) {
+        if (FluidMarkerItem.isMarker(result)) {
+            // A fluid has no item model: in a slot the card shows nothing, and the fluid is drawn over it (FluidCardDecorator).
+            if (displayContext != ItemDisplayContext.GUI) {
+                fallback.update(output, stack, resolver, displayContext, level, owner, seed);
+            }
+            return;
+        }
+        if (result.isEmpty() || !result.has(DataComponents.ITEM_MODEL)) {
             fallback.update(output, stack, resolver, displayContext, level, owner, seed);
             return;
         }

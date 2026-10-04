@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmEntities;
+import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.api.distmarker.Dist;
@@ -11,6 +12,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterConditionalItemModelPropertyEvent;
+import net.neoforged.neoforge.client.event.RegisterItemDecorationsEvent;
 import net.neoforged.neoforge.client.event.RegisterItemModelsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RegisterRangeSelectItemModelPropertyEvent;
@@ -36,6 +38,12 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerItemConditions(RegisterConditionalItemModelPropertyEvent event) {
         event.register(Jasm.id("shift_down"), ShiftDown.MAP_CODEC);
+    }
+
+    /** A card whose output is a fluid shows that fluid in a slot while Shift is held. */
+    @SubscribeEvent
+    static void registerItemDecorations(RegisterItemDecorationsEvent event) {
+        event.register(JasmItems.FILLED_RECIPE_CARD.get(), new FluidCardDecorator());
     }
 
     @SubscribeEvent
