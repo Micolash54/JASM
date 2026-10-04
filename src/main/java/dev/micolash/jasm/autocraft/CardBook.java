@@ -143,9 +143,13 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
             for (int i = 0; i < 9; i++) {
                 inputs.set(i, card.encoded(i));
             }
-            for (ItemStack left : card.recipe().getRemainingItems(CraftingInput.of(3, 3, inputs))) {
+            List<ItemStack> leftovers = card.recipe().getRemainingItems(CraftingInput.of(3, 3, inputs));
+            for (int i = 0; i < leftovers.size(); i++) {
+                ItemStack left = leftovers.get(i);
                 if (!left.isEmpty()) {
-                    remainders.merge(new GridKey.Item(ItemResource.of(left)), (long) left.getCount(), Long::sum);
+                    // A worn copy of the item that went in counts as that item, so the planner sees it come back.
+                    ItemStack kind = i < 9 && card.returnsSelf(i) ? card.encoded(i) : left;
+                    remainders.merge(new GridKey.Item(ItemResource.of(kind)), (long) left.getCount(), Long::sum);
                 }
             }
         }

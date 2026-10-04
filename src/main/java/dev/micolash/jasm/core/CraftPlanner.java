@@ -120,9 +120,9 @@ public final class CraftPlanner<K> {
         Map<K, Long> reused = new HashMap<>();
         for (Map.Entry<List<K>, Long> group : groups.entrySet()) {
             long needed = saturatingMul(crafts, group.getValue());
-            if (group.getKey().size() == 1 && crafts > 1) {
-                K key = group.getKey().getFirst();
-                long back = pattern.remainders().getOrDefault(key, 0L);
+            K key = crafts > 1 ? group.getKey().stream().filter(pattern.remainders()::containsKey).findFirst().orElse(null) : null;
+            if (key != null) {
+                long back = pattern.remainders().get(key);
                 if (back > 0) {
                     long firstCraft = group.getValue();
                     long later = saturatingMul(crafts - 1, Math.max(0, group.getValue() - back));

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -78,12 +79,41 @@ public final class CardRecipes {
         private final CraftingRecipe recipe;
         private final List<ItemStack> encoded;
         private final ItemStack output;
+        /** What one craft of the encoded grid leaves in each slot, worked out when first asked. */
+        private @Nullable List<ItemStack> leftovers;
 
         Resolved(RecipeCard card, CraftingRecipe recipe, List<ItemStack> encoded, ItemStack output) {
             this.card = card;
             this.recipe = recipe;
             this.encoded = encoded;
             this.output = output;
+        }
+
+        /**
+         * Whether the recipe hands the item in {@code slot} back after a craft, as the same item (worn a little, like
+         * a reusable tool or crystal). One of it then serves every craft.
+         */
+        public boolean returnsSelf(int slot) {
+            ItemStack there = encoded.get(slot);
+            if (there.isEmpty()) {
+                return false;
+            }
+            if (leftovers == null) {
+                leftovers = List.copyOf(recipe.getRemainingItems(CraftingInput.of(3, 3, encoded)));
+            }
+            return slot < leftovers.size() && !leftovers.get(slot).isEmpty() && sameBesidesWear(leftovers.get(slot), there);
+        }
+
+        /** The same item with the same data, whatever its wear. */
+        private static boolean sameBesidesWear(ItemStack a, ItemStack b) {
+            if (!a.is(b.getItem())) {
+                return false;
+            }
+            ItemStack x = a.copyWithCount(1);
+            ItemStack y = b.copyWithCount(1);
+            x.set(DataComponents.DAMAGE, 0);
+            y.set(DataComponents.DAMAGE, 0);
+            return ItemStack.isSameItemSameComponents(x, y);
         }
 
         public RecipeCard card() {
@@ -115,7 +145,8 @@ public final class CardRecipes {
         /**
          * Whether {@code candidate} may stand in for the encoded item in {@code slot}: the recipe still matches with it
          * there. Items carrying extra data (enchantments, damage, names) only stand in when the encoded item had the
-         * same data, so a worn or enchanted tool is never used up by accident.
+         * same data, so a worn or enchanted tool is never used up by accident. The exception is what the recipe itself
+         * hands back worn: that goes in again, so a crystal that returns with a little wear keeps serving.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
             ItemStack there = encoded.get(slot);
@@ -126,7 +157,8 @@ public final class CardRecipes {
                 return true;
             }
             ItemStack stack = candidate.toStack(1);
-            if (!stack.getComponentsPatch().equals(DataComponentPatch.EMPTY)) {
+            boolean again = returnsSelf(slot) && sameBesidesWear(stack, there);
+            if (!again && !stack.getComponentsPatch().equals(DataComponentPatch.EMPTY)) {
                 return false;
             }
             NonNullList<ItemStack> test = NonNullList.withSize(9, ItemStack.EMPTY);
