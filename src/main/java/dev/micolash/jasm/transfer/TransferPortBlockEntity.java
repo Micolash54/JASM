@@ -6,6 +6,9 @@ import dev.micolash.jasm.autocraft.Machines;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.pool.NetworkPool;
+import dev.micolash.jasm.pool.PoolAccess;
+import dev.micolash.jasm.pool.PoolStore;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
@@ -105,7 +108,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         var tank = Machines.fluidInlet(world, worldPosition.relative(face), face.getOpposite());
         if (inventory == null && tank == null) return;
         var store = WaferStore.get(world.getServer());
-        var storage = DeckStorage.checked(store, deck, player);
+        var storage = DeckStorage.checked(store, deck, player).avoiding(worldPosition.relative(face));
         // Items and fluids share one allowance: an item is one share, and 125 mB of fluid is one share.
         int allowance = budget;
         budget = (int) Math.min(budget, DeckStorage.affordable(deck));
@@ -118,21 +121,25 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             keys.sort(Comparator.comparingInt(key -> filters.output().rank(key.getItem())));
             for (var key : keys) {
                 if (budget <= 0) break;
+                // No transaction is open while the Deck moves things: its storage blocks open their own.
+                int accepted;
                 try (var tx = Transaction.openRoot()) {
-                    int accepted = inventory.insert(key, (int) Math.min(budget, contents.get(key)), tx);
-                    if (accepted <= 0) continue;
-                    var stacks = storage.withdrawQuietly(key, accepted);
-                    int taken = stacks.stream().mapToInt(ItemStack::getCount).sum();
-                    if (taken == accepted) {
-                        tx.commit();
-                        budget -= taken;
-                        transferred(taken);
-                    } else if (taken > 0) {
-                        // Restore the original wafers even if their intake filters have changed.
-                        long remaining = taken;
-                        for (var record : DeckStorage.records(store, deck))
-                            if (record != null && remaining > 0) remaining -= store.insert(record, key, remaining, false, player);
-                    }
+                    accepted = inventory.insert(key, (int) Math.min(budget, contents.get(key)), tx);   // only asking
+                }
+                if (accepted <= 0) continue;
+                var stacks = storage.withdrawQuietly(key, accepted);
+                int taken = stacks.stream().mapToInt(ItemStack::getCount).sum();
+                if (taken <= 0) continue;
+                int inserted;
+                try (var tx = Transaction.openRoot()) {
+                    inserted = inventory.insert(key, taken, tx);
+                    if (inserted > 0) tx.commit();
+                }
+                // Put back what the block did not take, wafers first even if their intake filters have changed.
+                if (inserted < taken) storage.restoreQuietly(key, taken - inserted);
+                if (inserted > 0) {
+                    budget -= inserted;
+                    transferred(inserted);
                 }
             }
         }
@@ -146,19 +153,22 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 if (budget <= 0) break;
                 int room = (int) storage.room(key, budget);
                 if (room <= 0) continue;
+                int wanted;
                 try (var tx = Transaction.openRoot()) {
-                    int taken = inventory.extract(key, room, tx);
-                    if (taken <= 0) continue;
-                    long stored = storage.depositAmount(key, taken);
-                    if (stored == taken) {
-                        tx.commit();
-                        budget -= taken;
-                        transferred(taken);
-                    } else if (stored > 0) {
-                        // The source transaction rolls back, so undo a partial deposit as well.
-                        for (var record : DeckStorage.records(store, deck))
-                            if (record != null && stored > 0) stored -= store.extract(record, key, stored, false, player);
-                    }
+                    wanted = inventory.extract(key, room, tx);   // only asking
+                }
+                if (wanted <= 0) continue;
+                long stored = storage.depositAmount(key, wanted);
+                if (stored <= 0) continue;
+                int taken;
+                try (var tx = Transaction.openRoot()) {
+                    taken = inventory.extract(key, (int) stored, tx);
+                    if (taken > 0) tx.commit();
+                }
+                if (taken < stored) undoDeposit(player, deck, store, key, stored - taken);
+                if (taken > 0) {
+                    budget -= taken;
+                    transferred(taken);
                 }
             }
         }
@@ -168,6 +178,43 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             if (kind.imports() && shares > 0) fluidsIn(tank, storage, store, deck, player, shares);
         }
         Jobs.refreshOpenDeck(player, deck);
+    }
+
+    /** Takes back items that went into the Deck but did not leave the source: from the wafers, then the storage blocks. */
+    private void undoDeposit(ServerPlayer player, ItemStack deck, WaferStore store, ItemResource key, long amount) {
+        long left = amount;
+        for (var record : DeckStorage.records(store, deck))
+            if (record != null && left > 0) left -= store.extract(record, key, left, false, player);
+        if (left > 0) extractFromChests(player, deck, key, left);
+    }
+
+    private void undoFluidDeposit(ServerPlayer player, ItemStack deck, WaferStore store, FluidResource key, long amount) {
+        long left = amount;
+        for (var record : DeckStorage.records(store, deck))
+            if (record != null && left > 0) left -= store.extractFluid(record, key, left, false, player);
+        if (left > 0) extractFluidFromTanks(player, deck, key, left);
+    }
+
+    private long extractFromChests(ServerPlayer player, ItemStack deck, ItemResource key, long amount) {
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        if (pool == null) return 0;
+        long taken = 0;
+        for (PoolStore chest : pool.stores(worldPosition.relative(face))) {
+            if (taken >= amount) break;
+            taken += chest.extractNow(key, amount - taken);
+        }
+        return taken;
+    }
+
+    private long extractFluidFromTanks(ServerPlayer player, ItemStack deck, FluidResource key, long amount) {
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        if (pool == null) return 0;
+        long taken = 0;
+        for (PoolStore tank : pool.stores(worldPosition.relative(face))) {
+            if (taken >= amount) break;
+            taken += tank.extractFluidNow(key, amount - taken);
+        }
+        return taken;
     }
 
     /** Pours fluid from the Deck into the block, as far as it takes and the allowance and charge go. Returns the shares used. */
@@ -181,26 +228,30 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         for (var key : keys) {
             long room = Math.min((long) (shares - used) * FluidAmounts.PER_SHARE, DeckStorage.affordableFluid(deck));
             if (room <= 0) break;
+            // No transaction is open while the Deck moves things: its storage blocks open their own.
+            long accepted;
             try (var tx = Transaction.openRoot()) {
-                int accepted = tank.insert(key, (int) Math.min(room, contents.get(key)), tx);
+                accepted = tank.insert(key, (int) Math.min(room, contents.get(key)), tx);   // only asking
                 if (accepted <= 0 && room < FluidAmounts.PER_BUCKET) {
                     // Some blocks (a cauldron) only take a whole bucket: offer one and pay it back out of the next operations.
                     long bucket = Math.min(Math.min(FluidAmounts.PER_BUCKET, contents.get(key)), DeckStorage.affordableFluid(deck));
                     accepted = tank.insert(key, (int) bucket, tx);
                 }
-                if (accepted <= 0) continue;
-                long taken = storage.withdrawFluid(key, accepted, false);
-                if (taken == accepted) {
-                    tx.commit();
-                    int moved = (int) FluidAmounts.shares(taken);
-                    used += moved;
-                    transferred(moved);
-                } else if (taken > 0) {
-                    // Put back what was taken, even if the wafers' intake filters have changed.
-                    long remaining = taken;
-                    for (var record : DeckStorage.records(store, deck))
-                        if (record != null && remaining > 0) remaining -= store.insertFluid(record, key, remaining, false, player);
-                }
+            }
+            if (accepted <= 0) continue;
+            long taken = storage.withdrawFluid(key, accepted, false);
+            if (taken <= 0) continue;
+            long inserted;
+            try (var tx = Transaction.openRoot()) {
+                inserted = tank.insert(key, (int) taken, tx);
+                if (inserted > 0) tx.commit();
+            }
+            // Put back what the block did not take, wafers first even if their intake filters have changed.
+            if (inserted < taken) storage.restoreQuietlyFluid(key, taken - inserted);
+            if (inserted > 0) {
+                int moved = (int) FluidAmounts.shares(inserted);
+                used += moved;
+                transferred(moved);
             }
         }
         return used;
@@ -220,26 +271,32 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             if (most <= 0) break;
             long room = storage.roomFluid(key, most);
             if (room <= 0) continue;
+            long wanted;
             try (var tx = Transaction.openRoot()) {
-                int taken = tank.extract(key, (int) room, tx);
-                if (taken <= 0 && most < FluidAmounts.PER_BUCKET) {
-                    // Some blocks (a cauldron) only give a whole bucket: take one and pay it back out of the next operations.
-                    long bucket = Math.min(FluidAmounts.PER_BUCKET, DeckStorage.affordableFluid(deck));
-                    long fits = storage.roomFluid(key, bucket);
-                    taken = fits < bucket ? 0 : tank.extract(key, (int) bucket, tx);
+                wanted = tank.extract(key, (int) room, tx);   // only asking
+            }
+            if (wanted <= 0 && most < FluidAmounts.PER_BUCKET) {
+                // Some blocks (a cauldron) only give a whole bucket: take one and pay it back out of the next operations.
+                long bucket = Math.min(FluidAmounts.PER_BUCKET, DeckStorage.affordableFluid(deck));
+                if (storage.roomFluid(key, bucket) >= bucket) {
+                    try (var tx = Transaction.openRoot()) {
+                        wanted = tank.extract(key, (int) bucket, tx);   // only asking
+                    }
                 }
-                if (taken <= 0) continue;
-                long stored = storage.depositFluid(key, taken);
-                if (stored == taken) {
-                    tx.commit();
-                    int moved = (int) FluidAmounts.shares(taken);
-                    used += moved;
-                    transferred(moved);
-                } else if (stored > 0) {
-                    // The source transaction rolls back, so undo a partial deposit as well.
-                    for (var record : DeckStorage.records(store, deck))
-                        if (record != null && stored > 0) stored -= store.extractFluid(record, key, stored, false, player);
-                }
+            }
+            if (wanted <= 0) continue;
+            long stored = storage.depositFluid(key, wanted);
+            if (stored <= 0) continue;
+            long taken;
+            try (var tx = Transaction.openRoot()) {
+                taken = tank.extract(key, (int) stored, tx);
+                if (taken > 0) tx.commit();
+            }
+            if (taken < stored) undoFluidDeposit(player, deck, store, key, stored - taken);
+            if (taken > 0) {
+                int moved = (int) FluidAmounts.shares(taken);
+                used += moved;
+                transferred(moved);
             }
         }
     }

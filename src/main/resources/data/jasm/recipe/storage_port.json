@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "jasm:access_port",
+    "minecraft:chest",
+    "jasm:link_chip",
+    "minecraft:purple_dye"
+  ],
+  "result": {
+    "id": "jasm:storage_port"
+  }
+}

@@ -8,6 +8,7 @@ import dev.micolash.jasm.autocraft.RecipeCard;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
+import dev.micolash.jasm.pool.StorageSettings;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.TransferFilters;
 import dev.micolash.jasm.wafer.WaferIdentity;
@@ -104,6 +105,9 @@ public final class JasmComponents {
 
     public static final Supplier<DataComponentType<RedstoneMode>> REDSTONE_MODE = COMPONENTS.registerComponentType(
             "redstone_mode", b -> b.persistent(RedstoneMode.CODEC).networkSynchronized(RedstoneMode.STREAM_CODEC));
+
+    public static final Supplier<DataComponentType<StorageSettings>> STORAGE_SETTINGS = COMPONENTS.registerComponentType(
+            "storage_settings", b -> b.persistent(StorageSettings.CODEC).networkSynchronized(StorageSettings.STREAM_CODEC));
 
     private JasmComponents() {}
 }

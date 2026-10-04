@@ -10,6 +10,8 @@ import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.pool.NetworkPool;
+import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferRecord;
@@ -33,6 +35,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 /** Finding a Deck's network, and planning and starting crafting requests. */
@@ -130,7 +133,7 @@ final class JobPlanning {
         }
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
-        Map<ItemResource, Long> items = DeckStorage.contents(store, deck);
+        Map<ItemResource, Long> items = DeckStorage.contents(store, deck, player);
         Map<GridKey, Long> stock = new LinkedHashMap<>();
         items.forEach((key, count) -> stock.put(new GridKey.Item(key), count));
         DeckFluidStorage.contents(store, deck).forEach((key, mb) -> stock.put(new GridKey.Fluid(key), mb));
@@ -202,25 +205,38 @@ final class JobPlanning {
         }
         WaferStore store = WaferStore.get(level.getServer());
         List<WaferRecord> wafers = DeckStorage.records(store, deck);
-        // Take everything, or nothing.
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        // Take everything, or nothing. Items from the network's storage blocks come out inside one transaction that only
+        // commits at the end, so a missing ingredient leaves them as they were.
         List<Taken> taken = new ArrayList<>();
-        for (Map.Entry<GridKey, Long> need : preview.plan().taken().entrySet()) {
-            long left = need.getValue();
-            for (WaferRecord wafer : wafers) {
-                if (wafer != null && left > 0) {
-                    long got = need.getKey() instanceof GridKey.Fluid fluid
-                            ? store.extractFluid(wafer, fluid.resource(), left, false, player)
-                            : store.extract(wafer, need.getKey().item(), left, false, player);
+        Map<ItemResource, Long> fromChests = new LinkedHashMap<>();
+        try (Transaction tx = Transaction.openRoot()) {
+            for (Map.Entry<GridKey, Long> need : preview.plan().taken().entrySet()) {
+                long left = need.getValue();
+                for (WaferRecord wafer : wafers) {
+                    if (wafer != null && left > 0) {
+                        long got = need.getKey() instanceof GridKey.Fluid fluid
+                                ? store.extractFluid(wafer, fluid.resource(), left, false, player)
+                                : store.extract(wafer, need.getKey().item(), left, false, player);
+                        if (got > 0) {
+                            taken.add(new Taken(wafer, need.getKey(), got));
+                            left -= got;
+                        }
+                    }
+                }
+                if (left > 0 && pool != null && !(need.getKey() instanceof GridKey.Fluid)) {
+                    long got = pool.extract(need.getKey().item(), left, tx);
                     if (got > 0) {
-                        taken.add(new Taken(wafer, need.getKey(), got));
+                        fromChests.merge(need.getKey().item(), got, Long::sum);
                         left -= got;
                     }
                 }
+                if (left > 0) {
+                    taken.forEach(t -> putBack(store, t.wafer(), t.key(), t.amount(), player));
+                    return "message.jasm.craft.missing";
+                }
             }
-            if (left > 0) {
-                taken.forEach(t -> putBack(store, t.wafer(), t.key(), t.amount(), player));
-                return "message.jasm.craft.missing";
-            }
+            tx.commit();
         }
         AutocraftState state = AutocraftState.get(level.getServer());
         LongPredicate claimed = serial -> state.jobs().stream().anyMatch(j -> j.holds(serial));
@@ -234,6 +250,7 @@ final class JobPlanning {
         for (Taken t : taken) {
             putBack(store, t.key() instanceof GridKey.Fluid ? fluidRecord : record, t.key(), t.amount(), player);
         }
+        fromChests.forEach((key, got) -> putBack(store, record, new GridKey.Item(key), got, player));
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
         if (deckId == null) {
             deckId = UUID.randomUUID();

@@ -143,7 +143,7 @@ public final class Rules {
         }
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
-        return DeckStorage.count(store, deck, rule.item());
+        return DeckStorage.count(store, deck, rule.item(), player);
     }
 
     /** Whether the rule's amount fits where its results go. */

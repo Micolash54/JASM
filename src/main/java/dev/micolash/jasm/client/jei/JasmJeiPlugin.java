@@ -10,6 +10,7 @@ import dev.micolash.jasm.client.ArchiveScreen;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.client.EncodingTerminalScreen;
 import dev.micolash.jasm.client.ReceivedRecipes;
+import dev.micolash.jasm.client.StoragePortScreen;
 import dev.micolash.jasm.client.TransferPortScreen;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
@@ -211,6 +212,31 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(TransferPortScreen.class, new IGhostIngredientHandler<>() {
             @Override
             public <I> List<Target<I>> getTargetsTyped(TransferPortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+                Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
+                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
+                if (stack.isEmpty() && fluid.isEmpty()) return List.of();
+                List<Target<I>> targets = new ArrayList<>();
+                List<Rect2i> areas = screen.filterSlots();
+                for (int i = 0; i < areas.size(); i++) {
+                    int index = i;
+                    targets.add(new Target<>() {
+                        @Override
+                        public Rect2i getArea() { return areas.get(index); }
+                        @Override
+                        public void accept(I dropped) {
+                            if (stack.isPresent()) screen.setFilterItem(index, stack.get().getItem());
+                            else screen.setFilterFluid(index, fluid.get().getFluid());
+                        }
+                    });
+                }
+                return targets;
+            }
+            @Override
+            public void onComplete() {}
+        });
+        registration.addGhostIngredientHandler(StoragePortScreen.class, new IGhostIngredientHandler<>() {
+            @Override
+            public <I> List<Target<I>> getTargetsTyped(StoragePortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
                 Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
                 Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
                 if (stack.isEmpty() && fluid.isEmpty()) return List.of();

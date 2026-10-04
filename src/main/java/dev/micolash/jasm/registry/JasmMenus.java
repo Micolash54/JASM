@@ -11,6 +11,7 @@ import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.crystal.CrystalFoundryMenu;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
+import dev.micolash.jasm.pool.StoragePortMenu;
 import dev.micolash.jasm.station.BitlingStationMenu;
 import dev.micolash.jasm.transfer.TransferPortMenu;
 import dev.micolash.jasm.workshop.ChipWorkshopMenu;
@@ -57,6 +58,9 @@ public final class JasmMenus {
 
     public static final Supplier<MenuType<TransferPortMenu>> TRANSFER_PORT = MENUS.register("transfer_port",
             () -> IMenuTypeExtension.create(TransferPortMenu::client));
+
+    public static final Supplier<MenuType<StoragePortMenu>> STORAGE_PORT = MENUS.register("storage_port",
+            () -> IMenuTypeExtension.create(StoragePortMenu::client));
 
     private JasmMenus() {}
 }

@@ -3,7 +3,11 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.DepositRouter;
+import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
+import dev.micolash.jasm.pool.NetworkPool;
+import dev.micolash.jasm.pool.PoolAccess;
+import dev.micolash.jasm.pool.PoolStore;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferSettings;
@@ -24,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -95,6 +100,8 @@ public final class DeckStorage {
         private final ServerPlayer player;
         private DeckWafers wafers;
         private int tick;
+        /** A block the caller is itself moving items through: the pool leaves it alone. */
+        @Nullable BlockPos avoid;
 
         private Checked(WaferStore store, ItemStack deck, ServerPlayer player) {
             this.store = store;
@@ -116,14 +123,32 @@ public final class DeckStorage {
             }
         }
 
+        /** Never moves items or fluid into or out of the block at {@code chest}, through the pool. */
+        public Checked avoiding(BlockPos chest) {
+            avoid = chest;
+            return this;
+        }
+
         public long count(ItemResource key) {
             check();
-            return DeckStorage.count(store, deck, key);
+            return DeckStorage.count(store, deck, key, player);
         }
 
         public Map<ItemResource, Long> contents() {
             check();
-            return DeckStorage.contents(store, deck);
+            return DeckStorage.contents(store, deck, player);
+        }
+
+        /** Puts back items a move could not finish: wafers first whatever their filters say, then wherever there is room. */
+        public long restoreQuietly(ItemResource key, long amount) {
+            check();
+            long left = amount;
+            for (var record : DeckStorage.records(store, deck)) {
+                if (record != null && left > 0) left -= store.insert(record, key, left, false, player);
+            }
+            if (left > 0) left -= depositAmount(key, left);
+            remember();
+            return amount - left;
         }
 
         public List<ItemStack> withdraw(ItemResource key, long amount) {
@@ -146,12 +171,24 @@ public final class DeckStorage {
 
         public long countFluid(FluidResource key) {
             check();
-            return DeckFluidStorage.count(store, deck, key);
+            return DeckFluidStorage.count(store, deck, key, player);
         }
 
         public Map<FluidResource, Long> fluidContents() {
             check();
-            return DeckFluidStorage.contents(store, deck);
+            return DeckFluidStorage.contents(store, deck, player);
+        }
+
+        /** Puts back fluid a move could not finish: wafers first whatever their filters say, then wherever there is room. */
+        public long restoreQuietlyFluid(FluidResource key, long amount) {
+            check();
+            long left = amount;
+            for (var record : DeckStorage.records(store, deck)) {
+                if (record != null && left > 0) left -= store.insertFluid(record, key, left, false, player);
+            }
+            if (left > 0) left -= depositFluid(key, left);
+            remember();
+            return amount - left;
         }
 
         /** Millibuckets of {@code key}, up to {@code amount}, the Deck's wafers would take. */
@@ -240,6 +277,13 @@ public final class DeckStorage {
             }
             return 0;
         }
+        List<PoolStore> ports = ports(player, deck, null);
+        if (!ports.isEmpty()) {
+            if (!canAfford(deck, player, tell)) return 0;
+            long moved = depositCombined(store, deck, ItemResource.of(source), Math.min(source.getCount(), affordable(deck)), player, null, ports);
+            source.shrink((int) moved);
+            return moved;
+        }
         List<SlotView> views = views(store, deck, player);
         ItemResource key = ItemResource.of(source);
         List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, source.getCount());
@@ -311,6 +355,8 @@ public final class DeckStorage {
         if (amount <= 0) {
             return 0;
         }
+        List<PoolStore> ports = ports(player, deck, checked == null ? null : checked.avoid);
+        if (!ports.isEmpty()) return depositCombined(store, deck, key, amount, player, checked, ports);
         List<SlotView> views = views(store, deck, player, checked);
         List<DepositRouter.Allocation> plan = DepositRouter.planDeposit(views, key, amount);
         DeckWafers wafers = DeckItem.wafers(deck);
@@ -335,7 +381,10 @@ public final class DeckStorage {
         return depositAmounts(store, deck, items, player, Long.MAX_VALUE);
     }
 
-    /** Same routing order, with a shared limit on the number of items moved. The charge limits it too. */
+    /**
+     * Same routing order, with a shared limit on the number of items moved. The charge limits it too. When the network
+     * has Storage Ports, items go in one key at a time in the combined order, so the wafers' row ranking does not apply.
+     */
     public static Map<ItemResource, Long> depositAmounts(WaferStore store, ItemStack deck, Map<ItemResource, Long> items, ServerPlayer player,
             long limit) {
         return depositAmounts(store, deck, items, player, limit, null);
@@ -345,6 +394,22 @@ public final class DeckStorage {
             ServerPlayer player, long limit, @Nullable Checked checked) {
         if (!DeckItem.worksIn(deck, player.level())) return Map.of();
         limit = Math.min(limit, affordable(deck));
+        List<PoolStore> ports = ports(player, deck, checked == null ? null : checked.avoid);
+        if (!ports.isEmpty()) {
+            var batch = new LinkedHashMap<ItemResource, Long>();
+            for (var entry : items.entrySet()) {
+                if (limit <= 0) break;
+                long asked = entry.getValue();
+                if (asked <= 0 || entry.getKey().isEmpty()
+                        || !WaferEligibility.check(entry.getKey().toStack(1), player.level().registryAccess()).accepted()) continue;
+                long stored = depositCombined(store, deck, entry.getKey(), Math.min(asked, limit), player, checked, ports);
+                if (stored > 0) {
+                    limit -= stored;
+                    batch.put(entry.getKey(), stored);
+                }
+            }
+            return batch;
+        }
         long paid = limit;
         var left = new LinkedHashMap<ItemResource, Long>();
         items.forEach((key, amount) -> {
@@ -395,10 +460,12 @@ public final class DeckStorage {
         if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
         }
+        List<PoolStore> ports = ports(player, deck, checked == null ? null : checked.avoid);
+        if (!ports.isEmpty()) return roomCombined(store, deck, key, amount, player, checked, ports);
         return DepositRouter.planDeposit(views(store, deck, player, checked), key, amount).stream().mapToLong(DepositRouter.Allocation::amount).sum();
     }
 
-    /** Everything on the Deck's usable wafers, added up. Assumes {@link #checkAll} ran this tick. */
+    /** Everything on the Deck's usable wafers, added up (wafers only). Assumes {@link #checkAll} ran this tick. */
     public static Map<ItemResource, Long> contents(WaferStore store, ItemStack deck) {
         Map<ItemResource, Long> total = new LinkedHashMap<>();
         for (WaferRecord record : records(store, deck)) {
@@ -425,6 +492,19 @@ public final class DeckStorage {
         if (amount <= 0 || key.isEmpty()) {
             return List.of();
         }
+        List<PoolStore> ports = ports(player, deck, checked == null ? null : checked.avoid);
+        if (!ports.isEmpty()) {
+            if (!canAfford(deck, player, tell)) return List.of();
+            long got = withdrawCombined(store, deck, key, Math.min(amount, affordable(deck)), player, checked, ports);
+            List<ItemStack> stacks = new ArrayList<>();
+            int max = key.getMaxStackSize();
+            while (got > 0) {
+                int size = (int) Math.min(max, got);
+                stacks.add(key.toStack(size));
+                got -= size;
+            }
+            return stacks;
+        }
         List<SlotView> views = views(store, deck, player, checked);
         List<DepositRouter.Allocation> plan = DepositRouter.planWithdraw(views, key, amount);
         if (plan.isEmpty() || !canAfford(deck, player, tell)) {
@@ -449,7 +529,7 @@ public final class DeckStorage {
         return stacks;
     }
 
-    /** Total count of {@code key} across the Deck's usable wafers. Assumes {@link #checkAll} ran this tick. */
+    /** Total count of {@code key} across the Deck's usable wafers (wafers only). Assumes {@link #checkAll} ran this tick. */
     public static long count(WaferStore store, ItemStack deck, ItemResource key) {
         long total = 0;
         for (WaferRecord record : records(store, deck)) {
@@ -457,6 +537,20 @@ public final class DeckStorage {
                 total += record.count(key);
             }
         }
+        return total;
+    }
+
+    /** Wafers and the network's storage blocks added up. Assumes {@link #checkAll} ran this tick. */
+    public static long count(WaferStore store, ItemStack deck, ItemResource key, ServerPlayer player) {
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        return count(store, deck, key) + (pool == null ? 0 : pool.count(key));
+    }
+
+    /** Everything on the wafers and in the network's storage blocks, as a fresh map. Assumes {@link #checkAll} ran this tick. */
+    public static Map<ItemResource, Long> contents(WaferStore store, ItemStack deck, ServerPlayer player) {
+        Map<ItemResource, Long> total = contents(store, deck);
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        if (pool != null) pool.contents().forEach((key, count) -> total.merge(key, count, Long::sum));
         return total;
     }
 
@@ -515,6 +609,88 @@ public final class DeckStorage {
         if (cost > 0) {
             deck.set(JasmComponents.ENERGY.get(), (int) Math.max(0, DeckItem.energy(deck) - cost));
         }
+    }
+
+    /** A wafer slot or a storage block, for ordering when the network has storage blocks. */
+    private record Unit(int index, @Nullable SlotView slot, @Nullable PoolStore port) implements PoolRouter.Unit<ItemResource> {
+        @Override
+        public int priority() { return port == null ? 0 : port.priority(); }
+        @Override
+        public boolean wafer() { return port == null; }
+        @Override
+        public boolean prefers(ItemResource key) { return port == null ? slot.count(key) > 0 : port.prefers(key); }
+        @Override
+        public boolean canRead() { return port == null ? slot.usable() : port.canRead(); }
+        @Override
+        public boolean canWrite() { return port == null ? slot.usable() : port.canWrite(); }
+    }
+
+    private static List<Unit> units(List<SlotView> views, List<PoolStore> ports) {
+        List<Unit> units = new ArrayList<>();
+        for (int i = 0; i < views.size(); i++) units.add(new Unit(i, views.get(i), null));
+        for (PoolStore port : ports) units.add(new Unit(-1, null, port));
+        return units;
+    }
+
+    /** The storage blocks this Deck may use, or an empty list. {@code avoid} is a block the caller is moving items through. */
+    private static List<PoolStore> ports(ServerPlayer player, ItemStack deck, @Nullable BlockPos avoid) {
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        return pool == null ? List.of() : pool.stores(avoid);
+    }
+
+    private static long depositCombined(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
+            @Nullable Checked checked, List<PoolStore> ports) {
+        List<SlotView> views = views(store, deck, player, checked);
+        DeckWafers wafers = DeckItem.wafers(deck);
+        long moved = 0;
+        for (Unit unit : PoolRouter.insertOrder(units(views, ports), key)) {
+            long left = amount - moved;
+            if (left <= 0) break;
+            if (unit.port() != null) {
+                moved += unit.port().insertNow(key, left);
+                continue;
+            }
+            SlotView view = unit.slot();
+            long take = view.accepts(key) ? Math.min(left, view.room(key)) : 0;
+            if (take <= 0) continue;
+            WaferRecord record = view.record();
+            if (record == null) {
+                ItemStack blank = view.wafer();
+                record = WaferValidator.format(store, blank, player);
+                wafers = wafers.with(unit.index(), blank);
+            }
+            moved += store.insert(record, key, take, false, player);
+        }
+        deck.set(JasmComponents.DECK_WAFERS.get(), wafers);
+        pay(deck, moved);
+        return moved;
+    }
+
+    private static long withdrawCombined(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
+            @Nullable Checked checked, List<PoolStore> ports) {
+        List<SlotView> views = views(store, deck, player, checked);
+        long taken = 0;
+        for (Unit unit : PoolRouter.extractOrder(units(views, ports), key)) {
+            long left = amount - taken;
+            if (left <= 0) break;
+            if (unit.port() != null) taken += unit.port().extractNow(key, left);
+            else if (unit.slot().record() != null)
+                taken += store.extract(unit.slot().record(), key, Math.min(left, unit.slot().count(key)), false, player);
+        }
+        pay(deck, taken);
+        return taken;
+    }
+
+    private static long roomCombined(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
+            @Nullable Checked checked, List<PoolStore> ports) {
+        long room = 0;
+        for (Unit unit : PoolRouter.insertOrder(units(views(store, deck, player, checked), ports), key)) {
+            long left = amount - room;
+            if (left <= 0) break;
+            room += unit.port() != null ? unit.port().room(key, left)
+                    : unit.slot().accepts(key) ? Math.min(left, unit.slot().room(key)) : 0;
+        }
+        return room;
     }
 
     private static List<SlotView> views(WaferStore store, ItemStack deck, ServerPlayer player) {

@@ -2,6 +2,7 @@ package dev.micolash.jasm.network;
 
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
+import dev.micolash.jasm.pool.StoragePortBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
@@ -263,7 +264,22 @@ public class DataCableBlockEntity extends BlockEntity {
     }
 
     private AccessPortBlockEntity createPort(Direction side, @Nullable TransferPortKind kind) {
+        if (kind == TransferPortKind.STORAGE) return new AttachedStoragePort(side);
         return kind == null ? new AttachedPort(side) : new AttachedTransferPort(side, kind);
+    }
+
+    private final class AttachedStoragePort extends StoragePortBlockEntity {
+        private final Direction face;
+        AttachedStoragePort(Direction face) {
+            super(DataCableBlockEntity.this.worldPosition, JasmBlocks.ACCESS_PORT.get().defaultBlockState(), face);
+            this.face = face;
+        }
+        @Override
+        public void setChanged() { DataCableBlockEntity.this.setChanged(); }
+        @Override
+        public boolean isRemoved() { return super.isRemoved() || DataCableBlockEntity.this.isRemoved() || ports.get(face) != this; }
+        @Override
+        public boolean installed() { return !isRemoved(); }
     }
 
     private final class AttachedTransferPort extends TransferPortBlockEntity {

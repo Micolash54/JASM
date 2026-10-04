@@ -8,7 +8,8 @@ import org.jspecify.annotations.Nullable;
 public enum TransferPortKind {
     INPUT("input_port", true, false),
     OUTPUT("output_port", false, true),
-    INPUT_OUTPUT("input_output_port", true, true);
+    INPUT_OUTPUT("input_output_port", true, true),
+    STORAGE("storage_port", false, false);
     private final String id;
     private final boolean imports;
     private final boolean exports;
@@ -21,6 +22,7 @@ public enum TransferPortKind {
             case INPUT -> JasmItems.INPUT_PORT.get();
             case OUTPUT -> JasmItems.OUTPUT_PORT.get();
             case INPUT_OUTPUT -> JasmItems.INPUT_OUTPUT_PORT.get();
+            case STORAGE -> JasmItems.STORAGE_PORT.get();
         };
     }
     public static @Nullable TransferPortKind of(ItemStack stack) {

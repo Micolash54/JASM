@@ -18,6 +18,9 @@ import org.jspecify.annotations.Nullable;
 public final class DeckView {
     private final Map<ItemResource, Long> contents = new LinkedHashMap<>();
     private final Map<FluidResource, Long> fluids = new LinkedHashMap<>();
+    /** How much of each total sits in the network's storage blocks rather than on wafers. */
+    private final Map<ItemResource, Long> chest = new LinkedHashMap<>();
+    private final Map<FluidResource, Long> fluidChest = new LinkedHashMap<>();
     private int energy;
     private List<DeckStorage.SlotStatus> slots = List.of();
     private int version;
@@ -33,6 +36,7 @@ public final class DeckView {
     public void applySnapshotPage(int page, List<DeckPayloads.Entry> entries) {
         if (page == 0) {
             contents.clear();
+            chest.clear();
         }
         apply(entries);
     }
@@ -42,8 +46,11 @@ public final class DeckView {
         for (DeckPayloads.Entry entry : entries) {
             if (entry.count() <= 0) {
                 contents.remove(entry.key());
+                chest.remove(entry.key());
             } else {
                 contents.put(entry.key(), entry.count());
+                if (entry.chest() > 0) chest.put(entry.key(), entry.chest());
+                else chest.remove(entry.key());
             }
         }
         version++;
@@ -53,6 +60,7 @@ public final class DeckView {
     public void applyFluidSnapshotPage(int page, List<DeckPayloads.FluidEntry> entries) {
         if (page == 0) {
             fluids.clear();
+            fluidChest.clear();
         }
         applyFluids(entries);
     }
@@ -62,8 +70,11 @@ public final class DeckView {
         for (DeckPayloads.FluidEntry entry : entries) {
             if (entry.amount() <= 0) {
                 fluids.remove(entry.key());
+                fluidChest.remove(entry.key());
             } else {
                 fluids.put(entry.key(), entry.amount());
+                if (entry.chest() > 0) fluidChest.put(entry.key(), entry.chest());
+                else fluidChest.remove(entry.key());
             }
         }
         version++;
@@ -125,6 +136,16 @@ public final class DeckView {
     /** Millibuckets of each fluid on the Deck's fluid wafers. */
     public Map<FluidResource, Long> fluids() {
         return Collections.unmodifiableMap(fluids);
+    }
+
+    /** How many of {@code key} sit in the network's storage blocks rather than on wafers. */
+    public long chestOf(ItemResource key) {
+        return chest.getOrDefault(key, 0L);
+    }
+
+    /** Millibuckets of {@code key} that sit in the network's storage blocks rather than on wafers. */
+    public long chestFluidOf(FluidResource key) {
+        return fluidChest.getOrDefault(key, 0L);
     }
 
     public int energy() {

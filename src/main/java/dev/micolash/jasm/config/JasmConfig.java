@@ -87,6 +87,12 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue PORT_DRAIN = BUILDER
             .comment("FE an Access Port uses each tick")
             .defineInRange("portDrain", 2, 0, 1_000_000);
+    public static final ModConfigSpec.IntValue POOL_SNAPSHOT_TICKS = BUILDER
+            .comment("Ticks a Storage Port chest listing is reused before the chests are read again")
+            .defineInRange("poolSnapshotTicks", 10, 1, 200);
+    public static final ModConfigSpec.IntValue POOL_SCAN_SLOTS = BUILDER
+            .comment("Most slots read from one chest when listing a network's storage")
+            .defineInRange("poolScanSlots", 512, 1, 100_000);
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_BASIC = BUILDER
             .comment("FE each Basic Processor adds to its server's use per tick")
             .defineInRange("basicProcessorDrain", 10, 0, 1_000_000);

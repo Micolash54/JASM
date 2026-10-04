@@ -1,0 +1,218 @@
+package dev.micolash.jasm.pool;
+
+import dev.micolash.jasm.archive.ArchiveBlockEntity;
+import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.PoolRouter;
+import dev.micolash.jasm.network.DataCableBlockEntity;
+import dev.micolash.jasm.network.MachineBlockEntity;
+import java.util.Map;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * One block seen through one Storage Port: what it holds as items and as fluids. Both capabilities are cached and
+ * refresh themselves when the block changes. A move that comes back into the same store while it is busy does nothing,
+ * and neither does one asked for while another transaction is open (it could not be undone with that one).
+ */
+public final class PoolStore implements PoolRouter.Unit<ItemResource> {
+    private final StoragePortBlockEntity port;
+    private final FluidSide fluidSide = new FluidSide();
+    private @Nullable BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> items;
+    private @Nullable BlockCapabilityCache<ResourceHandler<FluidResource>, Direction> fluids;
+    private boolean busy;
+
+    PoolStore(StoragePortBlockEntity port) { this.port = port; }
+
+    public StorageSettings settings() { return port.settings(); }
+    public BlockPos chestPos() { return port.chestPos(); }
+    /** The fluid side of this store, for ordering fluids. */
+    public PoolRouter.Unit<FluidResource> fluidUnit() { return fluidSide; }
+
+    @Override
+    public int priority() { return settings().priority(); }
+    @Override
+    public boolean wafer() { return false; }
+    @Override
+    public boolean canRead() { return settings().access().canRead() && port.storeActive(); }
+    @Override
+    public boolean canWrite() { return settings().access().canWrite() && port.storeActive(); }
+    @Override
+    public boolean prefers(ItemResource key) { return settings().lists(key.getItem()) || count(key) > 0; }
+    public boolean passes(ItemResource key) { return settings().passes(key.getItem()); }
+    public boolean passes(FluidResource key) { return settings().passes(key.getFluid()); }
+
+    private final class FluidSide implements PoolRouter.Unit<FluidResource> {
+        @Override
+        public int priority() { return PoolStore.this.priority(); }
+        @Override
+        public boolean wafer() { return false; }
+        @Override
+        public boolean canRead() { return PoolStore.this.canRead(); }
+        @Override
+        public boolean canWrite() { return PoolStore.this.canWrite(); }
+        @Override
+        public boolean prefers(FluidResource key) { return settings().lists(key.getFluid()) || countFluid(key) > 0; }
+    }
+
+    /** The level, if the port may use its block right now: loaded, active, and not a crafting block, Archive or cable. */
+    private @Nullable ServerLevel usableLevel() {
+        if (!(port.getLevel() instanceof ServerLevel level) || !port.storeActive()) return null;
+        var entity = level.getBlockEntity(chestPos());
+        return entity instanceof MachineBlockEntity || entity instanceof ArchiveBlockEntity || entity instanceof DataCableBlockEntity
+                ? null : level;
+    }
+
+    private @Nullable ResourceHandler<ItemResource> itemHandler() {
+        ServerLevel level = usableLevel();
+        if (level == null) return null;
+        if (items == null) items = BlockCapabilityCache.create(Capabilities.Item.BLOCK, level, chestPos(), port.face().getOpposite());
+        return items.getCapability();
+    }
+
+    private @Nullable ResourceHandler<FluidResource> fluidHandler() {
+        ServerLevel level = usableLevel();
+        if (level == null) return null;
+        if (fluids == null) fluids = BlockCapabilityCache.create(Capabilities.Fluid.BLOCK, level, chestPos(), port.face().getOpposite());
+        return fluids.getCapability();
+    }
+
+    private static int slots(int size) {
+        return Math.min(size, JasmConfig.POOL_SCAN_SLOTS.getAsInt());
+    }
+
+    // --- items ---
+
+    public long count(ItemResource key) {
+        var handler = itemHandler();
+        if (handler == null || !settings().access().canRead() || !passes(key)) return 0;
+        long total = 0;
+        for (int slot = 0; slot < slots(handler.size()); slot++) if (key.equals(handler.getResource(slot))) total += handler.getAmountAsLong(slot);
+        return total;
+    }
+
+    /** Adds what the block holds and the filter lets through to {@code into}. Reads at most the configured slots. */
+    public void scan(Map<ItemResource, Long> into) {
+        var handler = itemHandler();
+        if (handler == null || !settings().access().canRead()) return;
+        for (int slot = 0; slot < slots(handler.size()); slot++) {
+            ItemResource held = handler.getResource(slot);
+            if (!held.isEmpty() && passes(held)) into.merge(held, handler.getAmountAsLong(slot), Long::sum);
+        }
+    }
+
+    /** How many of {@code key}, up to {@code most}, the block would take. Changes nothing. */
+    public long room(ItemResource key, long most) {
+        if (!canWrite() || !passes(key) || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        try (Transaction tx = Transaction.openRoot()) {
+            return insert(key, most, tx);
+        }
+    }
+
+    public long insert(ItemResource key, long amount, TransactionContext tx) {
+        var handler = itemHandler();
+        if (handler == null || amount <= 0 || !canWrite() || !passes(key)) return 0;
+        return handler.insert(key, (int) Math.min(amount, Integer.MAX_VALUE), tx);
+    }
+
+    public long extract(ItemResource key, long amount, TransactionContext tx) {
+        var handler = itemHandler();
+        if (handler == null || amount <= 0 || !canRead() || !passes(key)) return 0;
+        return handler.extract(key, (int) Math.min(amount, Integer.MAX_VALUE), tx);
+    }
+
+    public long insertNow(ItemResource key, long amount) {
+        if (busy || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        busy = true;
+        try (Transaction tx = Transaction.openRoot()) {
+            long moved = insert(key, amount, tx);
+            if (moved > 0) tx.commit();
+            return moved;
+        } finally {
+            busy = false;
+        }
+    }
+
+    public long extractNow(ItemResource key, long amount) {
+        if (busy || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        busy = true;
+        try (Transaction tx = Transaction.openRoot()) {
+            long moved = extract(key, amount, tx);
+            if (moved > 0) tx.commit();
+            return moved;
+        } finally {
+            busy = false;
+        }
+    }
+
+    // --- fluids, in millibuckets ---
+
+    public long countFluid(FluidResource key) {
+        var handler = fluidHandler();
+        if (handler == null || !settings().access().canRead() || !passes(key)) return 0;
+        long total = 0;
+        for (int slot = 0; slot < slots(handler.size()); slot++) if (key.equals(handler.getResource(slot))) total += handler.getAmountAsLong(slot);
+        return total;
+    }
+
+    public void scanFluids(Map<FluidResource, Long> into) {
+        var handler = fluidHandler();
+        if (handler == null || !settings().access().canRead()) return;
+        for (int slot = 0; slot < slots(handler.size()); slot++) {
+            FluidResource held = handler.getResource(slot);
+            if (!held.isEmpty() && passes(held)) into.merge(held, handler.getAmountAsLong(slot), Long::sum);
+        }
+    }
+
+    /** How many millibuckets of {@code key}, up to {@code most}, the block would take. A cauldron says 0 below a bucket. */
+    public long roomFluid(FluidResource key, long most) {
+        if (!canWrite() || !passes(key) || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        try (Transaction tx = Transaction.openRoot()) {
+            return insertFluid(key, most, tx);
+        }
+    }
+
+    public long insertFluid(FluidResource key, long amount, TransactionContext tx) {
+        var handler = fluidHandler();
+        if (handler == null || amount <= 0 || !canWrite() || !passes(key)) return 0;
+        return handler.insert(key, (int) Math.min(amount, Integer.MAX_VALUE), tx);
+    }
+
+    public long extractFluid(FluidResource key, long amount, TransactionContext tx) {
+        var handler = fluidHandler();
+        if (handler == null || amount <= 0 || !canRead() || !passes(key)) return 0;
+        return handler.extract(key, (int) Math.min(amount, Integer.MAX_VALUE), tx);
+    }
+
+    public long insertFluidNow(FluidResource key, long amount) {
+        if (busy || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        busy = true;
+        try (Transaction tx = Transaction.openRoot()) {
+            long moved = insertFluid(key, amount, tx);
+            if (moved > 0) tx.commit();
+            return moved;
+        } finally {
+            busy = false;
+        }
+    }
+
+    public long extractFluidNow(FluidResource key, long amount) {
+        if (busy || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        busy = true;
+        try (Transaction tx = Transaction.openRoot()) {
+            long moved = extractFluid(key, amount, tx);
+            if (moved > 0) tx.commit();
+            return moved;
+        } finally {
+            busy = false;
+        }
+    }
+}

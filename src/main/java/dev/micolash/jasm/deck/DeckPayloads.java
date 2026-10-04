@@ -16,10 +16,13 @@ public final class DeckPayloads {
     private DeckPayloads() {}
 
     /** One kind of item and how many the open Deck holds. */
-    public record Entry(ItemResource key, long count) {
+    /** {@code chest} is how many of the {@code count} sit in the network's storage blocks rather than on wafers. */
+    public record Entry(ItemResource key, long count, long chest) {
+        public Entry(ItemResource key, long count) { this(key, count, 0); }
         public static final StreamCodec<RegistryFriendlyByteBuf, Entry> STREAM_CODEC = StreamCodec.composite(
                 ItemResource.STREAM_CODEC, Entry::key,
                 ByteBufCodecs.VAR_LONG, Entry::count,
+                ByteBufCodecs.VAR_LONG, Entry::chest,
                 Entry::new);
         static final StreamCodec<RegistryFriendlyByteBuf, List<Entry>> LIST = STREAM_CODEC.apply(ByteBufCodecs.list());
     }
@@ -172,10 +175,13 @@ public final class DeckPayloads {
     }
 
     /** One kind of fluid and how many millibuckets the open Deck holds. */
-    public record FluidEntry(FluidResource key, long amount) {
+    /** {@code chest} is how many of the {@code amount} millibuckets sit in the network's storage blocks. */
+    public record FluidEntry(FluidResource key, long amount, long chest) {
+        public FluidEntry(FluidResource key, long amount) { this(key, amount, 0); }
         public static final StreamCodec<RegistryFriendlyByteBuf, FluidEntry> STREAM_CODEC = StreamCodec.composite(
                 FluidResource.STREAM_CODEC, FluidEntry::key,
                 ByteBufCodecs.VAR_LONG, FluidEntry::amount,
+                ByteBufCodecs.VAR_LONG, FluidEntry::chest,
                 FluidEntry::new);
         static final StreamCodec<RegistryFriendlyByteBuf, List<FluidEntry>> LIST = STREAM_CODEC.apply(ByteBufCodecs.list());
     }

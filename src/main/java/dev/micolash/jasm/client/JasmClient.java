@@ -84,5 +84,6 @@ public final class JasmClient {
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ACCESS_PORT.get(), AccessPortScreen::new);
         event.register(JasmMenus.TRANSFER_PORT.get(), TransferPortScreen::new);
+        event.register(JasmMenus.STORAGE_PORT.get(), StoragePortScreen::new);
     }
 }

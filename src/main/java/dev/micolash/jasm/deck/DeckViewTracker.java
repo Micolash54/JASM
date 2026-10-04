@@ -1,6 +1,9 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.pool.NetworkPool;
+import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
@@ -33,6 +36,11 @@ public final class DeckViewTracker {
     private static final class Sent {
         Map<ItemResource, Long> contents;
         Map<FluidResource, Long> fluids;
+        Map<ItemResource, Long> chest = Map.of();
+        Map<FluidResource, Long> fluidChest = Map.of();
+        long poolVersion = -1;
+        long poolCheck;
+        boolean hadPool;
         Set<UUID> waferIds = Set.of();
         DeckWafers wafers;
         int energy = -1;
@@ -82,6 +90,18 @@ public final class DeckViewTracker {
         if (!wafers.equals(sent.wafers)) {
             sent.dirty = true;
         }
+        long tick = player.level().getServer().getTickCount();
+        if (tick - sent.poolCheck >= JasmConfig.POOL_SNAPSHOT_TICKS.getAsInt()) {
+            sent.poolCheck = tick;
+            NetworkPool pool = PoolAccess.forDeck(player, menu.deck());
+            if (pool != null) pool.contents();   // lists the blocks again if the listing is old, which bumps the version
+            long version = pool == null ? -1 : pool.version();
+            if (version != sent.poolVersion || (pool != null) != sent.hadPool) {
+                sent.poolVersion = version;
+                sent.hadPool = pool != null;
+                sent.dirty = true;
+            }
+        }
         if (sent.dirty) {
             sent.dirty = false;
             sent.wafers = wafers;
@@ -95,24 +115,31 @@ public final class DeckViewTracker {
                 record.fluids().forEach((key, amount) -> fluids.merge(key, amount, Long::sum));
             }
             sent.waferIds = ids;
+            NetworkPool pool = PoolAccess.forDeck(player, menu.deck());
+            Map<ItemResource, long[]> totals = totals(contents, pool == null ? Map.of() : pool.contents());
             if (sent.contents == null) {
-                sendSnapshot(player, menu.containerId, contents);
+                sendSnapshot(player, menu.containerId, totals);
             } else {
                 List<DeckPayloads.Entry> changes = new ArrayList<>();
-                contents.forEach((key, count) -> {
-                    if (!count.equals(sent.contents.get(key))) {
-                        changes.add(new DeckPayloads.Entry(key, count));
+                totals.forEach((key, t) -> {
+                    if (!Long.valueOf(t[0]).equals(sent.contents.get(key)) || t[1] != sent.chest.getOrDefault(key, 0L)) {
+                        changes.add(new DeckPayloads.Entry(key, t[0], t[1]));
                     }
                 });
-                sent.contents.keySet().stream().filter(key -> !contents.containsKey(key))
+                sent.contents.keySet().stream().filter(key -> !totals.containsKey(key))
                         .forEach(key -> changes.add(new DeckPayloads.Entry(key, 0)));
                 for (int from = 0; from < changes.size(); from += PAGE_SIZE) {
                     PacketDistributor.sendToPlayer(player, new DeckPayloads.Delta(menu.containerId,
                             changes.subList(from, Math.min(changes.size(), from + PAGE_SIZE))));
                 }
             }
-            sent.contents = contents;
-            sendFluids(player, menu.containerId, sent, fluids);
+            sent.contents = new HashMap<>();
+            sent.chest = new HashMap<>();
+            totals.forEach((key, t) -> {
+                sent.contents.put(key, t[0]);
+                if (t[1] > 0) sent.chest.put(key, t[1]);
+            });
+            sendFluids(player, menu.containerId, sent, totals(fluids, pool == null ? Map.of() : pool.fluidContents()));
         }
         int energy = DeckItem.energy(menu.deck());
         List<DeckStorage.SlotStatus> slots = DeckStorage.status(store, menu.deck());
@@ -124,11 +151,11 @@ public final class DeckViewTracker {
     }
 
     /** The first time everything, then only the amounts that changed. Nothing is sent while there are no fluids at all. */
-    private static void sendFluids(ServerPlayer player, int containerId, Sent sent, Map<FluidResource, Long> fluids) {
+    private static void sendFluids(ServerPlayer player, int containerId, Sent sent, Map<FluidResource, long[]> totals) {
         if (sent.fluids == null) {
-            if (!fluids.isEmpty()) {
-                List<DeckPayloads.FluidEntry> entries = fluids.entrySet().stream()
-                        .map(e -> new DeckPayloads.FluidEntry(e.getKey(), e.getValue())).toList();
+            if (!totals.isEmpty()) {
+                List<DeckPayloads.FluidEntry> entries = totals.entrySet().stream()
+                        .map(e -> new DeckPayloads.FluidEntry(e.getKey(), e.getValue()[0], e.getValue()[1])).toList();
                 int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
                 for (int page = 0; page < pages; page++) {
                     PacketDistributor.sendToPlayer(player, new DeckPayloads.FluidSnapshot(containerId, page, pages,
@@ -137,23 +164,37 @@ public final class DeckViewTracker {
             }
         } else {
             List<DeckPayloads.FluidEntry> changes = new ArrayList<>();
-            fluids.forEach((key, amount) -> {
-                if (!amount.equals(sent.fluids.get(key))) {
-                    changes.add(new DeckPayloads.FluidEntry(key, amount));
+            totals.forEach((key, t) -> {
+                if (!Long.valueOf(t[0]).equals(sent.fluids.get(key)) || t[1] != sent.fluidChest.getOrDefault(key, 0L)) {
+                    changes.add(new DeckPayloads.FluidEntry(key, t[0], t[1]));
                 }
             });
-            sent.fluids.keySet().stream().filter(key -> !fluids.containsKey(key))
+            sent.fluids.keySet().stream().filter(key -> !totals.containsKey(key))
                     .forEach(key -> changes.add(new DeckPayloads.FluidEntry(key, 0)));
             for (int from = 0; from < changes.size(); from += PAGE_SIZE) {
                 PacketDistributor.sendToPlayer(player, new DeckPayloads.FluidDelta(containerId,
                         changes.subList(from, Math.min(changes.size(), from + PAGE_SIZE))));
             }
         }
-        sent.fluids = fluids;
+        sent.fluids = new HashMap<>();
+        sent.fluidChest = new HashMap<>();
+        totals.forEach((key, t) -> {
+            sent.fluids.put(key, t[0]);
+            if (t[1] > 0) sent.fluidChest.put(key, t[1]);
+        });
     }
 
-    private static void sendSnapshot(ServerPlayer player, int containerId, Map<ItemResource, Long> contents) {
-        List<DeckPayloads.Entry> entries = contents.entrySet().stream().map(e -> new DeckPayloads.Entry(e.getKey(), e.getValue())).toList();
+    /** The total and the part of it held in storage blocks, for each key. */
+    public static <K> Map<K, long[]> totals(Map<K, Long> stored, Map<K, Long> chests) {
+        Map<K, long[]> out = new HashMap<>();
+        stored.forEach((key, count) -> out.put(key, new long[]{count, 0}));
+        chests.forEach((key, count) -> out.merge(key, new long[]{count, count}, (a, b) -> new long[]{a[0] + b[0], b[1]}));
+        return out;
+    }
+
+    private static void sendSnapshot(ServerPlayer player, int containerId, Map<ItemResource, long[]> totals) {
+        List<DeckPayloads.Entry> entries = totals.entrySet().stream()
+                .map(e -> new DeckPayloads.Entry(e.getKey(), e.getValue()[0], e.getValue()[1])).toList();
         int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
         for (int page = 0; page < pages; page++) {
             List<DeckPayloads.Entry> part = entries.subList(page * PAGE_SIZE, Math.min(entries.size(), (page + 1) * PAGE_SIZE));

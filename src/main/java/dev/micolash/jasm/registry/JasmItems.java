@@ -52,6 +52,7 @@ public final class JasmItems {
     public static final DeferredItem<TransferPortItem> INPUT_PORT = ITEMS.registerItem("input_port", TransferPortItem::new);
     public static final DeferredItem<TransferPortItem> OUTPUT_PORT = ITEMS.registerItem("output_port", TransferPortItem::new);
     public static final DeferredItem<TransferPortItem> INPUT_OUTPUT_PORT = ITEMS.registerItem("input_output_port", TransferPortItem::new);
+    public static final DeferredItem<TransferPortItem> STORAGE_PORT = ITEMS.registerItem("storage_port", TransferPortItem::new);
     public static final DeferredItem<SpeedUpgradeItem> SPEED_UPGRADE = ITEMS.registerItem("speed_upgrade", SpeedUpgradeItem::new);
     public static final DeferredItem<RedstoneUpgradeItem> REDSTONE_UPGRADE = ITEMS.registerItem("redstone_upgrade", RedstoneUpgradeItem::new);
     public static final DeferredItem<Item> POWER_UPGRADE = ITEMS.registerSimpleItem("power_upgrade");
