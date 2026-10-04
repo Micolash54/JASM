@@ -23,11 +23,11 @@ public enum WaferTier {
     FLUID_K4(WaferKind.FLUID, "fluid_capacity_wafer_4k", 4_096, 0, 0),
     FLUID_K16(WaferKind.FLUID, "fluid_capacity_wafer_16k", 16_384, 0, 0),
     FLUID_K64(WaferKind.FLUID, "fluid_capacity_wafer_64k", 65_536, 0, 0),
-    FLUID_T1(WaferKind.FLUID, "fluid_type_wafer_1", 8_192, 1, 8_192),
-    FLUID_T2(WaferKind.FLUID, "fluid_type_wafer_2", 2 * 32_768, 2, 32_768),
-    FLUID_T4(WaferKind.FLUID, "fluid_type_wafer_4", 4 * 131_072, 4, 131_072),
-    FLUID_T8(WaferKind.FLUID, "fluid_type_wafer_8", 8 * 524_288, 8, 524_288),
-    FLUID_T16(WaferKind.FLUID, "fluid_type_wafer_16", 16 * 2_097_152, 16, 2_097_152);
+    FLUID_T2(WaferKind.FLUID, "fluid_type_wafer_2", 2 * 4_096, 2, 4_096),
+    FLUID_T4(WaferKind.FLUID, "fluid_type_wafer_4", 4 * 16_384, 4, 16_384),
+    FLUID_T8(WaferKind.FLUID, "fluid_type_wafer_8", 8 * 65_536, 8, 65_536),
+    FLUID_T16(WaferKind.FLUID, "fluid_type_wafer_16", 16 * 262_144, 16, 262_144),
+    FLUID_T32(WaferKind.FLUID, "fluid_type_wafer_32", 32 * 1_048_576, 32, 1_048_576);
 
     private final WaferKind kind;
     private final String registryName;

@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "jasm:item/fluid_type_wafer_1"
+    "layer0": "jasm:item/fluid_type_wafer_32"
   }
 }
