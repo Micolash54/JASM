@@ -238,6 +238,13 @@ public final class CableNetwork {
         if (cables.isEmpty()) {
             return;
         }
+        Map<Hop, Integer> used = new HashMap<>();
+        feedMachines(now, used);
+        shareAlongCables(used);
+    }
+
+    /** Machines and ports that want power get it first, from the nearest cables and spare machines. */
+    private void feedMachines(long now, Map<Hop, Integer> used) {
         Map<BlockPos, DataCableBlockEntity> loaded = loadedCables();
         SimpleEnergyHandler leastCharged = null;
         for (Member member : members()) {
@@ -314,7 +321,6 @@ public final class CableNetwork {
         // machine with spare, along the shortest open path. Every hop carries at most the slower cable's rate per tick,
         // shared by everything that crosses it, so a slow stretch slows only the power that goes through it. Whoever
         // starts goes round.
-        Map<Hop, Integer> used = new HashMap<>();
         List<DataCableBlockEntity> order = new ArrayList<>(wants.keySet());
         Collections.rotate(order, (int) Math.floorMod(now, (long) order.size()));
         Map<DataCableBlockEntity, Integer> wanted = new HashMap<>();
@@ -350,6 +356,27 @@ public final class CableNetwork {
             handOver(cable, wants.get(cable));
         }
         shareAdjacentPower();
+    }
+
+    /**
+     * A cable is something that takes power too: each cable gives the cables it touches that hold less than it, at its
+     * own rate, so a line fills from its source even when nothing at the end needs power. It gives only down to an even
+     * share, or two half-full cables would pass the same power back and forth forever.
+     */
+    private void shareAlongCables(Map<Hop, Integer> used) {
+        for (DataCableBlockEntity cable : loadedCables().values()) {
+            for (DataCableBlockEntity next : neighbours(cable)) {
+                int amount = cable.energy().getAmountAsInt();
+                long capacity = cable.energy().getCapacityAsLong() + next.energy().getCapacityAsLong();
+                int wanted = (int) (((long) amount + next.energy().getAmountAsInt()) * cable.energy().getCapacityAsLong() / capacity);
+                int rate = cable.tier().rate() - used.getOrDefault(edge(cable, next), 0);
+                // A gap of one is left alone, so two cables don't hand the same FE back and forth every tick.
+                if (amount - wanted > 1) {
+                    int moved = transfer(cable.energy(), next.energy(), Math.min(amount - wanted, rate));
+                    if (moved > 0) used.merge(edge(cable, next), moved, Integer::sum);
+                }
+            }
+        }
     }
 
     /** Hands a cable's power to what it feeds, each an equal part up to the cable's rate. */

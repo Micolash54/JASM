@@ -49,6 +49,8 @@ public final class PowerSides {
             if (entity == null) continue;
             receivers[i] = PowerReceiver.of(entity);
             jasm[i] = receivers[i] != null || entity instanceof NetworkPowerSource;
+            // A line of bare cables has no machine to wake its network, and the network is what moves power along it.
+            if (entity instanceof DataCableBlockEntity) Networks.at(level, next);
         }
     }
 
