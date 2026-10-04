@@ -11,8 +11,7 @@
             {
               "include": [
                 "jasm:energy",
-                "jasm:owner",
-                "jasm:brain"
+                "jasm:owner"
               ],
               "source": "block_entity",
               "function": "minecraft:copy_components"
