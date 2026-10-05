@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:capacity_wafer_256k"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_capacity_wafer_64k": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:capacity_wafer_64k"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_capacity_wafer_64k"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:capacity_wafer_256k"
+    ]
+  }
+}

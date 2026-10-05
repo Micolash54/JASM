@@ -44,7 +44,7 @@ public final class ArchivePayloads {
             ByteBufCodecs.VAR_LONG, ArchiveService.Entry::serial,
             ByteBufCodecs.STRING_UTF8, ArchiveService.Entry::name,
             ByteBufCodecs.VAR_LONG, ArchiveService.Entry::used,
-            ByteBufCodecs.VAR_INT, ArchiveService.Entry::capacity,
+            ByteBufCodecs.VAR_LONG, ArchiveService.Entry::capacity,
             ByteBufCodecs.BOOL, ArchiveService.Entry::readable,
             ByteBufCodecs.BOOL, ArchiveService.Entry::fluid,
             ArchiveService.Entry::new);

@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:netherite_scrap",
+    "R": "minecraft:redstone",
+    "W": "jasm:capacity_wafer_64k",
+    "S": "jasm:synapse_core"
+  },
+  "pattern": [
+    "XSX",
+    "RWR",
+    "WSW"
+  ],
+  "source": "jasm:capacity_wafer_64k",
+  "result": {
+    "id": "jasm:capacity_wafer_256k"
+  },
+  "merge_wafers": true
+}

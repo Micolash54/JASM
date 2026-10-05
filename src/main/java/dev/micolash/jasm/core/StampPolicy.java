@@ -34,7 +34,7 @@ public final class StampPolicy {
      * What the record knows about a wafer. {@code recoveryFloor} may be null. {@code newestSeen} is true once a
      * copy with the {@code current} stamp was handed out, seen or saved during this server session.
      */
-    public record RecordView(Stamp current, Stamp recoveryFloor, int capacity, boolean newestSeen) {}
+    public record RecordView(Stamp current, Stamp recoveryFloor, long capacity, boolean newestSeen) {}
 
     private StampPolicy() {}
 
@@ -43,7 +43,7 @@ public final class StampPolicy {
      * @param itemCapacity the capacity of the physical item
      * @param record       the record view, or null if no record exists
      */
-    public static Verdict judge(Stamp itemStamp, int itemCapacity, RecordView record) {
+    public static Verdict judge(Stamp itemStamp, long itemCapacity, RecordView record) {
         if (itemStamp == null) {
             return Verdict.UNFORMATTED;
         }

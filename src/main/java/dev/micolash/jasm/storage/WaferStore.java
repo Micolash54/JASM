@@ -409,13 +409,13 @@ public final class WaferStore {
     }
 
     /** Creates the record for a freshly formatted Capacity Wafer. */
-    public WaferRecord create(int capacity, @Nullable Player actor) {
+    public WaferRecord create(long capacity, @Nullable Player actor) {
         WaferRecord record = fresh(allocateSerial(), capacity, actor);
         wafers.put(record);
         return record;
     }
 
-    private WaferRecord fresh(long serial, int capacity, @Nullable Player actor) {
+    private WaferRecord fresh(long serial, long capacity, @Nullable Player actor) {
         WaferRecord record = new WaferRecord(UUID.randomUUID(), serial, capacity, state.mint(), NOTHING_SAVED);
         String name = actor == null ? "" : actor.getPlainTextName();
         record.setHistory(new WaferRecord.History(name, name, System.currentTimeMillis()));
@@ -445,7 +445,7 @@ public final class WaferStore {
         record.markNewestSeen();
     }
 
-    /** Recovery onto a wafer of this tier: as {@link #reissue(WaferRecord, int, Player)}, taking the new wafer's limits. */
+    /** Recovery onto a wafer of this tier: as {@link #reissue(WaferRecord, long, Player)}, taking the new wafer's limits. */
     public Stamp reissue(WaferRecord record, WaferTier tier, @Nullable Player actor) {
         Stamp stamp = reissue(record, tier.capacity(), actor);
         record.setLimits(tier);
@@ -453,7 +453,7 @@ public final class WaferStore {
     }
 
     /** Recovery or restore: every older instance becomes a recovered original. Returns the new instance's stamp. */
-    public Stamp reissue(WaferRecord record, int newCapacity, @Nullable Player actor) {
+    public Stamp reissue(WaferRecord record, long newCapacity, @Nullable Player actor) {
         Stamp stamp = state.mint();
         record.setCurrent(stamp);
         record.setRecoveryFloor(stamp);

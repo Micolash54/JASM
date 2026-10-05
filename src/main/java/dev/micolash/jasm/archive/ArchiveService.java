@@ -64,7 +64,7 @@ public final class ArchiveService {
     }
 
     /** One linked wafer as the Archive screen lists it. {@code readable} is false while its record can't be read. */
-    public record Entry(long serial, String name, long used, int capacity, boolean readable, boolean fluid) {}
+    public record Entry(long serial, String name, long used, long capacity, boolean readable, boolean fluid) {}
 
     /** Overall coverage of the held Deck, including backups made before this action. */
     public record Backup(Result result, int backedUp, int total) {}

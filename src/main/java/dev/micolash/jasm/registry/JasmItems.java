@@ -78,6 +78,7 @@ public final class JasmItems {
     public static final DeferredItem<Item> ADVANCED_LOGIC_CHIP = ITEMS.registerSimpleItem("advanced_logic_chip");
     public static final DeferredItem<Item> ADVANCED_MEMORY_CHIP = ITEMS.registerSimpleItem("advanced_memory_chip");
     public static final DeferredItem<Item> ADVANCED_LINK_CHIP = ITEMS.registerSimpleItem("advanced_link_chip");
+    public static final DeferredItem<Item> SYNAPSE_CORE = ITEMS.registerSimpleItem("synapse_core");
     private static final Map<BitlingKind, Map<BitlingStage, DeferredItem<BitlingItem>>> BITLINGS = new EnumMap<>(BitlingKind.class);
 
     static {

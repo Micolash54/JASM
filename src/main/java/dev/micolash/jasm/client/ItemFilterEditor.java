@@ -137,8 +137,10 @@ class ItemFilterEditor {
         }
     }
 
+    /** The line above the rows. The wafer window shows the last emptying result there instead. */
+    Component rulesLine() { return label("rules"); }
     private Component label(String key) { return Component.translatable("screen.jasm.filter." + key); }
-    private Button place(Button button, int px, int py) { buttons.add(new Placed(button, px, py)); return button; }
+    Button place(Button button, int px, int py) { buttons.add(new Placed(button, px, py)); return button; }
     boolean isOpen() { return opened; }
     /** Which kinds of row can be added: items, fluids, or both. Takes effect when the editor is next opened. */
     void setModes(List<Mode> modes) { this.modes = List.copyOf(modes); }
@@ -299,6 +301,9 @@ class ItemFilterEditor {
         graphics.item(stack, 0, 0);
         graphics.pose().popMatrix();
     }
+    /** True while something lies over the window and takes its clicks and keys. */
+    boolean locked() { return false; }
+    void drawOverlay(GuiGraphicsExtractor graphics, int x, int y, int width, int height) {}
     void draw(GuiGraphicsExtractor graphics, int mx, int my, float a, int width, int screenHeight) {
         if (!isOpen()) return;
         fit(width, screenHeight);
@@ -310,7 +315,7 @@ class ItemFilterEditor {
             graphics.text(font, title, x + 26, y + 8, JasmGui.TEXT, false);
             graphics.text(font, suffix, x + editorWidth - 23 - font.width(suffix), y + 8, JasmGui.MUTED, false);
             JasmGui.divider(graphics, x + 4, y + 21, editorWidth - 8);
-            graphics.text(font, label(tagChoices.isEmpty() ? "rules" : "choose_tag"), x + 8, y + 26, JasmGui.SUBTEXT, false);
+            graphics.text(font, tagChoices.isEmpty() ? rulesLine() : label("choose_tag"), x + 8, y + 26, JasmGui.SUBTEXT, false);
             JasmGui.divider(graphics, x + 7, y + slotY - 29, editorWidth - 14);
         } else {
             graphics.text(font, tagChoices.isEmpty() ? title : label("choose_tag"), x + 7, y + 3, JasmGui.SUBTEXT, false);
@@ -359,9 +364,11 @@ class ItemFilterEditor {
         if (slotArea().contains(mx, my)) graphics.setTooltipForNextFrame(font, preview.isEmpty() ? label("pick") : preview.getHoverName(), mx, my);
         text.extractRenderState(graphics, mx, my, a);
         for (Placed placed : buttons) if (placed.button().visible) placed.button().extractRenderState(graphics, mx, my, a);
+        drawOverlay(graphics, x, y, editorWidth, height);
     }
 
     boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (locked()) return contains(event.x(), event.y());
         layout();
         update();
         for (Placed placed : buttons) if (placed.button().visible && placed.button().mouseClicked(event, doubleClick)) return true;
@@ -405,6 +412,7 @@ class ItemFilterEditor {
         else tagScroll = value;
     }
     boolean mouseDragged(MouseButtonEvent event, int width, int screenHeight) {
+        if (locked()) return contains(event.x(), event.y());
         if (grabX >= 0) { x = (int) event.x() - grabX; y = (int) event.y() - grabY; fit(width, screenHeight); return true; }
         if (draggingScroll) { scrollTo(event.y()); return true; }
         return contains(event.x(), event.y());
@@ -416,12 +424,14 @@ class ItemFilterEditor {
         return handled;
     }
     boolean mouseScrolled(double delta) {
+        if (locked()) return true;
         int value = Math.clamp(offset() - (int) Math.signum(delta), 0, maxScroll());
         if (tagChoices.isEmpty()) scroll = value;
         else tagScroll = value;
         return true;
     }
     boolean keyPressed(KeyEvent event) {
+        if (locked()) return true;
         if (event.isEscape()) {
             if (!tagChoices.isEmpty()) {
                 tagChoices = List.of();
@@ -440,5 +450,5 @@ class ItemFilterEditor {
         }
         return false;
     }
-    boolean charTyped(CharacterEvent event) { return text.isFocused() && text.charTyped(event); }
+    boolean charTyped(CharacterEvent event) { return locked() || text.isFocused() && text.charTyped(event); }
 }

@@ -13,6 +13,8 @@ The three wafers are used up. The new wafer holds all of their items and starts 
 | ![4K Capacity Wafer](images/recipes/capacity_wafer_4k.png) | **4K Capacity Wafer** | 2 × Diamond, 2 × Memory Chip, 2 × Redstone, 3 × 1K Capacity Wafer |
 | ![16K Capacity Wafer](images/recipes/capacity_wafer_16k.png) | **16K Capacity Wafer** | 2 × Emerald, 1 × Link Chip, 2 × Redstone, 3 × 4K Capacity Wafer, 1 × Memory Chip |
 | ![64K Capacity Wafer](images/recipes/capacity_wafer_64k.png) | **64K Capacity Wafer** | 2 × Blaze Rod, 2 × Advanced Memory Chip, 2 × Redstone, 3 × 16K Capacity Wafer |
+| ![256K Capacity Wafer](images/recipes/capacity_wafer_256k.png) | **256K Capacity Wafer** | 2 × Netherite Scrap, 2 × Synapse Core, 2 × Redstone, 3 × 64K Capacity Wafer |
+| ![1M Capacity Wafer](images/recipes/capacity_wafer_1m.png) | **1M Capacity Wafer** | 2 × Netherite Ingot, 2 × Synapse Core, 2 × Redstone, 3 × 256K Capacity Wafer |
 
 ## Type Wafers
 
@@ -25,6 +27,8 @@ Hold a few types, each in bulk. The two wafers are used up; the new wafer holds 
 | ![16 Type Wafer](images/recipes/type_wafer_16.png) | **16 Type Wafer** | 4 × Diamond, 1 × Memory Chip, 2 × Redstone, 2 × 8 Type Wafer |
 | ![32 Type Wafer](images/recipes/type_wafer_32.png) | **32 Type Wafer** | 4 × Emerald, 1 × Link Chip, 2 × Redstone, 2 × 16 Type Wafer |
 | ![64 Type Wafer](images/recipes/type_wafer_64.png) | **64 Type Wafer** | 4 × Blaze Rod, 1 × Advanced Memory Chip, 2 × Redstone, 2 × 32 Type Wafer |
+| ![128 Type Wafer](images/recipes/type_wafer_128.png) | **128 Type Wafer** | 4 × Netherite Scrap, 1 × Synapse Core, 2 × Redstone, 2 × 64 Type Wafer |
+| ![256 Type Wafer](images/recipes/type_wafer_256.png) | **256 Type Wafer** | 4 × Netherite Ingot, 1 × Synapse Core, 2 × Redstone, 2 × 128 Type Wafer |
 
 ## Fluid Capacity Wafers
 
@@ -37,6 +41,8 @@ Store fluids instead of items: one bucket takes the room of one item. The three 
 | ![4K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_4k.png) | **4K Fluid Capacity Wafer** | 2 × Diamond, 2 × Memory Chip, 2 × Redstone, 3 × 1K Fluid Capacity Wafer |
 | ![16K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_16k.png) | **16K Fluid Capacity Wafer** | 2 × Emerald, 1 × Link Chip, 2 × Redstone, 3 × 4K Fluid Capacity Wafer, 1 × Memory Chip |
 | ![64K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_64k.png) | **64K Fluid Capacity Wafer** | 2 × Blaze Rod, 2 × Advanced Memory Chip, 2 × Redstone, 3 × 16K Fluid Capacity Wafer |
+| ![256K Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_256k.png) | **256K Fluid Capacity Wafer** | 2 × Netherite Scrap, 2 × Synapse Core, 2 × Redstone, 3 × 64K Fluid Capacity Wafer |
+| ![1M Fluid Capacity Wafer](images/recipes/fluid_capacity_wafer_1m.png) | **1M Fluid Capacity Wafer** | 2 × Netherite Ingot, 2 × Synapse Core, 2 × Redstone, 3 × 256K Fluid Capacity Wafer |
 
 ## Fluid Type Wafers
 
@@ -49,6 +55,8 @@ Hold a few kinds of fluid, each in bulk. The two wafers are used up; the new waf
 | ![8 Type Fluid Wafer](images/recipes/fluid_type_wafer_8.png) | **8 Type Fluid Wafer** | 4 × Diamond, 1 × Memory Chip, 2 × Redstone, 2 × 4 Type Fluid Wafer |
 | ![16 Type Fluid Wafer](images/recipes/fluid_type_wafer_16.png) | **16 Type Fluid Wafer** | 4 × Emerald, 1 × Link Chip, 2 × Redstone, 2 × 8 Type Fluid Wafer |
 | ![32 Type Fluid Wafer](images/recipes/fluid_type_wafer_32.png) | **32 Type Fluid Wafer** | 4 × Blaze Rod, 1 × Advanced Memory Chip, 2 × Redstone, 2 × 16 Type Fluid Wafer |
+| ![64 Type Fluid Wafer](images/recipes/fluid_type_wafer_64.png) | **64 Type Fluid Wafer** | 4 × Netherite Scrap, 1 × Synapse Core, 2 × Redstone, 2 × 32 Type Fluid Wafer |
+| ![128 Type Fluid Wafer](images/recipes/fluid_type_wafer_128.png) | **128 Type Fluid Wafer** | 4 × Netherite Ingot, 1 × Synapse Core, 2 × Redstone, 2 × 64 Type Fluid Wafer |
 
 ## Decks
 
@@ -167,7 +175,7 @@ Right-click a side of a JASM machine, Archive or generator to turn its front the
 
 ## Crystals and chips
 
-Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data Crystal clusters. A Stonecutter cuts each Data Crystal into a Blank Chip. Cook a Blank Chip on a Campfire or in a Blast Furnace, then drop it in water to cool it into a Logic or Memory Chip. The Crystal Foundry grows 16 Blank Chips from every seed. Link Chips and Advanced chips come only from the Chip Workshop.
+Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data Crystal clusters. A Stonecutter cuts each Data Crystal into a Blank Chip. Cook a Blank Chip on a Campfire or in a Blast Furnace, then drop it in water to cool it into a Logic or Memory Chip. The Crystal Foundry grows 16 Blank Chips from every seed. Link Chips and Advanced chips come only from the Chip Workshop. A Byteling builds a Synapse Core in the Chip Workshop's grid from one Advanced chip of each type and a Data Crystal. The top wafer tiers need them.
 
 | Recipe | Item | Ingredients |
 | --- | --- | --- |
@@ -180,6 +188,7 @@ Use a Crystal Seed on a Block of Amethyst to make Seeded Amethyst; it grows Data
 | ![Unquenched Memory Chip](images/recipes/unquenched_memory_chip.png) | **Unquenched Memory Chip** | 1 × Blank Chip (Blast Furnace) |
 | ![Memory Chip](images/recipes/memory_chip.png) | **Memory Chip** | 1 × Unquenched Memory Chip (dropped in water) |
 | ![Crystal Foundry](images/recipes/crystal_foundry.png) | **Crystal Foundry** | 2 × Logic Chip, 1 × Amethyst Block, 2 × Memory Chip, 1 × Blast Furnace, 3 × Iron Ingot |
+| ![Synapse Core](images/recipes/synapse_core.png) | **Synapse Core** | 1 × Advanced Logic Chip, 1 × Advanced Memory Chip, 1 × Advanced Link Chip, 1 × Data Crystal (Chip Workshop, needs a Byteling) |
 
 ## Deployment and Demolition Bays
 

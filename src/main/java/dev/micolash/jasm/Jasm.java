@@ -47,7 +47,7 @@ public final class Jasm {
         // Players don't get crafting recipes from the server by default. Sending them lets recipe viewers like JEI
         // show JASM's recipes even when the server doesn't run the viewer itself.
         NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> event.sendRecipes(RecipeType.CRAFTING,
-                JasmRecipes.QUENCHING_TYPE.get()));
+                JasmRecipes.QUENCHING_TYPE.get(), JasmRecipes.WORKSHOP_TYPE.get()));
     }
 
     private static void forgetBrainBalance(ModConfig config) {

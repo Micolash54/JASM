@@ -17,22 +17,22 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
-/** The Workshop's menu: Blank Chip slot, the 3×2 output grid, critter slot, then the player's inventory and hotbar. */
+/** The Workshop's menu: the 2x2 grid, the 3×2 output grid, critter slot, then the player's inventory and hotbar. */
 public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineView {
     /** The critter's own panel on the left; the Workshop's main panel starts at {@link #MAIN_X}. */
-    public static final int SIDE_WIDTH = 152;
+    public static final int SIDE_WIDTH = 114;
     /** The main panel joins the side panel, overlapping it a little so the two read as one. */
     public static final int MAIN_X = SIDE_WIDTH - 3;
     public static final int MAIN_WIDTH = 176;
     public static final int CRITTER_X = (SIDE_WIDTH - 16) / 2;
     public static final int CRITTER_Y = 20;
-    /** The Workshop panel has two columns: the Blank Chip slot, then the output grid, both 8 from the panel's edge. */
-    public static final int INPUT_X = MAIN_X + 9;
+    /** The Workshop panel has two columns: the 2x2 grid, then the output grid, both 8 from the panel's edge. */
     public static final int OUTPUT_X = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 8 - 3 * 18 + 1;
     public static final int OUTPUT_Y = 26;
     public static final int OUTPUT_COLUMNS = 3;
-    /** The Blank Chip slot sits level with the middle of the output grid. */
-    public static final int SLOT_Y = OUTPUT_Y + 10;
+    /** The 2x2 grid is as tall as the output grid and starts level with it. */
+    public static final int GRID_X = MAIN_X + 9;
+    public static final int GRID_Y = OUTPUT_Y;
     public static final int INVENTORY_Y = OUTPUT_Y + 2 * 18 + 20;
 
     public static final int BUTTON_BATCH = 0;
@@ -49,7 +49,8 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     static final int DATA_REQUIRED_LOW = 8;
     static final int DATA_REQUIRED_HIGH = 9;
     static final int DATA_FLAGS = 10;
-    static final int DATA_COUNT = 11;
+    static final int DATA_NEED = 11;
+    static final int DATA_COUNT = 12;
 
     static final int FLAG_BATCH = 1;
     static final int FLAG_ADVANCED = 2;
@@ -92,7 +93,9 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         this.access = access;
         this.block = block;
         this.workshop = workshop;
-        addSlot(new MachineSlot(container, ChipWorkshopBlockEntity.INPUT, INPUT_X, SLOT_Y));
+        for (int i = 0; i < ChipWorkshopBlockEntity.GRID_SIZE; i++) {
+            addSlot(new MachineSlot(container, ChipWorkshopBlockEntity.GRID_FIRST + i, GRID_X + i % 2 * 18, GRID_Y + i / 2 * 18));
+        }
         for (int i = 0; i < ChipWorkshopBlockEntity.OUTPUT_COUNT; i++) {
             addSlot(new MachineSlot(container, ChipWorkshopBlockEntity.OUTPUT_FIRST + i, OUTPUT_X + i % OUTPUT_COLUMNS * 18,
                     OUTPUT_Y + i / OUTPUT_COLUMNS * 18));
@@ -132,6 +135,11 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
 
     public int required() {
         return wide(DATA_REQUIRED_LOW, DATA_REQUIRED_HIGH);
+    }
+
+    /** See {@link WorkshopNeed}. */
+    public int need() {
+        return data.get(DATA_NEED);
     }
 
     private boolean flag(int flag) {
@@ -184,7 +192,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         return block == null || stillValid(access, player, block);
     }
 
-    /** Shift-click: Blank Chips to the input, a critter to its slot; out of the Workshop to the hotbar, then the inventory. */
+    /** Shift-click: a critter to its slot, anything else to the grid; out of the Workshop to the hotbar, then the inventory. */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot clicked = slots.get(index);
@@ -196,11 +204,10 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         boolean moved;
         if (index < MACHINE_SLOTS) {
             moved = moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false) || moveItemStackTo(stack, MACHINE_SLOTS, HOTBAR_START, false);
-        } else if (ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.INPUT, stack)) {
-            moved = moveItemStackTo(stack, 0, 1, false);
+        } else if (ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.CRITTER, stack)) {
+            moved = moveItemStackTo(stack, MACHINE_SLOTS - 1, MACHINE_SLOTS, false);
         } else {
-            moved = ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.CRITTER, stack)
-                    && moveItemStackTo(stack, MACHINE_SLOTS - 1, MACHINE_SLOTS, false);
+            moved = moveItemStackTo(stack, 0, ChipWorkshopBlockEntity.GRID_SIZE, false);
         }
         if (!moved) {
             return ItemStack.EMPTY;

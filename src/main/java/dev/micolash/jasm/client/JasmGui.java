@@ -30,6 +30,9 @@ public final class JasmGui {
     private static final int HOVER_RIM = 0xCCB4BEFE;
     private static final int WELL = 0xFF1E1E2E;
     public static final int SHADE = 0xB011111B;
+    private static final int CRYSTAL_LIGHT = 0xFFF0FFFC;
+    private static final int CRYSTAL_MID = 0xFF93F0E6;
+    private static final int CRYSTAL_DARK = 0xFF3A8FC9;
     private static final int NOTICE = 0xE811111B;
     private static final int SHADOW = 0x6E000000;
     private static final float ITEM_COUNT_SCALE = 0.7F;
@@ -162,6 +165,17 @@ public final class JasmGui {
         int filled = (int) Math.round((width - 2) * Math.clamp(fraction, 0.0, 1.0));
         if (filled > 0) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BAR_FILL, x + 1, y + 1, filled, height - 2);
+        }
+    }
+
+    /** A bar in the Data Crystal's colours, for things that fill up by learning rather than by power. */
+    public static void crystalBar(GuiGraphicsExtractor graphics, int x, int y, int width, int height, double fraction) {
+        inset(graphics, x, y, width, height);
+        int filled = (int) Math.round((width - 2) * Math.clamp(fraction, 0.0, 1.0));
+        if (filled > 0) {
+            graphics.fill(x + 1, y + 1, x + 1 + filled, y + height - 1, CRYSTAL_MID);
+            graphics.fill(x + 1, y + 1, x + 1 + filled, y + 2, CRYSTAL_LIGHT);
+            graphics.fill(x + 1, y + height - 2, x + 1 + filled, y + height - 1, CRYSTAL_DARK);
         }
     }
 

@@ -91,6 +91,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.ADVANCED_LOGIC_CHIP);
                 output.accept(JasmItems.ADVANCED_MEMORY_CHIP);
                 output.accept(JasmItems.ADVANCED_LINK_CHIP);
+                output.accept(JasmItems.SYNAPSE_CORE);
                 for (BitlingItem bitling : JasmItems.bitlings()) {
                     output.accept(bitling);
                     ItemStack charged = new ItemStack(bitling);

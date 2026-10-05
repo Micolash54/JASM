@@ -13,33 +13,41 @@ public enum WaferTier {
     K4("capacity_wafer_4k", 4_096, 0, 0),
     K16("capacity_wafer_16k", 16_384, 0, 0),
     K64("capacity_wafer_64k", 65_536, 0, 0),
+    K256("capacity_wafer_256k", 262_144, 0, 0),
+    M1("capacity_wafer_1m", 1_048_576, 0, 0),
     T4("type_wafer_4", 4 * 2_048, 4, 2_048),
     T8("type_wafer_8", 8 * 8_192, 8, 8_192),
     T16("type_wafer_16", 16 * 32_768, 16, 32_768),
     T32("type_wafer_32", 32 * 131_072, 32, 131_072),
     T64("type_wafer_64", 64 * 524_288, 64, 524_288),
+    T128("type_wafer_128", 128L * 2_097_152, 128, 2_097_152),
+    T256("type_wafer_256", 256L * 8_388_608, 256, 8_388_608),
     FLUID_BASIC(WaferKind.FLUID, "fluid_capacity_wafer_basic", 256, 0, 0),
     FLUID_K1(WaferKind.FLUID, "fluid_capacity_wafer_1k", 1_024, 0, 0),
     FLUID_K4(WaferKind.FLUID, "fluid_capacity_wafer_4k", 4_096, 0, 0),
     FLUID_K16(WaferKind.FLUID, "fluid_capacity_wafer_16k", 16_384, 0, 0),
     FLUID_K64(WaferKind.FLUID, "fluid_capacity_wafer_64k", 65_536, 0, 0),
+    FLUID_K256(WaferKind.FLUID, "fluid_capacity_wafer_256k", 262_144, 0, 0),
+    FLUID_M1(WaferKind.FLUID, "fluid_capacity_wafer_1m", 1_048_576, 0, 0),
     FLUID_T2(WaferKind.FLUID, "fluid_type_wafer_2", 2 * 4_096, 2, 4_096),
     FLUID_T4(WaferKind.FLUID, "fluid_type_wafer_4", 4 * 16_384, 4, 16_384),
     FLUID_T8(WaferKind.FLUID, "fluid_type_wafer_8", 8 * 65_536, 8, 65_536),
     FLUID_T16(WaferKind.FLUID, "fluid_type_wafer_16", 16 * 262_144, 16, 262_144),
-    FLUID_T32(WaferKind.FLUID, "fluid_type_wafer_32", 32 * 1_048_576, 32, 1_048_576);
+    FLUID_T32(WaferKind.FLUID, "fluid_type_wafer_32", 32 * 1_048_576, 32, 1_048_576),
+    FLUID_T64(WaferKind.FLUID, "fluid_type_wafer_64", 64L * 4_194_304, 64, 4_194_304),
+    FLUID_T128(WaferKind.FLUID, "fluid_type_wafer_128", 128L * 16_777_216, 128, 16_777_216);
 
     private final WaferKind kind;
     private final String registryName;
-    private final int capacity;
+    private final long capacity;
     private final int types;
     private final int perType;
 
-    WaferTier(String registryName, int capacity, int types, int perType) {
+    WaferTier(String registryName, long capacity, int types, int perType) {
         this(WaferKind.ITEM, registryName, capacity, types, perType);
     }
 
-    WaferTier(WaferKind kind, String registryName, int capacity, int types, int perType) {
+    WaferTier(WaferKind kind, String registryName, long capacity, int types, int perType) {
         this.kind = kind;
         this.registryName = registryName;
         this.capacity = capacity;
@@ -70,7 +78,7 @@ public enum WaferTier {
     }
 
     /** Most items in total; on a fluid wafer, most buckets. */
-    public int capacity() {
+    public long capacity() {
         return capacity;
     }
 
@@ -88,7 +96,7 @@ public enum WaferTier {
         return types > 0;
     }
 
-    public static Optional<WaferTier> byLimits(WaferKind kind, int capacity, int types) {
+    public static Optional<WaferTier> byLimits(WaferKind kind, long capacity, int types) {
         for (WaferTier tier : values()) {
             if (tier.kind == kind && tier.capacity == capacity && tier.types == types) {
                 return Optional.of(tier);

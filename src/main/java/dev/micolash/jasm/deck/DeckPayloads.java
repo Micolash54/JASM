@@ -148,6 +148,52 @@ public final class DeckPayloads {
         }
     }
 
+    /** Client → server: empty the wafer in {@code slot} onto the Deck's other wafers. */
+    public record EmptyWafer(int containerId, int slot) implements CustomPacketPayload {
+        public static final Type<EmptyWafer> TYPE = new Type<>(Jasm.id("deck_empty_wafer"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, EmptyWafer> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, EmptyWafer::containerId,
+                ByteBufCodecs.VAR_INT, EmptyWafer::slot,
+                EmptyWafer::new);
+
+        @Override
+        public Type<EmptyWafer> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server → client: how much of {@code slot}'s emptying is done, in items (millibuckets for a fluid wafer). */
+    public record EmptyProgress(int containerId, int slot, long moved, long total, boolean fluid) implements CustomPacketPayload {
+        public static final Type<EmptyProgress> TYPE = new Type<>(Jasm.id("deck_empty_progress"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, EmptyProgress> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, EmptyProgress::containerId,
+                ByteBufCodecs.VAR_INT, EmptyProgress::slot,
+                ByteBufCodecs.VAR_LONG, EmptyProgress::moved,
+                ByteBufCodecs.VAR_LONG, EmptyProgress::total,
+                ByteBufCodecs.BOOL, EmptyProgress::fluid,
+                EmptyProgress::new);
+
+        @Override
+        public Type<EmptyProgress> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server → client: what emptying a wafer did, for the line in its window. */
+    public record Emptied(int containerId, int slot, WaferEmptying.Result result) implements CustomPacketPayload {
+        public static final Type<Emptied> TYPE = new Type<>(Jasm.id("deck_emptied"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Emptied> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Emptied::containerId,
+                ByteBufCodecs.VAR_INT, Emptied::slot,
+                WaferEmptying.Result.STREAM_CODEC, Emptied::result,
+                Emptied::new);
+
+        @Override
+        public Type<Emptied> type() {
+            return TYPE;
+        }
+    }
+
     /** Server → client: charge and the state of each wafer slot. */
     public record Status(int containerId, int energy, List<DeckStorage.SlotStatus> slots) implements CustomPacketPayload {
         public static final Type<Status> TYPE = new Type<>(Jasm.id("deck_status"));

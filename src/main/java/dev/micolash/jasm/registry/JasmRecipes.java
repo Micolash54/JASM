@@ -5,6 +5,7 @@ import dev.micolash.jasm.autocraft.WipeCardRecipe;
 import dev.micolash.jasm.crafting.UpgradeRecipe;
 import dev.micolash.jasm.crystal.QuenchingRecipe;
 import dev.micolash.jasm.workshop.EvolveRecipe;
+import dev.micolash.jasm.workshop.WorkshopRecipe;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -23,6 +24,9 @@ public final class JasmRecipes {
     /** A fully trained critter grows up. */
     public static final Supplier<RecipeSerializer<EvolveRecipe>> EVOLVE = SERIALIZERS.register("evolve", () -> EvolveRecipe.SERIALIZER);
 
+    /** Things a critter builds in the Chip Workshop's grid. */
+    public static final Supplier<RecipeSerializer<WorkshopRecipe>> WORKSHOP = SERIALIZERS.register("workshop", () -> WorkshopRecipe.SERIALIZER);
+
     /** Hot chips cooled in water. */
     public static final Supplier<RecipeSerializer<QuenchingRecipe>> QUENCHING = SERIALIZERS.register("quenching", () -> QuenchingRecipe.SERIALIZER);
 
@@ -30,6 +34,9 @@ public final class JasmRecipes {
 
     public static final Supplier<RecipeType<QuenchingRecipe>> QUENCHING_TYPE = TYPES.register("quenching",
             () -> RecipeType.simple(Jasm.id("quenching")));
+
+    public static final Supplier<RecipeType<WorkshopRecipe>> WORKSHOP_TYPE = TYPES.register("workshop",
+            () -> RecipeType.simple(Jasm.id("workshop")));
 
     private JasmRecipes() {}
 }
