@@ -42,7 +42,8 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         this.energy = new SimpleEnergyHandler(capacity, capacity, capacity) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
-                setChanged();
+                // same as machines
+                if (level != null) level.blockEntityChanged(worldPosition);
             }
         };
         this.output = new LimitingEnergyHandler(energy, 0, Integer.MAX_VALUE);

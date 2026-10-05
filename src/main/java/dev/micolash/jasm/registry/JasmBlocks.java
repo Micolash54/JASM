@@ -228,7 +228,9 @@ public final class JasmBlocks {
     }
 
     private static BlockBehaviour.Properties cableProperties(BlockBehaviour.Properties p) {
-        return p.mapColor(MapColor.COLOR_GRAY).strength(0.5F).sound(SoundType.METAL).noOcclusion().dynamicShape();
+        // never a full block. without this the game built the whole cable shape just to ask
+        return p.mapColor(MapColor.COLOR_GRAY).strength(0.5F).sound(SoundType.METAL).noOcclusion().dynamicShape()
+                .isRedstoneConductor((state, level, pos) -> false);
     }
 
     public static DeferredBlock<DataCableBlock> cable(CableTier tier) {

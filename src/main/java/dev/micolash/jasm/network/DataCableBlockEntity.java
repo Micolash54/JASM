@@ -73,6 +73,12 @@ public class DataCableBlockEntity extends BlockEntity {
         return ports.get(side);
     }
 
+    public int portMask() {
+        int mask = 0;
+        for (Direction side : ports.keySet()) mask |= 1 << side.ordinal();
+        return mask;
+    }
+
     /** The mounted part, rather than the cable, supplies this face's item input. */
     public @Nullable ResourceHandler<ItemResource> itemInput(@Nullable Direction side) {
         var port = side == null ? null : ports.get(side);
@@ -157,6 +163,12 @@ public class DataCableBlockEntity extends BlockEntity {
 
     public void ownersChanged() {
         ownersDirty = true;
+    }
+
+    /** A cable gives no comparator signal, so a change only needs saving. Telling the neighbours costs a lot on big networks. */
+    @Override
+    public void setChanged() {
+        if (level != null) level.blockEntityChanged(worldPosition);
     }
 
     public void changed() {

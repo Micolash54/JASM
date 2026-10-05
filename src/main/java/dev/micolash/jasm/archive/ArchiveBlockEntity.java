@@ -77,7 +77,7 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         this.energy = new NetworkEnergy(tier.energyBuffer()) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
-                setChanged();
+                if (level != null) level.blockEntityChanged(worldPosition);
             }
         };
     }

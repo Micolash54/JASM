@@ -96,7 +96,8 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
         this.energy = new SimpleEnergyHandler(tier.capacity(), tier.capacity(), tier.capacity()) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
-                setChanged();
+                // no comparator on this one either
+                if (level != null) level.blockEntityChanged(worldPosition);
             }
         };
         this.output = new LimitingEnergyHandler(energy, 0, tier.capacity());

@@ -84,12 +84,22 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         };
     }
 
+    /** Shapes by core, arms and ports, built the first time each mix shows up. 13 bits, so it never holds more than 8192. */
+    private static final VoxelShape[] SHAPES = new VoxelShape[1 << 13];
+
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
             CollisionContext context) {
-        var shape = state.getValue(CORE) ? super.getShape(state, level, pos, context) : Shapes.empty();
-        if (level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
-            for (Direction side : Direction.values()) if (cable.port(side) != null) shape = Shapes.or(shape, portShape(side));
+        int ports = level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? cable.portMask() : 0;
+        int key = ports << 7 | (state.getValue(CORE) ? 1 : 0);
+        for (Direction side : Direction.values()) if (state.getValue(PROPERTY_BY_DIRECTION.get(side))) key |= 2 << side.ordinal();
+        VoxelShape shape = SHAPES[key];
+        if (shape == null) {
+            // The same mix always gives the same shape, so two threads filling one slot is harmless.
+            shape = state.getValue(CORE) ? super.getShape(state, level, pos, context) : Shapes.empty();
+            for (Direction side : Direction.values()) if ((ports & 1 << side.ordinal()) != 0) shape = Shapes.or(shape, portShape(side));
+            shape = shape.optimize();
+            SHAPES[key] = shape;
         }
         return shape;
     }

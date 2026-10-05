@@ -39,7 +39,8 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         this.energy = new NetworkEnergy(capacity) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
-                setChanged();
+                // power never changes a comparator signal, so only saving needs to hear about it
+                if (level != null) level.blockEntityChanged(worldPosition);
             }
         };
     }
