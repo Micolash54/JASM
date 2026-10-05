@@ -66,6 +66,7 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addRecipeCategories(new GeneratorFuelCategory(registration.getJeiHelpers().getGuiHelper()),
                 new QuenchingCategory(registration.getJeiHelpers().getGuiHelper()),
                 new WorkshopCategory(registration.getJeiHelpers().getGuiHelper()),
+                new WorkshopRecipeCategory(registration.getJeiHelpers().getGuiHelper()),
                 new FoundryCategory(registration.getJeiHelpers().getGuiHelper()));
     }
 
@@ -76,6 +77,7 @@ public class JasmJeiPlugin implements IModPlugin {
         }
         registration.addCraftingStation(QuenchingCategory.TYPE, Items.WATER_BUCKET);
         registration.addCraftingStation(WorkshopCategory.TYPE, JasmItems.CHIP_WORKSHOP.get());
+        registration.addCraftingStation(WorkshopRecipeCategory.TYPE, JasmItems.CHIP_WORKSHOP.get());
         registration.addCraftingStation(FoundryCategory.TYPE, JasmItems.CRYSTAL_FOUNDRY.get());
         for (ItemLike deck : craftingDecks()) {
             registration.addCraftingStation(RecipeTypes.CRAFTING, deck);
@@ -150,6 +152,7 @@ public class JasmJeiPlugin implements IModPlugin {
                 .toList();
         recipes.addRecipes(GeneratorFuelCategory.TYPE, fuels);
         recipes.addRecipes(QuenchingCategory.TYPE, ReceivedRecipes.quenching().stream().map(QuenchingCategory.Quench::of).toList());
+        recipes.addRecipes(WorkshopRecipeCategory.TYPE, ReceivedRecipes.workshop());
     }
 
     @Override

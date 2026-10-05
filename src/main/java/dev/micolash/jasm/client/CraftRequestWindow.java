@@ -42,6 +42,8 @@ final class CraftRequestWindow {
     private static final int SCROLL_WIDTH = 10;
     private static final int HANDLE_HEIGHT = 15;
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
+    /** Kept while the game is open: the list or the tree, as the player last chose. */
+    private static boolean treeMode;
 
     private final DeckMenu menu;
     private final Font font;
@@ -49,6 +51,8 @@ final class CraftRequestWindow {
     private final List<Placed> buttons = new ArrayList<>();
     private final Button craft;
     private final Button next;
+    private final Button view;
+    private final CraftTreeView treeView = new CraftTreeView();
     private @Nullable ItemResource target;
     private @Nullable BlockPos wanted;
     private int x;
@@ -77,6 +81,22 @@ final class CraftRequestWindow {
         place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 15, 17), 127, 24, false);
         next = place(JasmButton.text(Component.translatable("screen.jasm.craft.next_server"), b -> nextServer(), 0, 0, 34, 17), 41, 42, true);
         craft = place(JasmButton.text(Component.translatable("screen.jasm.craft.start"), b -> start(), 0, 0, 44, 17), 51, -23, true);
+        view = place(JasmButton.text(viewLabel(), b -> toggleView(), 0, 0, 30, 17), 37, 24, true);
+    }
+
+    /** The button names the view you can switch to. */
+    private static Component viewLabel() {
+        return Component.translatable(treeMode ? "screen.jasm.craft.view_list" : "screen.jasm.craft.view_tree");
+    }
+
+    private void toggleView() {
+        treeMode = !treeMode;
+        view.setMessage(viewLabel());
+        scroll = 0;
+        if (treeMode) {
+            // A little later, so a plan asked a moment ago is not turned away by the server.
+            askIn = 5;
+        }
     }
 
     private Button place(Button button, int px, int py, boolean fromRight) {
@@ -136,14 +156,15 @@ final class CraftRequestWindow {
 
     private void ask() {
         if (target != null) {
-            ClientPacketDistributor.sendToServer(new CraftPayloads.Ask(menu.containerId, target, amount(), Optional.ofNullable(wanted)));
+            ClientPacketDistributor.sendToServer(new CraftPayloads.Ask(menu.containerId, target, amount(), Optional.ofNullable(wanted), treeMode));
         }
     }
 
-    /** The server's answer, if it is about what the window shows now. */
+    /** The server's answer, if it is about what the window shows now. In tree mode an answer without a tree is an older one. */
     private CraftPayloads.@Nullable Answer answer() {
         CraftPayloads.Answer answer = menu.view().answer();
-        return answer != null && target != null && answer.target().equals(target) && answer.amount() == amount() ? answer : null;
+        boolean fits = answer != null && target != null && answer.target().equals(target) && answer.amount() == amount();
+        return fits && (!treeMode || answer.tree().isPresent()) ? answer : null;
     }
 
     private void nextServer() {
@@ -247,30 +268,34 @@ final class CraftRequestWindow {
         }
         graphics.text(font, trim(serverLine(answer).getString(), next.visible ? width - 56 : width - 14), x + 7, y + 47, JasmGui.SUBTEXT, false);
 
-        List<Line> lines = lines(answer);
-        scroll = Math.clamp(scroll, 0, maxScroll(lines.size()));
         int listX = x + 6;
-        int listW = listWidth();
         int listY = y + LIST_Y;
-        JasmGui.inset(graphics, listX, listY, listW, listHeight());
         ItemStack hovered = ItemStack.EMPTY;
-        for (int i = 0; i < visibleRows() && scroll + i < lines.size(); i++) {
-            Line line = lines.get(scroll + i);
-            int ly = listY + 1 + i * ROW;
-            if (line.item() == null) {
-                graphics.text(font, trim(line.title().getString(), listW - 8), listX + 4, ly + 5, line.color(), false);
-                continue;
+        if (treeMode) {
+            drawTree(graphics, answer, listX, listY, mouseX, mouseY);
+        } else {
+            List<Line> lines = lines(answer);
+            scroll = Math.clamp(scroll, 0, maxScroll(lines.size()));
+            int listW = listWidth();
+            JasmGui.inset(graphics, listX, listY, listW, listHeight());
+            for (int i = 0; i < visibleRows() && scroll + i < lines.size(); i++) {
+                Line line = lines.get(scroll + i);
+                int ly = listY + 1 + i * ROW;
+                if (line.item() == null) {
+                    graphics.text(font, trim(line.title().getString(), listW - 8), listX + 4, ly + 5, line.color(), false);
+                    continue;
+                }
+                ItemStack stack = line.item().toStack(1);
+                FluidGrid.drawStack(graphics, stack, listX + 3, ly + 1);
+                String text = FluidGrid.describe(stack, line.count());
+                graphics.text(font, trim(text, listW - 28), listX + 23, ly + 5, line.color(), false);
+                if (mouseX >= listX && mouseX < listX + listW && mouseY >= ly && mouseY < ly + ROW) {
+                    hovered = stack;
+                }
             }
-            ItemStack stack = line.item().toStack(1);
-            FluidGrid.drawStack(graphics, stack, listX + 3, ly + 1);
-            String text = FluidGrid.describe(stack, line.count());
-            graphics.text(font, trim(text, listW - 28), listX + 23, ly + 5, line.color(), false);
-            if (mouseX >= listX && mouseX < listX + listW && mouseY >= ly && mouseY < ly + ROW) {
-                hovered = stack;
-            }
+            JasmGui.scrollBar(graphics, listX + listW + SCROLL_GAP, listY, SCROLL_WIDTH, listHeight(), handleOffset(lines.size()), HANDLE_HEIGHT,
+                    maxScroll(lines.size()) > 0);
         }
-        JasmGui.scrollBar(graphics, listX + listW + SCROLL_GAP, listY, SCROLL_WIDTH, listHeight(), handleOffset(lines.size()), HANDLE_HEIGHT,
-                maxScroll(lines.size()) > 0);
 
         // Why it can't start, under the list and beside the Craft button; two lines when it's long.
         if (answer != null && !answer.problem().isEmpty()) {
@@ -282,6 +307,28 @@ final class CraftRequestWindow {
         }
         if (!hovered.isEmpty()) {
             graphics.setTooltipForNextFrame(font, hovered.getHoverName(), mouseX, mouseY);
+        }
+    }
+
+    /** The tree in the list area, or why there is none: still working, too big, or a plan that can't be made. */
+    private void drawTree(GuiGraphicsExtractor graphics, CraftPayloads.@Nullable Answer answer, int listX, int listY, int mouseX, int mouseY) {
+        int treeW = width - 12;
+        CraftPayloads.TreeView tree = answer == null ? null : answer.tree().orElse(null);
+        if (tree != null && !tree.tooBig() && !tree.boxes().isEmpty()) {
+            treeView.show(tree);
+            treeView.draw(graphics, font, listX, listY, treeW, listHeight(), mouseX, mouseY);
+            return;
+        }
+        JasmGui.inset(graphics, listX, listY, treeW, listHeight());
+        if (tree == null) {
+            graphics.text(font, Component.translatable("screen.jasm.craft.working"), listX + 4, listY + 6, JasmGui.MUTED, false);
+            return;
+        }
+        Component why = tree.tooBig() ? Component.translatable("screen.jasm.craft.tree_too_big")
+                : answer.problem().isEmpty() ? Component.translatable("screen.jasm.craft.working") : Component.translatable(answer.problem());
+        int line = 0;
+        for (FormattedCharSequence wrapped : font.split(why, treeW - 8)) {
+            graphics.text(font, wrapped, listX + 4, listY + 6 + line++ * 9, JasmGui.BAD, false);
         }
     }
 
@@ -307,7 +354,11 @@ final class CraftRequestWindow {
 
     boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int barX = x + 6 + listWidth() + SCROLL_GAP;
-        if (event.x() >= barX && event.x() < barX + SCROLL_WIDTH && event.y() >= y + LIST_Y && event.y() < y + LIST_Y + listHeight()) {
+        if (treeMode) {
+            if (treeView.mouseClicked(event, x + 6, y + LIST_Y, width - 12, listHeight())) {
+                return true;
+            }
+        } else if (event.x() >= barX && event.x() < barX + SCROLL_WIDTH && event.y() >= y + LIST_Y && event.y() < y + LIST_Y + listHeight()) {
             draggingHandle = true;
             scrollToMouse(event.y());
             return true;
@@ -326,6 +377,9 @@ final class CraftRequestWindow {
 
     /** While the scroll handle is held: follows the mouse. */
     boolean mouseDragged(MouseButtonEvent event) {
+        if (treeMode && treeView.mouseDragged(event)) {
+            return true;
+        }
         if (!draggingHandle) {
             return false;
         }
@@ -334,7 +388,7 @@ final class CraftRequestWindow {
     }
 
     boolean mouseReleased() {
-        boolean was = draggingHandle;
+        boolean was = draggingHandle | treeView.mouseReleased();
         draggingHandle = false;
         return was;
     }
@@ -347,7 +401,10 @@ final class CraftRequestWindow {
         scroll = Math.clamp(Math.round(along * max), 0, max);
     }
 
-    boolean mouseScrolled(double scrollY) {
+    boolean mouseScrolled(double scrollX, double scrollY) {
+        if (treeMode) {
+            return treeView.mouseScrolled(scrollX, scrollY, Minecraft.getInstance().hasShiftDown());
+        }
         scroll -= (int) Math.signum(scrollY);
         return true;
     }

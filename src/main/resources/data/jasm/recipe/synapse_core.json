@@ -1,0 +1,16 @@
+{
+  "type": "jasm:workshop",
+  "ingredients": [
+    "jasm:advanced_logic_chip",
+    "jasm:advanced_memory_chip",
+    "jasm:advanced_link_chip",
+    "jasm:data_crystal"
+  ],
+  "bitling_kind": "any",
+  "bitling_stage": "byteling",
+  "ticks": 3000,
+  "energy": 50000,
+  "result": {
+    "id": "jasm:synapse_core"
+  }
+}

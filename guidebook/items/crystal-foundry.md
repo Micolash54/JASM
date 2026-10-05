@@ -1,0 +1,25 @@
+---
+navigation:
+  title: Crystal Foundry
+  parent: items/index.md
+  position: 70
+  icon: crystal_foundry
+item_ids:
+- jasm:crystal_foundry
+---
+
+# Crystal Foundry
+
+<BlockImage id="crystal_foundry" scale="8" />
+
+The Crystal Foundry grows Data Crystals in bulk and cuts each one into a <ItemLink id="blank_chip" />.
+
+* One <ItemLink id="crystal_seed" /> makes 16 Blank Chips by default, one every 10 seconds. That is about 160 seconds a seed, and more than a seeded block gives on average.
+* It runs on power like any other machine, from a [Data Cable](data-cables.md) network or a generator next to it. It uses 40 FE each tick while it grows.
+* The seed is used up as soon as it starts growing.
+* Hoppers and pipes can put seeds in and take chips out.
+* It counts toward a network's machine limit. See [the Network Brain](network-brain.md).
+
+## Recipe
+
+<RecipeFor id="crystal_foundry" />

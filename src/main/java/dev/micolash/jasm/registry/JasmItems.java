@@ -16,6 +16,7 @@ import dev.micolash.jasm.crystal.CrystalSeedItem;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
+import dev.micolash.jasm.guide.GuideBookItem;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import dev.micolash.jasm.transfer.TransferPortItem;
@@ -60,6 +61,7 @@ public final class JasmItems {
     public static final DeferredItem<Item> DIMENSION_UPGRADE = ITEMS.registerSimpleItem("dimension_upgrade");
     public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
     public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");
+    public static final DeferredItem<GuideBookItem> GUIDE_BOOK = ITEMS.registerItem("guide_book", GuideBookItem::new, p -> p.stacksTo(1));
     public static final DeferredItem<Item> CRYSTAL_DUST = ITEMS.registerSimpleItem("crystal_dust");
     public static final DeferredItem<Item> WRENCH = ITEMS.registerSimpleItem("wrench", p -> p.stacksTo(1));
     public static final DeferredItem<BlockItem> SEEDED_AMETHYST = ITEMS.registerSimpleBlockItem(JasmBlocks.SEEDED_AMETHYST);
@@ -78,6 +80,7 @@ public final class JasmItems {
     public static final DeferredItem<Item> ADVANCED_LOGIC_CHIP = ITEMS.registerSimpleItem("advanced_logic_chip");
     public static final DeferredItem<Item> ADVANCED_MEMORY_CHIP = ITEMS.registerSimpleItem("advanced_memory_chip");
     public static final DeferredItem<Item> ADVANCED_LINK_CHIP = ITEMS.registerSimpleItem("advanced_link_chip");
+    public static final DeferredItem<Item> SYNAPSE_CORE = ITEMS.registerSimpleItem("synapse_core");
     private static final Map<BitlingKind, Map<BitlingStage, DeferredItem<BitlingItem>>> BITLINGS = new EnumMap<>(BitlingKind.class);
 
     static {

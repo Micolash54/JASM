@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:netherite_ingot",
+    "R": "minecraft:redstone",
+    "W": "jasm:fluid_capacity_wafer_256k",
+    "S": "jasm:synapse_core"
+  },
+  "pattern": [
+    "XSX",
+    "RWR",
+    "WSW"
+  ],
+  "source": "jasm:fluid_capacity_wafer_256k",
+  "result": {
+    "id": "jasm:fluid_capacity_wafer_1m"
+  },
+  "merge_wafers": true
+}

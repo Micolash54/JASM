@@ -1,0 +1,19 @@
+{
+  "type": "jasm:upgrade",
+  "key": {
+    "X": "minecraft:netherite_ingot",
+    "R": "minecraft:redstone",
+    "W": "jasm:type_wafer_128",
+    "S": "jasm:synapse_core"
+  },
+  "pattern": [
+    "XSX",
+    "RWR",
+    "XWX"
+  ],
+  "source": "jasm:type_wafer_128",
+  "result": {
+    "id": "jasm:type_wafer_256"
+  },
+  "merge_wafers": true
+}

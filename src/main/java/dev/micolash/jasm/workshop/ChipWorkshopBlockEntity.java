@@ -10,6 +10,7 @@ import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.registry.JasmRecipes;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +31,7 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -48,16 +50,20 @@ import org.jspecify.annotations.Nullable;
  * critter some of that. Left without power, the critter works until its battery runs flat, then naps until it is charged.
  */
 public class ChipWorkshopBlockEntity extends MachineBlockEntity {
-    public static final int INPUT = 0;
-    public static final int OUTPUT_FIRST = 1;
+    /** The 2x2 grid: Blank Chips for chips, or a Workshop recipe's ingredients. */
+    public static final int GRID_FIRST = 0;
+    public static final int GRID_SIZE = 4;
+    /** The first grid slot. Older Workshops kept their Blank Chips in a single slot here. */
+    public static final int INPUT = GRID_FIRST;
+    public static final int OUTPUT_FIRST = GRID_FIRST + GRID_SIZE;
     public static final int OUTPUT_COUNT = 6;
     public static final int CRITTER = OUTPUT_FIRST + OUTPUT_COUNT;
     public static final int SLOTS = CRITTER + 1;
     /** Only a landing place for power on its way into the critter's battery. */
     public static final int CAPACITY = 1_000;
     public static final int BATCH_SIZE = 8;
-    /** Saves from before the output shrank to 6 slots have no layout number and 15 output slots. */
-    private static final int LAYOUT = 2;
+    /** Layout 1 (no number saved) had 15 outputs, layout 2 had 6; both had a single input slot before the outputs. */
+    private static final int LAYOUT = 3;
     private static final int LEGACY_OUTPUTS = 15;
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
@@ -76,6 +82,17 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     private boolean working;
     /** Whether power was coming in on the last tick. */
     private boolean fed;
+    /** The recipe the grid and critter make, looked up again only when the grid's items or the critter change. */
+    private @Nullable RecipeHolder<WorkshopRecipe> recipe;
+    /** A recipe whose parts are all in the grid but which this critter can't make. */
+    private @Nullable WorkshopRecipe blocked;
+    private final @Nullable Item[] seenGrid = new Item[GRID_SIZE];
+    private @Nullable Item seenCritter;
+    private boolean lookedUp;
+    /** What the progress belongs to: a recipe's id, or empty for chips. Saved, so a reload keeps a long recipe's progress. */
+    private String progressFor = "";
+    /** See {@link WorkshopNeed}. */
+    private int need;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -83,6 +100,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             ItemStack critter = items.get(CRITTER);
             return switch (index) {
                 case ChipWorkshopMenu.DATA_PROGRESS -> progress;
+                case ChipWorkshopMenu.DATA_NEED -> need;
                 case ChipWorkshopMenu.DATA_TICKS -> ticksForMode();
                 case ChipWorkshopMenu.DATA_CRITTER_ENERGY_LOW -> ContainerWords.low(BitlingItem.energy(critter));
                 case ChipWorkshopMenu.DATA_CRITTER_ENERGY_HIGH -> ContainerWords.high(BitlingItem.energy(critter));
@@ -190,6 +208,10 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             progress = 0;
             lastCritter = null;
             fed = false;
+            recipe = null;
+            blocked = null;
+            lookedUp = false;
+            need = WorkshopNeed.NONE;
             return;
         }
         if (lastCritter != null && lastCritter != bitling) {
@@ -202,6 +224,22 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             // A full network still charges the critter, but nothing is made.
             return;
         }
+        refreshRecipe(level, bitling);
+        int[] slots = recipe == null ? null : recipe.value().assign(gridInput());
+        if (recipe != null && slots != null) {
+            need = WorkshopNeed.NONE;
+            follow(recipe.id().toString());
+            tickRecipe(critter, bitling, recipe.value(), slots);
+            return;
+        }
+        if (blankChips() > 0) {
+            need = WorkshopNeed.NONE;
+        } else if (blocked != null) {
+            need = WorkshopNeed.of(blocked);
+        } else {
+            need = gridInput().items().stream().allMatch(ItemStack::isEmpty) ? WorkshopNeed.NONE : WorkshopNeed.NO_RECIPE;
+        }
+        follow("");
         int perChip = JasmConfig.BITLING_DRAIN_PER_CHIP.getAsInt();
         if (!napping && BitlingItem.energy(critter) < Math.max(1, perChip)) {
             napping = true;
@@ -233,6 +271,122 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         setChanged();
     }
 
+    /**
+     * Looks the grid up again when its items or the critter changed, and every 5 seconds in case recipes were
+     * reloaded. A recipe this critter can make wins; otherwise the first matching one is kept to say what is needed.
+     */
+    private void refreshRecipe(ServerLevel level, BitlingItem critter) {
+        boolean changed = !lookedUp || seenCritter != critter || (level.getGameTime() + worldPosition.asLong()) % 100 == 0;
+        for (int i = 0; i < GRID_SIZE; i++) {
+            ItemStack stack = items.get(GRID_FIRST + i);
+            Item item = stack.isEmpty() ? null : stack.getItem();
+            if (seenGrid[i] != item) {
+                seenGrid[i] = item;
+                changed = true;
+            }
+        }
+        if (!changed) {
+            return;
+        }
+        lookedUp = true;
+        seenCritter = critter;
+        recipe = null;
+        blocked = null;
+        WorkshopInput input = gridInput();
+        for (RecipeHolder<WorkshopRecipe> holder : level.getServer().getRecipeManager().recipeMap().byType(JasmRecipes.WORKSHOP_TYPE.get())) {
+            if (holder.value().assign(input) == null) {
+                continue;
+            }
+            if (holder.value().accepts(critter)) {
+                recipe = holder;
+                blocked = null;
+                return;
+            }
+            if (blocked == null) {
+                blocked = holder.value();
+            }
+        }
+    }
+
+    /** Progress belongs to one thing at a time: switching between chips and a recipe, or between recipes, starts over. */
+    private void follow(String key) {
+        if (!progressFor.equals(key)) {
+            progressFor = key;
+            progress = 0;
+        }
+    }
+
+    private void tickRecipe(ItemStack critter, BitlingItem bitling, WorkshopRecipe made, int[] slots) {
+        long due = made.energyAt(progress);
+        if (!napping && due > 0 && BitlingItem.energy(critter) < due) {
+            // Unlike a chip, a long recipe keeps its progress through a nap.
+            napping = true;
+        }
+        if (napping) {
+            if (BitlingItem.energy(critter) >= bitling.battery()) {
+                napping = false;
+            }
+            return;
+        }
+        ItemStack result = made.result();
+        if (progress + 1 >= made.ticks() && !roomFor(result)) {
+            // Done but for the last step: waits for room in the output.
+            return;
+        }
+        working = true;
+        critter.set(JasmComponents.ENERGY.get(), (int) (BitlingItem.energy(critter) - due));
+        if (++progress >= made.ticks()) {
+            progress = 0;
+            for (int slot : slots) {
+                items.get(GRID_FIRST + slot).shrink(1);
+            }
+            output(result);
+        }
+        setChanged();
+    }
+
+    private boolean roomFor(ItemStack result) {
+        for (int slot = OUTPUT_FIRST; slot < CRITTER; slot++) {
+            ItemStack stack = items.get(slot);
+            if (stack.isEmpty() || ItemStack.isSameItemSameComponents(stack, result)
+                    && stack.getCount() + result.getCount() <= stack.getMaxStackSize()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Puts a recipe's result into the outputs; {@link #roomFor(ItemStack)} made sure it fits in one slot. */
+    private void output(ItemStack result) {
+        for (int slot = OUTPUT_FIRST; slot < CRITTER; slot++) {
+            ItemStack stack = items.get(slot);
+            if (!stack.isEmpty() && ItemStack.isSameItemSameComponents(stack, result)
+                    && stack.getCount() + result.getCount() <= stack.getMaxStackSize()) {
+                stack.grow(result.getCount());
+                return;
+            }
+        }
+        for (int slot = OUTPUT_FIRST; slot < CRITTER; slot++) {
+            if (items.get(slot).isEmpty()) {
+                items.set(slot, result.copy());
+                return;
+            }
+        }
+    }
+
+    public int need() {
+        return need;
+    }
+
+    /** What the running recipe makes, or empty while making chips or nothing. */
+    public ItemStack making() {
+        return recipe != null && progressFor.equals(recipe.id().toString()) ? recipe.value().result() : ItemStack.EMPTY;
+    }
+
+    public int progressPercent() {
+        return Math.min(100, progress * 100 / Math.max(1, ticksForMode()));
+    }
+
     /** Moves the power the Workshop was given into the critter's battery. */
     private void feed(ItemStack critter, BitlingItem bitling) {
         int amount = energy.getAmountAsInt();
@@ -248,12 +402,15 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
 
     /** Ticks an operation takes in the mode it is set to. */
     private int ticksForMode() {
+        if (recipe != null && progressFor.equals(recipe.id().toString())) {
+            return recipe.value().ticks();
+        }
         return (batch ? JasmConfig.WORKSHOP_TICKS_PER_BATCH : JasmConfig.WORKSHOP_TICKS_PER_OPERATION).getAsInt();
     }
 
     /** Chips the next operation makes: one, or up to a batch, as many as there are Blank Chips and battery for. */
     private int chipsThisOperation(ItemStack critter, int perChip) {
-        int chips = Math.min(batch ? BATCH_SIZE : 1, items.get(INPUT).getCount());
+        int chips = Math.min(batch ? BATCH_SIZE : 1, blankChips());
         return perChip <= 0 ? chips : Math.min(chips, BitlingItem.energy(critter) / perChip);
     }
 
@@ -307,7 +464,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             made.merge(JasmItems.chip(roll.type(), roll.advanced()), 1, Integer::sum);
         }
         made.forEach(this::output);
-        items.get(INPUT).shrink(chips);
+        takeBlankChips(chips);
         critter.set(JasmComponents.ENERGY.get(), BitlingItem.energy(critter) - chips * perChip);
         int required = bitling.trainingRequired();
         if (required > 0) {
@@ -409,12 +566,71 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         return automation;
     }
 
+    /** Players may put anything but a critter in the grid; the critter slot takes only critters. */
     public static boolean accepts(int slot, ItemStack stack) {
-        return switch (slot) {
-            case INPUT -> stack.is(JasmItems.BLANK_CHIP.get());
-            case CRITTER -> stack.getItem() instanceof BitlingItem;
-            default -> false;
-        };
+        if (slot >= GRID_FIRST && slot < GRID_FIRST + GRID_SIZE) {
+            return !(stack.getItem() instanceof BitlingItem);
+        }
+        return slot == CRITTER && stack.getItem() instanceof BitlingItem;
+    }
+
+    /** Blank Chips across the grid. */
+    public int blankChips() {
+        int count = 0;
+        for (int slot = GRID_FIRST; slot < GRID_FIRST + GRID_SIZE; slot++) {
+            if (items.get(slot).is(JasmItems.BLANK_CHIP.get())) count += items.get(slot).getCount();
+        }
+        return count;
+    }
+
+    private void takeBlankChips(int count) {
+        for (int slot = GRID_FIRST; slot < GRID_FIRST + GRID_SIZE && count > 0; slot++) {
+            ItemStack stack = items.get(slot);
+            if (stack.is(JasmItems.BLANK_CHIP.get())) {
+                int taken = Math.min(count, stack.getCount());
+                stack.shrink(taken);
+                count -= taken;
+            }
+        }
+    }
+
+    public WorkshopInput gridInput() {
+        return new WorkshopInput(List.copyOf(items.subList(GRID_FIRST, GRID_FIRST + GRID_SIZE)));
+    }
+
+    /**
+     * Where a hopper may put {@code resource}: the grid slot already holding it, else the first empty one. Only Blank
+     * Chips and Workshop recipe ingredients go in, and never into a second slot, so one item can't fill the grid.
+     */
+    private int automationSlot(ItemResource resource) {
+        if (resource.isEmpty() || !feedable(resource.toStack(1))) {
+            return -1;
+        }
+        int empty = -1;
+        for (int slot = GRID_FIRST; slot < GRID_FIRST + GRID_SIZE; slot++) {
+            ItemStack stack = items.get(slot);
+            if (stack.isEmpty()) {
+                if (empty < 0) empty = slot;
+            } else if (resource.matches(stack)) {
+                return slot;
+            }
+        }
+        return empty;
+    }
+
+    private boolean feedable(ItemStack stack) {
+        if (stack.is(JasmItems.BLANK_CHIP.get())) {
+            return true;
+        }
+        if (!(level instanceof ServerLevel server)) {
+            return false;
+        }
+        for (RecipeHolder<WorkshopRecipe> holder : server.getServer().getRecipeManager().recipeMap().byType(JasmRecipes.WORKSHOP_TYPE.get())) {
+            if (holder.value().ingredients().stream().anyMatch(ingredient -> ingredient.test(stack))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -460,6 +676,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         output.putBoolean("batch", batch);
         output.putBoolean("advanced", advancedSelected);
         output.putInt("progress", progress);
+        output.putString("progress_for", progressFor);
         output.putInt("operation_chips", operationChips);
         output.putBoolean("napping", napping);
     }
@@ -469,10 +686,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         super.loadAdditional(input);
         items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
         overflow.clear();
-        if (input.getIntOr("layout", 1) >= LAYOUT) {
+        int layout = input.getIntOr("layout", 1);
+        if (layout >= LAYOUT) {
             ContainerHelper.loadAllItems(input, items);
         } else {
-            moveFromOldLayout(input);
+            moveFromOldLayout(input, layout == 2 ? OUTPUT_COUNT : LEGACY_OUTPUTS);
         }
         for (ItemStack stack : input.listOrEmpty("overflow", ItemStack.OPTIONAL_CODEC)) {
             if (!stack.isEmpty()) overflow.add(stack);
@@ -480,18 +698,19 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         batch = input.getBooleanOr("batch", false);
         advancedSelected = input.getBooleanOr("advanced", false);
         progress = Math.max(0, input.getIntOr("progress", 0));
+        progressFor = input.getStringOr("progress_for", "");
         operationChips = Math.max(0, input.getIntOr("operation_chips", 0));
         napping = input.getBooleanOr("napping", false);
     }
 
-    /** The input and critter keep their stacks; the old 15 output slots are packed into the 6 there are now. */
-    private void moveFromOldLayout(ValueInput input) {
-        NonNullList<ItemStack> old = NonNullList.withSize(OUTPUT_FIRST + LEGACY_OUTPUTS + 1, ItemStack.EMPTY);
+    /** The old input goes to the first grid slot and the critter keeps its place; outputs are packed into the 6 there are now. */
+    private void moveFromOldLayout(ValueInput input, int oldOutputs) {
+        NonNullList<ItemStack> old = NonNullList.withSize(oldOutputs + 2, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, old);
-        items.set(INPUT, old.get(INPUT));
-        items.set(CRITTER, old.get(OUTPUT_FIRST + LEGACY_OUTPUTS));
+        items.set(GRID_FIRST, old.get(0));
+        items.set(CRITTER, old.get(oldOutputs + 1));
         int next = OUTPUT_FIRST;
-        for (int slot = OUTPUT_FIRST; slot < OUTPUT_FIRST + LEGACY_OUTPUTS; slot++) {
+        for (int slot = 1; slot <= oldOutputs; slot++) {
             ItemStack stack = old.get(slot);
             if (stack.isEmpty()) continue;
             while (next < CRITTER && !items.get(next).isEmpty()) next++;
@@ -500,20 +719,21 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         }
     }
 
-    /** Hoppers and pipes: Blank Chips in, finished chips out. The critter slot is for players only. */
-    private static final class Automation extends DelegatingResourceHandler<ItemResource> {
+    /** Hoppers and pipes: Blank Chips and recipe ingredients in, finished items out. The critter slot is for players only. */
+    private final class Automation extends DelegatingResourceHandler<ItemResource> {
         Automation(ResourceHandler<ItemResource> slots) {
             super(slots);
         }
 
         @Override
         public int insert(int index, ItemResource resource, int amount, TransactionContext transaction) {
-            return index == INPUT && accepts(INPUT, resource.toStack(1)) ? super.insert(index, resource, amount, transaction) : 0;
+            return index == automationSlot(resource) ? super.insert(index, resource, amount, transaction) : 0;
         }
 
         @Override
         public int insert(ItemResource resource, int amount, TransactionContext transaction) {
-            return insert(INPUT, resource, amount, transaction);
+            int slot = automationSlot(resource);
+            return slot < 0 ? 0 : super.insert(slot, resource, amount, transaction);
         }
 
         @Override

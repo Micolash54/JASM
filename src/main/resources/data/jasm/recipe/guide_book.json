@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:book",
+    "jasm:data_crystal"
+  ],
+  "result": {
+    "id": "jasm:guide_book",
+    "count": 1
+  }
+}

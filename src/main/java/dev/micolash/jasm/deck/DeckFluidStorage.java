@@ -287,6 +287,11 @@ public final class DeckFluidStorage {
         return taken;
     }
 
+    /** The given wafer slots as places to put fluid, for planners outside this class. */
+    static List<? extends DepositRouter.Slot<FluidResource>> fluidSlots(List<DeckStorage.SlotView> views) {
+        return views.stream().map(FluidView::new).toList();
+    }
+
     private static List<FluidView> views(WaferStore store, ItemStack deck, ServerPlayer player, DeckStorage.@Nullable Checked checked) {
         return DeckStorage.views(store, deck, player, checked).stream().map(FluidView::new).toList();
     }

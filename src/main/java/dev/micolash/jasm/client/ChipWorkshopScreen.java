@@ -4,6 +4,7 @@ import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.workshop.BitlingItem;
 import dev.micolash.jasm.workshop.ChipWorkshopMenu;
+import dev.micolash.jasm.workshop.WorkshopNeed;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -25,9 +26,9 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private static final int SIDE = ChipWorkshopMenu.SIDE_WIDTH;
     private static final int MAIN_X = ChipWorkshopMenu.MAIN_X;
     private static final int WIDTH = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
-    private static final int HEIGHT = ChipWorkshopMenu.INVENTORY_Y + 58 + 18 + 6;
-    /** The critter's panel is taller than the Workshop's: it holds a speech bubble, a switch and two bars. */
+    /** Both panels are the same height; the critter's holds a speech bubble, a switch and two bars. */
     private static final int SIDE_HEIGHT = 178;
+    private static final int HEIGHT = SIDE_HEIGHT;
 
     // The critter panel.
     private static final int SIDE_PAD = 6;
@@ -40,7 +41,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private static final int BUBBLE_LINES = 4;
     private static final int BAR_HEIGHT = 17;
     private static final int SIDE_BAR_HEIGHT = 8;
-    /** Each bar has its label line above it: the name on the left, the figures on the right. */
+    /** Each bar has its name above it. */
     private static final int BATTERY_Y = SIDE_HEIGHT - SIDE_PAD - SIDE_BAR_HEIGHT;
     private static final int BATTERY_LABEL_Y = BATTERY_Y - 10;
     private static final int TRAINING_Y = BATTERY_LABEL_Y - 4 - SIDE_BAR_HEIGHT;
@@ -56,7 +57,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private static final int IDLE_LINE_TICKS = 200;
 
     // The Workshop panel.
-    private static final int PROGRESS_X = ChipWorkshopMenu.INPUT_X + 20;
+    private static final int PROGRESS_X = ChipWorkshopMenu.GRID_X + 2 * 18 + 4;
     private static final int PROGRESS_WIDTH = ChipWorkshopMenu.OUTPUT_X - 6 - PROGRESS_X;
     private static final int MODE_WIDTH = 40;
 
@@ -115,7 +116,13 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
             // Only a napping critter needs power from outside, to charge up again.
             return menu.powered() ? new Status("napping", JasmGui.WARN) : new Status("no_power", JasmGui.BAD);
         }
-        return menu.working() ? new Status("working", JasmGui.GOOD) : new Status("idle", JasmGui.MUTED);
+        if (menu.working()) {
+            return new Status("working", JasmGui.GOOD);
+        }
+        if (WorkshopNeed.isCritter(menu.need())) {
+            return new Status("waiting", JasmGui.WARN);
+        }
+        return menu.need() == WorkshopNeed.NO_RECIPE ? new Status("no_recipe", JasmGui.WARN) : new Status("idle", JasmGui.MUTED);
     }
 
     /**
@@ -146,6 +153,12 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         if (menu.napping()) {
             return Component.translatable("screen.jasm.workshop.napping");
         }
+        if (!menu.working() && WorkshopNeed.isCritter(menu.need())) {
+            return Component.translatable("screen.jasm.workshop.need", ChipWorkshopNeeds.needed(menu.need()));
+        }
+        if (!menu.working() && menu.need() == WorkshopNeed.NO_RECIPE) {
+            return Component.translatable("screen.jasm.workshop.no_recipe_line");
+        }
         return Component.translatable("screen.jasm.workshop.line." + critter.kind().name().toLowerCase(Locale.ROOT)
                 + (lineWorking ? ".work." : ".idle.") + (Math.max(0, line) + 1));
     }
@@ -165,7 +178,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
-        JasmGui.bar(graphics, x + PROGRESS_X, y + ChipWorkshopMenu.SLOT_Y + 5, PROGRESS_WIDTH, 6, menu.progress());
+        // Level with the middle of the 2x2 grid and the output grid.
+        JasmGui.bar(graphics, x + PROGRESS_X, y + ChipWorkshopMenu.GRID_Y + 14, PROGRESS_WIDTH, 6, menu.progress());
 
         JasmGui.inset(graphics, x + SIDE_PAD, y + STATUS_Y, SIDE_TEXT_WIDTH, STATUS_HEIGHT);
         if (critter == null) {
@@ -177,7 +191,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         }
         int required = menu.required();
         double trained = required > 0 ? Math.min(1, menu.trained() / (double) required) : critter.stage() == BitlingStage.BYTELING ? 1 : 0;
-        JasmGui.bar(graphics, x + SIDE_PAD, y + TRAINING_Y, SIDE_TEXT_WIDTH, SIDE_BAR_HEIGHT, trained);
+        JasmGui.crystalBar(graphics, x + SIDE_PAD, y + TRAINING_Y, SIDE_TEXT_WIDTH, SIDE_BAR_HEIGHT, trained);
         JasmGui.bar(graphics, x + SIDE_PAD, y + BATTERY_Y, SIDE_TEXT_WIDTH, SIDE_BAR_HEIGHT,
                 menu.battery() <= 0 ? 0 : menu.critterEnergy() / (double) menu.battery());
     }
@@ -185,10 +199,20 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractContents(graphics, mouseX, mouseY, a);
-        if (critter() != null && mouseX >= leftPos + SIDE_PAD && mouseX < leftPos + SIDE_PAD + SIDE_TEXT_WIDTH
-                && mouseY >= topPos + BATTERY_LABEL_Y && mouseY < topPos + BATTERY_Y + SIDE_BAR_HEIGHT) {
+        BitlingItem critter = critter();
+        if (critter == null || mouseX < leftPos + SIDE_PAD || mouseX >= leftPos + SIDE_PAD + SIDE_TEXT_WIDTH) {
+            return;
+        }
+        if (mouseY >= topPos + BATTERY_LABEL_Y && mouseY < topPos + BATTERY_Y + SIDE_BAR_HEIGHT) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.workshop.battery_tip",
                     String.format("%,d", menu.critterEnergy()), String.format("%,d", menu.battery())), mouseX, mouseY);
+        } else if (mouseY >= topPos + TRAINING_LABEL_Y && mouseY < topPos + TRAINING_Y + SIDE_BAR_HEIGHT) {
+            int required = menu.required();
+            Component training = required > 0
+                    ? Component.translatable("screen.jasm.workshop.training_percent", Math.min(100, menu.trained() * 100 / required))
+                    : Component.translatable(
+                            critter.stage() == BitlingStage.BYTELING ? "tooltip.jasm.bitling.fully_learned" : "screen.jasm.workshop.no_training");
+            graphics.setTooltipForNextFrame(font, training, mouseX, mouseY);
         }
     }
 
@@ -249,20 +273,12 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
             }
         }
 
-        int required = menu.required();
-        Component training = required > 0
-                ? Component.translatable("screen.jasm.workshop.training_percent", Math.min(100, menu.trained() * 100 / required))
-                : Component.translatable(
-                        critter.stage() == BitlingStage.BYTELING ? "tooltip.jasm.bitling.fully_learned" : "screen.jasm.workshop.no_training");
-        barLabel(graphics, Component.translatable("screen.jasm.workshop.training"), training, TRAINING_LABEL_Y);
-        barLabel(graphics, Component.translatable("screen.jasm.workshop.battery"), Component.translatable("screen.jasm.workshop.battery_amount",
-                String.format("%,d", menu.critterEnergy()), String.format("%,d", menu.battery())), BATTERY_LABEL_Y);
+        barLabel(graphics, Component.translatable("screen.jasm.workshop.training"), TRAINING_LABEL_Y);
+        barLabel(graphics, Component.translatable("screen.jasm.workshop.battery"), BATTERY_LABEL_Y);
     }
 
-    /** The line above a bar: {@code name} at the left edge, {@code figures} at the right. */
-    private void barLabel(GuiGraphicsExtractor graphics, Component name, Component figures, int y) {
+    private void barLabel(GuiGraphicsExtractor graphics, Component name, int y) {
         graphics.text(font, name, SIDE_PAD, y, JasmGui.SUBTEXT, false);
-        graphics.text(font, figures, SIDE_PAD + SIDE_TEXT_WIDTH - font.width(figures), y, JasmGui.TEXT, false);
     }
 
     private void centred(GuiGraphicsExtractor graphics, Component text, int y, int color) {

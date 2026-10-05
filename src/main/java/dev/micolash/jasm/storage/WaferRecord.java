@@ -87,13 +87,14 @@ public final class WaferRecord {
      * Everything that is written to disk, copied on the server thread. Nothing in it changes afterwards, so it can
      * be encoded on another thread while the record keeps changing.
      */
-    public record Snapshot(UUID id, long serial, int capacity, int types, int perType, Stamp stamp, Optional<Stamp> recoveryFloor,
+    public record Snapshot(UUID id, long serial, long capacity, int types, int perType, Stamp stamp, Optional<Stamp> recoveryFloor,
             Optional<UUID> archive, String lastKnownName, History history, WaferSettings settings, LenientListCodec.Lenient<Entry> contents,
             WaferKind kind, LenientListCodec.Lenient<FluidEntry> fluids) {
         public static final Codec<Snapshot> CODEC = RecordCodecBuilder.create(i -> i.group(
                 UUIDUtil.CODEC.fieldOf("id").forGetter(Snapshot::id),
                 Codec.LONG.fieldOf("serial").forGetter(Snapshot::serial),
-                Codec.INT.fieldOf("capacity").forGetter(Snapshot::capacity),
+                // Saved as an int before the biggest wafers existed; the long codec reads both.
+                Codec.LONG.fieldOf("capacity").forGetter(Snapshot::capacity),
                 Codec.INT.optionalFieldOf("types", 0).forGetter(Snapshot::types),
                 Codec.INT.optionalFieldOf("per_type", 0).forGetter(Snapshot::perType),
                 StorageCodecs.STAMP.fieldOf("stamp").forGetter(Snapshot::stamp),
@@ -112,7 +113,7 @@ public final class WaferRecord {
 
     private final UUID id;
     private final long serial;
-    private int capacity;
+    private long capacity;
     /** Type Wafers only: most types, and most items of one type. 0 on Capacity Wafers. */
     private int types;
     private int perType;
@@ -139,7 +140,7 @@ public final class WaferRecord {
     private long touched;
 
     /** A brand-new record: nothing about it is on disk yet. */
-    WaferRecord(UUID id, long serial, int capacity, Stamp stamp, Stamp confirmed) {
+    WaferRecord(UUID id, long serial, long capacity, Stamp stamp, Stamp confirmed) {
         this.id = id;
         this.serial = serial;
         this.capacity = capacity;
@@ -203,7 +204,7 @@ public final class WaferRecord {
         return serial;
     }
 
-    public int capacity() {
+    public long capacity() {
         return capacity;
     }
 
@@ -388,7 +389,7 @@ public final class WaferRecord {
         this.recoveryFloor = stamp;
     }
 
-    void setCapacity(int capacity) {
+    void setCapacity(long capacity) {
         this.capacity = capacity;
     }
 

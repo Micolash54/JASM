@@ -12,6 +12,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -42,6 +43,10 @@ public final class DeckNetwork {
                         (payload, context) -> fluidAction((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.PourSlot.TYPE, DeckPayloads.PourSlot.STREAM_CODEC,
                         (payload, context) -> pourSlot((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.EmptyWafer.TYPE, DeckPayloads.EmptyWafer.STREAM_CODEC,
+                        (payload, context) -> emptyWafer((ServerPlayer) context.player(), payload))
+                .playToClient(DeckPayloads.EmptyProgress.TYPE, DeckPayloads.EmptyProgress.STREAM_CODEC, DeckNetwork::onEmptyProgress)
+                .playToClient(DeckPayloads.Emptied.TYPE, DeckPayloads.Emptied.STREAM_CODEC, DeckNetwork::onEmptied)
                 .playToClient(DeckPayloads.FluidSnapshot.TYPE, DeckPayloads.FluidSnapshot.STREAM_CODEC, DeckNetwork::onFluidSnapshot)
                 .playToClient(DeckPayloads.FluidDelta.TYPE, DeckPayloads.FluidDelta.STREAM_CODEC, DeckNetwork::onFluidDelta)
                 .playToClient(DeckPayloads.Snapshot.TYPE, DeckPayloads.Snapshot.STREAM_CODEC, DeckNetwork::onSnapshot)
@@ -107,6 +112,48 @@ public final class DeckNetwork {
         menu.setCarried(carried);
         finish(player, menu);
         return moved;
+    }
+
+    /** Starts emptying one wafer: the menu moves a share of it every tick. False if nothing started. */
+    public static boolean emptyWafer(ServerPlayer player, DeckPayloads.EmptyWafer payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !allow(player) || payload.slot() < 0 || payload.slot() >= menu.waferSlots() || menu.emptying()) {
+            return false;
+        }
+        WaferEmptying.Plan plan = WaferEmptying.plan(WaferStore.get(player.level().getServer()), menu.deck(), payload.slot(), player);
+        if (plan == null) {
+            send(player, new DeckPayloads.Emptied(menu.containerId, payload.slot(), WaferEmptying.Result.NOTHING));
+            return false;
+        }
+        menu.startEmptying(payload.slot(), plan.total());
+        send(player, new DeckPayloads.EmptyProgress(menu.containerId, payload.slot(), 0, plan.total(), plan.fluid()));
+        return true;
+    }
+
+    /** One tick of an emptying: moves a share, then reports the bar or, when it can go no further, the result. */
+    static void stepEmptying(ServerPlayer player, DeckMenu menu) {
+        int slot = menu.emptyingSlot();
+        long total = menu.emptyingTotal();
+        WaferStore store = WaferStore.get(player.level().getServer());
+        long share = Math.max(1, (total + WaferEmptying.STEPS - 1) / WaferEmptying.STEPS);
+        WaferEmptying.Result step = WaferEmptying.empty(store, menu.deck(), slot, player, share);
+        long moved = menu.addEmptied(step.moved());
+        DeckViewTracker.markDirty(menu);
+        if (step.moved() > 0 && step.left() > 0) {
+            send(player, new DeckPayloads.EmptyProgress(menu.containerId, slot, moved, Math.max(total, moved), step.fluid()));
+            return;
+        }
+        menu.stopEmptying();
+        WaferEmptying.Outcome outcome = moved == 0 && step.left() == 0 ? WaferEmptying.Outcome.NOTHING
+                : step.left() == 0 ? WaferEmptying.Outcome.DONE : step.outcome();
+        send(player, new DeckPayloads.Emptied(menu.containerId, slot, new WaferEmptying.Result(moved, step.left(), outcome, step.fluid())));
+    }
+
+    /** Sends to the player, unless it is a test player with no connection to the client. */
+    private static <T extends net.minecraft.network.protocol.common.custom.CustomPacketPayload> void send(ServerPlayer player, T payload) {
+        if (player.connection.hasChannel(payload.type())) {
+            PacketDistributor.sendToPlayer(player, payload);
+        }
     }
 
     /** Pours a container sitting in the player's own inventory into the Deck. Returns the millibuckets moved. */
@@ -244,6 +291,20 @@ public final class DeckNetwork {
         DeckView view = view(context, payload.containerId());
         if (view != null) {
             view.applySnapshotPage(payload.page(), payload.entries());
+        }
+    }
+
+    private static void onEmptyProgress(DeckPayloads.EmptyProgress payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.setEmptying(payload);
+        }
+    }
+
+    private static void onEmptied(DeckPayloads.Emptied payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.setEmptied(payload);
         }
     }
 

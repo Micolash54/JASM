@@ -31,6 +31,40 @@ public final class DeckView {
     private CraftPayloads.@Nullable Answer answer;
     private int answerVersion;
     private Map<UUID, String> stalled = Map.of();
+    /** The last "Empty into other wafers" result, until the wafer window closes. */
+    private DeckPayloads.@Nullable Emptied emptied;
+    private DeckPayloads.@Nullable EmptyProgress emptying;
+    private long emptyingSeen;
+    /** If no news comes for this long, the window unlocks again. */
+    private static final long EMPTYING_SILENCE_MS = 5_000;
+
+    public void setEmptying(DeckPayloads.EmptyProgress progress) {
+        emptying = progress;
+        emptyingSeen = System.currentTimeMillis();
+        emptied = null;
+    }
+
+    /** The running emptying for {@code slot}, or null when there is none. */
+    public DeckPayloads.@Nullable EmptyProgress emptying(int slot) {
+        if (emptying == null || emptying.slot() != slot) {
+            return null;
+        }
+        if (System.currentTimeMillis() - emptyingSeen > EMPTYING_SILENCE_MS) {
+            emptying = null;
+        }
+        return emptying;
+    }
+
+    public DeckPayloads.@Nullable Emptied emptied() {
+        return emptied;
+    }
+
+    public void setEmptied(DeckPayloads.@Nullable Emptied emptied) {
+        this.emptied = emptied;
+        if (emptied != null) {
+            emptying = null;
+        }
+    }
 
     /** Page 0 of a snapshot replaces everything; later pages add to it. */
     public void applySnapshotPage(int page, List<DeckPayloads.Entry> entries) {

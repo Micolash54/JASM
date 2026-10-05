@@ -20,12 +20,14 @@ import snownee.jade.api.config.IPluginConfig;
 public class WorkshopInfo implements StreamServerDataProvider<BlockAccessor, WorkshopInfo.Data> {
     public static final WorkshopInfo INSTANCE = new WorkshopInfo();
 
-    /** {@code training}: percent, or -1 for a critter that doesn't train. */
-    public record Data(ItemStack critter, int training, boolean napping) {
+    /** {@code training}: percent, or -1 for a critter that doesn't train. {@code making} is what a recipe is building, if one is. */
+    public record Data(ItemStack critter, int training, boolean napping, ItemStack making, int percent) {
         static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
                 ItemStack.OPTIONAL_STREAM_CODEC, Data::critter,
                 ByteBufCodecs.VAR_INT, Data::training,
                 ByteBufCodecs.BOOL, Data::napping,
+                ItemStack.OPTIONAL_STREAM_CODEC, Data::making,
+                ByteBufCodecs.VAR_INT, Data::percent,
                 Data::new);
     }
 
@@ -38,7 +40,7 @@ public class WorkshopInfo implements StreamServerDataProvider<BlockAccessor, Wor
         BitlingItem bitling = workshop.critter();
         int required = bitling == null ? 0 : bitling.trainingRequired();
         int training = required > 0 ? Math.min(100, BitlingItem.trained(critter) * 100 / required) : -1;
-        return new Data(critter.copyWithCount(1), training, workshop.napping());
+        return new Data(critter.copyWithCount(1), training, workshop.napping(), workshop.making().copy(), workshop.progressPercent());
     }
 
     @Override
@@ -65,6 +67,9 @@ public class WorkshopInfo implements StreamServerDataProvider<BlockAccessor, Wor
                 tooltip.add(data.critter().getHoverName());
                 if (data.training() >= 0) {
                     tooltip.add(Component.translatable("jade.jasm.workshop.training", data.training()));
+                }
+                if (!data.making().isEmpty()) {
+                    tooltip.add(Component.translatable("jade.jasm.workshop.making", data.making().getHoverName(), data.percent()));
                 }
                 if (data.napping()) {
                     tooltip.add(Component.translatable("jade.jasm.workshop.napping"));

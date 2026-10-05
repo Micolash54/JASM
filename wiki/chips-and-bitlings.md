@@ -49,6 +49,14 @@ Put a **Bitling** in the Workshop and feed it Blank Chips. It makes Logic, Memor
 - **Battery**: the Workshop itself uses no power, only the critter does. Power from a cable or a neighbouring generator goes straight into the critter's battery, and each chip uses some of it. With no power at all, the critter keeps working until its battery runs flat, then naps until it is charged again. You can also charge a critter in a Combustion Generator.
 - A Basic Bitling becomes a Logic, Memory or Link Bitling when crafted with chips of that type.
 
+### Building things in the grid
+
+The Workshop's input is a 2x2 grid. Blank Chips can go in any of its four slots, and the critter keeps making chips from them even when other things sit beside them.
+
+Some things aren't chips at all: the critter builds them from what is in the grid. The first is the **Synapse Core**. Put an Advanced Logic Chip, an Advanced Memory Chip, an Advanced Link Chip and a Data Crystal in the grid, in any order, and a Byteling of any type builds it. That takes 3,000 ticks (two and a half minutes) and 50,000 FE from the Byteling's battery. A younger critter just says it needs a Byteling.
+
+Synapse Cores unlock the two biggest wafer sizes of every kind: 256K and 1M Capacity Wafers, 128 and 256 Type Wafers, and the same for fluids. You upgrade to them like any other wafer, with the Cores in the crafting grid, and everything the old wafers hold comes along. See the [recipes](recipes.md#capacity-wafers).
+
 ## The Bitling Station
 
 Put any Bitling, Nibbling or Byteling in a **Bitling Station** and a little living Bitling pops out and roams around it: walking, sprinting, hopping, looking about and lying down for a rest. Right-click it to pet it.

@@ -94,6 +94,10 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private boolean placing;
     /** Client side only: what the server has told this screen. */
     private final DeckView view = new DeckView();
+    /** The wafer being emptied, how much there was to move and how much has moved so far. */
+    private int emptyingSlot = -1;
+    private long emptyingTotal;
+    private long emptyingMoved;
     private final SendContainer send;
     private final Container inbox;
     private final int sendStart;
@@ -689,6 +693,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     @Override
     public void broadcastChanges() {
         if (!player.level().isClientSide()) {
+            if (emptyingSlot >= 0 && player instanceof ServerPlayer serverPlayer) {
+                DeckNetwork.stepEmptying(serverPlayer, this);
+            }
             upgrade.flush();
             send.flush();
             if (grid != null) {
@@ -698,10 +705,29 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         super.broadcastChanges();
     }
 
+    boolean emptying() { return emptyingSlot >= 0; }
+    int emptyingSlot() { return emptyingSlot; }
+    long emptyingTotal() { return emptyingTotal; }
+
+    void startEmptying(int slot, long total) {
+        emptyingSlot = slot;
+        emptyingTotal = total;
+        emptyingMoved = 0;
+    }
+
+    /** Adds to what has moved and returns the running total. */
+    long addEmptied(long moved) {
+        emptyingMoved += moved;
+        return emptyingMoved;
+    }
+
+    void stopEmptying() { emptyingSlot = -1; }
+
     /** The grid stays as it is, saved on the Deck, until the player sends it somewhere. */
     @Override
     public void removed(Player player) {
         super.removed(player);
+        emptyingSlot = -1;
         if (!player.level().isClientSide()) {
             upgrade.flush();
             send.flush();

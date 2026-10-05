@@ -6,8 +6,11 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Works out a crafting job before it starts: which items to take from storage, which crafts to run (ingredients
@@ -49,6 +52,9 @@ public final class CraftPlanner<K> {
     /** One pattern to run {@code crafts} times. Steps are listed ingredients first. */
     public record Step<K>(Pattern<K> pattern, long crafts) {}
 
+    /** One craft taking from a box: another step, or storage or the missing list. Only one of {@code from} and {@code kind} is used. */
+    private record Taking<K>(Pattern<K> consumer, @Nullable Pattern<K> from, @Nullable Kind kind, @Nullable K key) {}
+
     public enum Problem {
         NONE,
         /** Some ingredient has neither enough in storage nor a pattern. */
@@ -63,9 +69,45 @@ public final class CraftPlanner<K> {
      * The outcome. {@code taken} is what leaves storage when the job starts; {@code size} is everything taken plus
      * everything made along the way, which must fit in the server.
      */
-    public record Plan<K>(Problem problem, Map<K, Long> taken, Map<K, Long> missing, List<Step<K>> steps, long size, long made) {
+    public record Plan<K>(Problem problem, Map<K, Long> taken, Map<K, Long> missing, List<Step<K>> steps, long size, long made, Tree<K> tree) {
+        public Plan(Problem problem, Map<K, Long> taken, Map<K, Long> missing, List<Step<K>> steps, long size, long made) {
+            this(problem, taken, missing, steps, size, made, Tree.empty());
+        }
+
         public boolean ok() {
             return problem == Problem.NONE;
+        }
+    }
+
+    /** Sent to the screen as its position: keep the order. */
+    public enum Kind {
+        /** Made from other boxes. */
+        CRAFT,
+        /** Taken from storage. */
+        STORAGE,
+        /** Neither in storage nor craftable. */
+        MISSING
+    }
+
+    /**
+     * One box of the tree. A craft's {@code amount} is everything it makes over {@code crafts} runs; a storage or
+     * missing box's {@code amount} is how many are taken or lacking.
+     */
+    public record Box<K>(Kind kind, K key, long amount, long crafts) {}
+
+    /** Box {@code from} (a craft) takes from box {@code to}. */
+    public record Link(int from, int to) {}
+
+    /**
+     * Which craft feeds which, for drawing: {@code root} is the box of the requested item. A shared part is one box
+     * with a link from each craft that uses it. Empty unless the plan was asked to record it, or when it cannot be drawn.
+     */
+    public record Tree<K>(List<Box<K>> boxes, List<Link> links, int root) {
+        private static final Tree<?> EMPTY = new Tree<>(List.of(), List.of(), -1);
+
+        @SuppressWarnings("unchecked")
+        public static <K> Tree<K> empty() {
+            return (Tree<K>) EMPTY;
         }
     }
 
@@ -79,17 +121,27 @@ public final class CraftPlanner<K> {
     private final Map<K, Long> spare = new HashMap<>();
     private final List<Step<K>> steps = new ArrayList<>();
     private final Deque<K> making = new ArrayDeque<>();
+    /** Who takes from whom, in the order it happened; null when the plan is not recording. */
+    private final @Nullable List<Taking<K>> takings;
+    /** The step that last made each item, or left it behind: where an item reused from leftovers came from. */
+    private final Map<K, Pattern<K>> madeBy = new HashMap<>();
     private long size;
     private boolean tooComplex;
 
-    private CraftPlanner(Book<K> book, Map<K, Long> stock) {
+    private CraftPlanner(Book<K> book, Map<K, Long> stock, boolean record) {
         this.book = book;
         this.stock = new HashMap<>(stock);
+        this.takings = record ? new ArrayList<>() : null;
     }
 
     /** Plans {@code amount} (rounded up to whole crafts) of {@code target} from {@code stock}. */
     public static <K> Plan<K> plan(K target, long amount, Map<K, Long> stock, Book<K> book) {
-        CraftPlanner<K> planner = new CraftPlanner<>(book, stock);
+        return plan(target, amount, stock, book, false);
+    }
+
+    /** As above; with {@code tree} the plan also records which craft feeds which. */
+    public static <K> Plan<K> plan(K target, long amount, Map<K, Long> stock, Book<K> book, boolean tree) {
+        CraftPlanner<K> planner = new CraftPlanner<>(book, stock, tree);
         List<Pattern<K>> patterns = book.patternsFor(target);
         if (patterns.isEmpty() || amount <= 0) {
             return new Plan<>(Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
@@ -105,7 +157,8 @@ public final class CraftPlanner<K> {
         for (Map.Entry<K, Long> entry : planner.taken.entrySet()) {
             takenTotal = saturatingAdd(takenTotal, book.space(entry.getKey(), entry.getValue()));
         }
-        return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(planner.steps), saturatingAdd(takenTotal, planner.size), made);
+        return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(planner.steps), saturatingAdd(takenTotal, planner.size), made,
+                planner.tooComplex ? Tree.empty() : planner.tree(pattern));
     }
 
     /** Gathers the ingredients for {@code crafts} of {@code pattern}, then adds the step. */
@@ -131,7 +184,7 @@ public final class CraftPlanner<K> {
                     needed = once;
                 }
             }
-            supply(group.getKey(), needed, depth);
+            supply(group.getKey(), needed, depth, pattern);
             if (tooComplex) {
                 return;
             }
@@ -141,10 +194,14 @@ public final class CraftPlanner<K> {
             return;
         }
         size = saturatingAdd(size, book.space(pattern.output(), saturatingMul(crafts, pattern.outputCount())));
+        madeBy.put(pattern.output(), pattern);
         for (Map.Entry<K, Long> left : pattern.remainders().entrySet()) {
             long amount = Math.max(0, saturatingMul(crafts, left.getValue()) - reused.getOrDefault(left.getKey(), 0L));
             size = saturatingAdd(size, book.space(left.getKey(), amount));
             spare.merge(left.getKey(), amount, Long::sum);
+            if (amount > 0) {
+                madeBy.put(left.getKey(), pattern);
+            }
         }
     }
 
@@ -163,8 +220,8 @@ public final class CraftPlanner<K> {
         steps.add(new Step<>(pattern, crafts));
     }
 
-    /** {@code needed} items for slots that take {@code options}, from any of them. */
-    private void supply(List<K> options, long needed, int depth) {
+    /** {@code needed} items for slots that take {@code options}, from any of them, for the craft {@code consumer}. */
+    private void supply(List<K> options, long needed, int depth, Pattern<K> consumer) {
         if (options.isEmpty()) {
             return;
         }
@@ -175,7 +232,7 @@ public final class CraftPlanner<K> {
             if (needed <= 0) {
                 return;
             }
-            needed -= use(option, needed);
+            needed -= use(option, needed, consumer);
         }
         if (needed <= 0) {
             return;
@@ -183,14 +240,15 @@ public final class CraftPlanner<K> {
         for (K option : options) {
             List<Pattern<K>> patterns = book.patternsFor(option);
             if (!patterns.isEmpty()) {
-                craft(option, patterns.getFirst(), needed, depth);
+                craft(option, patterns.getFirst(), needed, depth, consumer);
                 return;
             }
         }
         missing.merge(options.getFirst(), needed, Long::sum);
+        take(new Taking<>(consumer, null, Kind.MISSING, options.getFirst()));
     }
 
-    private void craft(K key, Pattern<K> pattern, long needed, int depth) {
+    private void craft(K key, Pattern<K> pattern, long needed, int depth, Pattern<K> consumer) {
         if (depth >= MAX_DEPTH || making.contains(key)) {
             tooComplex = true;
             return;
@@ -199,6 +257,7 @@ public final class CraftPlanner<K> {
         making.push(key);
         run(pattern, crafts, depth + 1);
         making.pop();
+        take(new Taking<>(consumer, pattern, null, null));
         long extra = saturatingMul(crafts, pattern.outputCount()) - needed;
         if (extra > 0) {
             spare.merge(key, extra, Long::sum);
@@ -210,17 +269,63 @@ public final class CraftPlanner<K> {
     }
 
     /** Takes up to {@code amount}: leftovers from this job first, then storage. Returns how many. */
-    private long use(K key, long amount) {
+    private long use(K key, long amount, Pattern<K> consumer) {
         long fromSpare = Math.min(amount, spare.getOrDefault(key, 0L));
         if (fromSpare > 0) {
             spare.merge(key, -fromSpare, Long::sum);
+            Pattern<K> maker = madeBy.get(key);
+            if (maker != null) {
+                take(new Taking<>(consumer, maker, null, null));
+            }
         }
         long fromStock = Math.min(amount - fromSpare, stock.getOrDefault(key, 0L));
         if (fromStock > 0) {
             stock.merge(key, -fromStock, Long::sum);
             taken.merge(key, fromStock, Long::sum);
+            take(new Taking<>(consumer, null, Kind.STORAGE, key));
         }
         return fromSpare + fromStock;
+    }
+
+    private void take(Taking<K> taking) {
+        if (takings != null) {
+            takings.add(taking);
+        }
+    }
+
+    /** The tree of the finished plan; {@code rootPattern} is the requested item's pattern (its step is the last). */
+    private Tree<K> tree(Pattern<K> rootPattern) {
+        if (takings == null) {
+            return Tree.empty();
+        }
+        List<Box<K>> boxes = new ArrayList<>();
+        Map<Pattern<K>, Integer> stepBox = new HashMap<>();
+        for (Step<K> step : steps) {
+            stepBox.put(step.pattern(), boxes.size());
+            boxes.add(new Box<>(Kind.CRAFT, step.pattern().output(), saturatingMul(step.crafts(), step.pattern().outputCount()), step.crafts()));
+        }
+        Map<K, Integer> storageBox = new HashMap<>();
+        for (Map.Entry<K, Long> entry : taken.entrySet()) {
+            storageBox.put(entry.getKey(), boxes.size());
+            boxes.add(new Box<>(Kind.STORAGE, entry.getKey(), entry.getValue(), 0));
+        }
+        Map<K, Integer> missingBox = new HashMap<>();
+        for (Map.Entry<K, Long> entry : missing.entrySet()) {
+            missingBox.put(entry.getKey(), boxes.size());
+            boxes.add(new Box<>(Kind.MISSING, entry.getKey(), entry.getValue(), 0));
+        }
+        Set<Link> links = new LinkedHashSet<>();
+        for (Taking<K> taking : takings) {
+            Integer from = stepBox.get(taking.consumer());
+            Integer to = taking.from() != null
+                    ? stepBox.get(taking.from())
+                    : taking.kind() == Kind.STORAGE ? storageBox.get(taking.key()) : missingBox.get(taking.key());
+            if (from != null && to != null && !from.equals(to)) {
+                links.add(new Link(from, to));
+            }
+        }
+        Integer root = stepBox.get(rootPattern);
+        return new Tree<>(List.copyOf(boxes), List.copyOf(links), root == null ? -1 : root);
     }
 
     private static long ceilDiv(long a, long b) {
