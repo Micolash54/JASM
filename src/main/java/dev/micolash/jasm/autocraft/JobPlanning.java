@@ -190,6 +190,9 @@ final class JobPlanning {
     /** As above; {@code toPlayer}: the results go into the player's inventory instead of onto the Deck. */
     public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
             @Nullable UUID rule, boolean toPlayer) {
+        // the chest listing can be half a second old, so a start looks in the chests for real
+        NetworkPool pool = PoolAccess.forDeck(player, deck);
+        if (pool != null) pool.relist();
         Preview preview = preview(player, deck, target, amount, wanted);
         if (preview.problem() != null) {
             return preview.problem();
@@ -205,7 +208,6 @@ final class JobPlanning {
         }
         WaferStore store = WaferStore.get(level.getServer());
         List<WaferRecord> wafers = DeckStorage.records(store, deck);
-        NetworkPool pool = PoolAccess.forDeck(player, deck);
         // Take everything, or nothing. Items from the network's storage blocks come out inside one transaction that only
         // commits at the end, so a missing ingredient leaves them as they were.
         List<Taken> taken = new ArrayList<>();
@@ -269,7 +271,7 @@ final class JobPlanning {
         state.addJob(new AutocraftState.Job(id, record.serial(), record.id(), new ArchiveRecord.Placement(level.dimension(), server.getBlockPos()),
                 player.getUUID(), player.getPlainTextName(), Optional.of(deckId), false, Optional.ofNullable(rule),
                 fluidRecord == null ? 0 : fluidRecord.serial(), Optional.ofNullable(fluidRecord).map(WaferRecord::id)));
-        state.saveNow(level.getServer());
+        state.saveSoon(level.getServer());
         JobReturns.refreshOpenDeck(player, deck);
         return null;
     }

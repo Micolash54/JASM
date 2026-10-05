@@ -47,7 +47,11 @@ public final class NetworkPool {
     public static void touch(ServerLevel level, BlockPos pos) {
         CableNetwork network = Networks.at(level, pos);
         NetworkPool pool = network == null ? null : POOLS.get(network);
-        if (pool != null) pool.snapshotTick = Long.MIN_VALUE;
+        if (pool != null) pool.relist();
+    }
+
+    public void relist() {
+        snapshotTick = Long.MIN_VALUE;
     }
 
     /** The blocks the pool may use right now, one per block (the highest priority port wins), leaving out {@code avoid}. */

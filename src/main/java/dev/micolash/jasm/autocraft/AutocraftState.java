@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.storage.ArchiveRecord;
+import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -216,6 +217,16 @@ public final class AutocraftState extends SavedData {
     public void saveNow(MinecraftServer server) {
         if (isDirty()) {
             server.getDataStorage().saveAndJoin();
+        }
+    }
+
+    /**
+     * Starts writing this file without waiting for the disk. Item records queue behind it, so it is still never older
+     * than the records a job just changed.
+     */
+    public void saveSoon(MinecraftServer server) {
+        if (isDirty()) {
+            WaferStore.get(server).writeAfter(server.getDataStorage().scheduleSave());
         }
     }
 }

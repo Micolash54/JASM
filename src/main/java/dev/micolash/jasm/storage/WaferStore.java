@@ -93,6 +93,8 @@ public final class WaferStore {
     private final Set<Long> prefetching = new HashSet<>();
     /** Set while this store saves other players' files, so their save events do not start another round. */
     private boolean savingPlayers;
+    // last job list save a craft start asked for. records wait for it, or a crash could find items in a job nobody lists
+    private CompletableFuture<?> jobListSaved = CompletableFuture.completedFuture(null);
 
     /**
      * One set of region files and the records read from it. Wafer records are kept in the order they were last
@@ -178,6 +180,7 @@ public final class WaferStore {
             CompletableFuture<Void> previous = pendingWrites.getOrDefault(serial, CompletableFuture.completedFuture(null));
             CompletableFuture<Void> next = previous
                     .handle((ok, failure) -> snapshot)
+                    .thenCombine(afterJobList(), (copy, ignored) -> copy)
                     .thenApplyAsync(copy -> encode(copy, ops), Util.backgroundExecutor())
                     .thenCompose(slot -> storage.write(pos(serial), slot));
             pendingWrites.put(serial, next);
@@ -198,6 +201,7 @@ public final class WaferStore {
             CompletableFuture<Void> previous = pendingWrites.getOrDefault(serial, CompletableFuture.completedFuture(null));
             CompletableFuture<Void> next = previous
                     .handle((ok, failure) -> null)
+                    .thenCombine(afterJobList(), (ok, ignored) -> null)
                     .thenCompose(ignored -> storage.write(pos(serial), (CompoundTag) null));
             pendingWrites.put(serial, next);
             next.whenComplete((ok, failure) -> server.execute(() -> {
@@ -236,6 +240,16 @@ public final class WaferStore {
             awaitWrites();
             storage.close();
         }
+    }
+
+    /** Records written from now on land only after this save, the job list a craft start just began writing. */
+    public void writeAfter(CompletableFuture<?> save) {
+        jobListSaved = jobListSaved.isDone() ? save : CompletableFuture.allOf(jobListSaved, save);
+    }
+
+    // a failed save is logged already, it shouldn't hold the records back forever
+    private CompletableFuture<?> afterJobList() {
+        return jobListSaved.handle((ok, failure) -> null);
     }
 
     private WaferStore(MinecraftServer server, JasmState state) {
