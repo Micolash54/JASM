@@ -102,7 +102,8 @@ public final class CraftNetwork {
             return;
         }
         asked.put(player.getUUID(), now);
-        Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
+        Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null),
+                payload.tree());
         CraftPlanner.Plan<GridKey> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
         for (CraftPlanner.Step<GridKey> step : plan.steps()) {
@@ -112,7 +113,8 @@ public final class CraftNetwork {
                 .map(o -> new CraftPayloads.ServerView(o.pos(), o.memory(), o.parallel(), o.busy(), o.fits())).toList();
         PacketDistributor.sendToPlayer(player, new CraftPayloads.Answer(payload.containerId(), payload.target(), clamp(payload.amount()),
                 plan.made(), preview.problem() == null ? "" : preview.problem(), entries(plan.taken()), entries(plan.missing()),
-                limit(crafts), servers.subList(0, Math.min(64, servers.size())), preview.chosen()));
+                limit(crafts), servers.subList(0, Math.min(64, servers.size())), preview.chosen(),
+                payload.tree() ? Optional.of(treeView(plan.tree())) : Optional.empty()));
     }
 
     public static void start(ServerPlayer player, CraftPayloads.Start payload) {
@@ -308,6 +310,19 @@ public final class CraftNetwork {
     private static DeckPayloads.Entry entry(GridKey key, long count) {
         ItemResource shown = key instanceof GridKey.Fluid fluid ? ItemResource.of(FluidMarkerItem.of(fluid.resource())) : key.item();
         return new DeckPayloads.Entry(shown, count);
+    }
+
+    /** The recorded tree for the screen; too many boxes or lines send none (the screen says so). */
+    private static CraftPayloads.TreeView treeView(CraftPlanner.Tree<GridKey> tree) {
+        if (tree.boxes().size() > CraftPayloads.MAX_TREE_BOXES || tree.links().size() > CraftPayloads.MAX_TREE_LINKS) {
+            return new CraftPayloads.TreeView(true, -1, List.of(), List.of());
+        }
+        List<CraftPayloads.TreeBox> boxes = new ArrayList<>();
+        for (CraftPlanner.Box<GridKey> box : tree.boxes()) {
+            boxes.add(new CraftPayloads.TreeBox(entry(box.key(), box.amount()).key(), box.kind().ordinal(), box.amount(), box.crafts()));
+        }
+        List<CraftPayloads.TreeLink> links = tree.links().stream().map(l -> new CraftPayloads.TreeLink(l.from(), l.to())).toList();
+        return new CraftPayloads.TreeView(false, tree.root(), boxes, links);
     }
 
     private static List<DeckPayloads.Entry> entries(Map<GridKey, Long> map) {

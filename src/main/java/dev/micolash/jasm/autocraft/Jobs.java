@@ -60,7 +60,13 @@ public final class Jobs {
 
     /** Plans {@code amount} of {@code target} for {@code player}'s Crafting Deck, without changing anything. */
     public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
-        return JobPlanning.preview(player, deck, target, amount, wanted);
+        return JobPlanning.preview(player, deck, target, amount, wanted, false);
+    }
+
+    /** As above; with {@code tree} the plan also records which craft feeds which. */
+    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
+            boolean tree) {
+        return JobPlanning.preview(player, deck, target, amount, wanted, tree);
     }
 
     /**

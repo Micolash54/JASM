@@ -1218,7 +1218,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             return jobsWindow.mouseScrolled(scrollY);
         }
         if (craftWindow.contains(x, y)) {
-            return craftWindow.mouseScrolled(scrollY);
+            return craftWindow.mouseScrolled(scrollX, scrollY);
         }
         if (inWindow(x, y)) {
             return filterWindow.mouseScrolled(scrollY);

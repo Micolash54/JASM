@@ -89,14 +89,47 @@ public final class CraftPayloads {
         }
     }
 
-    /** Client → server: what would a request for {@code amount} of {@code target} take? */
-    public record Ask(int containerId, ItemResource target, long amount, Optional<BlockPos> server) implements CustomPacketPayload {
+    /** Most boxes of the tree sent to the screen; a bigger plan is drawn as a list only. */
+    public static final int MAX_TREE_BOXES = 320;
+    public static final int MAX_TREE_LINKS = 1_024;
+
+    /** One box of the tree. {@code kind}: 0 craft, 1 taken from storage, 2 missing. {@code crafts} is how many times a craft runs. */
+    public record TreeBox(ItemResource key, int kind, long amount, long crafts) {
+        static final StreamCodec<RegistryFriendlyByteBuf, TreeBox> STREAM_CODEC = StreamCodec.composite(
+                ItemResource.STREAM_CODEC, TreeBox::key,
+                ByteBufCodecs.VAR_INT, TreeBox::kind,
+                ByteBufCodecs.VAR_LONG, TreeBox::amount,
+                ByteBufCodecs.VAR_LONG, TreeBox::crafts,
+                TreeBox::new);
+    }
+
+    /** Box {@code from} (a craft) takes from box {@code to}. */
+    public record TreeLink(int from, int to) {
+        static final StreamCodec<RegistryFriendlyByteBuf, TreeLink> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, TreeLink::from,
+                ByteBufCodecs.VAR_INT, TreeLink::to,
+                TreeLink::new);
+    }
+
+    /** The planned craft as a tree. {@code tooBig}: the plan has more boxes than fit, so none are sent. */
+    public record TreeView(boolean tooBig, int root, List<TreeBox> boxes, List<TreeLink> links) {
+        static final StreamCodec<RegistryFriendlyByteBuf, TreeView> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, TreeView::tooBig,
+                ByteBufCodecs.VAR_INT, TreeView::root,
+                TreeBox.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_TREE_BOXES)), TreeView::boxes,
+                TreeLink.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_TREE_LINKS)), TreeView::links,
+                TreeView::new);
+    }
+
+    /** Client → server: what would a request for {@code amount} of {@code target} take? {@code tree}: also send the tree. */
+    public record Ask(int containerId, ItemResource target, long amount, Optional<BlockPos> server, boolean tree) implements CustomPacketPayload {
         public static final Type<Ask> TYPE = new Type<>(Jasm.id("craft_ask"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Ask> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Ask::containerId,
                 ItemResource.STREAM_CODEC, Ask::target,
                 ByteBufCodecs.VAR_LONG, Ask::amount,
                 ByteBufCodecs.optional(BlockPos.STREAM_CODEC), Ask::server,
+                ByteBufCodecs.BOOL, Ask::tree,
                 Ask::new);
 
         @Override
@@ -107,7 +140,7 @@ public final class CraftPayloads {
 
     /** Server → client: the answer. {@code problem} is a message key, empty when the request can start. */
     public record Answer(int containerId, ItemResource target, long amount, long made, String problem, List<DeckPayloads.Entry> taken,
-            List<DeckPayloads.Entry> missing, List<DeckPayloads.Entry> crafts, List<ServerView> servers, int chosen) implements CustomPacketPayload {
+            List<DeckPayloads.Entry> missing, List<DeckPayloads.Entry> crafts, List<ServerView> servers, int chosen, Optional<TreeView> tree) implements CustomPacketPayload {
         public static final Type<Answer> TYPE = new Type<>(Jasm.id("craft_answer"));
         private static final StreamCodec<RegistryFriendlyByteBuf, List<DeckPayloads.Entry>> ENTRIES = DeckPayloads.Entry.STREAM_CODEC
                 .apply(ByteBufCodecs.list(MAX_LIST));
@@ -116,7 +149,8 @@ public final class CraftPayloads {
             public Answer decode(RegistryFriendlyByteBuf buf) {
                 return new Answer(buf.readVarInt(), ItemResource.STREAM_CODEC.decode(buf), buf.readVarLong(), buf.readVarLong(), buf.readUtf(),
                         ENTRIES.decode(buf), ENTRIES.decode(buf), ENTRIES.decode(buf),
-                        ServerView.STREAM_CODEC.apply(ByteBufCodecs.list(64)).decode(buf), buf.readVarInt());
+                        ServerView.STREAM_CODEC.apply(ByteBufCodecs.list(64)).decode(buf), buf.readVarInt(),
+                        ByteBufCodecs.optional(TreeView.STREAM_CODEC).decode(buf));
             }
 
             @Override
@@ -131,6 +165,7 @@ public final class CraftPayloads {
                 ENTRIES.encode(buf, answer.crafts);
                 ServerView.STREAM_CODEC.apply(ByteBufCodecs.list(64)).encode(buf, answer.servers);
                 buf.writeVarInt(answer.chosen);
+                ByteBufCodecs.optional(TreeView.STREAM_CODEC).encode(buf, answer.tree);
             }
         };
 

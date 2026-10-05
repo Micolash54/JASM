@@ -103,6 +103,12 @@ final class JobPlanning {
 
     /** Plans {@code amount} of {@code target} for {@code player}'s Crafting Deck, without changing anything. */
     public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
+        return preview(player, deck, target, amount, wanted, false);
+    }
+
+    /** As above; with {@code tree} the plan also records which craft feeds which. */
+    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
+            boolean tree) {
         CraftPlanner.Plan<GridKey> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
         if (!DeckItem.isCrafting(deck)) {
             return new Preview(empty, List.of(), -1, "message.jasm.craft.not_crafting_deck");
@@ -142,7 +148,7 @@ final class JobPlanning {
         GridKey goal = fluidTarget != null ? new GridKey.Fluid(fluidTarget) : new GridKey.Item(target);
         // A fluid is asked for in buckets.
         long units = fluidTarget != null ? Math.multiplyExact(Math.min(amount, Integer.MAX_VALUE), (long) FluidAmounts.PER_BUCKET) : amount;
-        CraftPlanner.Plan<GridKey> plan = CraftPlanner.plan(goal, Math.max(1, units), stock, book);
+        CraftPlanner.Plan<GridKey> plan = CraftPlanner.plan(goal, Math.max(1, units), stock, book, tree);
         List<ServerOption> servers = new ArrayList<>();
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
             if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
