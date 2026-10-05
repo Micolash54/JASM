@@ -6,9 +6,6 @@ bin/
 run/
 runs/
 logs/
-references/
-docs/
-art/
 
 # IDE
 .idea/
@@ -23,9 +20,6 @@ art/
 # OS
 .DS_Store
 Thumbs.db
-
-# Local helper scripts
-/tools/
 
 # Unit tests (kept locally)
 src/test/
