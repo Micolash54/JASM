@@ -80,6 +80,14 @@ Just Another Storage Mod: portable, recoverable digital storage.
     ordering="NONE"
     side="BOTH"
 
+# The in-game guide is built on GuideME.
+[[dependencies.${mod_id}]]
+    modId="guideme"
+    type="required"
+    versionRange="[${guideme_version},)"
+    ordering="NONE"
+    side="BOTH"
+
 # Optional: JASM adds recipes, info pages and Deck support to JEI, and block details to Jade, when they are installed.
 [[dependencies.${mod_id}]]
     modId="jei"

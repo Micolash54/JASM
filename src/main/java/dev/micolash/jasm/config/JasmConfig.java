@@ -291,5 +291,10 @@ public final class JasmConfig {
 
     public static final ModConfigSpec SPEC = BUILDER.build();
 
+    /** The value, or its default while no world has loaded the config yet (the guide draws blocks at the title screen). */
+    public static int orDefault(ModConfigSpec.IntValue value) {
+        return SPEC.isLoaded() ? value.getAsInt() : value.getDefault();
+    }
+
     private JasmConfig() {}
 }

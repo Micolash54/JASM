@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
  * machines. It never gives power to an outside block and never touches JASM generators or other Acceptors.
  */
 public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowerSource {
-    private final int rate = JasmConfig.ACCEPTOR_RATE.getAsInt();
+    private final int rate = JasmConfig.orDefault(JasmConfig.ACCEPTOR_RATE);
     private final int capacity = rate * 4;
     private final SimpleEnergyHandler energy;
     private final EnergyHandler input = new Intake();

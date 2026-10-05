@@ -28,6 +28,13 @@ sourceSets.main.resources {
     exclude("src/generated/**/.cache") // datagen cache files
 }
 
+// The guide pages ship in the jar next to the other assets.
+processResources {
+    from('guidebook') {
+        into 'assets/jasm/guide'
+    }
+}
+
 // In-game tests live in their own source set so they never end up in the mod jar.
 sourceSets {
     gametest {
@@ -50,6 +57,8 @@ repositories {
         url = "https://api.modrinth.com/maven"
         content { includeGroup "maven.modrinth" }
     }
+    // GuideME and its libraries
+    mavenCentral()
 }
 
 base {
@@ -74,6 +83,18 @@ neoForge {
             gameDirectory = project.file('runs/26.1.2/client')
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // Read guide pages straight from the folder, so edits show up in the open game.
+            systemProperty 'guideme.jasm.guide.sources', file('guidebook').absolutePath
+        }
+
+        // Opens the guide on startup and reloads pages as you edit them.
+        guide {
+            client()
+            gameDirectory = project.file('runs/26.1.2/client')
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'guideme.jasm.guide.sources', file('guidebook').absolutePath
+            // -PguidePage=items/decks.md opens that page instead of the start page
+            systemProperty 'guideme.showOnStartup', project.hasProperty('guidePage') ? "jasm:guide!jasm:${project.guidePage}" : 'jasm:guide'
         }
 
         server {
@@ -146,6 +167,12 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // The in-game guide. Required at run time, compiled against the lowest version we support and never bundled.
+    // The development runs and the GameTest server use guideme_run_version.
+    compileOnly "org.appliedenergistics:guideme:${guideme_version}"
+    localRuntime "org.appliedenergistics:guideme:${guideme_run_version}"
+    gametestRuntimeOnly "org.appliedenergistics:guideme:${guideme_run_version}"
+
     // Optional integrations: compiled against, never bundled. The full mods only join the development runs.
     compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
@@ -173,6 +200,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : version,
+            guideme_version        : guideme_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

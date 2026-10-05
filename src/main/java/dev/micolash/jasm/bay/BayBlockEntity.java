@@ -86,8 +86,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     private ItemStack shownHeld = ItemStack.EMPTY;
 
     protected BayBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
-        super(type, pos, state, JasmConfig.BAY_ENERGY_CAPACITY.getAsInt());
-        tank = new FluidStacksResourceHandler(1, JasmConfig.BAY_TANK_BUCKETS.getAsInt() * FluidAmounts.PER_BUCKET) {
+        super(type, pos, state, JasmConfig.orDefault(JasmConfig.BAY_ENERGY_CAPACITY));
+        tank = new FluidStacksResourceHandler(1, JasmConfig.orDefault(JasmConfig.BAY_TANK_BUCKETS) * FluidAmounts.PER_BUCKET) {
             @Override
             protected void onContentsChanged(int index, FluidStack previousContents) {
                 setChanged();
