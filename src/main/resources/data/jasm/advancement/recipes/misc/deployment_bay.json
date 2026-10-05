@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:deployment_bay"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_advanced_logic_chip": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:advanced_logic_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_advanced_logic_chip"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:deployment_bay"
+    ]
+  }
+}
