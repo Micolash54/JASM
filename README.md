@@ -1,12 +1,18 @@
 <p align="center">
-  <img src="wiki/images/logo_3d_small.png" alt="JASM" width="533">
+  <img src="guidebook/logo.png" alt="JASM" width="533">
 </p>
 
 <p align="center"><b>Just Another Storage Mod</b>: portable, recoverable digital storage for Minecraft.</p>
 
 ---
 
+> [!WARNING]
+> JASM is still in **beta**. It works, but it's young: things can break, change between versions, or behave in ways I haven't caught yet. Found a bug? Open an issue and I'll take a look.
+
+
 JASM stores your items as data on small chips called wafers. Carry them around in a handheld Deck, and back them up at an Archive, so a lost wafer can be rebuilt instead of gone for good.
+
+Read the [guide](https://micolash54.github.io/JASM/) online, or craft a JASM Guide in game from a Book and a Data Crystal.
 
 ## Features
 
@@ -32,10 +38,10 @@ JASM stores your items as data on small chips called wafers. Carry them around i
 - **Machines**: put an Access Port next to furnaces, modded machines or a multiblock (every side counts), and write processing cards for it: what goes in, and up to three things that come back. Jobs send the ingredients in and wait for the results to come back into the port. Fluids work too: right-click a slot with a full bucket or tank (or drag a fluid out of JEI) to write it on the card, and scroll to change the amount by 125 mB, or a bucket with Shift. The job takes them from the Deck's fluid wafers and puts them in the machine's tank, then pulls the fluids it makes back out of the tank. Convert a port in a crafting grid to a thin cable attachment, or back again. Add a Power Upgrade to supply FE to attached machines. Each cable holds up to six thin ports, one per face, and a thin port can also go straight onto a machine with no cable. It stays off the network until you place a cable into its space; the port stays put. Each port serves and accepts items only through its outward face, including from pipes and hoppers while idle. Choose several machines and the work is shared between them.
 - **Item intake**: full-block Access Ports also accept items from any face, even without a crafting job. Both forms have an eight-slot buffer for manual input and a Deck-link panel. Ordinary items go to the network owner's paired Deck, or another paired Deck selected in the port. Items wait when the Deck is unavailable or full. Crafting returns go to their job first.
 - **Crafting rules**: "when I have fewer than 16 torches, craft 32" or "every minute, craft 8 bread", set on the Crafting Deck, with the results sent to the Deck or straight into your inventory.
-- **Network Brain**: a network holds 4 machines on its own, whether they are joined by cable or just touch each other; with more, the whole network stops. Build a Network Brain to lift the limit to 12. Put 8 Network Chambers round it to make a brain floor, a little office of Bitlings, and stack floors into a tower: each floor adds 12 more machines. See [the guide](wiki/chips-and-bitlings.md#the-network-brain).
+- **Network Brain**: a network holds 4 machines on its own, whether they are joined by cable or just touch each other; with more, the whole network stops. Build a Network Brain to lift the limit to 12. Put 8 Network Chambers round it to make a brain floor, a little office of Bitlings, and stack floors into a tower: each floor adds 12 more machines. See [the guide](https://micolash54.github.io/JASM/26.1/items/network-brain.html).
 - **Data Cables**: join the crafting blocks and carry power between them, in three tiers: Data Cable (1,000 FE/t), Advanced (10,000 FE/t) and Elite (50,000 FE/t). Each cable passes power on at its own speed, so a slower cable only slows the power that goes through it. Different players' networks never join.
 - **Crystals and chips**: grow Data Crystals from seeded amethyst, cut them into Blank Chips, and cook and cool them into Logic and Memory Chips, the parts JASM's recipes are made of. The Crystal Foundry grows crystals in bulk, and a Crystal Resonator speeds up seeded amethyst.
-- **Chip Workshop and Bitlings**: a little robot helper works the Workshop, turning Blank Chips into Logic, Memory and Link Chips, and now and then a rare Advanced one. Its input is a 2x2 grid, so it also builds a few special things from ingredients, like the Synapse Core. Bitlings learn from every chip they make and grow up into Nibblings and Bytelings. See [the guide](wiki/chips-and-bitlings.md).
+- **Chip Workshop and Bitlings**: a little robot helper works the Workshop, turning Blank Chips into Logic, Memory and Link Chips, and now and then a rare Advanced one. Its input is a 2x2 grid, so it also builds a few special things from ingredients, like the Synapse Core. Bitlings learn from every chip they make and grow up into Nibblings and Bytelings. See [the guide](https://micolash54.github.io/JASM/26.1/items/bitlings.html).
 - **Wild Bitlings**: Bitlings live in the wild on grassy land and wander over to growing Data Crystals. Hand one a Logic, Memory or Link Chip to befriend it, or a Data Crystal and it follows you for a while.
 - **Bitling Station**: put a Bitling in it and a little living copy roams around, hops, rests, and walks home to recharge on the pad. You can pet it.
 - **Creative Battery**: unlimited power for creative worlds, with a charging slot.
@@ -47,7 +53,7 @@ JASM is in early testing. Things will change between versions, so back up your w
 
 ## Recipes
 
-Every item except the Creative Battery is craftable in survival, and Basic Bitlings are found in the wild. The first tier uses vanilla items; higher tiers use JASM's own chips, from hand-made Logic and Memory Chips up to Advanced chips from the Chip Workshop. Each higher tier is crafted from the one below it, keeping everything it holds. See [all recipes](wiki/recipes.md).
+Every item except the Creative Battery is craftable in survival, and Basic Bitlings are found in the wild. The first tier uses vanilla items; higher tiers use JASM's own chips, from hand-made Logic and Memory Chips up to Advanced chips from the Chip Workshop. Each higher tier is crafted from the one below it, keeping everything it holds. Every page of the [guide](https://micolash54.github.io/JASM/) shows its recipes.
 
 ## Requirements
 
