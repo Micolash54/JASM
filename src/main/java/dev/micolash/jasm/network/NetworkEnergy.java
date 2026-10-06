@@ -34,6 +34,13 @@ public class NetworkEnergy extends SimpleEnergyHandler {
         own = energy > before ? own + energy - before : Math.min(own, energy);
     }
 
+    /** Changes how much it can hold. What it holds stays, even above the new size, until the owner trims it. */
+    public void resize(int newCapacity) {
+        capacity = newCapacity;
+        maxInsert = newCapacity;
+        maxExtract = newCapacity;
+    }
+
     /** The part that came from outside the cables. Running costs come out of the cables' part first. */
     public int own() {
         return Math.min(own, energy);

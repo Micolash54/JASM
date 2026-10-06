@@ -14,21 +14,26 @@ item_ids:
 
 A network holds only 4 machines on its own. A Network Brain lifts that to 12, and with <ItemLink id="network_chamber" />s round it, a lot more.
 
-| Brain | Machines |
-| --- | --- |
-| No brain | 4 |
-| Lone brain | 12 |
-| 1 floor | 24 |
-| 2 floors | 36 |
-| 3 floors | 48 |
-| Each further floor | 12 more |
+| Brain | Machines | Uses each tick | Holds |
+| --- | --- | --- | --- |
+| No brain | 4 | | |
+| Lone brain | 12 | 8 FE | 50,000 FE |
+| 1 floor | 36 | 24 FE | 145,000 FE |
+| 2 floors | 54 | 52 FE | 310,000 FE |
+| 3 floors | 80 | 110 FE | 660,000 FE |
+| 4 floors | 120 | 240 FE | 1,450,000 FE |
+| 5 floors | 175 | 510 FE | 3,050,000 FE |
+| 6 floors | 260 | 1,100 FE | 6,600,000 FE |
+| 7 floors | 385 | 2,300 FE | 13,800,000 FE |
+| 8 floors | 576 | 5,000 FE | 30,000,000 FE |
 
 <br />
 <br />
 ## The rules
 
 * Add a machine past the limit and the whole network stops, until you remove one or add a brain.
-* A brain uses 8 FE every tick. If it runs out of power, the network falls back to 4 machines.
+* A brain uses power every tick, and a taller tower uses more. If it runs out, the network falls back to 4 machines.
+* A whole tower shares one pool of power. A cable on any of its floors or chambers fills it, and its screen shows the pool and what the tower uses each tick.
 * Mined, a brain keeps its charge.
 * Several brains on one network don't add up. Only the best one leads, the one with the most floors, then the one placed first.
 

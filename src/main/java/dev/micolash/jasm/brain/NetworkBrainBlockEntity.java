@@ -20,18 +20,19 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The Network Brain. While it has power it lets its network hold more machines. With 8 chambers round it, it is a floor;
  * floors stacked straight on top of each other make a tower, and each floor raises the limit. The lowest floor speaks for
- * its tower; the brains above it show what it shows. When a network holds several brains or towers, only the best
+ * its tower; the brains above it show what it shows. A tower has one pool of power and one running cost, kept by its
+ * lowest floor, whichever floor or chamber a cable touches. When a network holds several brains or towers, only the best
  * working one leads; the others rest.
  */
 public class NetworkBrainBlockEntity extends MachineBlockEntity {
-    public static final int CAPACITY = 100_000;
-    // after running dry it sleeps until it has this much, a weak cable made it flicker on and off every tick
-    public static final int WAKE_AT = CAPACITY / 20;
+    // after running dry it sleeps until it has a twentieth of its pool, a weak cable made it flicker on and off every tick
+    private static final int WAKE_FRACTION = 20;
 
     /** The middle of a complete floor. */
     private boolean floor;
@@ -53,6 +54,8 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
     /** Game time of its first tick; the older brain wins a tie. */
     private long placedAt = -1;
     private boolean napping;
+    // the pool it last drew on, so the network is looked at again when its tower changes
+    private @Nullable SimpleEnergyHandler lastPool;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -68,8 +71,12 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
                     yield network == null ? BrainBalance.fromConfig().limit(true, towerFloors) : network.limitState().limit();
                 }
                 case NetworkBrainMenu.DATA_STATUS -> status.ordinal();
-                case NetworkBrainMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
-                case NetworkBrainMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
+                case NetworkBrainMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy().getAmountAsInt());
+                case NetworkBrainMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy().getAmountAsInt());
+                case NetworkBrainMenu.DATA_CAPACITY_LOW -> ContainerWords.low(energy().getCapacityAsInt());
+                case NetworkBrainMenu.DATA_CAPACITY_HIGH -> ContainerWords.high(energy().getCapacityAsInt());
+                case NetworkBrainMenu.DATA_DRAIN_LOW -> ContainerWords.low(drainPerTick());
+                case NetworkBrainMenu.DATA_DRAIN_HIGH -> ContainerWords.high(drainPerTick());
                 default -> 0;
             };
         }
@@ -85,7 +92,7 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
     };
 
     public NetworkBrainBlockEntity(BlockPos pos, BlockState state) {
-        super(JasmBlocks.NETWORK_BRAIN_ENTITY.get(), pos, state, CAPACITY);
+        super(JasmBlocks.NETWORK_BRAIN_ENTITY.get(), pos, state, BrainBalance.fromConfig().pool(0));
         towerBase = pos;
     }
 
@@ -106,10 +113,17 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
             placedAt = level.getGameTime();
             setChanged();
         }
-        // Asking for the network keeps it alive, so it passes power on to this block each tick.
-        boolean powered = payForTick();
-        CableNetwork network = Networks.at(level, worldPosition);
         NetworkBrainBlockEntity lowest = base();
+        SimpleEnergyHandler pool = energy();
+        if (pool != lastPool) {
+            // The network remembers whose power each block uses, so it is worked out again.
+            lastPool = pool;
+            Networks.invalidate(level, worldPosition);
+        }
+        // Only the lowest floor pays, once for the whole tower. Asking for the network keeps it alive, so it passes
+        // power on to the pool each tick.
+        boolean powered = lowest == this && payForTick();
+        CableNetwork network = Networks.at(level, worldPosition);
         BrainStatus next;
         if (lowest != this) {
             next = lowest == null ? BrainStatus.NO_POWER : lowest.status;
@@ -150,11 +164,41 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         setChanged();
     }
 
-    void setTower(BlockPos base, int floors, int stamp) {
+    /** Returns whether its tower is a different one than before. The pool is resized to fit; what it holds stays for now. */
+    boolean setTower(BlockPos base, int floors, int stamp) {
+        boolean changed = !base.equals(towerBase) || floors != towerFloors;
         towerBase = base.immutable();
         towerFloors = floors;
         towerStamp = stamp;
         this.base = null;
+        energy.resize(BrainBalance.fromConfig().pool(leadsItsTower() ? floors : 0));
+        return changed;
+    }
+
+    /** What its own buffer holds. Only the lowest floor's buffer is the tower's pool; the others stay empty. */
+    public int stored() {
+        return energy.getAmountAsInt();
+    }
+
+    /** Puts {@code amount} in its own buffer, even more than it holds: the tower being shared out trims it after. */
+    void store(int amount) {
+        energy.set(Math.max(0, amount));
+    }
+
+    /** Power left in the buffer of a floor above the lowest one (from before towers shared a pool) goes into the pool. */
+    void foldIntoPool() {
+        NetworkBrainBlockEntity lowest = base();
+        if (lowest != null && lowest != this && energy.getAmountAsInt() > 0) {
+            lowest.energy.set(Math.min(lowest.energy.getAmountAsInt() + energy.getAmountAsInt(), lowest.energy.getCapacityAsInt()));
+            energy.set(0);
+        }
+    }
+
+    /** The tower's pool, which the lowest floor keeps. */
+    @Override
+    public SimpleEnergyHandler energy() {
+        NetworkBrainBlockEntity lowest = base();
+        return lowest == null ? energy : lowest.energy;
     }
 
     boolean leaving() {
@@ -182,7 +226,13 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         return base;
     }
 
-    /** Whether the last tick was paid for. */
+    /** Whether the last tick was paid for. The floors above the lowest one share what the lowest one did. */
+    @Override
+    public boolean running() {
+        NetworkBrainBlockEntity lowest = base();
+        return lowest == this ? super.running() : lowest != null && lowest.running();
+    }
+
     public boolean working() {
         return running();
     }
@@ -199,9 +249,10 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         return level instanceof ServerLevel serverLevel ? Networks.at(serverLevel, worldPosition) : null;
     }
 
+    /** What its whole tower uses each tick: the same for every floor, paid once by the lowest. */
     @Override
     public int drainPerTick() {
-        return BrainBalance.fromConfig().drainPerFloor();
+        return BrainBalance.fromConfig().drain(towerFloors);
     }
 
     @Override
@@ -209,12 +260,17 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         return false;
     }
 
+    /** What its pool must hold before a brain that ran dry wakes up again. */
+    public int wakeAt() {
+        return Math.max(drainPerTick(), energy.getCapacityAsInt() / WAKE_FRACTION);
+    }
+
     @Override
     protected boolean readyToRun() {
         int amount = energy.getAmountAsInt();
         if (amount < drainPerTick()) {
             napping = true;
-        } else if (napping && amount >= WAKE_AT) {
+        } else if (napping && amount >= wakeAt()) {
             napping = false;
         }
         return !napping;
@@ -272,11 +328,13 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
 
     @Override
     protected void loadAdditional(ValueInput input) {
-        super.loadAdditional(input);
         floor = input.getBooleanOr("floor", false);
         towerBase = BlockPos.of(input.getLongOr("tower_base", worldPosition.asLong()));
         towerFloors = floor ? Math.max(0, input.getIntOr("tower_floors", 0)) : 0;
         base = null;
+        // the pool is its size before its charge is read back, or a big one would be cut down to a lone brain's
+        energy.resize(BrainBalance.fromConfig().pool(leadsItsTower() ? towerFloors : 0));
+        super.loadAdditional(input);
         placedAt = input.getLongOr("placed_at", -1);
         int ordinal = input.getIntOr("status", -1);
         BrainStatus[] statuses = BrainStatus.values();

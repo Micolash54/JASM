@@ -719,6 +719,8 @@
   "screen.jasm.brain.status.resting": "Resting: another brain leads this network",
   "screen.jasm.brain.status.resting.short": "Resting",
   "screen.jasm.brain.machines": "Machines: %s / %s",
+  "screen.jasm.brain.use": "Using %s FE/t",
+  "screen.jasm.brain.use.tower": "The whole tower uses this, and shares one pool of power",
   "screen.jasm.brain.lone": "Lone brain",
   "screen.jasm.brain.floor": "1 floor",
   "screen.jasm.brain.floors": "%s floors",

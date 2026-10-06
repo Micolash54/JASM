@@ -28,7 +28,11 @@ public class NetworkBrainMenu extends AbstractContainerMenu implements MachineVi
     static final int DATA_STATUS = 3;
     static final int DATA_ENERGY_LOW = 4;
     static final int DATA_ENERGY_HIGH = 5;
-    static final int DATA_SLOTS = 6;
+    static final int DATA_CAPACITY_LOW = 6;
+    static final int DATA_CAPACITY_HIGH = 7;
+    static final int DATA_DRAIN_LOW = 8;
+    static final int DATA_DRAIN_HIGH = 9;
+    static final int DATA_SLOTS = 10;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -95,8 +99,14 @@ public class NetworkBrainMenu extends AbstractContainerMenu implements MachineVi
         return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
     }
 
+    /** What the whole tower's pool can hold. */
     public int capacity() {
-        return NetworkBrainBlockEntity.CAPACITY;
+        return ContainerWords.join(data.get(DATA_CAPACITY_HIGH), data.get(DATA_CAPACITY_LOW));
+    }
+
+    /** FE the whole tower uses each tick. */
+    public int drain() {
+        return ContainerWords.join(data.get(DATA_DRAIN_HIGH), data.get(DATA_DRAIN_LOW));
     }
 
     @Override

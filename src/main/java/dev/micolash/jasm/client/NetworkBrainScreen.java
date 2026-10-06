@@ -23,6 +23,7 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
     private static final int MACHINES_Y = 40;
     private static final int STATUS_Y = 56;
     private static final int STATUS_HEIGHT = 14;
+    private static final int USE_Y = 76;
     private static final int POWER_X = PAD;
     private static final int POWER_Y = NetworkBrainMenu.POWER_Y;
     private static final int POWER_WIDTH = INNER_WIDTH;
@@ -90,6 +91,9 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
         }
+        if (within(mouseX, mouseY, leftPos + PAD, topPos + USE_Y, INNER_WIDTH, font.lineHeight)) {
+            graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.brain.use.tower"), 180), mouseX, mouseY);
+        }
         if (shortened() && within(mouseX, mouseY, leftPos + PAD, topPos + STATUS_Y, INNER_WIDTH, STATUS_HEIGHT)) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable(statusKey(menu.status())), 180), mouseX, mouseY);
         }
@@ -107,5 +111,7 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
                 over ? JasmGui.BAD : JasmGui.TEXT, false);
 
         graphics.text(font, statusText(), PAD + 4, STATUS_Y + 3, colour(menu.status()), false);
+
+        graphics.text(font, Component.translatable("screen.jasm.brain.use", String.format("%,d", menu.drain())), PAD, USE_Y, JasmGui.SUBTEXT, false);
     }
 }

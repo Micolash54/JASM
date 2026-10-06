@@ -23,8 +23,7 @@ import org.jspecify.annotations.Nullable;
  * until charged again.
  */
 public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
-    protected final SimpleEnergyHandler energy;
-    private final int capacity;
+    protected final NetworkEnergy energy;
     private @Nullable UUID owner;
     private String ownerName = "";
     private boolean networkBlocked;
@@ -35,7 +34,6 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
 
     protected MachineBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state, int capacity) {
         super(type, pos, state);
-        this.capacity = capacity;
         this.energy = new NetworkEnergy(capacity) {
             @Override
             protected void onEnergyChanged(int previousAmount) {
@@ -126,7 +124,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     }
 
     public int capacity() {
-        return capacity;
+        return energy.getCapacityAsInt();
     }
 
     public @Nullable UUID owner() {
@@ -188,7 +186,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, capacity));
+        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, energy.getCapacityAsInt()));
         owner = input.read("owner", UUIDUtil.CODEC).orElse(null);
         ownerName = input.getStringOr("owner_name", "");
         networkBlocked = input.getBooleanOr("network_blocked", false);
@@ -210,7 +208,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     @Override
     protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
-        energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, capacity));
+        energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, energy.getCapacityAsInt()));
         MachineOwner carried = components.get(JasmComponents.OWNER.get());
         if (carried != null) {
             owner = carried.id();

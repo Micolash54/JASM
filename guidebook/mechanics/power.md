@@ -37,7 +37,7 @@ Most JASM blocks run on FE. Here is where it comes from and how it travels.
 | Recipe Rack | 2 FE a tick |
 | Crafting Server | 20 FE a tick, plus its Processors |
 | Access Port | 2 FE a tick |
-| Network Brain | 8 FE a tick for each floor |
+| Network Brain | 8 FE a tick alone, 24 with one floor, up to 5,000 with 8 floors |
 | Crystal Resonator | 10 FE a tick |
 | Crystal Foundry | 40 FE a tick while it grows |
 | Archive | 5, 10 or 20 FE a tick by tier |

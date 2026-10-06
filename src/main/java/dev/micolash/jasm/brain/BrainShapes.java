@@ -28,8 +28,18 @@ public final class BrainShapes {
 
     /** Lets go of every chamber the brain holds; brains nearby may take them up. The floors above and below it part. */
     public static void release(ServerLevel level, NetworkBrainBlockEntity brain) {
+        handOnPool(level, brain);
         settle(level, letGo(level, brain));
         restack(level, brain.getBlockPos());
+    }
+
+    /** A lowest floor holds its tower's pool. When it goes, the floor above it takes the pool on. */
+    private static void handOnPool(ServerLevel level, NetworkBrainBlockEntity leaving) {
+        NetworkBrainBlockEntity heir = floorAt(level, leaving.getBlockPos().above());
+        if (heir != null && leaving.floor() && leaving.leadsItsTower() && leaving.stored() > 0) {
+            heir.store(heir.stored() + leaving.stored());
+            leaving.store(0);
+        }
     }
 
     /** A chamber came or went: every brain close enough to share a floor with it looks again. */
@@ -112,24 +122,56 @@ public final class BrainShapes {
     static void restack(ServerLevel level, BlockPos at) {
         int maxFloors = Math.max(1, BrainBalance.fromConfig().maxFloors());
         int stamp = BrainBalance.stamp();
+        List<NetworkBrainBlockEntity> moved = new ArrayList<>();
         NetworkBrainBlockEntity self = floorAt(level, at);
         if (self != null) {
-            stackRun(level, at, maxFloors, stamp);
-            return;
+            stackRun(level, at, maxFloors, stamp, moved);
+        } else {
+            if (level.isLoaded(at) && level.getBlockEntity(at) instanceof NetworkBrainBlockEntity lone && !lone.leaving()) {
+                retower(lone, at, 0, stamp, moved);
+            }
+            if (floorAt(level, at.below()) != null) {
+                stackRun(level, at.below(), maxFloors, stamp, moved);
+            }
+            if (floorAt(level, at.above()) != null) {
+                stackRun(level, at.above(), maxFloors, stamp, moved);
+            }
         }
-        if (level.isLoaded(at) && level.getBlockEntity(at) instanceof NetworkBrainBlockEntity lone && !lone.leaving()) {
-            lone.setTower(at, 0, stamp);
+        shareOutPools(moved);
+    }
+
+    /** Puts a brain in its tower. A brain whose tower changed goes in {@code moved}; one that didn't is only trimmed to its pool's size. */
+    private static void retower(NetworkBrainBlockEntity brain, BlockPos base, int floors, int stamp, List<NetworkBrainBlockEntity> moved) {
+        if (brain.setTower(base, floors, stamp)) {
+            moved.add(brain);
+        } else {
+            brain.foldIntoPool();
+            brain.store(Math.min(brain.stored(), brain.capacity()));
         }
-        if (floorAt(level, at.below()) != null) {
-            stackRun(level, at.below(), maxFloors, stamp);
+    }
+
+    /**
+     * Each tower keeps one pool, in its lowest floor. Where towers were cut or joined, the power their brains held is
+     * shared out again by floors, and what a smaller pool can't hold is lost.
+     */
+    private static void shareOutPools(List<NetworkBrainBlockEntity> moved) {
+        long total = 0;
+        long weights = 0;
+        for (NetworkBrainBlockEntity brain : moved) {
+            total += brain.stored();
+            if (brain.leadsItsTower()) {
+                weights += Math.max(1, brain.floors());
+            }
         }
-        if (floorAt(level, at.above()) != null) {
-            stackRun(level, at.above(), maxFloors, stamp);
+        for (NetworkBrainBlockEntity brain : moved) {
+            int wanted = brain.leadsItsTower() && weights > 0
+                    ? (int) Math.min(Integer.MAX_VALUE, total * Math.max(1, brain.floors()) / weights) : 0;
+            brain.store(Math.min(wanted, brain.capacity()));
         }
     }
 
     /** Hands out the towers of the run of floors through {@code from}, cut by the height limit from the bottom up. */
-    private static void stackRun(ServerLevel level, BlockPos from, int maxFloors, int stamp) {
+    private static void stackRun(ServerLevel level, BlockPos from, int maxFloors, int stamp, List<NetworkBrainBlockEntity> moved) {
         BlockPos bottom = from;
         while (floorAt(level, bottom.below()) != null) {
             bottom = bottom.below();
@@ -144,7 +186,7 @@ public final class BrainShapes {
         }
         for (int i = 0; i < run.size(); i++) {
             BrainTower.Tower tower = BrainTower.inRun(bottom.getY() + i, bottom.getY(), bottom.getY() + run.size() - 1, maxFloors);
-            run.get(i).setTower(bottom.atY(tower.baseY()), tower.floors(), stamp);
+            retower(run.get(i), bottom.atY(tower.baseY()), tower.floors(), stamp, moved);
         }
     }
 

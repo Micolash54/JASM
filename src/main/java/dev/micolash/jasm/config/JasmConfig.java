@@ -1,5 +1,6 @@
 package dev.micolash.jasm.config;
 
+import dev.micolash.jasm.core.BrainBalance;
 import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
@@ -226,18 +227,18 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue BRAIN_LIMIT_WITHOUT_BRAIN = BUILDER
             .comment("Machines a network may hold without a working Network Brain")
             .defineInRange("limitWithoutBrain", 4, 0, 4_096);
-    public static final ModConfigSpec.IntValue BRAIN_MACHINE_LIMIT = BUILDER
-            .comment("Machines a network may hold with a lone Network Brain")
-            .defineInRange("machineLimit", 12, 0, 4_096);
-    public static final ModConfigSpec.IntValue BRAIN_FLOOR_BONUS = BUILDER
-            .comment("Machines each brain floor (a brain with 8 Network Chambers round it) adds")
-            .defineInRange("floorBonus", 12, 0, 4_096);
     public static final ModConfigSpec.IntValue BRAIN_MAX_FLOORS = BUILDER
             .comment("Floors one brain tower may have. Floors stacked past this make a tower of their own")
             .defineInRange("maxFloors", 8, 1, 64);
-    public static final ModConfigSpec.IntValue BRAIN_DRAIN_PER_FLOOR = BUILDER
-            .comment("FE each Network Brain uses every tick, so each floor of a tower uses this much")
-            .defineInRange("drainPerFloor", 8, 0, 100_000);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_MACHINES = BUILDER
+            .comment("Machines a network may hold, for a lone Network Brain and then for a tower of 1, 2, 3... floors (a floor is a brain with 8 Network Chambers round it). A taller tower uses the last entry")
+            .defineList("machines", BrainBalance.DEFAULT_MACHINES, () -> 0, value -> value instanceof Integer i && i >= 0 && i <= 30_000);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_DRAINS = BUILDER
+            .comment("FE a whole tower uses every tick, for a lone brain and then for 1, 2, 3... floors. A taller tower uses the last entry")
+            .defineList("drains", BrainBalance.DEFAULT_DRAINS, () -> 0, value -> value instanceof Integer i && i >= 0);
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BRAIN_POOLS = BUILDER
+            .comment("FE a whole tower holds in one shared pool, for a lone brain and then for 1, 2, 3... floors. A taller tower uses the last entry")
+            .defineList("pools", BrainBalance.DEFAULT_POOLS, () -> 100_000, value -> value instanceof Integer i && i >= 1);
 
     static {
         BUILDER.pop().push("wild_bitling");
