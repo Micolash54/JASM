@@ -1,0 +1,26 @@
+{
+  "parent": "jasm:main/plugged_in",
+  "criteria": {
+    "overcooked": {
+      "trigger": "jasm:network_overfull"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:encoding_terminal"
+    },
+    "title": {
+      "translate": "advancements.jasm.overcooked.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.overcooked.description"
+    },
+    "frame": "task",
+    "hidden": true
+  },
+  "requirements": [
+    [
+      "overcooked"
+    ]
+  ]
+}

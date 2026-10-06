@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/is_this_food",
+  "criteria": {
+    "belt_and_braces": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:basic_archive"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:basic_archive"
+    },
+    "title": {
+      "translate": "advancements.jasm.belt_and_braces.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.belt_and_braces.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "belt_and_braces"
+    ]
+  ]
+}

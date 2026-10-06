@@ -3,6 +3,7 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.network.CableTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
+import dev.micolash.jasm.network.PlacementAchievements;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -32,6 +33,7 @@ public class ThinAccessPortItem extends Item {
         if (!(context.getLevel().getBlockEntity(pos) instanceof DataCableBlockEntity cable)) return placeAlone(context);
         if (context.getLevel().isClientSide()) return cable.port(side) == null ? InteractionResult.SUCCESS : InteractionResult.FAIL;
         if (cable.attach(side, context.getItemInHand(), context.getPlayer())) {
+            if (context.getLevel() instanceof ServerLevel serverLevel) PlacementAchievements.placed(serverLevel, pos, context.getPlayer());
             if (!context.getPlayer().getAbilities().instabuild) context.getItemInHand().shrink(1);
             return InteractionResult.SUCCESS;
         }
@@ -57,7 +59,10 @@ public class ThinAccessPortItem extends Item {
             level.removeBlock(pos, false);
             return InteractionResult.FAIL;
         }
-        if (level instanceof ServerLevel serverLevel) DataCableBlock.refreshConnectionsAround(serverLevel, pos);
+        if (level instanceof ServerLevel serverLevel) {
+            DataCableBlock.refreshConnectionsAround(serverLevel, pos);
+            PlacementAchievements.placed(serverLevel, pos, player);
+        }
         if (!player.getAbilities().instabuild) context.getItemInHand().shrink(1);
         var sound = JasmBlocks.ACCESS_PORT.get().defaultBlockState().getSoundType(level, pos, player);
         level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);

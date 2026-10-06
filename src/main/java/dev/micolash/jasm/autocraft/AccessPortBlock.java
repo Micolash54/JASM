@@ -4,6 +4,7 @@ import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.network.PlacementAchievements;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -148,6 +149,7 @@ public class AccessPortBlock extends BaseEntityBlock {
                 machine.setOwner(player);
             }
             Networks.placedMachine(serverLevel, pos);
+            PlacementAchievements.placed(serverLevel, pos, by);
         }
     }
 

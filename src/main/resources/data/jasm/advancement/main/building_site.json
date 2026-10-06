@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/plugged_in",
+  "criteria": {
+    "building_site": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:deployment_bay"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:deployment_bay"
+    },
+    "title": {
+      "translate": "advancements.jasm.building_site.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.building_site.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "building_site"
+    ]
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "parent": "jasm:main/server_room",
+  "criteria": {
+    "hands_free": {
+      "trigger": "jasm:autocraft_done"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:crafting_server"
+    },
+    "title": {
+      "translate": "advancements.jasm.hands_free.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.hands_free.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "hands_free"
+    ]
+  ]
+}

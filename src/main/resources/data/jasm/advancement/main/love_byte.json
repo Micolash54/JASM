@@ -1,0 +1,25 @@
+{
+  "parent": "jasm:main/new_friend",
+  "criteria": {
+    "love_byte": {
+      "trigger": "jasm:pet_bitling"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:bitling_station"
+    },
+    "title": {
+      "translate": "advancements.jasm.love_byte.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.love_byte.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "love_byte"
+    ]
+  ]
+}

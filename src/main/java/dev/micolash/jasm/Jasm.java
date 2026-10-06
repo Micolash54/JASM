@@ -12,6 +12,7 @@ import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.registry.JasmRecipes;
 import dev.micolash.jasm.registry.JasmTabs;
+import dev.micolash.jasm.registry.JasmTriggers;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.bus.api.IEventBus;
@@ -38,6 +39,7 @@ public final class Jasm {
         JasmMenus.MENUS.register(modBus);
         JasmRecipes.SERIALIZERS.register(modBus);
         JasmRecipes.TYPES.register(modBus);
+        JasmTriggers.TRIGGERS.register(modBus);
         Quenching.ATTACHMENTS.register(modBus);
         container.registerConfig(ModConfig.Type.SERVER, JasmConfig.SPEC);
         container.registerConfig(ModConfig.Type.CLIENT, JasmClientConfig.SPEC);

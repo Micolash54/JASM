@@ -1,0 +1,34 @@
+{
+  "criteria": {
+    "seed_of_an_idea": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:crystal_seed"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:crystal_seed"
+    },
+    "title": {
+      "translate": "advancements.jasm.seed_of_an_idea.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.seed_of_an_idea.description"
+    },
+    "frame": "task",
+    "background": "jasm:block/network_casing",
+    "show_toast": false,
+    "announce_to_chat": false
+  },
+  "requirements": [
+    [
+      "seed_of_an_idea"
+    ]
+  ]
+}

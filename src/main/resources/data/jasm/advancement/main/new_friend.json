@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/cool_down",
+  "criteria": {
+    "new_friend": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:basic_bitling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:basic_bitling"
+    },
+    "title": {
+      "translate": "advancements.jasm.new_friend.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.new_friend.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "new_friend"
+    ]
+  ]
+}

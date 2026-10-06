@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/is_this_food",
+  "criteria": {
+    "pocket_storage": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:starter_deck"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:starter_deck"
+    },
+    "title": {
+      "translate": "advancements.jasm.pocket_storage.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.pocket_storage.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "pocket_storage"
+    ]
+  ]
+}

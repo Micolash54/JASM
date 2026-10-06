@@ -1,0 +1,25 @@
+{
+  "parent": "jasm:main/pocket_storage",
+  "criteria": {
+    "special_delivery": {
+      "trigger": "jasm:deck_delivery"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:basic_deck"
+    },
+    "title": {
+      "translate": "advancements.jasm.special_delivery.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.special_delivery.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "special_delivery"
+    ]
+  ]
+}

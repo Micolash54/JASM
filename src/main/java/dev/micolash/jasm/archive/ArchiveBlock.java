@@ -2,6 +2,7 @@ package dev.micolash.jasm.archive;
 
 import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.network.PlacementAchievements;
 import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -87,6 +88,7 @@ public class ArchiveBlock extends BaseEntityBlock {
         if (level instanceof ServerLevel serverLevel && level.getBlockEntity(pos) instanceof ArchiveBlockEntity archive) {
             ArchivePlacement.placed(archive, serverLevel, by instanceof Player player ? player : null);
             Networks.placedMachine(serverLevel, pos);
+            PlacementAchievements.placed(serverLevel, pos, by);
         }
     }
 

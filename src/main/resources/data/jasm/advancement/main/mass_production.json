@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/cool_down",
+  "criteria": {
+    "mass_production": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:crystal_foundry"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:crystal_foundry"
+    },
+    "title": {
+      "translate": "advancements.jasm.mass_production.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.mass_production.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "mass_production"
+    ]
+  ]
+}

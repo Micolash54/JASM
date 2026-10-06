@@ -73,6 +73,7 @@ public abstract class MachineBlock extends BaseEntityBlock {
                 machine.setOwner(player);
             }
             Networks.placedMachine(serverLevel, pos);
+            PlacementAchievements.placed(serverLevel, pos, by);
         }
     }
 

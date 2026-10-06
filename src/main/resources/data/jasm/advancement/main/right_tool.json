@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/plugged_in",
+  "criteria": {
+    "right_tool": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:wrench"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:wrench"
+    },
+    "title": {
+      "translate": "advancements.jasm.right_tool.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.right_tool.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "right_tool"
+    ]
+  ]
+}

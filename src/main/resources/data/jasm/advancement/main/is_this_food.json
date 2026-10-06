@@ -1,0 +1,47 @@
+{
+  "parent": "jasm:main/seed_of_an_idea",
+  "criteria": {
+    "is_this_food": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "jasm:capacity_wafer_basic",
+              "jasm:capacity_wafer_1k",
+              "jasm:capacity_wafer_4k",
+              "jasm:capacity_wafer_16k",
+              "jasm:capacity_wafer_64k",
+              "jasm:capacity_wafer_256k",
+              "jasm:capacity_wafer_1m",
+              "jasm:type_wafer_4",
+              "jasm:type_wafer_8",
+              "jasm:type_wafer_16",
+              "jasm:type_wafer_32",
+              "jasm:type_wafer_64",
+              "jasm:type_wafer_128",
+              "jasm:type_wafer_256"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:capacity_wafer_basic"
+    },
+    "title": {
+      "translate": "advancements.jasm.is_this_food.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.is_this_food.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "is_this_food"
+    ]
+  ]
+}

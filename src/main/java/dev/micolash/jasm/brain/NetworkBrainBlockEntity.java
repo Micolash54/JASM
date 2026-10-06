@@ -30,6 +30,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class NetworkBrainBlockEntity extends MachineBlockEntity {
     public static final int CAPACITY = 100_000;
+    // after running dry it sleeps until it has this much, a weak cable made it flicker on and off every tick
+    public static final int WAKE_AT = CAPACITY / 20;
 
     /** The middle of a complete floor. */
     private boolean floor;
@@ -50,6 +52,7 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
     private BrainStatus status = BrainStatus.NO_POWER;
     /** Game time of its first tick; the older brain wins a tie. */
     private long placedAt = -1;
+    private boolean napping;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -206,6 +209,17 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         return false;
     }
 
+    @Override
+    protected boolean readyToRun() {
+        int amount = energy.getAmountAsInt();
+        if (amount < drainPerTick()) {
+            napping = true;
+        } else if (napping && amount >= WAKE_AT) {
+            napping = false;
+        }
+        return !napping;
+    }
+
     /** Its chambers are let go before it leaves, and a brain nearby may take them up. */
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
@@ -253,6 +267,7 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         output.putInt("tower_floors", towerFloors);
         output.putLong("placed_at", placedAt);
         output.putInt("status", status.ordinal());
+        output.putBoolean("napping", napping);
     }
 
     @Override
@@ -266,5 +281,6 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         int ordinal = input.getIntOr("status", -1);
         BrainStatus[] statuses = BrainStatus.values();
         status = ordinal >= 0 && ordinal < statuses.length ? statuses[ordinal] : BrainStatus.NO_POWER;
+        napping = input.getBooleanOr("napping", false);
     }
 }

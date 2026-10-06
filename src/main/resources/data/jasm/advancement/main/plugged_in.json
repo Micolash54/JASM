@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/seed_of_an_idea",
+  "criteria": {
+    "plugged_in": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:data_cable"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:data_cable"
+    },
+    "title": {
+      "translate": "advancements.jasm.plugged_in.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.plugged_in.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "plugged_in"
+    ]
+  ]
+}

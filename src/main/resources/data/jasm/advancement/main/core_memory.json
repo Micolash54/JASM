@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/all_grown_up",
+  "criteria": {
+    "core_memory": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:synapse_core"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:synapse_core"
+    },
+    "title": {
+      "translate": "advancements.jasm.core_memory.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.core_memory.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "core_memory"
+    ]
+  ]
+}

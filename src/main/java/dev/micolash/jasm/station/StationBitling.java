@@ -4,9 +4,11 @@ import dev.micolash.jasm.bitling.BitlingBody;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
+import dev.micolash.jasm.registry.JasmTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
@@ -237,6 +239,7 @@ public class StationBitling extends BitlingBody {
         } else {
             setAct(Act.PETTED);
             actTicks = 30;
+            if (player instanceof ServerPlayer petter) JasmTriggers.PET_BITLING.get().trigger(petter);
             level.sendParticles(ParticleTypes.HEART, getX(), getY() + getBbHeight() + 0.1, getZ(), 4, 0.2, 0.1, 0.2, 0.0);
         }
         return InteractionResult.SUCCESS_SERVER;

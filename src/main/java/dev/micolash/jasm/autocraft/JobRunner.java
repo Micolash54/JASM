@@ -6,6 +6,7 @@ import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.registry.JasmTriggers;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -163,6 +164,7 @@ final class JobRunner {
         }
         if (idle) {
             if (job.phase == CraftingJob.Phase.CANCELLING || !stepsLeft) {
+                if (job.phase == CraftingJob.Phase.CRAFTING && requester != null) JasmTriggers.AUTOCRAFT_DONE.get().trigger(requester);
                 job.phase = CraftingJob.Phase.RETURNING;
                 job.pause = PauseReason.NONE;
                 server.setChanged();

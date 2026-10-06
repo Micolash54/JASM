@@ -1,0 +1,25 @@
+{
+  "parent": "jasm:main/big_brain_time",
+  "criteria": {
+    "office_space": {
+      "trigger": "jasm:brain_floor"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:network_chamber"
+    },
+    "title": {
+      "translate": "advancements.jasm.office_space.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.office_space.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "office_space"
+    ]
+  ]
+}

@@ -8,6 +8,7 @@ import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckNetwork;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.deck.DeckViewTracker;
+import dev.micolash.jasm.registry.JasmTriggers;
 import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -137,6 +138,7 @@ public final class DeliveryNetwork {
                 : Deliveries.Refusal.LOCKED;
         if (refusal == Deliveries.Refusal.NONE) {
             menu.clearSend();
+            JasmTriggers.DECK_DELIVERY.get().trigger(player);
             ServerPlayer to = player.level().getServer().getPlayerList().getPlayer(payload.to());
             Notices.good(player, Component.translatable("screen.jasm.send.sent", to == null ? "" : to.getName().getString()));
         } else {

@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/plugged_in",
+  "criteria": {
+    "write_it_down": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:filled_recipe_card"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:filled_recipe_card"
+    },
+    "title": {
+      "translate": "advancements.jasm.write_it_down.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.write_it_down.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "write_it_down"
+    ]
+  ]
+}

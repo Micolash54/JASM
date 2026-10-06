@@ -1,0 +1,35 @@
+{
+  "parent": "jasm:main/pocket_storage",
+  "criteria": {
+    "top_of_the_deck": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "jasm:ultimate_deck",
+              "jasm:ultimate_crafting_deck"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:ultimate_deck"
+    },
+    "title": {
+      "translate": "advancements.jasm.top_of_the_deck.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.top_of_the_deck.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "top_of_the_deck"
+    ]
+  ]
+}

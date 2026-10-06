@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/seed_of_an_idea",
+  "criteria": {
+    "crystal_clear": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:data_crystal"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:data_crystal"
+    },
+    "title": {
+      "translate": "advancements.jasm.crystal_clear.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.crystal_clear.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "crystal_clear"
+    ]
+  ]
+}

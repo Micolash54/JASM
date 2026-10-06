@@ -1,0 +1,36 @@
+{
+  "parent": "jasm:main/missing_link",
+  "criteria": {
+    "all_grown_up": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "jasm:logic_byteling",
+              "jasm:memory_byteling",
+              "jasm:link_byteling"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:logic_byteling"
+    },
+    "title": {
+      "translate": "advancements.jasm.all_grown_up.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.all_grown_up.description"
+    },
+    "frame": "goal"
+  },
+  "requirements": [
+    [
+      "all_grown_up"
+    ]
+  ]
+}

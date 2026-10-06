@@ -79,9 +79,14 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return now;
     }
 
+    // false to sit the tick out without paying, like a brain charging back up
+    protected boolean readyToRun() {
+        return true;
+    }
+
     /** Pays for one tick. Returns whether the block works this tick: not while its network is full. */
     public boolean payForTick() {
-        if (checkStopped()) {
+        if (checkStopped() || !readyToRun()) {
             running = false;
             return false;
         }

@@ -1,0 +1,35 @@
+{
+  "parent": "jasm:main/crystal_clear",
+  "criteria": {
+    "cool_down": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "jasm:logic_chip",
+              "jasm:memory_chip"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:logic_chip"
+    },
+    "title": {
+      "translate": "advancements.jasm.cool_down.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.cool_down.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "cool_down"
+    ]
+  ]
+}

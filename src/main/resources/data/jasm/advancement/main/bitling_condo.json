@@ -1,0 +1,25 @@
+{
+  "parent": "jasm:main/office_space",
+  "criteria": {
+    "bitling_condo": {
+      "trigger": "jasm:brain_tower"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:network_brain"
+    },
+    "title": {
+      "translate": "advancements.jasm.bitling_condo.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.bitling_condo.description"
+    },
+    "frame": "challenge"
+  },
+  "requirements": [
+    [
+      "bitling_condo"
+    ]
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/hire_the_help",
+  "criteria": {
+    "missing_link": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:link_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:link_chip"
+    },
+    "title": {
+      "translate": "advancements.jasm.missing_link.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.missing_link.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "missing_link"
+    ]
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/write_it_down",
+  "criteria": {
+    "server_room": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:crafting_server"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:crafting_server"
+    },
+    "title": {
+      "translate": "advancements.jasm.server_room.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.server_room.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "server_room"
+    ]
+  ]
+}

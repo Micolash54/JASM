@@ -3,6 +3,7 @@ package dev.micolash.jasm.bay;
 import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.network.PlacementAchievements;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -134,6 +135,7 @@ public class BayBlock extends BaseEntityBlock {
         if (level instanceof ServerLevel serverLevel && level.getBlockEntity(pos) instanceof BayBlockEntity bay) {
             if (bay.owner() == null && by instanceof Player player) bay.setOwner(player);
             Networks.placedMachine(serverLevel, pos);
+            PlacementAchievements.placed(serverLevel, pos, by);
         }
     }
 

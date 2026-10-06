@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/new_friend",
+  "criteria": {
+    "hire_the_help": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:chip_workshop"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:chip_workshop"
+    },
+    "title": {
+      "translate": "advancements.jasm.hire_the_help.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.hire_the_help.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "hire_the_help"
+    ]
+  ]
+}
