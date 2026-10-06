@@ -31,6 +31,12 @@ public class CombustionGeneratorScreen extends JasmScreen<CombustionGeneratorMen
     }
 
     @Override
+    protected void init() {
+        super.init();
+        addHelp(WIDTH - 7, "items/combustion-generators.md");
+    }
+
+    @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;

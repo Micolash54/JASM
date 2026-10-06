@@ -47,13 +47,13 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private @Nullable DeckLinkWindow linkWindow;
     private static final int WIDTH = 176;
     private static final int HEIGHT = EncodingTerminalMenu.INVENTORY_Y + 58 + 18 + 6;
-    private static final int BAR_WIDTH = 60;
+    private static final int BAR_WIDTH = 60 - HELP_ROOM;
     private static final int ENCODE_WIDTH = 52;
     private static final JasmButton.Icon ACCESS = new JasmButton.Icon(Jasm.id("icon/access"), 7, 7);
     private TrustWindow trustWindow;
     private JasmButton accessButton;
     private JasmButton encodeButton;
-    private static final int BAR_X = WIDTH - 8 - BAR_WIDTH;
+    private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final Identifier ARROW_DOWN = Jasm.id("icon/craft_arrow");
     private static final Identifier ARROW_RIGHT = Jasm.id("icon/craft_arrow_right");
@@ -112,6 +112,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         super.init();
         frame = JasmFrame.rounded(new int[]{0, 0, imageWidth, imageHeight}, new int[]{PANEL_X, 0, PANEL_W + 6, imageHeight},
                 JasmGui.sideStrip(KEY_X, 2));
+        addHelp(WIDTH - 7, "items/encoding-terminal.md");
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));

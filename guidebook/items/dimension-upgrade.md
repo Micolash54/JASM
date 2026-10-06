@@ -10,7 +10,7 @@ item_ids:
 
 # Dimension Upgrade
 
-<ItemImage id="dimension_upgrade" scale="8" />
+<ItemImage id="dimension_upgrade" scale="4" />
 
 A Deck works only in the Overworld until you give it this. Install one in the Deck's upgrade slot and it works in the Nether, the End and modded dimensions too.
 

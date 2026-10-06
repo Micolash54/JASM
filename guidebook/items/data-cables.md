@@ -12,15 +12,11 @@ item_ids:
 
 # Data Cables
 
-<GameScene zoom="6" padding="2">
-  <IsometricCamera yaw="20" pitch="30" />
-  <Block id="jasm:data_cable" x="0" y="0" z="0" />
-  <Block id="jasm:data_cable" x="1" y="0" z="0" />
-  <Block id="jasm:advanced_data_cable" x="2" y="0" z="0" />
-  <Block id="jasm:advanced_data_cable" x="3" y="0" z="0" />
-  <Block id="jasm:elite_data_cable" x="4" y="0" z="0" />
-  <Block id="jasm:elite_data_cable" x="5" y="0" z="0" />
-</GameScene>
+<Row>
+  <BlockImage id="data_cable" scale="8" />
+  <BlockImage id="advanced_data_cable" scale="8" />
+  <BlockImage id="elite_data_cable" scale="8" />
+</Row>
 
 Data Cables join your crafting blocks into one network and carry power between them. Any two cables join, whatever the tier.
 
@@ -44,6 +40,12 @@ See [networks](../mechanics/networks.md) for the rules in full.
 
 ## Recipes
 
-<RecipeFor id="data_cable" />
-<RecipeFor id="advanced_data_cable" />
-<RecipeFor id="elite_data_cable" />
+<Column>
+  <Row>
+    <RecipeFor id="data_cable" />
+    <RecipeFor id="advanced_data_cable" />
+  </Row>
+  <Row>
+    <RecipeFor id="elite_data_cable" />
+  </Row>
+</Column>

@@ -13,7 +13,12 @@ item_ids:
 
 # Storage Modules
 
-<ItemImage id="storage_module_16k" scale="8" />
+<Row>
+  <ItemImage id="storage_module_1k" scale="4" />
+  <ItemImage id="storage_module_4k" scale="4" />
+  <ItemImage id="storage_module_16k" scale="4" />
+  <ItemImage id="storage_module_64k" scale="4" />
+</Row>
 
 A job needs room for its ingredients and for everything it makes along the way. That room comes from Storage Modules in the [Crafting Server](crafting-server.md).
 
@@ -32,7 +37,13 @@ Each size is made from the one below it. 4k needs a Memory Chip, 16k a Link Chip
 
 ## Recipes
 
-<RecipeFor id="storage_module_1k" />
-<RecipeFor id="storage_module_4k" />
-<RecipeFor id="storage_module_16k" />
-<RecipeFor id="storage_module_64k" />
+<Column>
+  <Row>
+    <RecipeFor id="storage_module_1k" />
+    <RecipeFor id="storage_module_4k" />
+  </Row>
+  <Row>
+    <RecipeFor id="storage_module_16k" />
+    <RecipeFor id="storage_module_64k" />
+  </Row>
+</Column>

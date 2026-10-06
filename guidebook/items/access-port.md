@@ -11,11 +11,17 @@ item_ids:
 
 # Access Port
 
-<GameScene zoom="6" padding="2">
+<Row alignItems="center">
+<GameScene zoom="3.5" padding="2">
   <IsometricCamera yaw="20" pitch="30" />
-  <Block id="minecraft:furnace" x="0" y="0" z="0" />
-  <Block id="jasm:access_port" x="1" y="0" z="0" />
+  <Block id="jasm:access_port" x="0" y="0" z="0" p:east="machine" />
+  <Block id="minecraft:furnace" x="1" y="0" z="0" p:facing="south" />
 </GameScene>
+<GameScene zoom="3.5" padding="2">
+  <IsometricCamera yaw="20" pitch="30" />
+  <ImportStructure src="../assets/thin_access_port.snbt" />
+</GameScene>
+</Row>
 
 The Access Port is how your network talks to other machines. Put one next to a furnace, a modded machine or a multiblock, and write processing cards for it. Every block touching the port that takes items counts as a machine.
 

@@ -8,7 +8,7 @@ navigation:
 
 # Networks
 
-<BlockImage id="data_cable" scale="6" />
+<BlockImage id="data_cable" scale="3.5" />
 
 Machines that are joined by [Data Cables](../items/data-cables.md) form a network. So do JASM machines that simply touch each other, with no cable at all.
 
@@ -27,7 +27,7 @@ A row of five Archives side by side is a network of five.
 
 ## Who may use it
 
-The network belongs to the player who set it up. The owner can trust other players at an Encoding Terminal. Trusted players can use the blocks and Archives on that network. Different players' networks never join.
+The network belongs to the player who set it up. The owner can trust other players at an Encoding Terminal. Trusted players can use the blocks and Archives on that network. Different players' networks never join. See [co-op play](co-op-play.md) for everything you can share.
 
 ## Seeing the network
 

@@ -10,27 +10,32 @@ item_ids:
 
 # Network Chamber
 
-<GameScene zoom="4" padding="2">
-  <IsometricCamera yaw="20" pitch="30" />
-  <Block id="jasm:network_chamber" x="0" y="0" z="0" />
-  <Block id="jasm:network_chamber" x="0" y="0" z="1" />
-  <Block id="jasm:network_chamber" x="0" y="0" z="2" />
-  <Block id="jasm:network_chamber" x="1" y="0" z="0" />
-  <Block id="jasm:network_brain" x="1" y="0" z="1" />
-  <Block id="jasm:network_chamber" x="1" y="0" z="2" />
-  <Block id="jasm:network_chamber" x="2" y="0" z="0" />
-  <Block id="jasm:network_chamber" x="2" y="0" z="1" />
-  <Block id="jasm:network_chamber" x="2" y="0" z="2" />
-  <Block id="jasm:network_chamber" x="0" y="1" z="0" />
-  <Block id="jasm:network_chamber" x="0" y="1" z="1" />
-  <Block id="jasm:network_chamber" x="0" y="1" z="2" />
-  <Block id="jasm:network_chamber" x="1" y="1" z="0" />
-  <Block id="jasm:network_brain" x="1" y="1" z="1" />
-  <Block id="jasm:network_chamber" x="1" y="1" z="2" />
-  <Block id="jasm:network_chamber" x="2" y="1" z="0" />
-  <Block id="jasm:network_chamber" x="2" y="1" z="1" />
-  <Block id="jasm:network_chamber" x="2" y="1" z="2" />
-</GameScene>
+<Row gap="10">
+  <GameScene zoom="3" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:network_chamber" x="0" y="0" z="0" />
+    <Block id="jasm:network_chamber" x="0" y="0" z="1" />
+    <Block id="jasm:network_chamber" x="0" y="0" z="2" />
+    <Block id="jasm:network_chamber" x="1" y="0" z="0" />
+    <Block id="jasm:network_brain" x="1" y="0" z="1" />
+    <Block id="jasm:network_chamber" x="1" y="0" z="2" />
+    <Block id="jasm:network_chamber" x="2" y="0" z="0" />
+    <Block id="jasm:network_chamber" x="2" y="0" z="1" />
+    <Block id="jasm:network_chamber" x="2" y="0" z="2" />
+  </GameScene>
+  <GameScene zoom="3" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:network_chamber" x="0" y="0" z="0" p:formed="true" />
+    <Block id="jasm:network_chamber" x="0" y="0" z="1" p:formed="true" />
+    <Block id="jasm:network_chamber" x="0" y="0" z="2" p:formed="true" />
+    <Block id="jasm:network_chamber" x="1" y="0" z="0" p:formed="true" />
+    <Block id="jasm:network_brain" x="1" y="0" z="1" p:floor="true" p:awake="true" />
+    <Block id="jasm:network_chamber" x="1" y="0" z="2" p:formed="true" />
+    <Block id="jasm:network_chamber" x="2" y="0" z="0" p:formed="true" />
+    <Block id="jasm:network_chamber" x="2" y="0" z="1" p:formed="true" />
+    <Block id="jasm:network_chamber" x="2" y="0" z="2" p:formed="true" />
+  </GameScene>
+</Row>
 
 Put 8 Network Chambers round a [Network Brain](network-brain.md), on the same layer, and it becomes a brain floor: a little glass office where 8 Bitlings work round a glowing core. Each floor adds 12 machines.
 

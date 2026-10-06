@@ -52,6 +52,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     @Override
     protected void init() {
         super.init();
+        addHelp(TransferPortMenu.WIDTH - 7, "items/item-ports.md");
         frameRedstone = menu.hasRedstoneUpgrade();
         frame = JasmFrame.rounded(new int[]{0, 0, TransferPortMenu.WIDTH, imageHeight},
                 PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, frameRedstone));

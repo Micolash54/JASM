@@ -20,11 +20,11 @@ import org.jspecify.annotations.Nullable;
 /** The Foundry's menu: the seed slot, the 3×3 output grid, then the player's inventory and hotbar. */
 public class CrystalFoundryMenu extends AbstractContainerMenu implements MachineView {
     public static final int INPUT_X = 26;
-    public static final int INPUT_Y = 35;
+    public static final int INPUT_Y = 39;
     public static final int OUTPUT_X = 108;
-    public static final int OUTPUT_Y = 17;
-    public static final int ROW_Y = 78;
-    public static final int INVENTORY_Y = 104;
+    public static final int OUTPUT_Y = 21;
+    public static final int ROW_Y = 82;
+    public static final int INVENTORY_Y = 108;
 
     static final int DATA_PROGRESS = 0;
     static final int DATA_TICKS = 1;

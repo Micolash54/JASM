@@ -16,7 +16,15 @@ item_ids:
 
 # Fluid Type Wafers
 
-<ItemImage id="fluid_type_wafer_16" scale="8" />
+<Row>
+  <ItemImage id="fluid_type_wafer_2" scale="3.5" />
+  <ItemImage id="fluid_type_wafer_4" scale="3.5" />
+  <ItemImage id="fluid_type_wafer_8" scale="3.5" />
+  <ItemImage id="fluid_type_wafer_16" scale="3.5" />
+  <ItemImage id="fluid_type_wafer_32" scale="3.5" />
+  <ItemImage id="fluid_type_wafer_64" scale="3.5" />
+  <ItemImage id="fluid_type_wafer_128" scale="3.5" />
+</Row>
 
 A few kinds of fluid, each in bulk. Good for water, lava and the other fluids you pump all day. Like a [Type Wafer](type-wafers.md), but for fluids.
 
@@ -36,10 +44,20 @@ For mixed fluids with no limit on kinds, see [Fluid Capacity Wafers](fluid-capac
 
 ## Recipes
 
-<RecipeFor id="fluid_type_wafer_2" />
-<RecipeFor id="fluid_type_wafer_4" />
-<RecipeFor id="fluid_type_wafer_8" />
-<RecipeFor id="fluid_type_wafer_16" />
-<RecipeFor id="fluid_type_wafer_32" />
-<RecipeFor id="fluid_type_wafer_64" />
-<RecipeFor id="fluid_type_wafer_128" />
+<Column>
+  <Row>
+    <RecipeFor id="fluid_type_wafer_2" />
+    <RecipeFor id="fluid_type_wafer_4" />
+  </Row>
+  <Row>
+    <RecipeFor id="fluid_type_wafer_8" />
+    <RecipeFor id="fluid_type_wafer_16" />
+  </Row>
+  <Row>
+    <RecipeFor id="fluid_type_wafer_32" />
+    <RecipeFor id="fluid_type_wafer_64" />
+  </Row>
+  <Row>
+    <RecipeFor id="fluid_type_wafer_128" />
+  </Row>
+</Column>

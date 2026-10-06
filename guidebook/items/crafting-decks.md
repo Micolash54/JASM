@@ -12,7 +12,11 @@ item_ids:
 
 # Crafting Decks
 
-<ItemImage id="elite_crafting_deck" scale="8" />
+<Row>
+  <ItemImage id="advanced_crafting_deck" scale="4" />
+  <ItemImage id="elite_crafting_deck" scale="4" />
+  <ItemImage id="ultimate_crafting_deck" scale="4" />
+</Row>
 
 A [Deck](decks.md) with a 3x3 crafting grid. Ingredients come straight from its wafers, and the grid refills itself after every craft.
 
@@ -29,6 +33,12 @@ A new Crafting Deck links itself to the network of the [Encoding Terminal](encod
 
 ## Recipes
 
-<RecipeFor id="advanced_crafting_deck" />
-<RecipesFor id="elite_crafting_deck" />
-<RecipesFor id="ultimate_crafting_deck" />
+<Column>
+  <Row>
+    <RecipeFor id="advanced_crafting_deck" />
+    <RecipesFor id="elite_crafting_deck" />
+  </Row>
+  <Row>
+    <RecipesFor id="ultimate_crafting_deck" />
+  </Row>
+</Column>

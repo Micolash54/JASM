@@ -13,13 +13,24 @@ item_ids:
 
 # Bitlings
 
-<GameScene zoom="6" padding="2">
-  <IsometricCamera yaw="0" pitch="15" />
-  <Entity id="jasm:wild_bitling" data="{kind:0,stage:0}" x="0.5" z="0.5" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:1,stage:0}" x="1.6" z="0.5" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:2,stage:0}" x="2.7" z="0.5" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:3,stage:0}" x="3.8" z="0.5" rotationY="0" />
-</GameScene>
+<Row>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:0,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:1,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:2,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:3,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+</Row>
 
 Bitlings are small robot helpers that work the [Chip Workshop](chip-workshop.md). Without one, a Workshop does nothing.
 
@@ -41,6 +52,12 @@ Surround a Basic Bitling with 8 chips of one type in a crafting grid to get a Lo
 
 ## Recipes
 
-<RecipeFor id="logic_bitling" />
-<RecipeFor id="memory_bitling" />
-<RecipeFor id="link_bitling" />
+<Column>
+  <Row>
+    <RecipeFor id="logic_bitling" />
+    <RecipeFor id="memory_bitling" />
+  </Row>
+  <Row>
+    <RecipeFor id="link_bitling" />
+  </Row>
+</Column>

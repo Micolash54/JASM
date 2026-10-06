@@ -10,7 +10,7 @@ item_ids:
 
 # Speed Upgrade
 
-<ItemImage id="speed_upgrade" scale="8" />
+<ItemImage id="speed_upgrade" scale="4" />
 
 Makes a port or a bay work faster.
 

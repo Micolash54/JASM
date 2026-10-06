@@ -70,6 +70,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     protected void init() {
         super.init();
         frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, JasmGui.sideStrip(KEY_X, 1));
+        addHelp(WIDTH - 7, "items/archives.md");
         int x = leftPos;
         int y = topPos;
         link = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.link"),
@@ -139,7 +140,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
 
         drawScrollBar(graphics, x, y);
 
-        int bx = x + WIDTH - 8 - ENERGY_WIDTH;
+        int bx = x + WIDTH - 8 - HELP_ROOM - ENERGY_WIDTH;
         JasmGui.bar(graphics, bx - 1, y + 6, ENERGY_WIDTH + 2, 7, menu.view().energy() / (double) menu.tier().energyBuffer());
     }
 
@@ -209,7 +210,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
             graphics.nextStratum();
             JasmGui.notice(graphics, font, notice, menu.notices().ok(), x, y + ROWS * ROW_HEIGHT, LIST_WIDTH);
         }
-        if (mouseX >= leftPos + WIDTH - 8 - ENERGY_WIDTH && mouseX < leftPos + WIDTH - 8 && mouseY >= topPos + 6 && mouseY < topPos + 13) {
+        if (mouseX >= leftPos + WIDTH - 8 - HELP_ROOM - ENERGY_WIDTH && mouseX < leftPos + WIDTH - 8 - HELP_ROOM && mouseY >= topPos + 6 && mouseY < topPos + 13) {
             graphics.setTooltipForNextFrame(font, List.of(
                     Component.translatable("screen.jasm.archive.energy", String.format("%,d", menu.view().energy()),
                             String.format("%,d", menu.tier().energyBuffer())).getVisualOrderText(),

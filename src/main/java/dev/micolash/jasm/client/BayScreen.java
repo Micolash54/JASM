@@ -39,9 +39,9 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private static final int ENCHANT_Y = 43;
     private static final int ENCHANT_HEIGHT = 29;
     private static final int POWER_X = 7;
-    private static final int POWER_Y = 76;
+    private static final int POWER_Y = 78;
     private static final int POWER_WIDTH = 162;
-    private static final int POWER_HEIGHT = 11;
+    private static final int POWER_HEIGHT = 7;
     /** The keys under the upgrade slots: the Demolition Bay's sound key, then the redstone key. */
     private static final int KEYS_Y = BayMenu.UPGRADE_Y + 4 * 18 + 4;
     private static final int KEY_STEP = JasmGui.SIDE_KEY_HEIGHT + 2;
@@ -78,6 +78,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
         super.init();
         frameRedstone = menu.hasRedstoneUpgrade();
         frame = frame(frameRedstone);
+        addHelp(BayMenu.WIDTH - 7, menu.kind() == BayKind.DEMOLITION ? "items/demolition-bay.md" : "items/deployment-bay.md");
         shownRedstone = null;
         redstone = addRenderableWidget(JasmButton.icon(
                 () -> new JasmButton.Icon(Jasm.id("icon/redstone_" + menu.redstone().getSerializedName()), 12, 12),
@@ -195,10 +196,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
         dot(graphics, SIDE_X, 20, statusColor(status));
         graphics.text(font, Component.translatable(status.shortKey()), SIDE_X + 8, 19, JasmGui.TEXT, false);
         graphics.text(font, Component.translatable("screen.jasm.bay.every", seconds(menu.cycleTicks())), SIDE_X, 31, JasmGui.SUBTEXT, false);
-        Component power = Component.translatable("screen.jasm.workshop.power_amount", String.format("%,d", menu.energy()),
-                String.format("%,d", menu.capacity()));
-        JasmGui.labelledBar(graphics, font, power, POWER_X, POWER_Y, POWER_WIDTH, POWER_HEIGHT,
-                menu.capacity() <= 0 ? 0 : menu.energy() / (double) menu.capacity());
+        JasmGui.bar(graphics, POWER_X, POWER_Y, POWER_WIDTH, POWER_HEIGHT, menu.capacity() <= 0 ? 0 : menu.energy() / (double) menu.capacity());
         if (menu.kind() == BayKind.DEMOLITION) {
             List<Component> lines = enchantmentLines();
             if (!lines.isEmpty()) {
@@ -257,6 +255,9 @@ public class BayScreen extends JasmScreen<BayMenu> {
                     : Component.translatable("screen.jasm.bay.tank", fluid.getHoverName(), String.format("%,d", menu.fluidAmount()),
                             String.format("%,d", menu.tankCapacity()));
             graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
+        } else if (x >= POWER_X && x < POWER_X + POWER_WIDTH && y >= POWER_Y && y < POWER_Y + POWER_HEIGHT) {
+            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.workshop.power_amount",
+                    String.format("%,d", menu.energy()), String.format("%,d", menu.capacity())), mouseX, mouseY);
         } else if (x >= SIDE_X && x < SIDE_X + SIDE_WIDTH && y >= 18 && y < 28) {
             // The short word on the panel; the whole line when it says more.
             Component full = Component.translatable(menu.status().key());

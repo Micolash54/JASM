@@ -12,7 +12,11 @@ item_ids:
 
 # Advanced Chips
 
-<ItemImage id="advanced_logic_chip" scale="8" />
+<Row>
+  <ItemImage id="advanced_logic_chip" scale="4" />
+  <ItemImage id="advanced_memory_chip" scale="4" />
+  <ItemImage id="advanced_link_chip" scale="4" />
+</Row>
 
 Rare versions of the Logic, Memory and Link Chip. Only the [Chip Workshop](chip-workshop.md) makes them: every chip it finishes has a small chance of coming out Advanced.
 
@@ -25,7 +29,7 @@ Rare versions of the Logic, Memory and Link Chip. Only the [Chip Workshop](chip-
 
 ## What they are for
 
-* Top-tier recipes: Elite and Ultimate Decks, the 64K wafers and the Elite Data Cable.
+* Top-tier recipes: Elite and Ultimate Decks and Crafting Decks, the biggest wafers, the 64K Storage Module, the Elite Data Cable, the Elite Generator and Processor, the Ultimate Archive, both Bays and the Dimension Upgrade.
 * Seven of them round a Nibbling grow it into a Byteling.
 * One of each, with a Data Crystal, builds a <ItemLink id="synapse_core" />.
 * A wild Bitling accepts one as a gift, like any other chip.

@@ -1,12 +1,12 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.pool.StorageAccess;
 import dev.micolash.jasm.pool.StorageNetwork;
 import dev.micolash.jasm.pool.StoragePortMenu;
 import dev.micolash.jasm.pool.StorageSettings;
 import dev.micolash.jasm.storage.WaferSettings;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -23,7 +23,7 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
     private ItemFilterEditor editor;
     private JasmButton access;
-    private EditBox priority;
+    private JasmField priority;
     private JasmFrame frame;
 
     public StoragePortScreen(StoragePortMenu menu, Inventory inventory, Component title) {
@@ -36,17 +36,21 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
     protected void init() {
         super.init();
         frame = JasmFrame.rounded(new int[]{0, 0, StoragePortMenu.WIDTH, imageHeight});
+        addHelp(StoragePortMenu.WIDTH - 7, "items/storage-port.md");
         editor = new ItemFilterEditor(font, 2, false, menu::getCarried, StoragePortMenu.WIDTH - 16);
         editor.setModes(List.of(WaferSettings.Mode.ITEM, WaferSettings.Mode.FLUID, WaferSettings.Mode.TAG, WaferSettings.Mode.MOD_ID));
         editor.setSave(filter -> send(new StorageSettings(filter, menu.settings().access(), menu.settings().priority())));
         editor.open(menu.settings().filter(), Component.translatable("screen.jasm.storage.filter"), Component.empty(),
                 ItemStack.EMPTY, leftPos + 8, topPos + StoragePortMenu.FILTER_TOP, width, height);
-        access = addRenderableWidget(JasmButton.text(accessLabel(), b -> {
+        // Wide enough for the longest of the three labels, so none is cut off.
+        int accessWidth = 0;
+        for (StorageAccess mode : StorageAccess.values()) accessWidth = Math.max(accessWidth, font.width(accessLabel(mode)) + 12);
+        access = addRenderableWidget(JasmButton.text(accessLabel(menu.settings().access()), b -> {
             send(new StorageSettings(menu.settings().filter(), menu.settings().access().next(), menu.settings().priority()));
-            access.setMessage(accessLabel());
-        }, leftPos + 8, topPos + StoragePortMenu.CONTROLS_TOP, 72, 14));
+            access.setMessage(accessLabel(menu.settings().access()));
+        }, leftPos + 8, topPos + StoragePortMenu.CONTROLS_TOP, accessWidth, 14));
         access.setTooltip(Tooltip.create(Component.translatable("screen.jasm.storage.access_hint")));
-        priority = addRenderableWidget(new EditBox(font, leftPos + 8 + 80, topPos + StoragePortMenu.CONTROLS_TOP, 40, 14,
+        priority = addRenderableWidget(new JasmField(font, leftPos + 8 + accessWidth + 4, topPos + StoragePortMenu.CONTROLS_TOP, 40, 14,
                 Component.translatable("screen.jasm.storage.priority")));
         priority.setFilter(text -> text.matches("-?\\d{0,3}"));
         priority.setValue(Integer.toString(menu.settings().priority()));
@@ -60,8 +64,8 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
         });
     }
 
-    private Component accessLabel() {
-        return Component.translatable("screen.jasm.storage.access_" + menu.settings().access().getSerializedName());
+    private static Component accessLabel(StorageAccess access) {
+        return Component.translatable("screen.jasm.storage.access_" + access.getSerializedName());
     }
 
     private void send(StorageSettings settings) {

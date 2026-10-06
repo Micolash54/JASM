@@ -10,7 +10,7 @@ item_ids:
 
 # Encoding Terminal
 
-<BlockImage id="encoding_terminal" scale="8" />
+<BlockImage id="encoding_terminal" scale="3.5" />
 
 The Encoding Terminal writes recipes onto [Recipe Cards](recipe-cards.md). It is also where a Deck gets paired with a network, which unlocks autocrafting, ports and the Network tab.
 

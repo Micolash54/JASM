@@ -12,7 +12,11 @@ item_ids:
 
 # Archives
 
-<BlockImage id="advanced_archive" scale="8" />
+<Row>
+  <BlockImage id="basic_archive" scale="3.5" />
+  <BlockImage id="advanced_archive" scale="3.5" />
+  <BlockImage id="ultimate_archive" scale="3.5" />
+</Row>
 
 An Archive keeps a backup of your wafers. If one is ever lost or destroyed, the Archive rebuilds it onto a blank wafer, items and all.
 
@@ -38,6 +42,12 @@ The old Archive is used up. The new one keeps its links, its owner and its charg
 
 ## Recipes
 
-<RecipeFor id="basic_archive" />
-<RecipeFor id="advanced_archive" />
-<RecipeFor id="ultimate_archive" />
+<Column>
+  <Row>
+    <RecipeFor id="basic_archive" />
+    <RecipeFor id="advanced_archive" />
+  </Row>
+  <Row>
+    <RecipeFor id="ultimate_archive" />
+  </Row>
+</Column>

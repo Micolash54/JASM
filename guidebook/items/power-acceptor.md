@@ -10,7 +10,7 @@ item_ids:
 
 # Power Acceptor
 
-<BlockImage id="power_acceptor" scale="8" />
+<BlockImage id="power_acceptor" scale="3.5" />
 
 JASM blocks only take power from JASM generators, batteries and cables. The Power Acceptor is the way in for power from other mods.
 

@@ -22,7 +22,7 @@ Put a Bitling, Nibbling or Byteling in a Bitling Station and a little living cop
 
 * The little Bitling is only a body. The critter's own battery pays for the walk: 5 FE a tick while it is out and about.
 * When the battery drops to 5%, it walks home and sits on the pad.
-* The station charges it there at 20 FE a tick. Connect the station to a [Data Cable](data-cables.md) network or put a generator next to it.
+* The station passes the power it gets straight into the critter's battery. Connect the station to a [Data Cable](data-cables.md) network or put a generator next to it.
 * Stuck on the way home, or out of charge? It teleports back onto the pad.
 
 ## Good to know

@@ -10,7 +10,7 @@ item_ids:
 
 # Network Brain
 
-<BlockImage id="network_brain" scale="8" />
+<BlockImage id="network_brain" scale="3.5" />
 
 A network holds only 4 machines on its own. A Network Brain lifts that to 12, and with <ItemLink id="network_chamber" />s round it, a lot more.
 

@@ -27,7 +27,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int WIDTH = MAIN_X + MAIN_WIDTH;
     private static final int HEIGHT = CraftingServerMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 50;
-    private static final int BAR_X = MAIN_X + MAIN_WIDTH - 8 - BAR_WIDTH;
+    private static final int BAR_X = MAIN_X + MAIN_WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final int PANEL_X = MAIN_X + 8;
     private static final int PANEL_Y = CraftingServerMenu.JOB_Y - 4;
@@ -50,6 +50,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     @Override
     protected void init() {
         super.init();
+        addHelp(MAIN_X + MAIN_WIDTH - 7, "items/crafting-server.md");
         int y = topPos + BUTTONS_Y;
         back = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.server.back"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_BACK),

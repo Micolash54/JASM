@@ -1,0 +1,13 @@
+{
+    DataVersion: 4790,
+    size: [2, 1, 1],
+    data: [
+        {pos: [0, 0, 0], state: "jasm:data_cable{core:true,has_ports:true}", nbt: {id: "jasm:data_cable", energy: 0, ports: [{side: "east", port: {}}]}},
+        {pos: [1, 0, 0], state: "minecraft:furnace{facing:south,lit:false}"}
+    ],
+    entities: [],
+    palette: [
+        "jasm:data_cable{core:true,has_ports:true}",
+        "minecraft:furnace{facing:south,lit:false}"
+    ]
+}

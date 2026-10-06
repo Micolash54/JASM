@@ -8,7 +8,7 @@ navigation:
 
 # Wafer filters
 
-<ItemImage id="type_wafer_8" scale="6" />
+<ItemImage id="type_wafer_8" scale="4" />
 
 Right-click a wafer in the [Deck](../items/decks.md) to choose what it accepts. A wafer with no filters accepts everything.
 

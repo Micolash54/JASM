@@ -28,6 +28,7 @@ How things work, rather than what things are. The pages follow the order you wil
 ## Networks and power
 
 * [Networks](networks.md)
+* [Co-op play](co-op-play.md)
 * [Power](power.md)
 
 ## Autocrafting

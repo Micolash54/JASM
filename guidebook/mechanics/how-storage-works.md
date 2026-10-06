@@ -8,7 +8,7 @@ navigation:
 
 # How storage works
 
-<ItemImage id="capacity_wafer_1k" scale="6" />
+<ItemImage id="capacity_wafer_1k" scale="4" />
 
 Your items don't sit inside a wafer. The wafer is a key, and the items live in the world's records under that wafer's number. That is why a wafer is safe to carry, and why it can be rebuilt.
 

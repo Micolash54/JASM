@@ -10,7 +10,7 @@ item_ids:
 
 # Recipe Rack
 
-<BlockImage id="recipe_rack" scale="8" />
+<BlockImage id="recipe_rack" scale="3.5" />
 
 A Recipe Rack holds 16 filled [Recipe Cards](recipe-cards.md). Every [Crafting Server](crafting-server.md) on the same network can use them.
 

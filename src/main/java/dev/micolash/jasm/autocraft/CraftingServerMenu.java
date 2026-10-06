@@ -48,8 +48,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     public static final int MAIN_X = SIDE_WIDTH - 3;
     public static final int MAIN_WIDTH = 176;
     public static final int JOB_X = MAIN_X + 12;
-    public static final int JOB_Y = 22;
-    public static final int INVENTORY_Y = 114;
+    public static final int JOB_Y = 24;
+    public static final int INVENTORY_Y = 116;
 
     public static final int SLOT_SHOWN = CraftingServerBlockEntity.SLOTS;
     public static final int SLOT_INVENTORY = SLOT_SHOWN + 1;

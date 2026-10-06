@@ -15,15 +15,24 @@ item_ids:
 
 # Nibblings and Bytelings
 
-<GameScene zoom="6" padding="2">
-  <IsometricCamera yaw="0" pitch="15" />
-  <Entity id="jasm:wild_bitling" data="{kind:1,stage:1}" x="0.5" z="0.5" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:2,stage:1}" x="1.6" z="0.5" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:3,stage:1}" x="2.7" z="0.5" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:1,stage:2}" x="0.5" z="1.7" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:2,stage:2}" x="1.6" z="1.7" rotationY="0" />
-  <Entity id="jasm:wild_bitling" data="{kind:3,stage:2}" x="2.7" z="1.7" rotationY="0" />
-</GameScene>
+<Row>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:0,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:1,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:2,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:3,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+</Row>
 
 The grown-up stages of a [Bitling](bitlings.md). Each one works the [Chip Workshop](chip-workshop.md) better than the last.
 
@@ -41,9 +50,17 @@ The grown-up stages of a [Bitling](bitlings.md). Each one works the [Chip Worksh
 
 ## Recipes
 
-<RecipeFor id="logic_nibbling" />
-<RecipeFor id="memory_nibbling" />
-<RecipeFor id="link_nibbling" />
-<RecipeFor id="logic_byteling" />
-<RecipeFor id="memory_byteling" />
-<RecipeFor id="link_byteling" />
+<Column>
+  <Row>
+    <RecipeFor id="logic_nibbling" />
+    <RecipeFor id="memory_nibbling" />
+  </Row>
+  <Row>
+    <RecipeFor id="link_nibbling" />
+    <RecipeFor id="logic_byteling" />
+  </Row>
+  <Row>
+    <RecipeFor id="memory_byteling" />
+    <RecipeFor id="link_byteling" />
+  </Row>
+</Column>

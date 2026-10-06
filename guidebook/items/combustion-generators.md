@@ -12,7 +12,11 @@ item_ids:
 
 # Combustion Generators
 
-<BlockImage id="advanced_combustion_generator" scale="8" />
+<Row>
+  <BlockImage id="basic_combustion_generator" scale="3.5" />
+  <BlockImage id="advanced_combustion_generator" scale="3.5" />
+  <BlockImage id="elite_combustion_generator" scale="3.5" />
+</Row>
 
 Burn anything a furnace burns and get power. A generator sends it into every block it touches, and charges Decks and other chargeable items in its charging slot.
 
@@ -36,6 +40,12 @@ The old generator is used up. The new one keeps its stored power.
 
 ## Recipes
 
-<RecipeFor id="basic_combustion_generator" />
-<RecipeFor id="advanced_combustion_generator" />
-<RecipeFor id="elite_combustion_generator" />
+<Column>
+  <Row>
+    <RecipeFor id="basic_combustion_generator" />
+    <RecipeFor id="advanced_combustion_generator" />
+  </Row>
+  <Row>
+    <RecipeFor id="elite_combustion_generator" />
+  </Row>
+</Column>

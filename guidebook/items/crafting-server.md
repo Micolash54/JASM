@@ -10,7 +10,7 @@ item_ids:
 
 # Crafting Server
 
-<BlockImage id="crafting_server" scale="8" />
+<BlockImage id="crafting_server" scale="3.5" />
 
 The Crafting Server does the work. It runs one crafting job at a time. [Processors](processors.md) decide how many crafts run at once, and [Storage Modules](storage-modules.md) decide how big a job fits.
 

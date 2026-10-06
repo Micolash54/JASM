@@ -16,7 +16,15 @@ item_ids:
 
 # Capacity Wafers
 
-<ItemImage id="capacity_wafer_4k" scale="8" />
+<Row>
+  <ItemImage id="capacity_wafer_basic" scale="3.5" />
+  <ItemImage id="capacity_wafer_1k" scale="3.5" />
+  <ItemImage id="capacity_wafer_4k" scale="3.5" />
+  <ItemImage id="capacity_wafer_16k" scale="3.5" />
+  <ItemImage id="capacity_wafer_64k" scale="3.5" />
+  <ItemImage id="capacity_wafer_256k" scale="3.5" />
+  <ItemImage id="capacity_wafer_1m" scale="3.5" />
+</Row>
 
 The simple storage chip. A Capacity Wafer holds any mix of items, up to a total. Put it in a [Deck](decks.md) or link it to an [Archive](archives.md).
 
@@ -38,10 +46,20 @@ Fluids have their own wafers: see [Fluid Capacity Wafers](fluid-capacity-wafers.
 
 ## Recipes
 
-<RecipeFor id="capacity_wafer_basic" />
-<RecipeFor id="capacity_wafer_1k" />
-<RecipeFor id="capacity_wafer_4k" />
-<RecipeFor id="capacity_wafer_16k" />
-<RecipeFor id="capacity_wafer_64k" />
-<RecipeFor id="capacity_wafer_256k" />
-<RecipeFor id="capacity_wafer_1m" />
+<Column>
+  <Row>
+    <RecipeFor id="capacity_wafer_basic" />
+    <RecipeFor id="capacity_wafer_1k" />
+  </Row>
+  <Row>
+    <RecipeFor id="capacity_wafer_4k" />
+    <RecipeFor id="capacity_wafer_16k" />
+  </Row>
+  <Row>
+    <RecipeFor id="capacity_wafer_64k" />
+    <RecipeFor id="capacity_wafer_256k" />
+  </Row>
+  <Row>
+    <RecipeFor id="capacity_wafer_1m" />
+  </Row>
+</Column>

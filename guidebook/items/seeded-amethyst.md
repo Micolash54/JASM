@@ -16,18 +16,32 @@ item_ids:
 
 # Seeded Amethyst
 
-<GameScene zoom="4" padding="2">
-  <IsometricCamera yaw="20" pitch="30" />
-  <Block id="jasm:seeded_amethyst" x="0" y="0" z="0" />
-  <Block id="jasm:seeded_amethyst" x="2" y="0" z="0" />
-  <Block id="jasm:small_data_crystal_bud" x="2" y="1" z="0" />
-  <Block id="jasm:seeded_amethyst" x="4" y="0" z="0" />
-  <Block id="jasm:medium_data_crystal_bud" x="4" y="1" z="0" />
-  <Block id="jasm:seeded_amethyst" x="6" y="0" z="0" />
-  <Block id="jasm:large_data_crystal_bud" x="6" y="1" z="0" />
-  <Block id="jasm:seeded_amethyst" x="8" y="0" z="0" />
-  <Block id="jasm:data_crystal_cluster" x="8" y="1" z="0" />
-</GameScene>
+<Row alignItems="end">
+  <GameScene zoom="3.5" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:seeded_amethyst" />
+  </GameScene>
+  <GameScene zoom="3.5" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:seeded_amethyst" />
+    <Block id="jasm:small_data_crystal_bud" y="1" />
+  </GameScene>
+  <GameScene zoom="3.5" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:seeded_amethyst" />
+    <Block id="jasm:medium_data_crystal_bud" y="1" />
+  </GameScene>
+  <GameScene zoom="3.5" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:seeded_amethyst" />
+    <Block id="jasm:large_data_crystal_bud" y="1" />
+  </GameScene>
+  <GameScene zoom="3.5" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Block id="jasm:seeded_amethyst" />
+    <Block id="jasm:data_crystal_cluster" y="1" />
+  </GameScene>
+</Row>
 
 Seeded Amethyst is a Block of Amethyst with a <ItemLink id="crystal_seed" /> in it. It grows Data Crystal buds on its open sides, like budding amethyst.
 

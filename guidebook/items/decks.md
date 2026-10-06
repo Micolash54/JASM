@@ -14,7 +14,13 @@ item_ids:
 
 # Decks
 
-<ItemImage id="advanced_deck" scale="8" />
+<Row>
+  <ItemImage id="starter_deck" scale="4" />
+  <ItemImage id="basic_deck" scale="4" />
+  <ItemImage id="advanced_deck" scale="4" />
+  <ItemImage id="elite_deck" scale="4" />
+  <ItemImage id="ultimate_deck" scale="4" />
+</Row>
 
 A Deck is a handheld reader for your wafers. Put wafers in its side panel and store or take items through the grid, with search, sorting and a few sizes of window.
 
@@ -46,8 +52,16 @@ The old Deck is used up. The new one keeps its wafers and its charge. Advanced a
 
 ## Recipes
 
-<RecipeFor id="starter_deck" />
-<RecipeFor id="basic_deck" />
-<RecipeFor id="advanced_deck" />
-<RecipeFor id="elite_deck" />
-<RecipeFor id="ultimate_deck" />
+<Column>
+  <Row>
+    <RecipeFor id="starter_deck" />
+    <RecipeFor id="basic_deck" />
+  </Row>
+  <Row>
+    <RecipeFor id="advanced_deck" />
+    <RecipeFor id="elite_deck" />
+  </Row>
+  <Row>
+    <RecipeFor id="ultimate_deck" />
+  </Row>
+</Column>

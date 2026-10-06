@@ -10,7 +10,7 @@ item_ids:
 
 # Demolition Bay
 
-<BlockImage id="demolition_bay" scale="8" />
+<BlockImage id="demolition_bay" scale="3.5" />
 
 A Demolition Bay breaks the block in front of it into its own grid, scoops up fluids and picks up items that land on its face. A Bitling in welding goggles works the laser.
 

@@ -16,12 +16,18 @@ public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = RecipeRackMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 50;
-    private static final int BAR_X = WIDTH - 8 - BAR_WIDTH;
+    private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
 
     public RecipeRackScreen(RecipeRackMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
         this.inventoryLabelY = RecipeRackMenu.INVENTORY_Y - 10;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        addHelp(WIDTH - 7, "items/recipe-rack.md");
     }
 
     @Override

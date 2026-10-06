@@ -12,7 +12,13 @@ item_ids:
 
 # Item ports
 
-<ItemImage id="input_output_port" scale="8" />
+<Row alignItems="center">
+<ItemImage id="input_output_port" scale="5" />
+<GameScene zoom="3.5" padding="2">
+  <IsometricCamera yaw="20" pitch="30" />
+  <ImportStructure src="../assets/input_output_port.snbt" />
+</GameScene>
+</Row>
 
 Ports mount on a [Data Cable](data-cables.md) and move items and fluids between the network and the block next to them.
 
@@ -49,6 +55,12 @@ Fluids share that speed with items.
 
 An Input or Output Port is an Access Port with a hopper or dropper, a Link Chip and a dye.
 
-<RecipeFor id="input_port" />
-<RecipeFor id="output_port" />
-<RecipeFor id="input_output_port" />
+<Column>
+  <Row>
+    <RecipeFor id="input_port" />
+    <RecipeFor id="output_port" />
+  </Row>
+  <Row>
+    <RecipeFor id="input_output_port" />
+  </Row>
+</Column>

@@ -8,14 +8,13 @@ navigation:
 
 # Power
 
-<BlockImage id="basic_combustion_generator" scale="6" />
+<BlockImage id="basic_combustion_generator" scale="3.5" />
 
 Most JASM blocks run on FE. Here is where it comes from and how it travels.
 
 ## Where it comes from
 
 * [Combustion Generators](../items/combustion-generators.md) burn fuel. They are the simple answer.
-* A [Creative Battery](../items/creative-battery.md) for creative worlds.
 * Other mods, through the [Power Acceptor](../items/power-acceptor.md). JASM blocks never take power straight from another mod.
 
 ## How it travels

@@ -17,11 +17,11 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     private static final int WIDTH = 176;
     private static final int HEIGHT = CrystalFoundryMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int CRYSTAL_X = 68;
-    private static final int CRYSTAL_Y = 24;
+    private static final int CRYSTAL_Y = 28;
     private static final int PROGRESS_X = 58;
     private static final int PROGRESS_WIDTH = 36;
-    private static final int PROGRESS_Y = 47;
-    private static final int COUNT_Y = 55;
+    private static final int PROGRESS_Y = 51;
+    private static final int COUNT_Y = 59;
     private static final int POWER_X = 8;
     private static final int POWER_WIDTH = WIDTH - 16;
     private static final int ROW_HEIGHT = 12;
@@ -30,6 +30,12 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     public CrystalFoundryScreen(CrystalFoundryMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
         this.inventoryLabelY = CrystalFoundryMenu.INVENTORY_Y - 10;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        addHelp(WIDTH - 7, "items/crystal-foundry.md");
     }
 
     @Override

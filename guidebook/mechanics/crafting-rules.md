@@ -8,7 +8,7 @@ navigation:
 
 # Crafting rules
 
-<ItemImage id="advanced_crafting_deck" scale="6" />
+<ItemImage id="advanced_crafting_deck" scale="4" />
 
 A rule makes the network craft for you, without you asking. Set them on the Rules tab of a [Crafting Deck](../items/crafting-decks.md).
 

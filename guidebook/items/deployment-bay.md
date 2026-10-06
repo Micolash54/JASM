@@ -10,7 +10,7 @@ item_ids:
 
 # Deployment Bay
 
-<BlockImage id="deployment_bay" scale="8" />
+<BlockImage id="deployment_bay" scale="3.5" />
 
 A Deployment Bay places blocks, seeds and fluids from its own grid and tank into the space in front of it, as a player would. It can also throw items out. A Bitling in a hard hat does the work.
 

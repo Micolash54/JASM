@@ -12,7 +12,11 @@ item_ids:
 
 # Processors
 
-<ItemImage id="advanced_processor" scale="8" />
+<Row>
+  <ItemImage id="basic_processor" scale="4" />
+  <ItemImage id="advanced_processor" scale="4" />
+  <ItemImage id="elite_processor" scale="4" />
+</Row>
 
 Processors go in a [Crafting Server](crafting-server.md). Each one runs crafts side by side, so more Processors means a job finishes sooner.
 
@@ -32,6 +36,12 @@ Each tier is made from four of the tier below. The Advanced Processor also needs
 
 ## Recipes
 
-<RecipeFor id="basic_processor" />
-<RecipeFor id="advanced_processor" />
-<RecipeFor id="elite_processor" />
+<Column>
+  <Row>
+    <RecipeFor id="basic_processor" />
+    <RecipeFor id="advanced_processor" />
+  </Row>
+  <Row>
+    <RecipeFor id="elite_processor" />
+  </Row>
+</Column>

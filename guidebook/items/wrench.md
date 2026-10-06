@@ -10,7 +10,7 @@ item_ids:
 
 # Wrench
 
-<ItemImage id="wrench" scale="8" />
+<ItemImage id="wrench" scale="4" />
 
 For turning machines and picking them up.
 

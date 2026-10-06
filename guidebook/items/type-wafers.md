@@ -16,7 +16,15 @@ item_ids:
 
 # Type Wafers
 
-<ItemImage id="type_wafer_16" scale="8" />
+<Row>
+  <ItemImage id="type_wafer_4" scale="3.5" />
+  <ItemImage id="type_wafer_8" scale="3.5" />
+  <ItemImage id="type_wafer_16" scale="3.5" />
+  <ItemImage id="type_wafer_32" scale="3.5" />
+  <ItemImage id="type_wafer_64" scale="3.5" />
+  <ItemImage id="type_wafer_128" scale="3.5" />
+  <ItemImage id="type_wafer_256" scale="3.5" />
+</Row>
 
 A Type Wafer holds only a few kinds of item, but a huge amount of each. Pick one for the things you collect by the thousand, like cobblestone.
 
@@ -42,10 +50,20 @@ For fluids, see [Fluid Type Wafers](fluid-type-wafers.md).
 
 ## Recipes
 
-<RecipeFor id="type_wafer_4" />
-<RecipeFor id="type_wafer_8" />
-<RecipeFor id="type_wafer_16" />
-<RecipeFor id="type_wafer_32" />
-<RecipeFor id="type_wafer_64" />
-<RecipeFor id="type_wafer_128" />
-<RecipeFor id="type_wafer_256" />
+<Column>
+  <Row>
+    <RecipeFor id="type_wafer_4" />
+    <RecipeFor id="type_wafer_8" />
+  </Row>
+  <Row>
+    <RecipeFor id="type_wafer_16" />
+    <RecipeFor id="type_wafer_32" />
+  </Row>
+  <Row>
+    <RecipeFor id="type_wafer_64" />
+    <RecipeFor id="type_wafer_128" />
+  </Row>
+  <Row>
+    <RecipeFor id="type_wafer_256" />
+  </Row>
+</Column>

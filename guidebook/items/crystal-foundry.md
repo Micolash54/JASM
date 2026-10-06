@@ -10,7 +10,7 @@ item_ids:
 
 # Crystal Foundry
 
-<BlockImage id="crystal_foundry" scale="8" />
+<BlockImage id="crystal_foundry" scale="3.5" />
 
 The Crystal Foundry grows Data Crystals in bulk and cuts each one into a <ItemLink id="blank_chip" />.
 

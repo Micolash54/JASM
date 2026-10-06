@@ -10,7 +10,7 @@ item_ids:
 
 # Link Chip
 
-<ItemImage id="link_chip" scale="8" />
+<ItemImage id="link_chip" scale="4" />
 
 The chip for the third tier of JASM. A Link Chip can only be made by a Bitling in the [Chip Workshop](chip-workshop.md). It can't be crafted by hand.
 

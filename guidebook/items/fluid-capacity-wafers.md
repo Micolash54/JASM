@@ -16,7 +16,15 @@ item_ids:
 
 # Fluid Capacity Wafers
 
-<ItemImage id="fluid_capacity_wafer_4k" scale="8" />
+<Row>
+  <ItemImage id="fluid_capacity_wafer_basic" scale="4" />
+  <ItemImage id="fluid_capacity_wafer_1k" scale="3.5" />
+  <ItemImage id="fluid_capacity_wafer_4k" scale="3.5" />
+  <ItemImage id="fluid_capacity_wafer_16k" scale="3.5" />
+  <ItemImage id="fluid_capacity_wafer_64k" scale="3.5" />
+  <ItemImage id="fluid_capacity_wafer_256k" scale="3.5" />
+  <ItemImage id="fluid_capacity_wafer_1m" scale="3.5" />
+</Row>
 
 The same idea as a [Capacity Wafer](capacity-wafers.md), for fluids. It holds any mix of fluids, counted in buckets: one bucket takes the room of one item.
 
@@ -42,10 +50,20 @@ Every size is made from three wafers of the size below. They are used up, and th
 
 ## Recipes
 
-<RecipeFor id="fluid_capacity_wafer_basic" />
-<RecipeFor id="fluid_capacity_wafer_1k" />
-<RecipeFor id="fluid_capacity_wafer_4k" />
-<RecipeFor id="fluid_capacity_wafer_16k" />
-<RecipeFor id="fluid_capacity_wafer_64k" />
-<RecipeFor id="fluid_capacity_wafer_256k" />
-<RecipeFor id="fluid_capacity_wafer_1m" />
+<Column>
+  <Row>
+    <RecipeFor id="fluid_capacity_wafer_basic" />
+    <RecipeFor id="fluid_capacity_wafer_1k" />
+  </Row>
+  <Row>
+    <RecipeFor id="fluid_capacity_wafer_4k" />
+    <RecipeFor id="fluid_capacity_wafer_16k" />
+  </Row>
+  <Row>
+    <RecipeFor id="fluid_capacity_wafer_64k" />
+    <RecipeFor id="fluid_capacity_wafer_256k" />
+  </Row>
+  <Row>
+    <RecipeFor id="fluid_capacity_wafer_1m" />
+  </Row>
+</Column>

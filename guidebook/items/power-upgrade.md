@@ -10,7 +10,7 @@ item_ids:
 
 # Power Upgrade
 
-<ItemImage id="power_upgrade" scale="8" />
+<ItemImage id="power_upgrade" scale="4" />
 
 A port with a Power Upgrade supplies FE to the machine it faces. It is how a furnace or a modded machine gets power from your network.
 

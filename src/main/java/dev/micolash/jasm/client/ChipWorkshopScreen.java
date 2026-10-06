@@ -82,9 +82,10 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         super.init();
         // The Workshop's panel is centred like any other machine's; the critter's panel hangs off its left side.
         leftPos = Math.max(0, (width - ChipWorkshopMenu.MAIN_WIDTH) / 2 - MAIN_X);
+        addHelp(MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 7, "items/chip-workshop.md");
         batchButton = addRenderableWidget(JasmButton.text(batchLabel(),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_BATCH),
-                leftPos + MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 8 - MODE_WIDTH, topPos + 4, MODE_WIDTH, BAR_HEIGHT));
+                leftPos + MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 8 - HELP_ROOM - MODE_WIDTH, topPos + 4, MODE_WIDTH, BAR_HEIGHT));
         advancedButton = addRenderableWidget(JasmButton.text(advancedLabel(),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_ADVANCED),
                 leftPos + SIDE_PAD, topPos + ADVANCED_Y, SIDE_TEXT_WIDTH, BAR_HEIGHT));

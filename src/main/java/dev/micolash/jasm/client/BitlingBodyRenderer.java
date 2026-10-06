@@ -68,6 +68,12 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         state.kind = bitling.kind();
         state.bodyYaw = Mth.rotLerp(partialTicks, bitling.yBodyRotO, bitling.yBodyRot);
         state.hurt = bitling.hurtTime > 0;
+        // A Bitling outside the world, like one in a guide picture, never ticks, so its loops can't play: it stands still.
+        if (bitling.level() != Minecraft.getInstance().level) {
+            state.pose = animations.sample(animations.clip(clipName(Act.STAND)), 0);
+            state.held.clear();
+            return;
+        }
         Motion motion = motions.computeIfAbsent(bitling, b -> new Motion(b.getId()));
         state.pose = motion.update(bitling.act(), (bitling.tickCount + partialTicks) / 20F);
         // It only ever holds something up to look at it or eat it, whichever loop stands in for that.

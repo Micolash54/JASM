@@ -358,6 +358,7 @@
   "screen.jasm.archive.drain": "Usage %s FE/t",
   "screen.jasm.archive.no_power": "No power: can't link or recover",
   "screen.jasm.deck_link": "Deck Link",
+  "screen.jasm.help": "Open guide page",
   "screen.jasm.archive.reset_deck": "Reset",
   "screen.jasm.archive.no_deck": "Link a paired Deck",
   "screen.jasm.archive.linked_player": "Linked:",

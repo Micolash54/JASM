@@ -32,6 +32,12 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
         this.inventoryLabelY = NetworkBrainMenu.INVENTORY_Y - 10;
     }
 
+    @Override
+    protected void init() {
+        super.init();
+        addHelp(WIDTH - 7, "items/network-brain.md");
+    }
+
     private static int colour(BrainStatus status) {
         return switch (status) {
             case WORKING -> JasmGui.GOOD;

@@ -46,7 +46,6 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Data Cables](data-cables.md): join machines and carry power.
 * [Power Acceptor](power-acceptor.md): lets other mods' power in.
 * [Combustion Generators](combustion-generators.md): burn fuel for power.
-* [Creative Battery](creative-battery.md): unlimited power.
 * [Network Brain](network-brain.md): lifts the machine limit.
 * [Network Chamber](network-chamber.md): builds brain floors and towers.
 

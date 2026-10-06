@@ -8,7 +8,10 @@ navigation:
 
 # Befriending Bitlings
 
-<ItemImage id="basic_bitling" scale="6" />
+<GameScene zoom="6" padding="2">
+  <IsometricCamera yaw="20" pitch="30" />
+  <Entity id="jasm:wild_bitling" data="{kind:0,stage:0}" x="0.5" z="0.5" rotationY="0" />
+</GameScene>
 
 You can't craft a Basic Bitling. You find one in the wild and make friends with it.
 

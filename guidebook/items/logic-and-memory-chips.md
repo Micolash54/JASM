@@ -13,7 +13,10 @@ item_ids:
 
 # Logic and Memory Chips
 
-<ItemImage id="logic_chip" scale="4" />
+<Row>
+  <ItemImage id="logic_chip" scale="4" />
+  <ItemImage id="memory_chip" scale="4" />
+</Row>
 
 Logic and Memory Chips are the parts most JASM recipes are built from.
 
@@ -25,7 +28,13 @@ Logic and Memory Chips are the parts most JASM recipes are built from.
 
 ## Recipes
 
-<RecipeFor id="unquenched_logic_chip" />
-<Recipe id="logic_chip" />
-<RecipeFor id="unquenched_memory_chip" />
-<Recipe id="memory_chip" />
+<Column>
+  <Row>
+    <RecipeFor id="unquenched_logic_chip" />
+    <Recipe id="logic_chip" />
+  </Row>
+  <Row>
+    <RecipeFor id="unquenched_memory_chip" />
+    <Recipe id="memory_chip" />
+  </Row>
+</Column>

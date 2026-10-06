@@ -39,6 +39,12 @@ public class BitlingStationScreen extends JasmScreen<BitlingStationMenu> {
         this.inventoryLabelY = BitlingStationMenu.INVENTORY_Y - 10;
     }
 
+    @Override
+    protected void init() {
+        super.init();
+        addHelp(WIDTH - 7, "items/bitling-station.md");
+    }
+
     private boolean hasCritter() {
         return !menu.critter().isEmpty();
     }

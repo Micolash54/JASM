@@ -11,7 +11,7 @@ item_ids:
 
 # Recipe Cards
 
-<ItemImage id="filled_recipe_card" scale="8" />
+<ItemImage id="filled_recipe_card" scale="4" />
 
 A Recipe Card holds one recipe for autocrafting. Write it at an [Encoding Terminal](encoding-terminal.md), then store it in a [Recipe Rack](recipe-rack.md).
 

@@ -8,7 +8,16 @@ navigation:
 
 # Training Bitlings
 
-<ItemImage id="logic_nibbling" scale="6" />
+<Row>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:0,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+  <GameScene zoom="6" padding="2">
+    <IsometricCamera yaw="20" pitch="30" />
+    <Entity id="jasm:wild_bitling" data="{kind:1,stage:0}" x="0.5" z="0.5" rotationY="0" />
+  </GameScene>
+</Row>
 
 A Bitling that works in the [Chip Workshop](../items/chip-workshop.md) learns from every chip it makes. When its training bar is full, you can grow it up in a crafting grid.
 

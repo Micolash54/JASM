@@ -10,7 +10,7 @@ item_ids:
 
 # Redstone Upgrade
 
-<ItemImage id="redstone_upgrade" scale="8" />
+<ItemImage id="redstone_upgrade" scale="4" />
 
 Lets redstone switch a port on and off.
 

@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,10 +14,26 @@ import org.jspecify.annotations.Nullable;
 
 /** What every JASM screen shares: the slot under the mouse lights up lavender instead of the game's flat white. */
 public abstract class JasmScreen<T extends AbstractContainerMenu> extends AbstractContainerScreen<T> {
+    /** The size of the "?" key, and the room it takes at the end of the title row with the gap before it. */
+    public static final int HELP_SIZE = 13;
+    public static final int HELP_HEIGHT = 15;
+    public static final int HELP_ROOM = HELP_SIZE + 3;
+
     private @Nullable Slot hidden;
 
     protected JasmScreen(T menu, Inventory inventory, Component title, int width, int height) {
         super(menu, inventory, title, width, height);
+    }
+
+    /**
+     * Adds the "?" key at the end of the title row, its right edge {@code right} pixels from the screen's left. It opens
+     * {@code page} of the guide.
+     */
+    protected void addHelp(int right, String page) {
+        JasmButton help = JasmButton.text(Component.literal("?"), b -> JasmGuide.open(page), leftPos + right - HELP_SIZE,
+                topPos + titleLabelY - 3, HELP_SIZE, HELP_HEIGHT);
+        help.setTooltip(Tooltip.create(Component.translatable("screen.jasm.help")));
+        addRenderableWidget(help);
     }
 
     /** Where the Deck Link window lies, for a screen that has one; null for the rest. */

@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final int WIDTH = AccessPortMenu.WIDTH;
     private static final int BAR_WIDTH = 50;
-    private static final int BAR_X = WIDTH - 8 - BAR_WIDTH;
+    private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final int NAME_Y = 88;
     private static final int LIST_X = 8;
@@ -66,6 +66,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     protected void init() {
         super.init();
         frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS));
+        addHelp(WIDTH - 7, "items/access-port.md");
         name = new JasmField(font, leftPos + 8, topPos + NAME_Y, WIDTH - 16 - 48, 12, Component.translatable("screen.jasm.port.name"));
         name.setMaxLength(AccessPortMenu.MAX_NAME);
         name.setValue(menu.label());

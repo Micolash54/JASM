@@ -8,7 +8,7 @@ navigation:
 
 # Sending items to players
 
-<ItemImage id="ultimate_deck" scale="6" />
+<ItemImage id="ultimate_deck" scale="4" />
 
 Deck to Deck sends items to another player on your network. They travel for a while, then land in the other player's inbox.
 
