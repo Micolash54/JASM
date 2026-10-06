@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/main/resources/jasm_logo.png" alt="JASM" width="448">
+  <img src="wiki/images/logo_3d_hd.png" alt="JASM" width="800">
 </p>
 
 <p align="center"><b>Just Another Storage Mod</b>: portable, recoverable digital storage for Minecraft.</p>
