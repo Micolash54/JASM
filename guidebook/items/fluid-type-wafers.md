@@ -42,6 +42,8 @@ Every size is made from two wafers of the size before. They are used up, and the
 
 For mixed fluids with no limit on kinds, see [Fluid Capacity Wafers](fluid-capacity-wafers.md).
 
+<br />
+<br />
 ## Recipes
 
 <Column>

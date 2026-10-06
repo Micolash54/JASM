@@ -18,6 +18,8 @@ For turning machines and picking them up.
 * **Sneak and right-click** a JASM machine, cable or power block to pick it up at once. It keeps what it keeps when mined.
 * Wrenches from other mods work on JASM blocks too, and this one works with mods that accept any wrench.
 
+<br />
+<br />
 ## Recipe
 
 Four [Data Crystals](data-crystal.md) in a line.

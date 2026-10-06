@@ -25,6 +25,8 @@ item_ids:
 
 The Access Port is how your network talks to other machines. Put one next to a furnace, a modded machine or a multiblock, and write processing cards for it. Every block touching the port that takes items counts as a machine.
 
+<br />
+<br />
 ## Setting it up
 
 1. Join the port to your network with a [Data Cable](data-cables.md).
@@ -33,6 +35,8 @@ The Access Port is how your network talks to other machines. Put one next to a f
 
 Jobs send the ingredients in and wait for the results to come back. Fluids work too. Choose several machines and the work is shared between them.
 
+<br />
+<br />
 ## Two shapes
 
 * **Full block:** also takes items from any face, even without a crafting job. It has an eight-slot buffer. Ordinary items go to the owner's paired Deck, or to another paired Deck you pick in the port. Items wait if the Deck is full.
@@ -40,6 +44,8 @@ Jobs send the ingredients in and wait for the results to come back. Fluids work 
 
 Convert one into the other in a crafting grid. Both recipes are below.
 
+<br />
+<br />
 ## Good to know
 
 * A thin port serves and accepts items only through its outward face, including from pipes and hoppers while idle.
@@ -47,6 +53,8 @@ Convert one into the other in a crafting grid. Both recipes are below.
 * Add a [Power Upgrade](power-upgrade.md) to supply FE to the machine it faces.
 * It uses 2 FE a tick and counts toward the [machine limit](network-brain.md).
 
+<br />
+<br />
 ## Recipes
 
 <RecipesFor id="access_port" />

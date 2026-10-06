@@ -40,6 +40,8 @@ The same idea as a [Capacity Wafer](capacity-wafers.md), for fluids. It holds an
 
 Every size is made from three wafers of the size below. They are used up, and the new wafer holds all of their fluid and starts unlinked. The 256K and 1M sizes need [Synapse Cores](synapse-core.md).
 
+<br />
+<br />
 ## Using them
 
 * They go in any [Deck](decks.md) slot, next to item wafers.
@@ -48,6 +50,8 @@ Every size is made from three wafers of the size below. They are used up, and th
 * Click a fluid with an empty bucket to fill it.
 * Input and Output Ports move fluids too. See [item ports](item-ports.md).
 
+<br />
+<br />
 ## Recipes
 
 <Column>

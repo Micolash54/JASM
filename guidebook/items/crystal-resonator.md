@@ -10,7 +10,7 @@ item_ids:
 
 # Crystal Resonator
 
-<GameScene zoom="6" padding="2">
+<GameScene zoom="3.5" padding="2">
   <IsometricCamera yaw="20" pitch="30" />
   <Block id="jasm:seeded_amethyst" x="0" y="0" z="0" />
   <Block id="jasm:data_crystal_cluster" x="0" y="1" z="0" />
@@ -26,6 +26,8 @@ A powered Crystal Resonator makes the <ItemLink id="seeded_amethyst" /> next to 
 * Each extra growth has a 6% chance by default of wearing the block down.
 * It counts toward a network's machine limit. See [the Network Brain](network-brain.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="crystal_resonator" />

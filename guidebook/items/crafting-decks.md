@@ -25,12 +25,16 @@ A [Deck](decks.md) with a 3x3 crafting grid. Ingredients come straight from its 
 * It is also how you ask for [autocrafting](../mechanics/autocrafting.md), and where you set [crafting rules](../mechanics/crafting-rules.md).
 * Only Advanced, Elite and Ultimate Decks come in this form.
 
+<br />
+<br />
 ## Getting one
 
 Craft a Deck of the same tier, or upgrade from the Crafting Deck below it. Either way it keeps its wafers, its charge and whatever is in its grid.
 
 A new Crafting Deck links itself to the network of the [Encoding Terminal](encoding-terminal.md) you used last.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

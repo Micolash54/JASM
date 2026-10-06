@@ -26,6 +26,8 @@ Logic and Memory Chips are the parts most JASM recipes are built from.
 * Second-tier recipes need them, such as the Basic Deck and the 1K and 4K wafers.
 * The Chip Workshop makes them too.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

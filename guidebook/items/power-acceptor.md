@@ -23,6 +23,8 @@ Put it between the other mod's power and a [Data Cable](data-cables.md) or machi
 
 If you only need to charge a [Deck](decks.md), a [Combustion Generator](combustion-generators.md) is simpler.
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="power_acceptor" />

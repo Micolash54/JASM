@@ -12,6 +12,8 @@ navigation:
 
 Right-click a wafer in the [Deck](../items/decks.md) to choose what it accepts. A wafer with no filters accepts everything.
 
+<br />
+<br />
 ## Rules
 
 Each filter is a row. A row can match an **Item**, a **Tag** or a **Mod ID** (a **Fluid** on a fluid wafer), and it can **Allow** or **Deny**.
@@ -21,10 +23,14 @@ Each filter is a row. A row can match an **Item**, a **Tag** or a **Mod ID** (a 
 * Rows can be switched off, moved up or down, or removed.
 * With filters on, items that match no row stay out.
 
+<br />
+<br />
 ## Filling order
 
 Wafers fill from left to right. When several kinds arrive together, the higher Allow rows take space first.
 
+<br />
+<br />
 ## Empty out
 
 The same window has an **Empty out** button. It moves everything on that wafer onto the Deck's other wafers, and each item costs the usual charge.

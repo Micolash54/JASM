@@ -8,6 +8,8 @@ navigation:
 
 One page for each item, block and machine, with its recipe. Hold the guide key over an item to jump to its page. The pages are in the order you will meet them.
 
+<br />
+<br />
 ## Crystals and chips
 
 * [JASM Guide](guide-book.md): the book you are reading.
@@ -20,6 +22,8 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Blank Chip](blank-chip.md): cut from a Data Crystal.
 * [Logic and Memory Chips](logic-and-memory-chips.md): the parts of every recipe.
 
+<br />
+<br />
 ## Bitlings and the Workshop
 
 * [Chip Workshop](chip-workshop.md): a Bitling turns Blank Chips into better ones.
@@ -30,6 +34,8 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Advanced Chips](advanced-chips.md): rare, for the top tier.
 * [Synapse Core](synapse-core.md): unlocks the biggest wafers.
 
+<br />
+<br />
 ## Storage
 
 * [Capacity Wafers](capacity-wafers.md): any mix of items.
@@ -41,6 +47,8 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Dimension Upgrade](dimension-upgrade.md): use a Deck outside the Overworld.
 * [Archives](archives.md): backups for your wafers.
 
+<br />
+<br />
 ## Network and power
 
 * [Data Cables](data-cables.md): join machines and carry power.
@@ -49,6 +57,8 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Network Brain](network-brain.md): lifts the machine limit.
 * [Network Chamber](network-chamber.md): builds brain floors and towers.
 
+<br />
+<br />
 ## Ports and bays
 
 * [Access Port](access-port.md): talks to other machines.
@@ -59,6 +69,8 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Demolition Bay](demolition-bay.md): breaks blocks.
 * [Wrench](wrench.md): turn machines and pick them up.
 
+<br />
+<br />
 ## Autocrafting
 
 * [Encoding Terminal](encoding-terminal.md): writes recipes and pairs Decks.

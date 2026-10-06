@@ -17,6 +17,8 @@ The JASM Guide is the book you are reading now.
 * Right-click it to open the guide.
 * Hold the guide key (G by default) over any item's tooltip to jump to that item's page. You don't need the book for this.
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="guide_book" />

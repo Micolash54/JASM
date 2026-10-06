@@ -36,6 +36,7 @@ navigation:
 </Row>
 
 Data Crystals are the raw material for everything in JASM. You grow them on a block of amethyst.
+
 <br />
 <br />
 ## Step by step

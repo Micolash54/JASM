@@ -21,6 +21,8 @@ navigation:
 
 A Bitling that works in the [Chip Workshop](../items/chip-workshop.md) learns from every chip it makes. When its training bar is full, you can grow it up in a crafting grid.
 
+<br />
+<br />
 ## The ladder
 
 | Stage | Chips to fill the bar | Grows up with |
@@ -32,6 +34,8 @@ A Bitling that works in the [Chip Workshop](../items/chip-workshop.md) learns fr
 
 Put the critter in the middle of the grid and the rest round it. It keeps its charge when it grows up. The real grids are on the pages for [Bitlings](../items/bitlings.md) and [Nibblings and Bytelings](../items/nibblings-and-bytelings.md).
 
+<br />
+<br />
 ## Why bother
 
 * Bigger batteries: 50,000 FE for a Basic Bitling, 100,000 for a typed one, 200,000 for a Nibbling and 400,000 for a Byteling.

@@ -20,6 +20,8 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 | Cost | 20 FE for each block, fluid or stack |
 | Holds | 10,000 FE and 16 buckets |
 
+<br />
+<br />
 ## Good to know
 
 * An [Output Port](item-ports.md) fills it.
@@ -29,6 +31,8 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 
 Its opposite is the [Demolition Bay](demolition-bay.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="deployment_bay" />

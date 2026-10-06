@@ -30,10 +30,14 @@ Every tier crafts at the same speed. A higher tier just does more of them at onc
 
 With all Processors busy, a job waits, even if other machines are free.
 
+<br />
+<br />
 ## Making one
 
 Each tier is made from four of the tier below. The Advanced Processor also needs a Link Chip and the Elite an Advanced Logic Chip.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

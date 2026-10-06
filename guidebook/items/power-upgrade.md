@@ -17,6 +17,8 @@ A port with a Power Upgrade supplies FE to the machine it faces. It is how a fur
 * Every port has a slot for it: [Access Ports](access-port.md) and [item ports](item-ports.md).
 * The power comes from the network, so keep a [generator](combustion-generators.md) on it.
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="power_upgrade" />

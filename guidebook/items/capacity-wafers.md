@@ -38,12 +38,16 @@ The simple storage chip. A Capacity Wafer holds any mix of items, up to a total.
 | 256K | 262,144 | Synapse Core |
 | 1M | 1,048,576 | Synapse Core |
 
+<br />
+<br />
 ## Upgrading
 
 Every size is made from three wafers of the size below. The three are used up, and the new wafer holds all of their items. It starts unlinked, so link it to an Archive again.
 
 Fluids have their own wafers: see [Fluid Capacity Wafers](fluid-capacity-wafers.md). For a few item kinds in bulk, use a [Type Wafer](type-wafers.md).
 
+<br />
+<br />
 ## Recipes
 
 <Column>

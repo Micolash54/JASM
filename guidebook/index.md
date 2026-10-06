@@ -14,9 +14,9 @@ navigation:
 JASM is a digital storage mod built around storing your items and fluids on wafers, upgradeable chips that reside in your personal deck. 
 
 Connect your Deck to a network of cables and machines, and every item on your wafers can be searched, crafted with and moved from one place.
-<br />
-<br />
 
+<br />
+<br />
 ## Start here
 
 * [Getting started](getting-started.md): the first hour, and what each tier needs.

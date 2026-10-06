@@ -28,6 +28,8 @@ Data Cables join your crafting blocks into one network and carry power between t
 
 Each recipe makes 8 cables.
 
+<br />
+<br />
 ## Good to know
 
 * Every cable passes power on at its own speed, so a slower cable only slows the power that goes through it.
@@ -38,6 +40,8 @@ Each recipe makes 8 cables.
 
 See [networks](../mechanics/networks.md) for the rules in full.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

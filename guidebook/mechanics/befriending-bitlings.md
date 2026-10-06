@@ -15,6 +15,8 @@ navigation:
 
 You can't craft a Basic Bitling. You find one in the wild and make friends with it.
 
+<br />
+<br />
 ## Where they live
 
 * Well-lit grass in the Overworld. They turn up now and then.
@@ -23,6 +25,8 @@ You can't craft a Basic Bitling. You find one in the wild and make friends with 
 
 Growing crystals draw them in. While you are near [Seeded Amethyst](../items/seeded-amethyst.md), a Bitling sometimes wanders over for a look and stays around the crystals for a few minutes. None comes while another wild Bitling is close.
 
+<br />
+<br />
 ## Making friends
 
 * Hand it a Logic, Memory or Link Chip. An Advanced one works too. It looks the chip over, nods and turns into a <ItemLink id="basic_bitling" /> item at its feet.
@@ -31,6 +35,8 @@ Growing crystals draw them in. While you are near [Seeded Amethyst](../items/see
 
 Hit one and it runs off. If it is knocked out, it vanishes in a puff and leaves nothing behind.
 
+<br />
+<br />
 ## What next
 
 Put your new Basic Bitling to work in the [Chip Workshop](../items/chip-workshop.md), or [train it](training-bitlings.md) into something bigger.

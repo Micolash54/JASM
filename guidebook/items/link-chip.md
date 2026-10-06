@@ -14,6 +14,8 @@ item_ids:
 
 The chip for the third tier of JASM. A Link Chip can only be made by a Bitling in the [Chip Workshop](chip-workshop.md). It can't be crafted by hand.
 
+<br />
+<br />
 ## What it is for
 
 * Eight [Data Cables](data-cables.md) round a Link Chip make eight Advanced Data Cables.

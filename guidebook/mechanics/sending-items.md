@@ -12,6 +12,8 @@ navigation:
 
 Deck to Deck sends items to another player on your network. They travel for a while, then land in the other player's inbox.
 
+<br />
+<br />
 ## How to send
 
 1. Pair your [Deck](../items/decks.md) at an [Encoding Terminal](../items/encoding-terminal.md).
@@ -20,6 +22,8 @@ Deck to Deck sends items to another player on your network. They travel for a wh
 
 The grid is 1 slot on a Starter Deck, 3 on a Basic, 6 on an Advanced and 9 on Elite and Ultimate.
 
+<br />
+<br />
 ## The trip
 
 | At a glance | |
@@ -32,6 +36,8 @@ The grid is 1 slot on a Starter Deck, 3 on a Basic, 6 on an Advanced and 9 on El
 
 Changed your mind? **Call back** turns the trip round and brings the items to your own inbox.
 
+<br />
+<br />
 ## The inbox
 
 Items land in the inbox. **Store all** moves them onto your Deck. If the inbox is full, the trip waits there until there is room.

@@ -22,6 +22,8 @@ A Recipe Card holds one recipe for autocrafting. Write it at an [Encoding Termin
 
 The tooltip tells you whether a card is shaped or shapeless, what goes in, and what comes back.
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="recipe_card" />

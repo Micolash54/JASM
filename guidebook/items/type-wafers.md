@@ -38,16 +38,22 @@ A Type Wafer holds only a few kinds of item, but a huge amount of each. Pick one
 | 128 types | 2,097,152 | Synapse Core |
 | 256 types | 8,388,608 | Synapse Core |
 
+<br />
+<br />
 ## What counts as a type
 
 A type follows vanilla stacking. Items that don't stack, like tools and armour, each take a whole type to themselves. Save the Type Wafers for stackable things.
 
+<br />
+<br />
 ## Upgrading
 
 Every size is made from two wafers of the size before. They are used up, and the new wafer holds all of their items and starts unlinked. The 128 and 256 sizes need [Synapse Cores](synapse-core.md).
 
 For fluids, see [Fluid Type Wafers](fluid-type-wafers.md).
 
+<br />
+<br />
 ## Recipes
 
 <Column>

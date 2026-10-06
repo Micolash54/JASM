@@ -27,6 +27,8 @@ Rare versions of the Logic, Memory and Link Chip. Only the [Chip Workshop](chip-
 | Nibbling | 15% |
 | Byteling | its switch picks Advanced |
 
+<br />
+<br />
 ## What they are for
 
 * Top-tier recipes: Elite and Ultimate Decks and Crafting Decks, the biggest wafers, the 64K Storage Module, the Elite Data Cable, the Elite Generator and Processor, the Ultimate Archive, both Bays and the Dimension Upgrade.

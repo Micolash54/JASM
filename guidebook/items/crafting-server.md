@@ -21,6 +21,8 @@ The Crafting Server does the work. It runs one crafting job at a time. [Processo
 | Each craft takes | half a second, whatever the Processor |
 | Counts toward | the [machine limit](network-brain.md) |
 
+<br />
+<br />
 ## Good to know
 
 * Its parts are locked in while it works.
@@ -29,10 +31,14 @@ The Crafting Server does the work. It runs one crafting job at a time. [Processo
 * The screen shows what the job is waiting for: power, a card, a machine, space or the Deck.
 * A job can be cancelled. What is left comes back.
 
+<br />
+<br />
 ## How a craft runs
 
 See [autocrafting](../mechanics/autocrafting.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="crafting_server" />

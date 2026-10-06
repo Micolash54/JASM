@@ -32,12 +32,16 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 | Elite | 12 | 125,000 FE |
 | Ultimate | 24 | 250,000 FE |
 
+<br />
+<br />
 ## Power
 
 * Moving an item in or out costs 1 FE by default. Browsing is free.
 * Without charge, a Deck can't move anything.
 * Charge it in a [Combustion Generator](combustion-generators.md) or anything else that charges items.
 
+<br />
+<br />
 ## What a Deck can do
 
 * Hold [item and fluid wafers](capacity-wafers.md) side by side.
@@ -46,10 +50,14 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 * [Send items to other players](../mechanics/sending-items.md).
 * Work outside the Overworld with a [Dimension Upgrade](dimension-upgrade.md).
 
+<br />
+<br />
 ## Upgrading
 
 The old Deck is used up. The new one keeps its wafers and its charge. Advanced and above also come as a [Crafting Deck](crafting-decks.md).
 
+<br />
+<br />
 ## Recipes
 
 <Column>

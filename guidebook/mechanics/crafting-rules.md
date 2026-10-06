@@ -12,6 +12,8 @@ navigation:
 
 A rule makes the network craft for you, without you asking. Set them on the Rules tab of a [Crafting Deck](../items/crafting-decks.md).
 
+<br />
+<br />
 ## Two kinds
 
 | Rule | Example |
@@ -21,10 +23,14 @@ A rule makes the network craft for you, without you asking. Set them on the Rule
 
 Pick the item by holding it and clicking. A timer can be no shorter than 10 seconds by default.
 
+<br />
+<br />
 ## Where it goes
 
 Choose where the results go: onto the Deck, or straight into your inventory. A "fewer than" rule counts what you carry when it sends to you.
 
+<br />
+<br />
 ## Good to know
 
 * A rule runs one job at a time.

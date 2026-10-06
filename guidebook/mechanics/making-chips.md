@@ -10,6 +10,8 @@ navigation:
 
 Nearly every JASM recipe is built from chips. Logic and Memory Chips need nothing but a few common blocks.
 
+<br />
+<br />
 ## Step by step
 
 1. Cut a <ItemLink id="data_crystal" /> into a <ItemLink id="blank_chip" /> at a **Stonecutter**.
@@ -18,10 +20,14 @@ Nearly every JASM recipe is built from chips. Logic and Memory Chips need nothin
 
 The whole stack cools at once, and no water is used up.
 
+<br />
+<br />
 ## Other chips
 
 Link Chips and Advanced chips can only be made by a Bitling in the Chip Workshop. [Find out more](../items/chip-workshop.md).
 
+<br />
+<br />
 ## In bulk
 
 The [Crystal Foundry](../items/crystal-foundry.md) makes Blank Chips straight from Crystal Seeds.

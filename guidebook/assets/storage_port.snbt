@@ -2,12 +2,12 @@
     DataVersion: 4790,
     size: [2, 1, 1],
     data: [
-        {pos: [0, 0, 0], state: "minecraft:chest{facing:south,type:single,waterlogged:false}"},
-        {pos: [1, 0, 0], state: "jasm:data_cable{core:true,has_ports:true}", nbt: {id: "jasm:data_cable", energy: 0, ports: [{side: "west", kind: "STORAGE", port: {}}]}}
+        {pos: [0, 0, 0], state: "jasm:data_cable{core:true,has_ports:true}", nbt: {id: "jasm:data_cable", energy: 0, ports: [{side: "east", kind: "STORAGE", port: {}}]}},
+        {pos: [1, 0, 0], state: "minecraft:chest{facing:south,type:single,waterlogged:false}"}
     ],
     entities: [],
     palette: [
-        "minecraft:chest{facing:south,type:single,waterlogged:false}",
-        "jasm:data_cable{core:true,has_ports:true}"
+        "jasm:data_cable{core:true,has_ports:true}",
+        "minecraft:chest{facing:south,type:single,waterlogged:false}"
     ]
 }

@@ -18,6 +18,8 @@ A Blank Chip is a <ItemLink id="data_crystal" /> cut flat. Every other chip star
 * Cook one to start a Logic or Memory Chip. See [Making chips by hand](../mechanics/making-chips.md).
 * A Bitling in the Chip Workshop turns Blank Chips into Logic, Memory and Link Chips, and sometimes Advanced ones. See [Chip Workshop](chip-workshop.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="blank_chip" />

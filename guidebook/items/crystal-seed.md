@@ -19,6 +19,8 @@ A Crystal Seed turns a Block of Amethyst into <ItemLink id="seeded_amethyst" />,
 * You can make a seed from amethyst, copper and redstone, or from four <ItemLink id="crystal_dust" /> and a redstone.
 * More in [Growing Data Crystals](../mechanics/growing-crystals.md).
 
+<br />
+<br />
 ## Recipes
 
 <RecipesFor id="crystal_seed" />

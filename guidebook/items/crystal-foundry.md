@@ -20,6 +20,8 @@ The Crystal Foundry grows Data Crystals in bulk and cuts each one into a <ItemLi
 * Hoppers and pipes can put seeds in and take chips out.
 * It counts toward a network's machine limit. See [the Network Brain](network-brain.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="crystal_foundry" />

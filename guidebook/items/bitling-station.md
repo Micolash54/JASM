@@ -18,6 +18,8 @@ item_ids:
 
 Put a Bitling, Nibbling or Byteling in a Bitling Station and a little living copy pops out. It walks, sprints, hops, looks about and lies down for a rest. Right-click it to pet it.
 
+<br />
+<br />
 ## Power
 
 * The little Bitling is only a body. The critter's own battery pays for the walk: 5 FE a tick while it is out and about.
@@ -25,6 +27,8 @@ Put a Bitling, Nibbling or Byteling in a Bitling Station and a little living cop
 * The station passes the power it gets straight into the critter's battery. Connect the station to a [Data Cable](data-cables.md) network or put a generator next to it.
 * Stuck on the way home, or out of charge? It teleports back onto the pad.
 
+<br />
+<br />
 ## Good to know
 
 * The screen shows what it is doing, its battery and a slider for how far it may roam (4 to 16 blocks).
@@ -34,6 +38,8 @@ Put a Bitling, Nibbling or Byteling in a Bitling Station and a little living cop
 
 A Bitling Station counts toward a network's [machine limit](network-brain.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="bitling_station" />

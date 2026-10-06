@@ -23,6 +23,8 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 | Scooping | 50 FE a bucket |
 | Holds | 10,000 FE and 16 buckets |
 
+<br />
+<br />
 ## Good to know
 
 * An [Input Port](item-ports.md) empties it.
@@ -31,6 +33,8 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 
 Its opposite is the [Deployment Bay](deployment-bay.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="demolition_bay" />

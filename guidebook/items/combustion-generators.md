@@ -28,16 +28,22 @@ Burn anything a furnace burns and get power. A generator sends it into every blo
 
 A piece of coal gives 32,000 FE in a Basic generator over 40 seconds, 64,000 FE over 20 seconds in an Advanced one and 128,000 FE over 10 seconds in an Elite one.
 
+<br />
+<br />
 ## Tips
 
 * Put one next to a [Chip Workshop](chip-workshop.md) or an [Archive](archives.md) to power it without any cable.
 * Drop a [Deck](decks.md) in the charging slot to top up its battery.
 * Jade shows how long the fuel has left.
 
+<br />
+<br />
 ## Upgrading
 
 The old generator is used up. The new one keeps its stored power.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

@@ -23,6 +23,8 @@ A network holds only 4 machines on its own. A Network Brain lifts that to 12, an
 | 3 floors | 48 |
 | Each further floor | 12 more |
 
+<br />
+<br />
 ## The rules
 
 * Add a machine past the limit and the whole network stops, until you remove one or add a brain.
@@ -32,10 +34,14 @@ A network holds only 4 machines on its own. A Network Brain lifts that to 12, an
 
 The machines' screens, Jade and a linked Deck's Network tab say when a network is full. See [what counts as a machine](../mechanics/networks.md).
 
+<br />
+<br />
 ## Floors and towers
 
 Put 8 Network Chambers round a brain on the same layer to make a floor. Stack floors into a tower. All of that is on the [Network Chamber](network-chamber.md) page.
 
+<br />
+<br />
 ## Recipe
 
 The recipe needs a Basic Bitling. [Befriend a wild one](../mechanics/befriending-bitlings.md) first.

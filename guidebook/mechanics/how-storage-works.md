@@ -12,12 +12,16 @@ navigation:
 
 Your items don't sit inside a wafer. The wafer is a key, and the items live in the world's records under that wafer's number. That is why a wafer is safe to carry, and why it can be rebuilt.
 
+<br />
+<br />
 ## The pieces
 
 1. **Wafers** hold the items. See [Capacity](../items/capacity-wafers.md) and [Type](../items/type-wafers.md) Wafers.
 2. **Decks** carry the wafers and give you a screen to use them. See [Decks](../items/decks.md).
 3. **Archives** keep backups, so a lost wafer can be recovered. See [Archives](../items/archives.md).
 
+<br />
+<br />
 ## Safe by design
 
 * A copied wafer stops working. It is wiped blank, and the original is untouched.
@@ -25,6 +29,8 @@ Your items don't sit inside a wafer. The wafer is a key, and the items live in t
 * A crash never duplicates items.
 * Items from a mod you removed are kept until the mod comes back.
 
+<br />
+<br />
 ## What a wafer won't take
 
 * Items that hold other items, like a full shulker box.

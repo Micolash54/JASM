@@ -17,6 +17,8 @@ Crystal Dust is what a bud gives when you break it before it is fully grown.
 * Four dust and a redstone make a <ItemLink id="crystal_seed" />.
 * Buds are the early stages of [Seeded Amethyst](seeded-amethyst.md).
 
+<br />
+<br />
 ## Recipe
 
 <Recipe id="crystal_seed_from_dust" />

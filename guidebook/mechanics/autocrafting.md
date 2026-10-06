@@ -12,6 +12,8 @@ navigation:
 
 Ask for anything from your Crafting Deck, and the network crafts what it needs first. Here is the chain, start to finish.
 
+<br />
+<br />
 ## What you need
 
 1. A [Crafting Deck](../items/crafting-decks.md), paired at an [Encoding Terminal](../items/encoding-terminal.md).
@@ -21,6 +23,8 @@ Ask for anything from your Crafting Deck, and the network crafts what it needs f
 
 For a machine instead of a crafting table, add an [Access Port](../items/access-port.md).
 
+<br />
+<br />
 ## Asking for something
 
 Open the Craft tab on the Deck, pick an item and an amount, and press **Craft**. The Deck works out the steps and shows:
@@ -31,6 +35,8 @@ Open the Craft tab on the Deck, pick an item and an amount, and press **Craft**.
 
 A hammer in the Items tab marks items with a known recipe, even when some are already stored.
 
+<br />
+<br />
 ## While it runs
 
 * Requested items come back as each batch finishes.
@@ -38,6 +44,8 @@ A hammer in the Items tab marks items with a known recipe, even when some are al
 * A job list on the Deck shows every job. Click one to open its server from anywhere.
 * Cancel a job and what is left comes back.
 
+<br />
+<br />
 ## When it says no
 
 The Deck tells you why:

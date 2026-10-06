@@ -19,6 +19,8 @@ Makes a port or a bay work faster.
 
 Upgrades stack normally in your inventory and in storage.
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="speed_upgrade" />

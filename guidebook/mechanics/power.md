@@ -12,17 +12,23 @@ navigation:
 
 Most JASM blocks run on FE. Here is where it comes from and how it travels.
 
+<br />
+<br />
 ## Where it comes from
 
 * [Combustion Generators](../items/combustion-generators.md) burn fuel. They are the simple answer.
 * Other mods, through the [Power Acceptor](../items/power-acceptor.md). JASM blocks never take power straight from another mod.
 
+<br />
+<br />
 ## How it travels
 
 * A generator pushes power into every block it touches.
 * [Data Cables](../items/data-cables.md) carry it through a network, each at its own speed. A slower cable slows what passes through it.
 * A machine that touches a generator needs no cable.
 
+<br />
+<br />
 ## What uses it
 
 | Block | Uses |

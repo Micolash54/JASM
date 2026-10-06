@@ -34,6 +34,8 @@ item_ids:
 
 Bitlings are small robot helpers that work the [Chip Workshop](chip-workshop.md). Without one, a Workshop does nothing.
 
+<br />
+<br />
 ## Basic Bitling
 
 You can't craft one. [Find a wild Bitling](../mechanics/befriending-bitlings.md) and hand it a chip.
@@ -42,6 +44,8 @@ You can't craft one. [Find a wild Bitling](../mechanics/befriending-bitlings.md)
 * Battery of 50,000 FE.
 * The Network Brain recipe needs one.
 
+<br />
+<br />
 ## Typed Bitlings
 
 Surround a Basic Bitling with 8 chips of one type in a crafting grid to get a Logic, Memory or Link Bitling.
@@ -50,6 +54,8 @@ Surround a Basic Bitling with 8 chips of one type in a crafting grid to get a Lo
 * Battery of 100,000 FE.
 * [Trains](../mechanics/training-bitlings.md) on every chip it makes, then grows into a Nibbling.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

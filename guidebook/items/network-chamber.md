@@ -39,6 +39,8 @@ item_ids:
 
 Put 8 Network Chambers round a [Network Brain](network-brain.md), on the same layer, and it becomes a brain floor: a little glass office where 8 Bitlings work round a glowing core. Each floor adds 12 machines.
 
+<br />
+<br />
 ## Towers
 
 Stack floors straight on top of each other to make a tower.
@@ -48,12 +50,16 @@ Stack floors straight on top of each other to make a tower.
 * A tower can be 8 floors tall. Floors stacked higher make a tower of their own.
 * Each floor uses 8 FE every tick, and without power the Bitlings nap.
 
+<br />
+<br />
 ## Using a tower
 
 * Cables can join any block of a tower, and a cable on any block powers the whole tower.
 * Right-click any chamber or brain of a tower to open its screen.
 * Chambers don't count toward the machine limit.
 
+<br />
+<br />
 ## Recipe
 
 One craft makes 4 chambers.

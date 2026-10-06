@@ -28,6 +28,8 @@ An Archive keeps a backup of your wafers. If one is ever lost or destroyed, the 
 
 An Archive needs power to link or recover, so give it a cable or a generator next to it. Linking a wafer costs 1,000 FE and a recovery 10,000 FE by default.
 
+<br />
+<br />
 ## Using one
 
 * Put a wafer in the link slot and press **Link**.
@@ -36,10 +38,14 @@ An Archive needs power to link or recover, so give it a cable or a generator nex
 
 The blank wafer has to be the same size or bigger than the one it replaces.
 
+<br />
+<br />
 ## Upgrading
 
 The old Archive is used up. The new one keeps its links, its owner and its charge.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

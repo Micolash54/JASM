@@ -13,7 +13,14 @@ item_ids:
 # Item ports
 
 <Row alignItems="center">
-<ItemImage id="input_output_port" scale="5" />
+<GameScene zoom="3.5" padding="2">
+  <IsometricCamera yaw="20" pitch="30" />
+  <ImportStructure src="../assets/input_port.snbt" />
+</GameScene>
+<GameScene zoom="3.5" padding="2">
+  <IsometricCamera yaw="20" pitch="30" />
+  <ImportStructure src="../assets/output_port.snbt" />
+</GameScene>
 <GameScene zoom="3.5" padding="2">
   <IsometricCamera yaw="20" pitch="30" />
   <ImportStructure src="../assets/input_output_port.snbt" />
@@ -28,10 +35,14 @@ Ports mount on a [Data Cable](data-cables.md) and move items and fluids between 
 | Output Port | pushes out of the Deck |
 | Input Output Port | both, with output first |
 
+<br />
+<br />
 ## Filters
 
 Each direction has an ordered list of filters: Item, Fluid, Tag and Mod ID. Empty input filters accept everything. Empty output filters send nothing.
 
+<br />
+<br />
 ## Speed
 
 Ports run twice a second while they are busy, and check once a second after five idle seconds. Four slots take [Speed Upgrades](speed-upgrade.md).
@@ -46,11 +57,15 @@ Ports run twice a second while they are busy, and check once a second after five
 
 Fluids share that speed with items.
 
+<br />
+<br />
 ## More slots
 
 * A [Power Upgrade](power-upgrade.md) makes the port supply FE to the machine it faces.
 * A [Redstone Upgrade](redstone-upgrade.md) makes it follow a redstone signal.
 
+<br />
+<br />
 ## Recipes
 
 An Input or Output Port is an Access Port with a hopper or dropper, a Link Chip and a dye.

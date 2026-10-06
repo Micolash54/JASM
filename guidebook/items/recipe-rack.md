@@ -24,6 +24,8 @@ Without power, the network can't see the cards inside, so autocrafting stops. Ja
 
 Need more than 16 recipes? Add another rack.
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="recipe_rack" />

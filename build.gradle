@@ -97,6 +97,16 @@ neoForge {
             systemProperty 'guideme.showOnStartup', project.hasProperty('guidePage') ? "jasm:guide!jasm:${project.guidePage}" : 'jasm:guide'
         }
 
+        // Writes the guide out for the website (build/guide) and quits.
+        guideexport {
+            client()
+            gameDirectory = project.file('runs/26.1.2/client')
+            systemProperty 'guideme.jasm.guide.sources', file('guidebook').absolutePath
+            systemProperty 'guideme.exportOnStartupAndExit', 'jasm:guide'
+            systemProperty 'guideme.exportDestination.jasm.guide', file('build/guide').absolutePath
+            systemProperty 'guideme.exportModVersion.jasm.guide', project.mod_version
+        }
+
         server {
             server()
             gameDirectory = project.file('runs/26.1.2/server')
@@ -171,6 +181,8 @@ dependencies {
     // The development runs and the GameTest server use guideme_run_version.
     compileOnly "org.appliedenergistics:guideme:${guideme_version}"
     localRuntime "org.appliedenergistics:guideme:${guideme_run_version}"
+    // only for the guide export, it turns the 3D scenes into pictures
+    localRuntime "org.bytedeco:ffmpeg-platform:${ffmpeg_version}"
     gametestRuntimeOnly "org.appliedenergistics:guideme:${guideme_run_version}"
 
     // Optional integrations: compiled against, never bundled. The full mods only join the development runs.

@@ -36,18 +36,24 @@ item_ids:
 
 The grown-up stages of a [Bitling](bitlings.md). Each one works the [Chip Workshop](chip-workshop.md) better than the last.
 
+<br />
+<br />
 ## Nibbling
 
 * Makes only its own chip type, and Advanced chips more often.
 * Battery of 200,000 FE.
 * Needs 300 chips of [training](../mechanics/training-bitlings.md) to grow up.
 
+<br />
+<br />
 ## Byteling
 
 * Makes only its own type. A switch in the Workshop picks standard or Advanced chips.
 * Battery of 400,000 FE.
 * The only critter that can build a <ItemLink id="synapse_core" />.
 
+<br />
+<br />
 ## Recipes
 
 <Column>

@@ -25,6 +25,8 @@ Put a Bitling in the Chip Workshop and feed it <ItemLink id="blank_chip" />s. It
 | Cost | 2,000 FE from the Bitling's battery for every chip |
 | Input | a 2x2 grid |
 
+<br />
+<br />
 ## Who makes what
 
 | Critter | Makes |
@@ -34,18 +36,24 @@ Put a Bitling in the Chip Workshop and feed it <ItemLink id="blank_chip" />s. It
 | <ItemLink id="logic_nibbling" /> | only its own type, Advanced more often |
 | <ItemLink id="logic_byteling" /> | only its own type; a switch picks standard or Advanced |
 
+<br />
+<br />
 ## Power
 
 The Workshop itself uses no power. Only the critter does. Power from a cable or a generator next to it goes straight into the critter's battery, and each chip takes some out.
 
 With no power at all, the critter keeps going until its battery runs flat, then naps until it is charged again. You can also charge a critter in a [Combustion Generator](combustion-generators.md).
 
+<br />
+<br />
 ## Building things in the grid
 
 Blank Chips can go in any of the four slots, and the critter keeps making chips even with other things beside them. A few things aren't chips: a Byteling builds the <ItemLink id="synapse_core" /> from what is in the grid.
 
 A Chip Workshop counts toward a network's [machine limit](network-brain.md).
 
+<br />
+<br />
 ## Recipe
 
 <RecipeFor id="chip_workshop" />

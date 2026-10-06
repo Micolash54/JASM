@@ -12,6 +12,8 @@ navigation:
 
 Machines that are joined by [Data Cables](../items/data-cables.md) form a network. So do JASM machines that simply touch each other, with no cable at all.
 
+<br />
+<br />
 ## What counts as a machine
 
 A network can only hold so many machines. The [Network Brain](../items/network-brain.md) page has the numbers. Everything that does a job counts:
@@ -25,14 +27,20 @@ Cables, generators, Creative Batteries, brains and chambers don't count. Neither
 
 A row of five Archives side by side is a network of five.
 
+<br />
+<br />
 ## Who may use it
 
 The network belongs to the player who set it up. The owner can trust other players at an Encoding Terminal. Trusted players can use the blocks and Archives on that network. Different players' networks never join. See [co-op play](co-op-play.md) for everything you can share.
 
+<br />
+<br />
 ## Seeing the network
 
 A linked [Deck](../items/decks.md) has a Network tab. It lists every machine, as a list or a branching tree, with where it is and whether it works.
 
+<br />
+<br />
 ## Power
 
 Cables carry power too. See [power](power.md).

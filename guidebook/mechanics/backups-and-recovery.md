@@ -12,6 +12,8 @@ navigation:
 
 Link a wafer to an [Archive](../items/archives.md) and it can come back from the dead. Here is how a backup lives and how to use it.
 
+<br />
+<br />
 ## Backing up
 
 1. Place an Archive and give it power.
@@ -20,10 +22,14 @@ Link a wafer to an [Archive](../items/archives.md) and it can come back from the
 
 The screen shows how many wafers are backed up.
 
+<br />
+<br />
 ## Recovering
 
 Put a blank wafer of the same kind in the recover slot and press **Recover**. The new wafer gets everything the lost one held. It has to be the same size or bigger.
 
+<br />
+<br />
 ## Who can use an Archive
 
 * A standalone Archive works for its owner with no Encoding Terminal. It links the Deck in the owner's hand on the first backup.
