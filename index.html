@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>JASM guide</title><link rel="icon" type="image/png" href="26.1/favicon.png">
+<script>
+fetch("versions.json").then(r => r.json()).then(v => {
+  const picked = localStorage.getItem("jasmLine");
+  location.replace((v.lines[picked] ? picked : v.newest) + "/index.html");
+});
+</script>
+<noscript><a href="26.1/index.html">Open the JASM guide</a></noscript>
