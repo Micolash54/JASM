@@ -150,7 +150,7 @@
   "screen.jasm.deck.stored": "Stored: %s",
   "screen.jasm.deck.stored_fluid": "Stored: %s B",
   "screen.jasm.deck.fluid_hint": "Click with a bucket or tank to fill it",
-  "screen.jasm.deck.material_view_only": "JASM can show this, but can't move it yet.",
+  "screen.jasm.deck.material_view_only": "Moves through Transfer Ports.",
   "screen.jasm.deck.usage_fluid": "%s / %s B",
   "screen.jasm.deck.wafer_used_fluid": "%s / %s B",
   "screen.jasm.deck.wafer_fluids": "%s / %s fluids",

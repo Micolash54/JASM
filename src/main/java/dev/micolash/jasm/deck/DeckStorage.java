@@ -5,6 +5,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.DepositRouter;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
+import dev.micolash.jasm.pool.Material;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.pool.PoolStore;
@@ -258,6 +259,33 @@ public final class DeckStorage {
             Deposit done = DeckFluidStorage.depositResult(store, deck, key, amount, player, excess, this);
             if (done.stored() > 0) remember();
             return done;
+        }
+
+        /** Other mods' materials in the network's storage blocks, by exact resource. */
+        public Map<Material, Long> materialStacks() {
+            return DeckMaterialStorage.stacks(player, deck, avoid);
+        }
+
+        public long roomMaterial(Material material, long amount) {
+            return DeckMaterialStorage.room(player, deck, material, amount, avoid);
+        }
+
+        /** Puts material into the storage blocks as far as the charge pays for. Returns how much went in. */
+        public long depositMaterial(Material material, long amount) {
+            return DeckMaterialStorage.deposit(player, deck, material, amount, avoid);
+        }
+
+        /** Takes material out of the storage blocks as far as the charge pays for. Returns how much came out. */
+        public long withdrawMaterial(Material material, long amount) {
+            return DeckMaterialStorage.withdraw(player, deck, material, amount, avoid);
+        }
+
+        public long restoreMaterial(Material material, long amount) {
+            return DeckMaterialStorage.restore(player, deck, material, amount, avoid);
+        }
+
+        public long takeBackMaterial(Material material, long amount) {
+            return DeckMaterialStorage.takeBack(player, deck, material, amount, avoid);
         }
     }
 

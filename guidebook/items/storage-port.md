@@ -17,7 +17,7 @@ item_ids:
 
 A Storage Port lends the chest, tank or cauldron in front of it to the whole network. Everything inside shows up in a linked [Deck](decks.md) next to the wafers, marked with a small chest. Take it out or put it in like wafer storage.
 
-It works on other mods' containers too, as long as they share their contents the normal NeoForge way. Mekanism's chemical tanks are the usual example. Their chemicals show up in the Deck with everything else, but for now that's all: JASM can't move them in or out yet.
+It works on other mods' containers too, as long as they share their contents the normal NeoForge way. Mekanism's chemical tanks are the usual example. Their chemicals show up in the Deck with everything else, and [ports](item-ports.md) can move them in and out. You can't take one out by hand though.
 
 <br />
 <br />

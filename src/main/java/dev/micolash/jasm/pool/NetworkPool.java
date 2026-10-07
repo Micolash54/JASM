@@ -132,4 +132,65 @@ public final class NetworkPool {
         }
         return taken;
     }
+
+    /** What the blocks hold right now, by exact resource and not from the listing. Leaves out {@code avoid}. */
+    public Map<Material, Long> materialStacks(@Nullable BlockPos avoid) {
+        Map<Material, Long> all = new LinkedHashMap<>();
+        for (PoolStore store : stores(avoid)) store.scanMaterialStacks(all);
+        return all;
+    }
+
+    public long countMaterial(Material material, @Nullable BlockPos avoid) {
+        long total = 0;
+        for (PoolStore store : stores(avoid)) total += store.countMaterial(material);
+        return total;
+    }
+
+    /** One store seen as a place for materials, for the router. */
+    private record Side(PoolStore store, PoolRouter.Unit<Material> unit) implements PoolRouter.Unit<Material> {
+        @Override
+        public int priority() { return unit.priority(); }
+        @Override
+        public boolean wafer() { return false; }
+        @Override
+        public boolean prefers(Material key) { return unit.prefers(key); }
+        @Override
+        public boolean canRead() { return unit.canRead(); }
+        @Override
+        public boolean canWrite() { return unit.canWrite(); }
+    }
+
+    private List<Side> sides(@Nullable BlockPos avoid) {
+        return stores(avoid).stream().map(store -> new Side(store, store.materialUnit())).toList();
+    }
+
+    /** How much of {@code material}, up to {@code most}, the blocks would take. Changes nothing. */
+    public long roomMaterial(Material material, long most, @Nullable BlockPos avoid) {
+        long room = 0;
+        for (Side side : PoolRouter.insertOrder(sides(avoid), material)) {
+            if (room >= most) break;
+            room += side.store().roomMaterial(material, most - room);
+        }
+        return room;
+    }
+
+    /** Puts up to {@code amount} in, highest priority first. Returns how much went in. */
+    public long insertMaterialNow(Material material, long amount, @Nullable BlockPos avoid) {
+        long moved = 0;
+        for (Side side : PoolRouter.insertOrder(sides(avoid), material)) {
+            if (moved >= amount) break;
+            moved += side.store().insertMaterialNow(material, amount - moved);
+        }
+        return moved;
+    }
+
+    /** Takes up to {@code amount} out, lowest priority first. Returns how much came out. */
+    public long extractMaterialNow(Material material, long amount, @Nullable BlockPos avoid) {
+        long taken = 0;
+        for (Side side : PoolRouter.extractOrder(sides(avoid), material)) {
+            if (taken >= amount) break;
+            taken += side.store().extractMaterialNow(material, amount - taken);
+        }
+        return taken;
+    }
 }

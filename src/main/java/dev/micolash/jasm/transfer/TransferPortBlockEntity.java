@@ -106,7 +106,8 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             return;
         var inventory = Machines.inlet(world, worldPosition.relative(face), face.getOpposite());
         var tank = Machines.fluidInlet(world, worldPosition.relative(face), face.getOpposite());
-        if (inventory == null && tank == null) return;
+        var materials = Machines.materialInlets(world, worldPosition.relative(face), face.getOpposite());
+        if (inventory == null && tank == null && materials.isEmpty()) return;
         var store = WaferStore.get(world.getServer());
         var storage = DeckStorage.checked(store, deck, player).avoiding(worldPosition.relative(face));
         // Items and fluids share one allowance: an item is one share, and 125 mB of fluid is one share.
@@ -177,7 +178,12 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         int shares = allowance - (itemBudget - budget);
         if (tank != null && shares > 0) {
             if (kind.exports() && filters.output().hasAllow()) shares -= fluidsOut(tank, storage, store, deck, player, shares);
-            if (kind.imports() && shares > 0) fluidsIn(tank, storage, store, deck, player, shares);
+            if (kind.imports() && shares > 0) shares -= fluidsIn(tank, storage, store, deck, player, shares);
+        }
+        if (!materials.isEmpty() && shares > 0) {
+            if (kind.exports() && filters.output().hasAllow())
+                shares -= TransferMaterials.out(materials, storage, deck, filters.output(), shares, this::transferred);
+            if (kind.imports() && shares > 0) TransferMaterials.in(materials, storage, deck, filters.input(), shares, this::transferred);
         }
         Jobs.refreshOpenDeck(player, deck);
     }
@@ -260,7 +266,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     }
 
     /** Pulls fluid from the block into the Deck, as far as the wafers have room and the allowance and charge go. */
-    private void fluidsIn(ResourceHandler<FluidResource> tank, DeckStorage.Checked storage, WaferStore store, ItemStack deck,
+    private int fluidsIn(ResourceHandler<FluidResource> tank, DeckStorage.Checked storage, WaferStore store, ItemStack deck,
             ServerPlayer player, int shares) {
         var unique = new LinkedHashSet<FluidResource>();
         for (int slot = 0; slot < tank.size(); slot++) if (!tank.getResource(slot).isEmpty()) unique.add(tank.getResource(slot));
@@ -303,6 +309,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 transferred(moved);
             }
         }
+        return used;
     }
     @Override
     protected void saveAdditional(ValueOutput output) {

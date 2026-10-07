@@ -12,6 +12,7 @@ import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
@@ -31,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     private final StoragePortBlockEntity port;
     private final FluidSide fluidSide = new FluidSide();
+    private final MaterialSide materialSide = new MaterialSide();
     private @Nullable BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> items;
     private @Nullable BlockCapabilityCache<ResourceHandler<FluidResource>, Direction> fluids;
     private @Nullable List<BlockCapabilityCache<ResourceHandler<Resource>, @Nullable Direction>> materials;
@@ -42,6 +44,8 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     public BlockPos chestPos() { return port.chestPos(); }
     /** The fluid side of this store, for ordering fluids. */
     public PoolRouter.Unit<FluidResource> fluidUnit() { return fluidSide; }
+    /** The same for other mods' materials. */
+    public PoolRouter.Unit<Material> materialUnit() { return materialSide; }
 
     @Override
     public int priority() { return settings().priority(); }
@@ -67,6 +71,19 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
         public boolean canWrite() { return PoolStore.this.canWrite(); }
         @Override
         public boolean prefers(FluidResource key) { return settings().lists(key.getFluid()) || countFluid(key) > 0; }
+    }
+
+    private final class MaterialSide implements PoolRouter.Unit<Material> {
+        @Override
+        public int priority() { return PoolStore.this.priority(); }
+        @Override
+        public boolean wafer() { return false; }
+        @Override
+        public boolean canRead() { return PoolStore.this.canRead(); }
+        @Override
+        public boolean canWrite() { return PoolStore.this.canWrite(); }
+        @Override
+        public boolean prefers(Material key) { return settings().lists(key.holder(), key.key().id()) || countMaterial(key) > 0; }
     }
 
     /** The level, if the port may use its block right now: loaded, active, and not a crafting block, Archive or cable. */
@@ -189,17 +206,29 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
         }
     }
 
-    // --- other mods' materials, view only for now ---
+    // --- other mods' materials, listed by ID ---
+
+    private record Seen(BlockCapability<ResourceHandler<Resource>, @Nullable Direction> kind, ResourceHandler<Resource> handler) {}
+
+    /** The handlers the block offers, one per distinct handler instance, under the first kind that showed it. */
+    private List<Seen> materialHandlers() {
+        var caches = materialCaches();
+        if (caches == null || caches.isEmpty()) return List.of();
+        var kinds = MaterialKinds.blocks();
+        List<Seen> seen = new ArrayList<>(2);
+        for (int i = 0; i < caches.size(); i++) {
+            ResourceHandler<Resource> handler = caches.get(i).getCapability();
+            // some blocks hand out one handler under two kinds
+            if (handler == null || seen.stream().anyMatch(known -> known.handler() == handler)) continue;
+            seen.add(new Seen(kinds.get(i), handler));
+        }
+        return seen;
+    }
 
     public void scanMaterials(Map<MaterialKey, Long> into) {
-        var caches = materialCaches();
-        if (caches == null || caches.isEmpty() || !settings().access().canRead()) return;
-        List<ResourceHandler<Resource>> read = new ArrayList<>(2);
-        for (var cache : caches) {
-            ResourceHandler<Resource> handler = cache.getCapability();
-            // some blocks hand out one handler under two kinds
-            if (handler == null || read.stream().anyMatch(seen -> seen == handler)) continue;
-            read.add(handler);
+        if (!settings().access().canRead()) return;
+        for (Seen seen : materialHandlers()) {
+            ResourceHandler<Resource> handler = seen.handler();
             for (int slot = 0; slot < slots(handler.size()); slot++) {
                 Resource held = handler.getResource(slot);
                 MaterialKey key = MaterialKey.of(held);
@@ -207,6 +236,84 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
                 if (amount > 0 && settings().passes(((RegisteredResource<?>) held).typeHolder(), key.id()))
                     into.merge(key, amount, PoolStore::add);
             }
+        }
+    }
+
+    // --- materials, moved by the real resource ---
+
+    private @Nullable ResourceHandler<Resource> handlerOf(Material material) {
+        for (Seen seen : materialHandlers()) if (seen.kind() == material.kind()) return seen.handler();
+        return null;
+    }
+
+    private boolean passes(Material material) {
+        return settings().passes(material.holder(), material.key().id());
+    }
+
+    /** What the block holds right now, by exact resource. Reads at most the configured slots of each handler. */
+    public void scanMaterialStacks(Map<Material, Long> into) {
+        if (!settings().access().canRead()) return;
+        for (Seen seen : materialHandlers()) {
+            ResourceHandler<Resource> handler = seen.handler();
+            for (int slot = 0; slot < slots(handler.size()); slot++) {
+                Material held = Material.of(seen.kind(), handler.getResource(slot));
+                long amount = held == null ? 0 : handler.getAmountAsLong(slot);
+                if (amount > 0 && passes(held)) into.merge(held, amount, PoolStore::add);
+            }
+        }
+    }
+
+    public long countMaterial(Material material) {
+        var handler = handlerOf(material);
+        if (handler == null || !settings().access().canRead() || !passes(material)) return 0;
+        long total = 0;
+        for (int slot = 0; slot < slots(handler.size()); slot++) {
+            if (material.resource().equals(handler.getResource(slot))) total = add(total, handler.getAmountAsLong(slot));
+        }
+        return total;
+    }
+
+    /** How much of {@code material}, up to {@code most}, the block would take. Changes nothing. */
+    public long roomMaterial(Material material, long most) {
+        if (!canWrite() || !passes(material) || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        try (Transaction tx = Transaction.openRoot()) {
+            return insertMaterial(material, most, tx);
+        }
+    }
+
+    public long insertMaterial(Material material, long amount, TransactionContext tx) {
+        var handler = handlerOf(material);
+        if (handler == null || amount <= 0 || !canWrite() || !passes(material)) return 0;
+        return handler.insert(material.resource(), (int) Math.min(amount, Integer.MAX_VALUE), tx);
+    }
+
+    public long extractMaterial(Material material, long amount, TransactionContext tx) {
+        var handler = handlerOf(material);
+        if (handler == null || amount <= 0 || !canRead() || !passes(material)) return 0;
+        return handler.extract(material.resource(), (int) Math.min(amount, Integer.MAX_VALUE), tx);
+    }
+
+    public long insertMaterialNow(Material material, long amount) {
+        if (busy || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        busy = true;
+        try (Transaction tx = Transaction.openRoot()) {
+            long moved = insertMaterial(material, amount, tx);
+            if (moved > 0) tx.commit();
+            return moved;
+        } finally {
+            busy = false;
+        }
+    }
+
+    public long extractMaterialNow(Material material, long amount) {
+        if (busy || Transaction.getCurrentOpenedTransaction() != null) return 0;
+        busy = true;
+        try (Transaction tx = Transaction.openRoot()) {
+            long moved = extractMaterial(material, amount, tx);
+            if (moved > 0) tx.commit();
+            return moved;
+        } finally {
+            busy = false;
         }
     }
 

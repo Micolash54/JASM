@@ -6,8 +6,10 @@ import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import io.netty.buffer.ByteBuf;
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,12 +19,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
+import net.neoforged.neoforge.transfer.resource.Resource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
@@ -105,6 +109,23 @@ public final class Machines {
             return null;
         }
         return level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
+    }
+
+    /** A handler for another mod's materials, with the capability it came from. */
+    public record MaterialInlet(BlockCapability<ResourceHandler<Resource>, @Nullable Direction> kind, ResourceHandler<Resource> handler) {}
+
+    /** Every material handler the block at {@code pos} offers through {@code side}, one per distinct handler. */
+    public static List<MaterialInlet> materialInlets(Level level, BlockPos pos, Direction side) {
+        if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity machine && !machine.opensToPorts()
+                || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
+            return List.of();
+        }
+        List<MaterialInlet> found = new ArrayList<>(2);
+        for (var kind : MaterialKinds.blocks()) {
+            var handler = level.getCapability(kind, pos, side);
+            if (handler != null && found.stream().noneMatch(known -> known.handler() == handler)) found.add(new MaterialInlet(kind, handler));
+        }
+        return found;
     }
 
     /** Whether any block touching the port takes items. */
