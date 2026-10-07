@@ -10,7 +10,7 @@ navigation:
 
 <BlockImage id="basic_combustion_generator" scale="3.5" />
 
-Most JASM blocks run on FE. Here is where it comes from and how it travels.
+Most JASM blocks run on FE.
 
 <br />
 <br />

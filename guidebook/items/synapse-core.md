@@ -21,13 +21,13 @@ The key to the two biggest sizes of every wafer. A Byteling builds it in the [Ch
 | Time | 3,000 ticks, two and a half minutes |
 | Cost | 50,000 FE from the Byteling's battery |
 
-Put the four ingredients in the grid in any order. A younger critter just says it needs a Byteling.
+Put the four ingredients in the grid in any order.
 
 <br />
 <br />
 ## What it unlocks
 
-The 256K and 1M [Capacity Wafers](capacity-wafers.md), the 128 and 256 [Type Wafers](type-wafers.md), the 256K and 1M [Fluid Capacity Wafers](fluid-capacity-wafers.md) and the 64 and 128 [Fluid Type Wafers](fluid-type-wafers.md). You upgrade to them like any other wafer, with the Cores in the crafting grid, and everything the old wafers hold comes along.
+The 256K and 1M [Capacity Wafers](capacity-wafers.md), the 128 and 256 [Type Wafers](type-wafers.md), the 256K and 1M [Fluid Capacity Wafers](fluid-capacity-wafers.md) and the 64 and 128 [Fluid Type Wafers](fluid-type-wafers.md).
 
 <br />
 <br />

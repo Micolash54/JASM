@@ -27,7 +27,7 @@ item_ids:
 </GameScene>
 </Row>
 
-Ports mount on a [Data Cable](data-cables.md) and move items and fluids between the network and the block next to them. Chemicals and other mods' materials move too, into and out of the tanks behind a [Storage Port](storage-port.md).
+Ports mount on a [Data Cable](data-cables.md) and move items and fluids between the network and the block next to them.
 
 | Port | Does |
 | --- | --- |
@@ -39,7 +39,7 @@ Ports mount on a [Data Cable](data-cables.md) and move items and fluids between 
 <br />
 ## Filters
 
-Each direction has an ordered list of filters: Material, Tag and Mod ID. Empty input filters accept everything. Empty output filters send nothing.
+Each direction has its own [filter](../mechanics/type-filters.md). An empty output filter sends nothing.
 
 <br />
 <br />

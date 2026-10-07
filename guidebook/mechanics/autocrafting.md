@@ -10,7 +10,7 @@ navigation:
 
 <BlockImage id="crafting_server" scale="3.5" />
 
-Ask for anything from your Crafting Deck, and the network crafts what it needs first. Here is the chain, start to finish.
+Ask for anything from your Crafting Deck, and the network crafts what it needs first.
 
 <br />
 <br />

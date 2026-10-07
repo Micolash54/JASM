@@ -37,7 +37,7 @@ item_ids:
   </GameScene>
 </Row>
 
-Put 8 Network Chambers round a [Network Brain](network-brain.md), on the same layer, and it becomes a brain floor: a little glass office where 8 Bitlings work round a glowing core. Each floor lets the network hold more machines.
+Put 8 Network Chambers round a [Network Brain](network-brain.md), on the same layer, and it becomes a brain floor. Each floor lets the network hold more machines.
 
 <br />
 <br />
@@ -48,7 +48,7 @@ Stack floors straight on top of each other to make a tower.
 * Every floor needs its own brain in the middle and all 8 of its chambers.
 * A floor with a gap doesn't count, and splits the tower in two.
 * A tower can be 8 floors tall. Floors stacked higher make a tower of their own.
-* A tower shares one pool of power and uses more of it for every floor. Without power the Bitlings nap.
+* A tower shares one pool of power and uses more of it for every floor.
 
 <br />
 <br />

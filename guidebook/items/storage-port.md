@@ -17,13 +17,11 @@ item_ids:
 
 A Storage Port lends the chest, tank or cauldron in front of it to the whole network. Everything inside shows up in a linked [Deck](decks.md) next to the wafers, marked with a small chest. Take it out or put it in like wafer storage.
 
-It works on other mods' containers too, as long as they share their contents the normal NeoForge way. Mekanism's chemical tanks are the usual example. Their chemicals show up in the Deck with everything else, and [ports](item-ports.md) can move them in and out. You can't take one out by hand though.
-
 <br />
 <br />
 ## Settings
 
-* **Filter:** Material, Tag and Mod ID.
+* **Filter:** see [Type Filters](../mechanics/type-filters.md).
 * **Access:** read and write, read only or write only.
 * **Priority:** higher priority takes things in first and the lowest is emptied first. Wafers go first on a tie.
 

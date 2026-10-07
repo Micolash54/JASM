@@ -18,7 +18,7 @@ item_ids:
 
 <BlockImage id="demolition_bay" scale="3.5" />
 
-A Demolition Bay breaks the block in front of it into its own grid, scoops up fluids and picks up items that land on its face. A Bitling in welding goggles works the laser.
+A Demolition Bay breaks the block in front of it into its own grid, scoops up fluids and picks up items that land on its face.
 
 Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 
@@ -36,6 +36,7 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 * An [Input Port](item-ports.md) empties it.
 * It runs on cable power and doesn't take up a place on the machine limit.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can work once for each redstone pulse.
+* You can add [filters](../mechanics/type-filters.md) to decide what it may or may not break. Works for items and fluids.
 
 Its opposite is the [Deployment Bay](deployment-bay.md).
 

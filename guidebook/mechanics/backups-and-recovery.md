@@ -10,7 +10,7 @@ navigation:
 
 <BlockImage id="basic_archive" scale="3.5" />
 
-Link a wafer to an [Archive](../items/archives.md) and it can come back from the dead. Here is how a backup lives and how to use it.
+Link a wafer to an [Archive](../items/archives.md) and it can be recovered if it is lost.
 
 <br />
 <br />

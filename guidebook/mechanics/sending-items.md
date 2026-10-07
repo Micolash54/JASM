@@ -40,7 +40,7 @@ The grid is 1 slot on a Starter Deck, 3 on a Basic, 6 on an Advanced and 9 on El
 | Longest trip | 10 minutes |
 | Trips at once | 10 |
 
-Changed your mind? **Call back** turns the trip round and brings the items to your own inbox.
+**Call back** returns the items to your own inbox.
 
 <br />
 <br />

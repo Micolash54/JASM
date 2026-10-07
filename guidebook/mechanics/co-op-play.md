@@ -10,7 +10,7 @@ navigation:
 
 <BlockImage id="encoding_terminal" scale="3.5" />
 
-Friends can share one network. Everyone keeps their own Deck and their own wafers, while the network shares its machines, recipes and chests. This page covers every way to play together.
+Friends can share one network. Everyone keeps their own Deck and their own wafers, while the network shares its machines, recipes and chests.
 
 <br />
 <br />

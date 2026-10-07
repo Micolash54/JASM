@@ -27,6 +27,7 @@ How things work, rather than what things are. The pages follow the order you wil
 ## Storage
 
 * [How storage works](how-storage-works.md)
+* [Type Filters](type-filters.md)
 * [Wafer filters](wafer-filters.md)
 * [Backups and recovery](backups-and-recovery.md)
 * [Sending items to players](sending-items.md)

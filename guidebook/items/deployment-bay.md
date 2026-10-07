@@ -18,7 +18,7 @@ item_ids:
 
 <BlockImage id="deployment_bay" scale="3.5" />
 
-A Deployment Bay places blocks, seeds and fluids from its own grid and tank into the space in front of it, as a player would. It can also throw items out. A Bitling in a hard hat does the work.
+A Deployment Bay places blocks, seeds and fluids from its own grid and tank into the space in front of it, as a player would. It can also throw items out.
 
 | At a glance | |
 | --- | --- |
@@ -34,6 +34,7 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 * It runs on cable power and doesn't take up a place on the machine limit.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can work once for each redstone pulse.
 * In drop mode it pauses while 32 entities are near, so it can't flood a spot with items.
+* You can add [filters](../mechanics/type-filters.md) to decide what it may or may not place/drop. Works for items and fluids.
 
 Its opposite is the [Demolition Bay](demolition-bay.md).
 
