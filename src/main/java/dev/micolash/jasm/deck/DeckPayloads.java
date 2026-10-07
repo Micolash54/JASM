@@ -1,6 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.storage.WaferSettings;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
@@ -258,6 +259,45 @@ public final class DeckPayloads {
 
         @Override
         public Type<FluidDelta> type() {
+            return TYPE;
+        }
+    }
+
+    /** One of another mod's materials and how much the network's storage blocks hold. */
+    public record MaterialEntry(MaterialKey key, long amount) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, MaterialEntry> STREAM_CODEC = StreamCodec.composite(
+                MaterialKey.STREAM_CODEC, MaterialEntry::key,
+                ByteBufCodecs.VAR_LONG, MaterialEntry::amount,
+                MaterialEntry::new);
+        static final StreamCodec<RegistryFriendlyByteBuf, List<MaterialEntry>> LIST = STREAM_CODEC.apply(ByteBufCodecs.list());
+    }
+
+    /** Sent to the client: part of the full material list. Page 0 starts over. */
+    public record MaterialSnapshot(int containerId, int page, int pages, List<MaterialEntry> entries) implements CustomPacketPayload {
+        public static final Type<MaterialSnapshot> TYPE = new Type<>(Jasm.id("deck_material_snapshot"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, MaterialSnapshot> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, MaterialSnapshot::containerId,
+                ByteBufCodecs.VAR_INT, MaterialSnapshot::page,
+                ByteBufCodecs.VAR_INT, MaterialSnapshot::pages,
+                MaterialEntry.LIST, MaterialSnapshot::entries,
+                MaterialSnapshot::new);
+
+        @Override
+        public Type<MaterialSnapshot> type() {
+            return TYPE;
+        }
+    }
+
+    /** Sent to the client: material amounts that changed; 0 means gone. */
+    public record MaterialDelta(int containerId, List<MaterialEntry> entries) implements CustomPacketPayload {
+        public static final Type<MaterialDelta> TYPE = new Type<>(Jasm.id("deck_material_delta"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, MaterialDelta> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, MaterialDelta::containerId,
+                MaterialEntry.LIST, MaterialDelta::entries,
+                MaterialDelta::new);
+
+        @Override
+        public Type<MaterialDelta> type() {
             return TYPE;
         }
     }

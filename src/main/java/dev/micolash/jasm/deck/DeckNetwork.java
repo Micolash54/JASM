@@ -49,6 +49,8 @@ public final class DeckNetwork {
                 .playToClient(DeckPayloads.Emptied.TYPE, DeckPayloads.Emptied.STREAM_CODEC, DeckNetwork::onEmptied)
                 .playToClient(DeckPayloads.FluidSnapshot.TYPE, DeckPayloads.FluidSnapshot.STREAM_CODEC, DeckNetwork::onFluidSnapshot)
                 .playToClient(DeckPayloads.FluidDelta.TYPE, DeckPayloads.FluidDelta.STREAM_CODEC, DeckNetwork::onFluidDelta)
+                .playToClient(DeckPayloads.MaterialSnapshot.TYPE, DeckPayloads.MaterialSnapshot.STREAM_CODEC, DeckNetwork::onMaterialSnapshot)
+                .playToClient(DeckPayloads.MaterialDelta.TYPE, DeckPayloads.MaterialDelta.STREAM_CODEC, DeckNetwork::onMaterialDelta)
                 .playToClient(DeckPayloads.Snapshot.TYPE, DeckPayloads.Snapshot.STREAM_CODEC, DeckNetwork::onSnapshot)
                 .playToClient(DeckPayloads.Delta.TYPE, DeckPayloads.Delta.STREAM_CODEC, DeckNetwork::onDelta)
                 .playToClient(DeckPayloads.Status.TYPE, DeckPayloads.Status.STREAM_CODEC, DeckNetwork::onStatus);
@@ -312,6 +314,20 @@ public final class DeckNetwork {
         DeckView view = view(context, payload.containerId());
         if (view != null) {
             view.applyFluidSnapshotPage(payload.page(), payload.entries());
+        }
+    }
+
+    private static void onMaterialSnapshot(DeckPayloads.MaterialSnapshot payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.applyMaterialSnapshotPage(payload.page(), payload.entries());
+        }
+    }
+
+    private static void onMaterialDelta(DeckPayloads.MaterialDelta payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.applyMaterials(payload.entries());
         }
     }
 

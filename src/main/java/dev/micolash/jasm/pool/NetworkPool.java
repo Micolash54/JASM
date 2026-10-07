@@ -1,6 +1,7 @@
 package dev.micolash.jasm.pool;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
@@ -29,6 +30,7 @@ public final class NetworkPool {
     private final CableNetwork network;
     private Map<ItemResource, Long> items = Map.of();
     private Map<FluidResource, Long> fluids = Map.of();
+    private Map<MaterialKey, Long> materials = Map.of();
     private long snapshotTick = Long.MIN_VALUE;
     private long version;
 
@@ -66,20 +68,23 @@ public final class NetworkPool {
         return new ArrayList<>(byBlock.values());
     }
 
-    /** Lists the blocks again if the listing is old. One listing serves items and fluids and everyone who asks. */
+    /** Lists the blocks again if the listing is old. One listing serves items, fluids and materials and everyone who asks. */
     private void refresh() {
         long now = level.getGameTime();
         if (snapshotTick != Long.MIN_VALUE && now >= snapshotTick && now - snapshotTick < JasmConfig.POOL_SNAPSHOT_TICKS.getAsInt()) return;
         Map<ItemResource, Long> freshItems = new HashMap<>();
         Map<FluidResource, Long> freshFluids = new HashMap<>();
+        Map<MaterialKey, Long> freshMaterials = new HashMap<>();
         for (PoolStore store : stores(null)) {
             store.scan(freshItems);
             store.scanFluids(freshFluids);
+            store.scanMaterials(freshMaterials);
         }
         snapshotTick = now;
-        if (!freshItems.equals(items) || !freshFluids.equals(fluids)) {
+        if (!freshItems.equals(items) || !freshFluids.equals(fluids) || !freshMaterials.equals(materials)) {
             items = freshItems;
             fluids = freshFluids;
+            materials = freshMaterials;
             version++;
         }
     }
@@ -94,6 +99,12 @@ public final class NetworkPool {
     public Map<FluidResource, Long> fluidContents() {
         refresh();
         return fluids;
+    }
+
+    /** Other mods' materials in the blocks, by ID. */
+    public Map<MaterialKey, Long> materialContents() {
+        refresh();
+        return materials;
     }
 
     /** Goes up each time the listing really changed. */

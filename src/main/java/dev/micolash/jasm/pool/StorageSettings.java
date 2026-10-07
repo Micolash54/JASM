@@ -4,8 +4,10 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.storage.WaferSettings;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.core.Holder;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 
@@ -29,7 +31,9 @@ public record StorageSettings(WaferSettings filter, StorageAccess access, int pr
     public boolean passes(Item item) { return filter.rank(item) >= 0; }
     /** The filter names the item in an Allow row. */
     public boolean lists(Item item) { return filter.hasAllow() && filter.rank(item) >= 0; }
-    /** The same for fluids: Fluid rows, fluid tags and mods. An item-only allow list lets no fluid through. */
+    /** The same for fluids. An item-only allow list lets no fluid through. */
     public boolean passes(Fluid fluid) { return filter.rank(fluid) >= 0; }
     public boolean lists(Fluid fluid) { return filter.hasAllow() && filter.rank(fluid) >= 0; }
+    public boolean passes(Holder<?> holder, Identifier id) { return filter.rank(holder, id) >= 0; }
+    public boolean lists(Holder<?> holder, Identifier id) { return filter.hasAllow() && filter.rank(holder, id) >= 0; }
 }

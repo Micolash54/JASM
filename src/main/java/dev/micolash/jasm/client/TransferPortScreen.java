@@ -110,8 +110,6 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     }
     private void createEditor(boolean output, int rows, int top) {
         var editor = new ItemFilterEditor(font, rows, false, menu::getCarried, TransferPortMenu.WIDTH - 16);
-        editor.setModes(java.util.List.of(dev.micolash.jasm.storage.WaferSettings.Mode.ITEM, dev.micolash.jasm.storage.WaferSettings.Mode.FLUID,
-                dev.micolash.jasm.storage.WaferSettings.Mode.TAG, dev.micolash.jasm.storage.WaferSettings.Mode.MOD_ID));
         editor.setSave(settings -> {
             menu.configure(output, settings);
             ClientPacketDistributor.sendToServer(new TransferNetwork.Configure(menu.containerId, output, settings));
@@ -136,8 +134,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         return !linkWindow.contains(x, y) && super.hasClickedOutside(x, y, left, top);
     }
     public List<Rect2i> filterSlots() { return editors.stream().map(ItemFilterEditor::slotArea).toList(); }
-    public void setFilterFluid(int index, net.minecraft.world.level.material.Fluid fluid) { if (index >= 0 && index < editors.size()) editors.get(index).setFluid(fluid); }
-    public void setFilterItem(int index, Item item) { if (index >= 0 && index < editors.size()) editors.get(index).setItem(new ItemStack(item)); }
+    public void setFilterMaterial(int index, net.minecraft.resources.Identifier id) { if (index >= 0 && index < editors.size()) editors.get(index).setMaterial(id); }
+    public void setFilterItem(int index, Item item) { if (index >= 0 && index < editors.size()) editors.get(index).setItem(new ItemStack(item), false); }
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mx, int my, float a) {
         super.extractBackground(graphics, mx, my, a);

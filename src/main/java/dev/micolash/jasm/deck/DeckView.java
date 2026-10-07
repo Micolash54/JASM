@@ -1,6 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.autocraft.CraftPayloads;
+import dev.micolash.jasm.core.MaterialKey;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 public final class DeckView {
     private final Map<ItemResource, Long> contents = new LinkedHashMap<>();
     private final Map<FluidResource, Long> fluids = new LinkedHashMap<>();
+    private final Map<MaterialKey, Long> materials = new LinkedHashMap<>();
     /** How much of each total sits in the network's storage blocks rather than on wafers. */
     private final Map<ItemResource, Long> chest = new LinkedHashMap<>();
     private final Map<FluidResource, Long> fluidChest = new LinkedHashMap<>();
@@ -114,6 +116,21 @@ public final class DeckView {
         version++;
     }
 
+    public void applyMaterialSnapshotPage(int page, List<DeckPayloads.MaterialEntry> entries) {
+        if (page == 0) {
+            materials.clear();
+        }
+        applyMaterials(entries);
+    }
+
+    public void applyMaterials(List<DeckPayloads.MaterialEntry> entries) {
+        for (DeckPayloads.MaterialEntry entry : entries) {
+            if (entry.amount() <= 0) materials.remove(entry.key());
+            else materials.put(entry.key(), entry.amount());
+        }
+        version++;
+    }
+
     public void applyStatus(int energy, List<DeckStorage.SlotStatus> slots) {
         this.energy = energy;
         this.slots = List.copyOf(slots);
@@ -170,6 +187,11 @@ public final class DeckView {
     /** Millibuckets of each fluid on the Deck's fluid wafers. */
     public Map<FluidResource, Long> fluids() {
         return Collections.unmodifiableMap(fluids);
+    }
+
+    /** Other mods' materials in the network's storage blocks. Never on wafers. */
+    public Map<MaterialKey, Long> materials() {
+        return Collections.unmodifiableMap(materials);
     }
 
     /** How many of {@code key} sit in the network's storage blocks rather than on wafers. */

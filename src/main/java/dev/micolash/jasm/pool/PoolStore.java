@@ -2,9 +2,12 @@ package dev.micolash.jasm.pool;
 
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -14,6 +17,8 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.resource.RegisteredResource;
+import net.neoforged.neoforge.transfer.resource.Resource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
@@ -28,6 +33,7 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     private final FluidSide fluidSide = new FluidSide();
     private @Nullable BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> items;
     private @Nullable BlockCapabilityCache<ResourceHandler<FluidResource>, Direction> fluids;
+    private @Nullable List<BlockCapabilityCache<ResourceHandler<Resource>, @Nullable Direction>> materials;
     private boolean busy;
 
     PoolStore(StoragePortBlockEntity port) { this.port = port; }
@@ -83,6 +89,17 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
         if (level == null) return null;
         if (fluids == null) fluids = BlockCapabilityCache.create(Capabilities.Fluid.BLOCK, level, chestPos(), port.face().getOpposite());
         return fluids.getCapability();
+    }
+
+    private @Nullable List<BlockCapabilityCache<ResourceHandler<Resource>, @Nullable Direction>> materialCaches() {
+        ServerLevel level = usableLevel();
+        if (level == null) return null;
+        if (materials == null) {
+            List<BlockCapabilityCache<ResourceHandler<Resource>, @Nullable Direction>> caches = new ArrayList<>();
+            for (var kind : MaterialKinds.blocks()) caches.add(BlockCapabilityCache.create(kind, level, chestPos(), port.face().getOpposite()));
+            materials = List.copyOf(caches);
+        }
+        return materials;
     }
 
     private static int slots(int size) {
@@ -170,6 +187,33 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
             FluidResource held = handler.getResource(slot);
             if (!held.isEmpty() && passes(held)) into.merge(held, handler.getAmountAsLong(slot), Long::sum);
         }
+    }
+
+    // --- other mods' materials, view only for now ---
+
+    public void scanMaterials(Map<MaterialKey, Long> into) {
+        var caches = materialCaches();
+        if (caches == null || caches.isEmpty() || !settings().access().canRead()) return;
+        List<ResourceHandler<Resource>> read = new ArrayList<>(2);
+        for (var cache : caches) {
+            ResourceHandler<Resource> handler = cache.getCapability();
+            // some blocks hand out one handler under two kinds
+            if (handler == null || read.stream().anyMatch(seen -> seen == handler)) continue;
+            read.add(handler);
+            for (int slot = 0; slot < slots(handler.size()); slot++) {
+                Resource held = handler.getResource(slot);
+                MaterialKey key = MaterialKey.of(held);
+                long amount = key == null ? 0 : handler.getAmountAsLong(slot);
+                if (amount > 0 && settings().passes(((RegisteredResource<?>) held).typeHolder(), key.id()))
+                    into.merge(key, amount, PoolStore::add);
+            }
+        }
+    }
+
+    // creative tanks report huge numbers, two of them must not wrap round
+    private static long add(long a, long b) {
+        long sum = a + b;
+        return sum < 0 ? Long.MAX_VALUE : sum;
     }
 
     /** How many millibuckets of {@code key}, up to {@code most}, the block would take. A cauldron says 0 below a bucket. */

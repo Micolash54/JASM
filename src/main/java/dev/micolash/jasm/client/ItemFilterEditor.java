@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferSettings.Filter;
 import dev.micolash.jasm.storage.WaferSettings.Mode;
@@ -25,11 +26,13 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import org.jspecify.annotations.Nullable;
 
 /** Ordered item filters and the ghost input for adding one, shared by wafers and inventory ports. */
 class ItemFilterEditor {
@@ -64,9 +67,9 @@ class ItemFilterEditor {
     private final Button confirm;
     private final HashMap<Selector, List<ItemStack>> icons = new HashMap<>();
     private WaferSettings draft = WaferSettings.DEFAULT;
-    /** The kinds of row this editor offers, in the order its key steps through them. */
-    private List<Mode> modes = List.of(Mode.ITEM, Mode.TAG, Mode.MOD_ID);
-    private Mode mode = Mode.ITEM;
+    private Mode mode = Mode.MATERIAL;
+    // the last pick was a shift-click: use what the item holds, not the item
+    private boolean contents;
     private boolean allow = true;
     private ItemStack ghost = ItemStack.EMPTY;
     private List<String> tagChoices = List.of();
@@ -107,8 +110,8 @@ class ItemFilterEditor {
         for (Mode m : Mode.values()) keyWidth = Math.max(keyWidth, font.width(label(m.getSerializedName())));
         keyWidth += 16;
         modeButton = place(JasmButton.text(Component.empty(), b -> {
-            mode = modes.get((modes.indexOf(mode) + 1) % modes.size());
-            setItem(ghost);
+            mode = Mode.values()[(mode.ordinal() + 1) % Mode.values().length];
+            setItem(ghost, contents);
         }, 0, 0, keyWidth, 17), 8, slotY - 24);
         action = place(JasmButton.text(Component.empty(), b -> { allow = !allow; update(); }, 0, 0, keyWidth, 17), 10 + keyWidth, slotY - 24);
         confirm = place(JasmButton.icon(() -> CHECK, label("add"), b -> add(), 0, 0, 17, 17), 274 - shrink, slotY - 1);
@@ -142,9 +145,6 @@ class ItemFilterEditor {
     private Component label(String key) { return Component.translatable("screen.jasm.filter." + key); }
     Button place(Button button, int px, int py) { buttons.add(new Placed(button, px, py)); return button; }
     boolean isOpen() { return opened; }
-    /** Which kinds of row can be added: items, fluids, or both. Takes effect when the editor is next opened. */
-    void setModes(List<Mode> modes) { this.modes = List.copyOf(modes); }
-    private boolean fluidOnly() { return !modes.contains(Mode.ITEM); }
     void setSave(Consumer<WaferSettings> save) { this.save = save; }
     void unfocus() { text.setFocused(false); }
     boolean contains(double mx, double my) { return isOpen() && mx >= x && mx < x + editorWidth && my >= y && my < y + height; }
@@ -165,7 +165,8 @@ class ItemFilterEditor {
         this.suffix = suffix;
         windowIcon = icon;
         scroll = 0;
-        mode = modes.getFirst();
+        mode = Mode.MATERIAL;
+        contents = false;
         allow = true;
         ghost = ItemStack.EMPTY;
         tagChoices = List.of();
@@ -247,24 +248,34 @@ class ItemFilterEditor {
         update();
     }
 
-    /** Pick the ID or namespace, or offer every tag on the dropped item. The carried stack is never changed. */
-    void setItem(ItemStack stack) {
+    private record Held(Identifier id, List<String> tags) {}
+
+    // a fluid first (water in a bucket), then anything else a mod lets an item hold
+    private static @Nullable Held held(ItemStack stack) {
+        FluidResource fluid = FluidGrid.containedFluid(stack);
+        if (fluid != null)
+            return new Held(BuiltInRegistries.FLUID.getKey(fluid.getFluid()),
+                    fluid.getFluid().builtInRegistryHolder().tags().map(tag -> tag.location().toString()).toList());
+        MaterialKinds.Held material = MaterialKinds.held(stack);
+        return material == null ? null
+                : new Held(material.key().id(), material.holder().tags().map(tag -> tag.location().toString()).toList());
+    }
+
+    /** Pick the ID, namespace or tags of the item, or with {@code contents} of what it holds. The carried stack is never changed. */
+    void setItem(ItemStack stack, boolean contents) {
         ghost = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
+        this.contents = contents;
         tagChoices = List.of();
         tagScroll = 0;
-        if (ghost.isEmpty()) { text.setValue(""); return; }
-        var id = BuiltInRegistries.ITEM.getKey(ghost.getItem());
-        FluidResource held = FluidGrid.containedFluid(ghost);
+        Held held = contents ? held(ghost) : null;
+        if (ghost.isEmpty() || contents && held == null) { text.setValue(""); return; }
+        Identifier id = held != null ? held.id() : BuiltInRegistries.ITEM.getKey(ghost.getItem());
         switch (mode) {
-            case ITEM -> text.setValue(id.toString());
-            case FLUID -> text.setValue(held == null ? "" : BuiltInRegistries.FLUID.getKey(held.getFluid()).toString());
-            case MOD_ID -> text.setValue(fluidOnly() && held != null ? BuiltInRegistries.FLUID.getKey(held.getFluid()).getNamespace() : id.getNamespace());
+            case MATERIAL -> text.setValue(id.toString());
+            case MOD_ID -> text.setValue(id.getNamespace());
             case TAG -> {
-                java.util.stream.Stream<String> itemTags = fluidOnly() ? java.util.stream.Stream.empty()
-                        : ghost.getItem().builtInRegistryHolder().tags().map(tag -> tag.location().toString());
-                java.util.stream.Stream<String> fluidTags = held == null ? java.util.stream.Stream.empty()
-                        : held.getFluid().builtInRegistryHolder().tags().map(tag -> tag.location().toString());
-                List<String> tags = java.util.stream.Stream.concat(itemTags, fluidTags).distinct().sorted().toList();
+                List<String> tags = (held != null ? held.tags().stream()
+                        : ghost.getItem().builtInRegistryHolder().tags().map(tag -> tag.location().toString())).distinct().sorted().toList();
                 text.setValue(tags.size() == 1 ? tags.getFirst() : "");
                 if (tags.size() > 1) tagChoices = tags;
             }
@@ -272,14 +283,14 @@ class ItemFilterEditor {
         update();
     }
 
-    /** A fluid dragged in from a recipe viewer fills in a Fluid row, if this editor takes them. */
-    void setFluid(Fluid fluid) {
-        if (!modes.contains(Mode.FLUID)) return;
-        mode = Mode.FLUID;
+    /** Something that isn't an item, dragged in from a recipe viewer: a fluid or a modded material. */
+    void setMaterial(Identifier id) {
+        mode = Mode.MATERIAL;
         ghost = ItemStack.EMPTY;
+        contents = false;
         tagChoices = List.of();
         tagScroll = 0;
-        text.setValue(BuiltInRegistries.FLUID.getKey(fluid).toString());
+        text.setValue(id.toString());
         update();
     }
 
@@ -372,7 +383,7 @@ class ItemFilterEditor {
         layout();
         update();
         for (Placed placed : buttons) if (placed.button().visible && placed.button().mouseClicked(event, doubleClick)) return true;
-        if (slotArea().contains((int) event.x(), (int) event.y())) { setItem(carried.get()); return true; }
+        if (slotArea().contains((int) event.x(), (int) event.y())) { setItem(carried.get(), event.hasShiftDown()); return true; }
         if (event.x() >= x + scrollX() && event.y() >= y + listY && event.y() < y + listY + rows * rowHeight) {
             draggingScroll = true;
             scrollTo(event.y());

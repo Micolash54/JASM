@@ -41,8 +41,11 @@ import mezz.jei.api.runtime.IClickableIngredient;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.minecraft.world.item.Items;
@@ -52,10 +55,22 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 /**
  * JEI support. JASM's recipes show up on their own; this adds info pages, a page of what each fuel makes in the
  * Combustion Generators, and lets JEI see the Deck's grid, its wafer settings window and the filter slots in it. JEI's
- * "+" fills a Crafting Deck's crafting grid.
+ * "+" fills a Crafting Deck's crafting grid. Chemicals and other mods' materials can be dragged into filter rows.
  */
 @JeiPlugin
 public class JasmJeiPlugin implements IModPlugin {
+    /** What a dragged ingredient names in a filter row: an item, or the ID of a fluid or something else. */
+    private record Dropped(@Nullable Item item, @Nullable Identifier id) {}
+
+    private static <I> @Nullable Dropped dropped(ITypedIngredient<I> ingredient) {
+        Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
+        if (stack.isPresent()) return new Dropped(stack.get().getItem(), null);
+        Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
+        if (fluid.isPresent()) return new Dropped(null, BuiltInRegistries.FLUID.getKey(fluid.get().getFluid()));
+        Identifier id = JeiMaterials.idOf(ingredient);
+        return id == null ? null : new Dropped(null, id);
+    }
+
     @Override
     public Identifier getPluginUid() {
         return Jasm.id("main");
@@ -153,6 +168,12 @@ public class JasmJeiPlugin implements IModPlugin {
         recipes.addRecipes(GeneratorFuelCategory.TYPE, fuels);
         recipes.addRecipes(QuenchingCategory.TYPE, ReceivedRecipes.quenching().stream().map(QuenchingCategory.Quench::of).toList());
         recipes.addRecipes(WorkshopRecipeCategory.TYPE, ReceivedRecipes.workshop());
+        JeiMaterials.start(runtime);
+    }
+
+    @Override
+    public void onRuntimeUnavailable() {
+        JeiMaterials.stop();
     }
 
     @Override
@@ -215,9 +236,8 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(TransferPortScreen.class, new IGhostIngredientHandler<>() {
             @Override
             public <I> List<Target<I>> getTargetsTyped(TransferPortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
-                Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
-                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
-                if (stack.isEmpty() && fluid.isEmpty()) return List.of();
+                Dropped drop = dropped(ingredient);
+                if (drop == null) return List.of();
                 List<Target<I>> targets = new ArrayList<>();
                 List<Rect2i> areas = screen.filterSlots();
                 for (int i = 0; i < areas.size(); i++) {
@@ -227,8 +247,8 @@ public class JasmJeiPlugin implements IModPlugin {
                         public Rect2i getArea() { return areas.get(index); }
                         @Override
                         public void accept(I dropped) {
-                            if (stack.isPresent()) screen.setFilterItem(index, stack.get().getItem());
-                            else screen.setFilterFluid(index, fluid.get().getFluid());
+                            if (drop.item() != null) screen.setFilterItem(index, drop.item());
+                            else screen.setFilterMaterial(index, drop.id());
                         }
                     });
                 }
@@ -240,9 +260,8 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(StoragePortScreen.class, new IGhostIngredientHandler<>() {
             @Override
             public <I> List<Target<I>> getTargetsTyped(StoragePortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
-                Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
-                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
-                if (stack.isEmpty() && fluid.isEmpty()) return List.of();
+                Dropped drop = dropped(ingredient);
+                if (drop == null) return List.of();
                 List<Target<I>> targets = new ArrayList<>();
                 List<Rect2i> areas = screen.filterSlots();
                 for (int i = 0; i < areas.size(); i++) {
@@ -252,8 +271,8 @@ public class JasmJeiPlugin implements IModPlugin {
                         public Rect2i getArea() { return areas.get(index); }
                         @Override
                         public void accept(I dropped) {
-                            if (stack.isPresent()) screen.setFilterItem(index, stack.get().getItem());
-                            else screen.setFilterFluid(index, fluid.get().getFluid());
+                            if (drop.item() != null) screen.setFilterItem(index, drop.item());
+                            else screen.setFilterMaterial(index, drop.id());
                         }
                     });
                 }
@@ -294,8 +313,8 @@ public class JasmJeiPlugin implements IModPlugin {
             @Override
             public <I> List<Target<I>> getTargetsTyped(DeckScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
                 Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
-                Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
-                if (stack.isEmpty() && fluid.isEmpty()) {
+                Dropped drop = dropped(ingredient);
+                if (drop == null) {
                     return List.of();
                 }
                 List<Target<I>> targets = new ArrayList<>();
@@ -324,8 +343,8 @@ public class JasmJeiPlugin implements IModPlugin {
 
                         @Override
                         public void accept(I dropped) {
-                            if (stack.isPresent()) screen.setFilter(index, stack.get().getItem());
-                            else screen.setFilterFluid(fluid.get().getFluid());
+                            if (drop.item() != null) screen.setFilter(index, drop.item());
+                            else screen.setFilterMaterial(drop.id());
                         }
                     });
                 }

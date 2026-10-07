@@ -21,17 +21,6 @@ public final class GridEntries {
         }
     }
 
-    /** Which kinds the grid lists. */
-    public enum Kinds {
-        ALL,
-        ITEMS,
-        FLUIDS;
-
-        public Kinds next() {
-            return values()[(ordinal() + 1) % values().length];
-        }
-    }
-
     private GridEntries() {}
 
     /**
@@ -54,6 +43,18 @@ public final class GridEntries {
     /** Weight of a fluid in "sort by amount": whole buckets, but never less than one while any is stored. */
     public static long fluidWeight(long millibuckets) {
         return millibuckets <= 0 ? 0 : Math.max(1, millibuckets / 1_000);
+    }
+
+    /** For things the language file has no name for: the last part of the ID, each word capitalised. */
+    public static String readableName(String path) {
+        String last = path.substring(path.lastIndexOf('/') + 1);
+        StringBuilder name = new StringBuilder();
+        for (String word : last.split("_")) {
+            if (word.isEmpty()) continue;
+            if (!name.isEmpty()) name.append(' ');
+            name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return name.toString();
     }
 
     /** Short amount label for a fluid grid cell, in buckets: 0.5, 12.5, 123, 1.2K ... */

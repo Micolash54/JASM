@@ -45,6 +45,7 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 ## What a Deck can do
 
 * Hold [item and fluid wafers](capacity-wafers.md) side by side.
+* See what other mods keep behind a [Storage Port](storage-port.md), Mekanism chemicals for example. Look only, for now. Without JEI they get a plain tinted canister for an icon.
 * Right-click a wafer to set its [filters](../mechanics/wafer-filters.md) and priority.
 * Link to a network at an [Encoding Terminal](encoding-terminal.md), to receive port deliveries and see the Network tab.
 * [Send items to other players](../mechanics/sending-items.md).

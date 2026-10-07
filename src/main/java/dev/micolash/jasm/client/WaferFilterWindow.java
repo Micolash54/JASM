@@ -4,7 +4,6 @@ import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.storage.WaferSettings;
-import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -35,9 +34,6 @@ final class WaferFilterWindow extends ItemFilterEditor {
         index = slot;
         menu.view().setEmptied(null);
         var settings = slot < menu.view().slots().size() ? menu.view().slots().get(slot).settings() : WaferSettings.DEFAULT;
-        boolean fluid = slot < menu.view().slots().size() && menu.view().slots().get(slot).fluid();
-        setModes(fluid ? List.of(WaferSettings.Mode.FLUID, WaferSettings.Mode.TAG, WaferSettings.Mode.MOD_ID)
-                : List.of(WaferSettings.Mode.ITEM, WaferSettings.Mode.TAG, WaferSettings.Mode.MOD_ID));
         super.open(settings, Component.translatable("screen.jasm.filter.title"), Component.translatable("screen.jasm.deck.settings.slot", slot + 1),
                 menu.slots.get(slot).getItem(), left, top, width, height);
     }

@@ -2,6 +2,7 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.storage.WaferRecord;
@@ -36,6 +37,7 @@ public final class DeckViewTracker {
     private static final class Sent {
         Map<ItemResource, Long> contents;
         Map<FluidResource, Long> fluids;
+        Map<MaterialKey, Long> materials;
         Map<ItemResource, Long> chest = Map.of();
         Map<FluidResource, Long> fluidChest = Map.of();
         long poolVersion = -1;
@@ -140,6 +142,7 @@ public final class DeckViewTracker {
                 if (t[1] > 0) sent.chest.put(key, t[1]);
             });
             sendFluids(player, menu.containerId, sent, totals(fluids, pool == null ? Map.of() : pool.fluidContents()));
+            sendMaterials(player, menu.containerId, sent, pool == null ? Map.of() : pool.materialContents());
         }
         int energy = DeckItem.energy(menu.deck());
         List<DeckStorage.SlotStatus> slots = DeckStorage.status(store, menu.deck());
@@ -182,6 +185,37 @@ public final class DeckViewTracker {
             sent.fluids.put(key, t[0]);
             if (t[1] > 0) sent.fluidChest.put(key, t[1]);
         });
+    }
+
+    // like fluids, minus the wafer part: these only ever sit in storage blocks
+    private static void sendMaterials(ServerPlayer player, int containerId, Sent sent, Map<MaterialKey, Long> now) {
+        if (sent.materials == null) {
+            if (!now.isEmpty()) {
+                List<DeckPayloads.MaterialEntry> entries = materialChanges(Map.of(), now);
+                int pages = Math.max(1, (entries.size() + PAGE_SIZE - 1) / PAGE_SIZE);
+                for (int page = 0; page < pages; page++) {
+                    PacketDistributor.sendToPlayer(player, new DeckPayloads.MaterialSnapshot(containerId, page, pages,
+                            entries.subList(page * PAGE_SIZE, Math.min(entries.size(), (page + 1) * PAGE_SIZE))));
+                }
+            }
+        } else {
+            List<DeckPayloads.MaterialEntry> changes = materialChanges(sent.materials, now);
+            for (int from = 0; from < changes.size(); from += PAGE_SIZE) {
+                PacketDistributor.sendToPlayer(player, new DeckPayloads.MaterialDelta(containerId,
+                        changes.subList(from, Math.min(changes.size(), from + PAGE_SIZE))));
+            }
+        }
+        sent.materials = new HashMap<>(now);
+    }
+
+    /** What changed between two listings; 0 means gone. */
+    public static List<DeckPayloads.MaterialEntry> materialChanges(Map<MaterialKey, Long> before, Map<MaterialKey, Long> now) {
+        List<DeckPayloads.MaterialEntry> changes = new ArrayList<>();
+        now.forEach((key, amount) -> {
+            if (!amount.equals(before.get(key))) changes.add(new DeckPayloads.MaterialEntry(key, amount));
+        });
+        before.keySet().stream().filter(key -> !now.containsKey(key)).forEach(key -> changes.add(new DeckPayloads.MaterialEntry(key, 0)));
+        return changes;
     }
 
     /** The total and the part of it held in storage blocks, for each key. */

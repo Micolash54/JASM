@@ -9,6 +9,7 @@ import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.SearchQuery;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
@@ -206,15 +207,15 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         super.init();
         // The search text stays when the screen is laid out again for a new size or window.
         String query = search == null ? "" : search.getValue();
-        search = new JasmField(font, leftPos + mainX + 5, topPos + 6, 145 - (KEY - 1), 14, Component.translatable("screen.jasm.deck.search"));
+        search = new JasmField(font, leftPos + mainX + 5, topPos + 6, 145, 14, Component.translatable("screen.jasm.deck.search"));
         search.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         search.setMaxLength(64);
         search.setValue(query);
         search.setResponder(text -> scrollRow = 0);
         addRenderableWidget(search);
-        // The four keys right of the search field share their outlines. The last is a pixel wider, so its letter sits in the
-        // middle, and the row ends level with the grid's well.
-        int keyX = leftPos + mainX + 152 - (KEY - 1);
+        // The three keys right of the search field share their outlines. The last is a pixel wider, so the row ends level with
+        // the grid's well.
+        int keyX = leftPos + mainX + 152;
         addRenderableWidget(JasmButton.icon(() -> sort == GridEntries.Sort.NAME ? SORT_NAME : SORT_AMOUNT, sortLabel(), b -> {
             sort = sort == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME;
             b.setMessage(sortLabel());
@@ -226,18 +227,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             builtVersion = -1;
         }, keyX + KEY - 1, topPos + KEY_Y, KEY, KEY));
         sizeButton = JasmButton.icon(() -> SIZE_ICONS[JasmClientConfig.deckSize().ordinal()], sizeLabel(), b -> changeSize(false),
-                keyX + 2 * (KEY - 1), topPos + KEY_Y, KEY, KEY);
+                keyX + 2 * (KEY - 1), topPos + KEY_Y, KEY + 1, KEY);
         sizeButton.setTooltip(Tooltip.create(Component.empty().append(sizeLabel()).append("\n")
                 .append(Component.translatable("screen.jasm.deck.size_hint").withStyle(ChatFormatting.GRAY))));
         addRenderableWidget(sizeButton);
-        JasmButton kindsButton = JasmButton.text(kindsGlyph(), b -> {
-            JasmClientConfig.setDeckKinds(JasmClientConfig.deckKinds().next());
-            b.setMessage(kindsGlyph());
-            b.setTooltip(Tooltip.create(kindsLabel()));
-            builtVersion = -1;
-        }, keyX + 3 * (KEY - 1), topPos + KEY_Y, KEY + 1, KEY);
-        kindsButton.setTooltip(Tooltip.create(kindsLabel()));
-        addRenderableWidget(kindsButton);
         tabs.clear();
         craftWindow = new CraftRequestWindow(menu, font);
         ruleWindow = new RuleWindow(menu, font);
@@ -427,14 +420,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (filterWindow != null) filterWindow.close();
     }
 
-    /** A fluid dragged from JEI fills a Fluid row in the open filter window. */
-    public void setFilterFluid(net.minecraft.world.level.material.Fluid fluid) {
-        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setFluid(fluid);
+    /** A fluid or modded material dragged from JEI fills a Material row in the open filter window. */
+    public void setFilterMaterial(net.minecraft.resources.Identifier id) {
+        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setMaterial(id);
     }
 
     /** An item dragged from JEI fills the new filter's ghost input. */
     public void setFilter(int index, @Nullable Item item) {
-        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setItem(item == null ? ItemStack.EMPTY : new ItemStack(item));
+        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setItem(item == null ? ItemStack.EMPTY : new ItemStack(item), false);
     }
 
     // --- for item list mods (JEI) ---
@@ -513,16 +506,6 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         return Optional.of(new ShownFluid(entry.key().fluid(), leftPos + gridX + column * 18, topPos + gridY + row * 18));
     }
 
-    /** One letter on the key: all, items, fluids. */
-    private static Component kindsGlyph() {
-        return Component.translatable("screen.jasm.deck.kinds_glyph." + JasmClientConfig.deckKinds().name().toLowerCase(Locale.ROOT));
-    }
-
-    private static Component kindsLabel() {
-        return Component.translatable("screen.jasm.deck.kinds",
-                Component.translatable("screen.jasm.deck.kinds." + JasmClientConfig.deckKinds().name().toLowerCase(Locale.ROOT)));
-    }
-
     private Component sortLabel() {
         return Component.translatable(sort == GridEntries.Sort.NAME ? "screen.jasm.deck.sort_name" : "screen.jasm.deck.sort_amount");
     }
@@ -542,15 +525,15 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         builtQuery = search.getValue();
         builtTab = tab;
         List<GridEntries.Entry<GridKey>> entries = new ArrayList<>();
-        GridEntries.Kinds kinds = JasmClientConfig.deckKinds();
-        if (tab == Tab.ITEMS && kinds != GridEntries.Kinds.FLUIDS) {
+        if (tab == Tab.ITEMS) {
             for (Map.Entry<ItemResource, Long> e : view.contents().entrySet()) {
                 entries.add(entry(e.getKey(), e.getValue()));
             }
-        }
-        if (tab == Tab.ITEMS && kinds != GridEntries.Kinds.ITEMS) {
             for (Map.Entry<FluidResource, Long> e : view.fluids().entrySet()) {
                 entries.add(fluidEntry(e.getKey(), e.getValue()));
+            }
+            for (Map.Entry<MaterialKey, Long> e : view.materials().entrySet()) {
+                entries.add(materialEntry(e.getKey(), e.getValue()));
             }
         }
         // Add unstored craftable items on Items; Craft shows every known recipe output.
@@ -558,15 +541,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             FluidResource fluid = FluidMarkerItem.fluidOf(key.toStack(1));
             if (fluid != null) {
                 // A card that makes a fluid: it shows as the fluid, with what the Deck holds of it.
-                if (kinds != GridEntries.Kinds.ITEMS || tab == Tab.CRAFT) {
-                    if (tab == Tab.CRAFT || !view.fluids().containsKey(fluid)) {
-                        entries.add(fluidEntry(fluid, view.fluids().getOrDefault(fluid, 0L)));
-                    }
+                if (tab == Tab.CRAFT || !view.fluids().containsKey(fluid)) {
+                    entries.add(fluidEntry(fluid, view.fluids().getOrDefault(fluid, 0L)));
                 }
-            } else if (kinds != GridEntries.Kinds.FLUIDS || tab == Tab.CRAFT) {
-                if (tab == Tab.CRAFT || !view.contents().containsKey(key)) {
-                    entries.add(entry(key, view.contents().getOrDefault(key, 0L)));
-                }
+            } else if (tab == Tab.CRAFT || !view.contents().containsKey(key)) {
+                entries.add(entry(key, view.contents().getOrDefault(key, 0L)));
             }
         }
         visible = GridEntries.view(entries, SearchQuery.parse(builtQuery), sort, ascending);
@@ -589,6 +568,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         String modId = id.contains(":") ? id.substring(0, id.indexOf(':')) : "minecraft";
         return new GridEntries.Entry<>(new GridKey.Fluid(key), key.getHoverName().getString(), modId, millibuckets,
                 GridEntries.fluidWeight(millibuckets));
+    }
+
+    private static GridEntries.Entry<GridKey> materialEntry(MaterialKey key, long amount) {
+        return new GridEntries.Entry<>(new GridKey.Material(key), MaterialIcons.name(key).getString(), key.id().getNamespace(), amount,
+                GridEntries.fluidWeight(amount));
     }
 
     private int maxScroll() {
@@ -873,6 +857,16 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 GridEntries.Entry<GridKey> entry = visible.get(index);
                 int sx = x + gridX + column * 18;
                 int sy = y + gridY + row * 18;
+                MaterialKey material = entry.key().material();
+                if (material != null) {
+                    graphics.fill(sx, sy, sx + 16, sy + 16, PORT_BACK);
+                    MaterialIcons.draw(graphics, material, sx, sy);
+                    JasmGui.itemCount(graphics, font, GridEntries.abbreviate(entry.count()), sx, sy);
+                    if (entry == hovered) {
+                        graphics.fill(sx, sy, sx + 16, sy + 16, JasmGui.HOVER);
+                    }
+                    continue;
+                }
                 ItemResource item = entry.key().item();
                 if (item == null) {
                     if (tab != Tab.CRAFT && menu.view().chestFluidOf(entry.key().fluid()) > 0) {
@@ -926,7 +920,15 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                         y + gridY + rows * 9 - 4 - (wrapped.size() - 1) * 5 + i * 10, JasmGui.MUTED, true);
             }
         }
-        if (hovered != null && hovered.key().fluid() != null) {
+        if (hovered != null && hovered.key().material() != null) {
+            MaterialKey material = hovered.key().material();
+            List<Component> lines = new ArrayList<>();
+            lines.add(MaterialIcons.name(material));
+            lines.add(Component.translatable("screen.jasm.deck.stored", String.format("%,d", hovered.count())).withStyle(ChatFormatting.GRAY));
+            lines.add(Component.literal(MaterialIcons.modName(material)).withStyle(ChatFormatting.BLUE, ChatFormatting.ITALIC));
+            lines.add(Component.translatable("screen.jasm.deck.material_view_only").withColor(JasmGui.SUBTEXT & 0xFFFFFF));
+            graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
+        } else if (hovered != null && hovered.key().fluid() != null) {
             List<Component> lines = new ArrayList<>();
             lines.add(hovered.key().fluid().getHoverName());
             lines.add(Component.translatable("screen.jasm.deck.stored_fluid", FluidAmounts.buckets(hovered.count())).withStyle(ChatFormatting.GRAY));
@@ -935,7 +937,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 lines.add(Component.translatable("screen.jasm.deck.in_chests", FluidAmounts.buckets(fluidInChests),
                         FluidAmounts.buckets(hovered.count() - fluidInChests)).withStyle(ChatFormatting.GRAY));
             }
-            if (JasmClientConfig.deckKinds() != GridEntries.Kinds.ITEMS && tab != Tab.CRAFT) {
+            if (tab != Tab.CRAFT) {
                 lines.add(Component.translatable("screen.jasm.deck.fluid_hint").withStyle(ChatFormatting.DARK_GRAY));
             }
             if (menu.view().craftable().contains(marker(hovered.key().fluid()))) {
@@ -966,10 +968,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         long missing = 0;
         long typesUsed = 0;
         long types = 0;
-        // The line follows what the grid lists: fluid wafers when only fluids show (or the Deck holds nothing else).
-        boolean fluidLine = JasmClientConfig.deckKinds() == GridEntries.Kinds.FLUIDS
-                || JasmClientConfig.deckKinds() == GridEntries.Kinds.ALL && menu.view().slots().stream().noneMatch(s -> s.present() && !s.fluid())
-                        && menu.view().slots().stream().anyMatch(DeckStorage.SlotStatus::fluid);
+        // The line shows fluid wafers only when the Deck holds nothing else.
+        boolean fluidLine = menu.view().slots().stream().noneMatch(s -> s.present() && !s.fluid())
+                && menu.view().slots().stream().anyMatch(DeckStorage.SlotStatus::fluid);
         for (DeckStorage.SlotStatus slot : menu.view().slots()) {
             if (slot.fluid() != fluidLine) {
                 continue;
@@ -1103,7 +1104,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (menu.isCrafting() && inGrid(event.x(), event.y()) && menu.getCarried().isEmpty()) {
             GridEntries.Entry<GridKey> entry = entryAt(event.x(), event.y());
             boolean middle = event.button() == InputConstants.MOUSE_BUTTON_MIDDLE;
-            ItemResource craftItem = entry == null ? null : entry.key().item() != null ? entry.key().item() : marker(entry.key().fluid());
+            ItemResource craftItem = entry == null || entry.key().material() != null ? null
+                    : entry.key().item() != null ? entry.key().item() : marker(entry.key().fluid());
             if (craftItem != null && menu.view().craftable().contains(craftItem) && (middle || tab == Tab.CRAFT)) {
                 openCraft(craftItem);
                 return true;
@@ -1126,7 +1128,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         // Shift-right-click on a filled bucket or tank in the inventory pours it in, as long as fluids are listed;
         // shift-left-click still stores it as an item.
         if (right && event.hasShiftDown() && clickedSlot != null && clickedSlot.container == minecraft.player.getInventory()
-                && menu.getCarried().isEmpty() && tab == Tab.ITEMS && JasmClientConfig.deckKinds() != GridEntries.Kinds.ITEMS
+                && menu.getCarried().isEmpty() && tab == Tab.ITEMS
                 && FluidGrid.containedFluid(clickedSlot.getItem()) != null) {
             ClientPacketDistributor.sendToServer(new DeckPayloads.PourSlot(menu.containerId, clickedSlot.index));
             return true;
@@ -1137,14 +1139,18 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             return true;
         }
         if (inGrid(event.x(), event.y())) {
-            boolean fluidsShown = tab == Tab.ITEMS && JasmClientConfig.deckKinds() != GridEntries.Kinds.ITEMS;
+            GridEntries.Entry<GridKey> entry = entryAt(event.x(), event.y());
+            // other mods' materials can only be looked at for now
+            if (entry != null && entry.key().material() != null) {
+                return true;
+            }
+            boolean fluidsShown = tab == Tab.ITEMS;
             // Right-click with a filled bucket or tank pours it in (shift: all of it), as long as fluids are listed.
             if (right && fluidsShown && FluidGrid.containedFluid(menu.getCarried()) != null) {
                 ClientPacketDistributor.sendToServer(new DeckPayloads.FluidAction(menu.containerId, FluidResource.EMPTY,
                         event.hasShiftDown() ? DeckPayloads.FluidMode.EMPTY_ALL : DeckPayloads.FluidMode.EMPTY));
                 return true;
             }
-            GridEntries.Entry<GridKey> entry = entryAt(event.x(), event.y());
             // Left-click on a fluid fills the container on the cursor, or an empty bucket taken from the item wafers.
             if (entry != null && entry.key().fluid() != null) {
                 if (!right) {

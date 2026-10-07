@@ -16,12 +16,18 @@ Right-click a wafer in the [Deck](../items/decks.md) to choose what it accepts. 
 <br />
 ## Rules
 
-Each filter is a row. A row can match an **Item**, a **Tag** or a **Mod ID** (a **Fluid** on a fluid wafer), and it can **Allow** or **Deny**.
+Each filter is a row. A row can match a **Material**, a **Tag** or a **Mod ID**, and it can **Allow** or **Deny**. A Material row matches anything with that ID, so `mekanism:hydrogen` catches the fluid and the chemical alike.
 
 * The first enabled row that matches decides.
 * An item gets in only if that row says Allow.
 * Rows can be switched off, moved up or down, or removed.
 * With filters on, items that match no row stay out.
+
+<br />
+<br />
+## Picking what to match
+
+Click the slot with an item to fill in its ID. Shift-click to use what it holds instead, like the water in a bucket. And you can drag things straight in from JEI, chemicals too.
 
 <br />
 <br />

@@ -4,7 +4,6 @@ import dev.micolash.jasm.pool.StorageAccess;
 import dev.micolash.jasm.pool.StorageNetwork;
 import dev.micolash.jasm.pool.StoragePortMenu;
 import dev.micolash.jasm.pool.StorageSettings;
-import dev.micolash.jasm.storage.WaferSettings;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
@@ -13,10 +12,10 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /** A Storage Port's filter, what the network may do with the block in front of it, and its priority. */
@@ -38,7 +37,6 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
         frame = JasmFrame.rounded(new int[]{0, 0, StoragePortMenu.WIDTH, imageHeight});
         addHelp(StoragePortMenu.WIDTH - 7, "items/storage-port.md");
         editor = new ItemFilterEditor(font, 2, false, menu::getCarried, StoragePortMenu.WIDTH - 16);
-        editor.setModes(List.of(WaferSettings.Mode.ITEM, WaferSettings.Mode.FLUID, WaferSettings.Mode.TAG, WaferSettings.Mode.MOD_ID));
         editor.setSave(filter -> send(new StorageSettings(filter, menu.settings().access(), menu.settings().priority())));
         editor.open(menu.settings().filter(), Component.translatable("screen.jasm.storage.filter"), Component.empty(),
                 ItemStack.EMPTY, leftPos + 8, topPos + StoragePortMenu.FILTER_TOP, width, height);
@@ -127,6 +125,6 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
 
     /** The filter's drop spots, for JEI. */
     public List<Rect2i> filterSlots() { return List.of(editor.slotArea()); }
-    public void setFilterItem(int index, Item item) { if (index == 0) editor.setItem(new ItemStack(item)); }
-    public void setFilterFluid(int index, Fluid fluid) { if (index == 0) editor.setFluid(fluid); }
+    public void setFilterItem(int index, Item item) { if (index == 0) editor.setItem(new ItemStack(item), false); }
+    public void setFilterMaterial(int index, Identifier id) { if (index == 0) editor.setMaterial(id); }
 }
