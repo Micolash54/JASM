@@ -84,6 +84,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private static final JasmButton.Icon SORT_AMOUNT = new JasmButton.Icon(Jasm.id("icon/sort_amount"), 7, 5);
     private static final JasmButton.Icon UP = new JasmButton.Icon(Jasm.id("icon/triangle_up"), 6, 4);
     private static final JasmButton.Icon DOWN = new JasmButton.Icon(Jasm.id("icon/triangle_down"), 6, 4);
+    private static final JasmButton.Icon LEFT = new JasmButton.Icon(Jasm.id("icon/triangle_left"), 4, 6);
+    private static final JasmButton.Icon RIGHT = new JasmButton.Icon(Jasm.id("icon/triangle_right"), 4, 6);
+    /** The wafer page arrows share the strip under the wafers with the Dimension Upgrade slot: these are their sizes. */
+    private static final int PAGE_KEY_WIDTH = 9;
+    private static final int PAGE_KEY_HEIGHT = 12;
+    /** Colours of an overflow wafer slot: dark, with a diagonal line through it. */
+    private static final int OVERFLOW_FILL = 0xFF181825;
+    private static final int OVERFLOW_LINE = 0xFF45475A;
     private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow_wide");
     private static final Identifier CRAFTABLE = Jasm.id("icon/craftable");
     /** Behind what a Storage Port holds, in the Deck's grid: a mauve wash. */
@@ -148,6 +156,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** The Deck to Deck window: kept while the screen is open, so it stays where it was dragged. */
     private @Nullable DeckSendWindow sendWindow;
     private JasmButton sendButton;
+    private @Nullable JasmButton pageBack;
+    private @Nullable JasmButton pageNext;
 
     public DeckScreen(DeckMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, menu.screenWidth(), menu.screenHeight());
@@ -231,6 +241,19 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         sizeButton.setTooltip(Tooltip.create(Component.empty().append(sizeLabel()).append("\n")
                 .append(Component.translatable("screen.jasm.deck.size_hint").withStyle(ChatFormatting.GRAY))));
         addRenderableWidget(sizeButton);
+        pageBack = null;
+        pageNext = null;
+        if (menu.pages().pages() > 1) {
+            // Left of the Dimension Upgrade slot, in the strip under the wafers.
+            int keyY = topPos + pageStripY() + 2;
+            Component tip = pageTooltip();
+            pageBack = JasmButton.icon(() -> LEFT, tip, b -> turnPage(-1), leftPos + 4, keyY, PAGE_KEY_WIDTH, PAGE_KEY_HEIGHT);
+            pageNext = JasmButton.icon(() -> RIGHT, tip, b -> turnPage(1), leftPos + mainX - 21 - 3 - PAGE_KEY_WIDTH, keyY,
+                    PAGE_KEY_WIDTH, PAGE_KEY_HEIGHT);
+            addRenderableWidget(pageBack);
+            addRenderableWidget(pageNext);
+            updatePageKeys();
+        }
         tabs.clear();
         craftWindow = new CraftRequestWindow(menu, font);
         ruleWindow = new RuleWindow(menu, font);
@@ -291,6 +314,49 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         updateTabs();
 
         if (filterWindow == null) filterWindow = new WaferFilterWindow(menu, font);
+    }
+
+    /** Top of the strip under the wafers, where the Dimension Upgrade slot sits. */
+    private int pageStripY() {
+        return DeckMenu.SIDE_TOP + 15 + menu.sideRows() * 18;
+    }
+
+    private Component pageTooltip() {
+        return Component.translatable("screen.jasm.deck.page_tooltip", menu.wafersPage() + 1, menu.pages().pages());
+    }
+
+    private void turnPage(int by) {
+        menu.setWafersPage(menu.wafersPage() + by);
+        updatePageKeys();
+    }
+
+    /** The arrows go dull at either end and say which page is showing. */
+    private void updatePageKeys() {
+        if (pageBack == null || pageNext == null) return;
+        pageBack.active = menu.wafersPage() > 0;
+        pageNext.active = menu.wafersPage() < menu.pages().pages() - 1;
+        Component tip = pageTooltip();
+        pageBack.setMessage(tip);
+        pageNext.setMessage(tip);
+        pageBack.setTooltip(Tooltip.create(tip));
+        pageNext.setTooltip(Tooltip.create(tip));
+    }
+
+    /** Between the arrows: "2/3", or just "2" when the total would not fit. */
+    private void drawPageLabel(GuiGraphicsExtractor graphics) {
+        int left = leftPos + 4 + PAGE_KEY_WIDTH;
+        int right = leftPos + mainX - 21 - 3 - PAGE_KEY_WIDTH;
+        Component both = Component.translatable("screen.jasm.deck.page", menu.wafersPage() + 1, menu.pages().pages());
+        Component label = font.width(both) <= right - left ? both : Component.literal(Integer.toString(menu.wafersPage() + 1));
+        graphics.text(font, label, left + (right - left - font.width(label)) / 2, topPos + pageStripY() + 4, JasmGui.TEXT, false);
+    }
+
+    /** An overflow wafer slot: a dark slot with a line across it, so it reads as closed. */
+    private static void drawOverflow(GuiGraphicsExtractor graphics, int x, int y) {
+        graphics.fill(x, y, x + 16, y + 16, OVERFLOW_FILL);
+        for (int i = 0; i < 16; i++) {
+            graphics.fill(x + i, y + 15 - i, x + i + 1, y + 16 - i, OVERFLOW_LINE);
+        }
     }
 
     /** The open tab's button stays pressed in; while the job list is open, its button is the pressed one. */
@@ -638,10 +704,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             }
         }
         for (Slot slot : menu.slots) {
-            if (slot.isActive()) JasmGui.slot(graphics, x + slot.x, y + slot.y);
+            if (!slot.isActive()) continue;
+            JasmGui.slot(graphics, x + slot.x, y + slot.y);
+            if (slot.index < menu.waferSlots() && menu.isOverflow(slot.getContainerSlot())) drawOverflow(graphics, x + slot.x, y + slot.y);
         }
+        if (menu.pages().pages() > 1) drawPageLabel(graphics);
         drawCharge(graphics, x, y);
-        if (filterWindow != null && filterWindow.isOpen() && filterWindow.selected() < menu.slots.size()) {
+        if (filterWindow != null && filterWindow.isOpen() && filterWindow.selected() < menu.slots.size()
+                && menu.slots.get(filterWindow.selected()).isActive()) {
             Slot wafer = menu.slots.get(filterWindow.selected());
             graphics.outline(x + wafer.x - 1, y + wafer.y - 1, 18, 18, JasmGui.ACCENT);
         }
@@ -784,6 +854,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         super.extractContents(graphics, mouseX, mouseY, a);
         if (hoveredSlot != null && hoveredSlot.index == menu.upgradeSlot()) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.deck.dimension_slot"), mouseX, mouseY);
+        }
+        if (hoveredSlot != null && hoveredSlot.index < menu.waferSlots() && !hoveredSlot.hasItem()
+                && menu.isOverflow(hoveredSlot.getContainerSlot())) {
+            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.deck.overflow"), mouseX, mouseY);
         }
         drawGrid(graphics, mouseX, mouseY);
         chargeTooltip(graphics, mouseX, mouseY);
@@ -1008,6 +1082,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         List<Component> lines = new ArrayList<>(super.getTooltipFromContainerItem(stack));
         if (hoveredSlot != null && hoveredSlot.index < menu.waferSlots() && hoveredSlot.index < menu.view().slots().size()) {
             DeckStorage.SlotStatus status = menu.view().slots().get(hoveredSlot.index);
+            if (menu.isOverflow(hoveredSlot.getContainerSlot())) {
+                lines.add(Component.translatable("screen.jasm.deck.overflow").withStyle(ChatFormatting.YELLOW));
+            }
             lines.add((status.fluid()
                     ? Component.translatable("screen.jasm.deck.wafer_used_fluid", FluidAmounts.buckets(status.used()), FluidAmounts.buckets(status.capacity()))
                     : Component.translatable("screen.jasm.deck.wafer_used", String.format("%,d", status.used()), String.format("%,d", status.capacity())))

@@ -1,7 +1,7 @@
 package dev.micolash.jasm.pool;
 
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.network.DataCableBlockEntity;
@@ -120,7 +120,7 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     }
 
     private static int slots(int size) {
-        return Math.min(size, JasmConfig.POOL_SCAN_SLOTS.getAsInt());
+        return Math.min(size, Tuning.POOL_SCAN_SLOTS);
     }
 
     // --- items ---

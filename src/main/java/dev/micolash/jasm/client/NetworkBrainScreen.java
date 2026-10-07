@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.brain.BrainStatus;
 import dev.micolash.jasm.brain.NetworkBrainMenu;
+import dev.micolash.jasm.core.BrainBalance;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.locale.Language;
@@ -107,7 +108,7 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
         graphics.text(font, NetworkBrainMenu.floorsText(menu.floors()), PAD, FLOORS_Y, JasmGui.TEXT, false);
 
         boolean over = menu.machineCount() > menu.machineLimit();
-        graphics.text(font, Component.translatable("screen.jasm.brain.machines", menu.machineCount(), menu.machineLimit()), PAD, MACHINES_Y,
+        graphics.text(font, Component.translatable("screen.jasm.brain.machines", menu.machineCount(), BrainBalance.shown(menu.machineLimit())), PAD, MACHINES_Y,
                 over ? JasmGui.BAD : JasmGui.TEXT, false);
 
         graphics.text(font, statusText(), PAD + 4, STATUS_Y + 3, colour(menu.status()), false);

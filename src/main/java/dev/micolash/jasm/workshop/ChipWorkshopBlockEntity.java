@@ -1,6 +1,6 @@
 package dev.micolash.jasm.workshop;
 
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipOdds;
 import dev.micolash.jasm.core.ChipType;
@@ -240,7 +240,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             need = gridInput().items().stream().allMatch(ItemStack::isEmpty) ? WorkshopNeed.NONE : WorkshopNeed.NO_RECIPE;
         }
         follow("");
-        int perChip = JasmConfig.BITLING_DRAIN_PER_CHIP.getAsInt();
+        int perChip = Tuning.BITLING_DRAIN_PER_CHIP;
         if (!napping && BitlingItem.energy(critter) < Math.max(1, perChip)) {
             napping = true;
             progress = 0;
@@ -405,7 +405,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         if (recipe != null && progressFor.equals(recipe.id().toString())) {
             return recipe.value().ticks();
         }
-        return (batch ? JasmConfig.WORKSHOP_TICKS_PER_BATCH : JasmConfig.WORKSHOP_TICKS_PER_OPERATION).getAsInt();
+        return batch ? Tuning.WORKSHOP_TICKS_PER_BATCH : Tuning.WORKSHOP_TICKS_PER_OPERATION;
     }
 
     /** Chips the next operation makes: one, or up to a batch, as many as there are Blank Chips and battery for. */

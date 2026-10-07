@@ -1,18 +1,22 @@
 {
-  "type": "jasm:upgrade",
-  "key": {
-    "X": "minecraft:emerald",
-    "R": "minecraft:redstone",
-    "P": "jasm:advanced_combustion_generator",
-    "A": "jasm:advanced_logic_chip"
-  },
-  "pattern": [
-    "XAX",
-    "RPR",
-    "XRX"
-  ],
-  "source": "jasm:advanced_combustion_generator",
-  "result": {
-    "id": "jasm:elite_combustion_generator"
+  "type": "jasm:switchable",
+  "feature": "generators",
+  "recipe": {
+    "type": "jasm:upgrade",
+    "key": {
+      "X": "minecraft:emerald",
+      "R": "minecraft:redstone",
+      "P": "jasm:advanced_combustion_generator",
+      "A": "jasm:advanced_logic_chip"
+    },
+    "pattern": [
+      "XAX",
+      "RPR",
+      "XRX"
+    ],
+    "source": "jasm:advanced_combustion_generator",
+    "result": {
+      "id": "jasm:elite_combustion_generator"
+    }
   }
 }

@@ -10,6 +10,12 @@ item_ids:
 
 # Demolition Bay
 
+<WhenOff feature="bays">
+
+**Turned off on this world.** Placed bays keep their contents but don't work.
+
+</WhenOff>
+
 <BlockImage id="demolition_bay" scale="3.5" />
 
 A Demolition Bay breaks the block in front of it into its own grid, scoops up fluids and picks up items that land on its face. A Bitling in welding goggles works the laser.

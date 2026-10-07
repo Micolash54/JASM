@@ -8,6 +8,12 @@ navigation:
 
 # Sending items to players
 
+<WhenOff feature="deck_to_deck">
+
+**Turned off on this world.** Nothing new can be sent. Trips already on their way still arrive, and the inbox can still be emptied.
+
+</WhenOff>
+
 <ItemImage id="ultimate_deck" scale="4" />
 
 Deck to Deck sends items to another player on your network. They travel for a while, then land in the other player's inbox.
@@ -31,7 +37,7 @@ The grid is 1 slot on a Starter Deck, 3 on a Basic, 6 on an Advanced and 9 on El
 | Charge | twice what the same items would cost to move |
 | Travel time | 5 seconds, plus about 1 second for every 64 blocks |
 | Other dimension | 30 seconds more |
-| Longest trip | 3 minutes |
+| Longest trip | 10 minutes |
 | Trips at once | 10 |
 
 Changed your mind? **Call back** turns the trip round and brings the items to your own inbox.

@@ -10,6 +10,12 @@ item_ids:
 
 # Deployment Bay
 
+<WhenOff feature="bays">
+
+**Turned off on this world.** Placed bays keep their contents but don't work.
+
+</WhenOff>
+
 <BlockImage id="deployment_bay" scale="3.5" />
 
 A Deployment Bay places blocks, seeds and fluids from its own grid and tank into the space in front of it, as a player would. It can also throw items out. A Bitling in a hard hat does the work.

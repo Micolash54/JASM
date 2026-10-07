@@ -62,13 +62,15 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         public int get(int index) {
             return switch (index) {
                 case NetworkBrainMenu.DATA_FLOORS -> towerFloors;
-                case NetworkBrainMenu.DATA_COUNT -> {
+                case NetworkBrainMenu.DATA_COUNT_LOW, NetworkBrainMenu.DATA_COUNT_HIGH -> {
                     CableNetwork network = network();
-                    yield network == null ? 0 : network.limitState().count();
+                    int count = network == null ? 0 : network.limitState().count();
+                    yield index == NetworkBrainMenu.DATA_COUNT_LOW ? ContainerWords.low(count) : ContainerWords.high(count);
                 }
-                case NetworkBrainMenu.DATA_LIMIT -> {
+                case NetworkBrainMenu.DATA_LIMIT_LOW, NetworkBrainMenu.DATA_LIMIT_HIGH -> {
                     CableNetwork network = network();
-                    yield network == null ? BrainBalance.fromConfig().limit(true, towerFloors) : network.limitState().limit();
+                    int limit = network == null ? BrainBalance.fromConfig().limit(true, towerFloors) : network.limitState().limit();
+                    yield index == NetworkBrainMenu.DATA_LIMIT_LOW ? ContainerWords.low(limit) : ContainerWords.high(limit);
                 }
                 case NetworkBrainMenu.DATA_STATUS -> status.ordinal();
                 case NetworkBrainMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy().getAmountAsInt());

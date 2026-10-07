@@ -1,6 +1,7 @@
 package dev.micolash.jasm.bitling;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.core.WildRate;
 import dev.micolash.jasm.registry.JasmEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -21,10 +22,9 @@ public final class CrystalAttraction {
 
     private CrystalAttraction() {}
 
-    /** Called from a Seeded Amethyst's random tick: about once per {@code attractInterval} ticks per block, it tries. */
+    /** Called from a Seeded Amethyst's random tick: tries now and then, as often as the spawn rate says. */
     public static void tryAttract(ServerLevel level, BlockPos crystal, RandomSource random) {
-        double ticksBetweenRandomTicks = 4096.0 / Math.max(1, randomTickSpeed(level));
-        if (random.nextDouble() < ticksBetweenRandomTicks / JasmConfig.WILD_ATTRACT_INTERVAL.getAsInt()) {
+        if (random.nextDouble() < WildRate.chancePerRandomTick(randomTickSpeed(level), JasmConfig.WILD_SPAWN_RATE.getAsInt())) {
             attract(level, crystal, random);
         }
     }

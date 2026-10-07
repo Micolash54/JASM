@@ -1,6 +1,7 @@
 package dev.micolash.jasm.bay;
 
 import com.mojang.authlib.GameProfile;
+import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
@@ -159,6 +160,10 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     }
 
     private void tryStart(ServerLevel level) {
+        if (!Feature.BAYS.on()) {
+            setStatus(BayStatus.TURNED_OFF);
+            return;
+        }
         BlockPos front = front();
         if (!level.isLoaded(front)) {
             setStatus(BayStatus.FRONT_NOT_LOADED);

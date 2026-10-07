@@ -1,6 +1,7 @@
 package dev.micolash.jasm.bitling;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.registry.JasmItems;
@@ -218,7 +219,7 @@ public class WildBitling extends BitlingBody {
         }
         feeder = null;
         if (player != null) {
-            followFor(player, JasmConfig.WILD_FOLLOW_TICKS.getAsInt());
+            followFor(player, Tuning.WILD_FOLLOW_TICKS);
         }
         if (runAfter) {
             runAfter = false;

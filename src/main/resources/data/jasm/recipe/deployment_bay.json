@@ -1,17 +1,21 @@
 {
-  "type": "minecraft:crafting_shaped",
-  "key": {
-    "L": "jasm:advanced_logic_chip",
-    "I": "minecraft:iron_ingot",
-    "D": "minecraft:dispenser",
-    "C": "jasm:data_cable"
-  },
-  "pattern": [
-    "ILI",
-    "IDI",
-    "ICI"
-  ],
-  "result": {
-    "id": "jasm:deployment_bay"
+  "type": "jasm:switchable",
+  "feature": "bays",
+  "recipe": {
+    "type": "minecraft:crafting_shaped",
+    "key": {
+      "L": "jasm:advanced_logic_chip",
+      "I": "minecraft:iron_ingot",
+      "D": "minecraft:dispenser",
+      "C": "jasm:data_cable"
+    },
+    "pattern": [
+      "ILI",
+      "IDI",
+      "ICI"
+    ],
+    "result": {
+      "id": "jasm:deployment_bay"
+    }
   }
 }

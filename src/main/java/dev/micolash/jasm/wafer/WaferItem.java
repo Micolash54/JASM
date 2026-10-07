@@ -1,6 +1,6 @@
 package dev.micolash.jasm.wafer;
 
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import java.util.function.Consumer;
@@ -40,7 +40,7 @@ public class WaferItem extends Item {
         if (!(owner instanceof Player player)) {
             return;
         }
-        int interval = JasmConfig.WAFER_PASSIVE_CHECK_INTERVAL.getAsInt();
+        int interval = Tuning.WAFER_PASSIVE_CHECK_INTERVAL;
         if (WaferMerge.isPending(stack)) {
             // Normally settled the moment it is crafted; this catches wafers made by a Crafter or another mod.
             if (level.getGameTime() % interval == 0) {

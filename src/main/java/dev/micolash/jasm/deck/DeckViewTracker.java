@@ -1,7 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
@@ -93,7 +93,7 @@ public final class DeckViewTracker {
             sent.dirty = true;
         }
         long tick = player.level().getServer().getTickCount();
-        if (tick - sent.poolCheck >= JasmConfig.POOL_SNAPSHOT_TICKS.getAsInt()) {
+        if (tick - sent.poolCheck >= Tuning.POOL_SNAPSHOT_TICKS) {
             sent.poolCheck = tick;
             NetworkPool pool = PoolAccess.forDeck(player, menu.deck());
             if (pool != null) pool.contents();   // lists the blocks again if the listing is old, which bumps the version

@@ -1,7 +1,7 @@
 package dev.micolash.jasm.crystal;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.registry.JasmRecipes;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -49,7 +49,7 @@ public final class Quenching {
             return;
         }
         int ticks = item.getData(QUENCH_TICKS) + 1;
-        if (ticks < JasmConfig.QUENCH_TICKS.getAsInt()) {
+        if (ticks < Tuning.QUENCH_TICKS) {
             item.setData(QUENCH_TICKS, ticks);
             if (ticks % 4 == 0) {
                 simmer(level, item);

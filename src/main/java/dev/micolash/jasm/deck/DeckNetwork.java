@@ -1,7 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.storage.WaferStore;
 import net.minecraft.server.level.ServerPlayer;
@@ -277,7 +277,7 @@ public final class DeckNetwork {
             seen[0] = tick;
             seen[1] = 0;
         }
-        return ++seen[1] <= JasmConfig.DECK_MAX_OPS_PER_TICK.getAsInt();
+        return ++seen[1] <= Tuning.DECK_MAX_OPS_PER_TICK;
     }
 
     // --- client ---

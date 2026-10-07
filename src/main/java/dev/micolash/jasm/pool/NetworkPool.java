@@ -1,7 +1,7 @@
 package dev.micolash.jasm.pool;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.network.CableNetwork;
@@ -72,7 +72,7 @@ public final class NetworkPool {
     /** Lists the blocks again if the listing is old. One listing serves items, fluids and materials and everyone who asks. */
     private void refresh() {
         long now = level.getGameTime();
-        if (snapshotTick != Long.MIN_VALUE && now >= snapshotTick && now - snapshotTick < JasmConfig.POOL_SNAPSHOT_TICKS.getAsInt()) return;
+        if (snapshotTick != Long.MIN_VALUE && now >= snapshotTick && now - snapshotTick < Tuning.POOL_SNAPSHOT_TICKS) return;
         Map<ItemResource, Long> freshItems = new HashMap<>();
         Map<FluidResource, Long> freshFluids = new HashMap<>();
         Map<MaterialKey, Long> freshMaterials = new HashMap<>();

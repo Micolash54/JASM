@@ -2,7 +2,7 @@ package dev.micolash.jasm.storage;
 
 import com.mojang.serialization.DataResult;
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.OnceCheck;
 import dev.micolash.jasm.core.SerialLayout;
 import dev.micolash.jasm.core.Stamp;
@@ -734,7 +734,7 @@ public final class WaferStore {
      * the same as after a restart, so an older copy of its wafer is locked rather than wiped until the newest shows.
      */
     public void sweep() {
-        sweep(JasmConfig.WAFER_LOADED_RECORDS.getAsInt(), JasmConfig.WAFER_IDLE_MINUTES.getAsInt() * 1200L);
+        sweep(Tuning.WAFER_LOADED_RECORDS, Tuning.WAFER_IDLE_MINUTES * 1200L);
     }
 
     void sweep(int keep, long idleTicks) {

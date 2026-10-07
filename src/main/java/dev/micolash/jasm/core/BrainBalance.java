@@ -8,10 +8,17 @@ import org.jspecify.annotations.Nullable;
  * The brain numbers. In game they come from the server config. Each list has one entry per size of brain: a lone brain
  * first, then a tower of 1 floor, 2 floors and so on. A tower taller than the list uses its last entry.
  */
-public record BrainBalance(int limitWithoutBrain, int maxFloors, List<Integer> machines, List<Integer> drains, List<Integer> pools) {
+public record BrainBalance(int limitWithoutBrain, int maxFloors, List<Integer> machines, List<Integer> drains, List<Integer> pools,
+        boolean noLimit, double multiplier) {
+    /** The limit with the no-limit switch on. */
+    public static final int UNLIMITED = Integer.MAX_VALUE;
     public static final List<Integer> DEFAULT_MACHINES = List.of(12, 36, 54, 80, 120, 175, 260, 385, 576);
     public static final List<Integer> DEFAULT_DRAINS = List.of(8, 24, 52, 110, 240, 510, 1_100, 2_300, 5_000);
     public static final List<Integer> DEFAULT_POOLS = List.of(50_000, 145_000, 310_000, 660_000, 1_450_000, 3_050_000, 6_600_000, 13_800_000, 30_000_000);
+
+    public BrainBalance(int limitWithoutBrain, int maxFloors, List<Integer> machines, List<Integer> drains, List<Integer> pools) {
+        this(limitWithoutBrain, maxFloors, machines, drains, pools, false, 1.0);
+    }
 
     public static BrainBalance defaults() {
         return new BrainBalance(4, 8, DEFAULT_MACHINES, DEFAULT_DRAINS, DEFAULT_POOLS);
@@ -23,7 +30,19 @@ public record BrainBalance(int limitWithoutBrain, int maxFloors, List<Integer> m
 
     /** Machines a network may hold: without a working brain, or with a brain whose tower has this many floors. */
     public int limit(boolean brain, int floors) {
-        return brain ? at(machines, floors) : limitWithoutBrain;
+        if (noLimit) {
+            return UNLIMITED;
+        }
+        int base = brain ? at(machines, floors) : limitWithoutBrain;
+        if (base == 0) {
+            return 0;
+        }
+        return (int) Math.clamp((long) Math.floor(base * multiplier), 1L, UNLIMITED - 1L);
+    }
+
+    /** A limit as players read it: the number, or an infinity sign with no limit. */
+    public static String shown(int limit) {
+        return limit == UNLIMITED ? "∞" : String.format("%,d", limit);
     }
 
     /** FE a whole tower of this many floors uses every tick; 0 floors is a lone brain. */
@@ -78,7 +97,7 @@ public record BrainBalance(int limitWithoutBrain, int maxFloors, List<Integer> m
     private static BrainBalance read() {
         return new BrainBalance(JasmConfig.BRAIN_LIMIT_WITHOUT_BRAIN.getAsInt(), JasmConfig.BRAIN_MAX_FLOORS.getAsInt(),
                 list(JasmConfig.BRAIN_MACHINES.get(), DEFAULT_MACHINES), list(JasmConfig.BRAIN_DRAINS.get(), DEFAULT_DRAINS),
-                list(JasmConfig.BRAIN_POOLS.get(), DEFAULT_POOLS));
+                list(JasmConfig.BRAIN_POOLS.get(), DEFAULT_POOLS), JasmConfig.BRAIN_NO_LIMIT.get(), JasmConfig.BRAIN_MULTIPLIER.get());
     }
 
     private static List<Integer> list(List<? extends Integer> values, List<Integer> fallback) {

@@ -2,6 +2,7 @@ package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.WipeCardRecipe;
+import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.crafting.UpgradeRecipe;
 import dev.micolash.jasm.crystal.QuenchingRecipe;
 import dev.micolash.jasm.workshop.EvolveRecipe;
@@ -14,6 +15,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public final class JasmRecipes {
     public static final DeferredRegister<RecipeSerializer<?>> SERIALIZERS = DeferredRegister.create(Registries.RECIPE_SERIALIZER, Jasm.MODID);
+
+    /** A crafting recipe that only works while its feature is on in the world. */
+    public static final Supplier<RecipeSerializer<SwitchableRecipe>> SWITCHABLE = SERIALIZERS.register("switchable", () -> SwitchableRecipe.SERIALIZER);
 
     /** Tier upgrades that keep the lower tier's contents. */
     public static final Supplier<RecipeSerializer<UpgradeRecipe>> UPGRADE = SERIALIZERS.register("upgrade", () -> UpgradeRecipe.SERIALIZER);

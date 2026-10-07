@@ -23,16 +23,18 @@ public class NetworkBrainMenu extends AbstractContainerMenu implements MachineVi
     public static final int INVENTORY_Y = 118;
 
     static final int DATA_FLOORS = 0;
-    static final int DATA_COUNT = 1;
-    static final int DATA_LIMIT = 2;
-    static final int DATA_STATUS = 3;
-    static final int DATA_ENERGY_LOW = 4;
-    static final int DATA_ENERGY_HIGH = 5;
-    static final int DATA_CAPACITY_LOW = 6;
-    static final int DATA_CAPACITY_HIGH = 7;
-    static final int DATA_DRAIN_LOW = 8;
-    static final int DATA_DRAIN_HIGH = 9;
-    static final int DATA_SLOTS = 10;
+    static final int DATA_COUNT_LOW = 1;
+    static final int DATA_COUNT_HIGH = 2;
+    static final int DATA_LIMIT_LOW = 3;
+    static final int DATA_LIMIT_HIGH = 4;
+    static final int DATA_STATUS = 5;
+    static final int DATA_ENERGY_LOW = 6;
+    static final int DATA_ENERGY_HIGH = 7;
+    static final int DATA_CAPACITY_LOW = 8;
+    static final int DATA_CAPACITY_HIGH = 9;
+    static final int DATA_DRAIN_LOW = 10;
+    static final int DATA_DRAIN_HIGH = 11;
+    static final int DATA_SLOTS = 12;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -82,11 +84,11 @@ public class NetworkBrainMenu extends AbstractContainerMenu implements MachineVi
     }
 
     public int machineCount() {
-        return data.get(DATA_COUNT);
+        return ContainerWords.join(data.get(DATA_COUNT_HIGH), data.get(DATA_COUNT_LOW));
     }
 
     public int machineLimit() {
-        return data.get(DATA_LIMIT);
+        return ContainerWords.join(data.get(DATA_LIMIT_HIGH), data.get(DATA_LIMIT_LOW));
     }
 
     public BrainStatus status() {

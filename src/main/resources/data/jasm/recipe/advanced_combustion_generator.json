@@ -1,18 +1,22 @@
 {
-  "type": "jasm:upgrade",
-  "key": {
-    "X": "minecraft:diamond",
-    "R": "minecraft:redstone",
-    "P": "jasm:basic_combustion_generator",
-    "K": "jasm:link_chip"
-  },
-  "pattern": [
-    "XKX",
-    "RPR",
-    "XRX"
-  ],
-  "source": "jasm:basic_combustion_generator",
-  "result": {
-    "id": "jasm:advanced_combustion_generator"
+  "type": "jasm:switchable",
+  "feature": "generators",
+  "recipe": {
+    "type": "jasm:upgrade",
+    "key": {
+      "X": "minecraft:diamond",
+      "R": "minecraft:redstone",
+      "P": "jasm:basic_combustion_generator",
+      "K": "jasm:link_chip"
+    },
+    "pattern": [
+      "XKX",
+      "RPR",
+      "XRX"
+    ],
+    "source": "jasm:basic_combustion_generator",
+    "result": {
+      "id": "jasm:advanced_combustion_generator"
+    }
   }
 }

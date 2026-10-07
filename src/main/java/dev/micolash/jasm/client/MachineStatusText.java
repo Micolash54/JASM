@@ -1,5 +1,6 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.network.NetworkStatusSync;
 import net.minecraft.client.gui.Font;
 import net.minecraft.network.chat.Component;
@@ -13,7 +14,7 @@ public final class MachineStatusText {
         NetworkStatusSync.Full full = ClientNetworkStatus.full(containerId);
         return full == null
                 ? Component.translatable(noPowerKey)
-                : Component.translatable("screen.jasm.machine.network_full", full.count(), full.limit());
+                : Component.translatable("screen.jasm.machine.network_full", full.count(), BrainBalance.shown(full.limit()));
     }
 
     /** As {@link #noPower}, but only "Network full" where the numbers don't fit in {@code width}. */

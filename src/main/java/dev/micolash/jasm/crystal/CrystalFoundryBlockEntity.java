@@ -1,6 +1,7 @@
 package dev.micolash.jasm.crystal;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -53,7 +54,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         public int get(int index) {
             return switch (index) {
                 case CrystalFoundryMenu.DATA_PROGRESS -> progress;
-                case CrystalFoundryMenu.DATA_TICKS -> JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getAsInt();
+                case CrystalFoundryMenu.DATA_TICKS -> Tuning.FOUNDRY_TICKS_PER_CRYSTAL;
                 case CrystalFoundryMenu.DATA_MADE -> made;
                 case CrystalFoundryMenu.DATA_PER_SEED -> JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt();
                 case CrystalFoundryMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
@@ -128,7 +129,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         tag.putBoolean("growing", growing);
         tag.putBoolean("busy", busy);
         tag.putInt("progress", progress);
-        tag.putInt("ticks", JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getAsInt());
+        tag.putInt("ticks", Tuning.FOUNDRY_TICKS_PER_CRYSTAL);
         return tag;
     }
 
@@ -167,7 +168,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         if (!payForTick()) {
             return;
         }
-        if (++progress >= JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getAsInt()) {
+        if (++progress >= Tuning.FOUNDRY_TICKS_PER_CRYSTAL) {
             progress = 0;
             output();
             if (++made >= JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt()) {

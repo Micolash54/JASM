@@ -1,7 +1,7 @@
 package dev.micolash.jasm.archive;
 
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckWafers;
@@ -176,7 +176,7 @@ public final class ArchiveService {
         if (block.networkStopped()) {
             return Result.NETWORK_FULL;
         }
-        int cost = JasmConfig.ARCHIVE_LINK_COST.getAsInt();
+        int cost = Tuning.ARCHIVE_LINK_COST;
         if (block.energy().getAmountAsInt() < cost) {
             return Result.NO_POWER;
         }
@@ -249,7 +249,7 @@ public final class ArchiveService {
         if (block.networkStopped()) {
             return Result.NETWORK_FULL;
         }
-        int cost = JasmConfig.ARCHIVE_RECOVERY_COST.getAsInt();
+        int cost = Tuning.ARCHIVE_RECOVERY_COST;
         if (block.energy().getAmountAsInt() < cost) {
             return Result.NO_POWER;
         }

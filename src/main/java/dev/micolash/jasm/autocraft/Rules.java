@@ -1,7 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -113,7 +113,7 @@ public final class Rules {
                 if (rule.timed()) {
                     counted.remove(rule.id());
                 } else {
-                    retryAt.put(rule.id(), now + JasmConfig.RULE_RETRY_SECONDS.getAsInt() * 20L);
+                    retryAt.put(rule.id(), now + Tuning.RULE_RETRY_SECONDS * 20L);
                 }
                 continue;
             }
@@ -124,7 +124,7 @@ public final class Rules {
                 stalled.remove(rule.id());
             } else {
                 stalled.put(rule.id(), problem);
-                retryAt.put(rule.id(), now + JasmConfig.RULE_RETRY_SECONDS.getAsInt() * 20L);
+                retryAt.put(rule.id(), now + Tuning.RULE_RETRY_SECONDS * 20L);
             }
         }
     }

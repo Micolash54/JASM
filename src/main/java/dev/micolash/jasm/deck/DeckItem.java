@@ -130,6 +130,12 @@ public class DeckItem extends Item implements WaferHolderItem {
         return InteractionResult.SUCCESS;
     }
 
+    /** Wafer slots the Deck's menu shows: its tier's slots, and more if wafers sit past them after the count was lowered. */
+    public static int containerSize(ItemStack deck) {
+        DeckTier tier = ((DeckItem) deck.getItem()).tier();
+        return Math.max(tier.slots(), wafers(deck).highestSlot() + 1);
+    }
+
     /** Opens the Deck in this inventory slot. */
     public static void open(ServerPlayer player, int slot) {
         ItemStack deck = player.getInventory().getItem(slot);
@@ -137,8 +143,12 @@ public class DeckItem extends Item implements WaferHolderItem {
             return;
         }
         if (worksIn(deck, player.level())) DeckStorage.activate(WaferStore.get(player.level().getServer()), deck, player);
+        int size = containerSize(deck);
         player.openMenu(new SimpleMenuProvider((id, inventory, p) -> new DeckMenu(id, inventory, slot), deck.getHoverName()),
-                buf -> buf.writeVarInt(slot));
+                buf -> {
+                    buf.writeVarInt(slot);
+                    buf.writeVarInt(size);
+                });
     }
 
     @Override
@@ -180,8 +190,13 @@ public class DeckItem extends Item implements WaferHolderItem {
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder,
             TooltipFlag flag) {
-        builder.accept(Component.translatable("tooltip.jasm.deck.wafers", wafers(stack).count(), tier.slots())
+        DeckWafers held = wafers(stack);
+        builder.accept(Component.translatable("tooltip.jasm.deck.wafers", held.countBelow(tier.slots()), tier.slots())
                 .withStyle(ChatFormatting.GRAY));
+        int waiting = held.count() - held.countBelow(tier.slots());
+        if (waiting > 0) {
+            builder.accept(Component.translatable("tooltip.jasm.deck.waiting", waiting).withStyle(ChatFormatting.GOLD));
+        }
         builder.accept(Component.translatable("tooltip.jasm.deck.energy", String.format("%,d", energy(stack)),
                 String.format("%,d", tier.battery())).withStyle(ChatFormatting.GRAY));
         boolean linked = stack.has(JasmComponents.DECK_NETWORK.get());

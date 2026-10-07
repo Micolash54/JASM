@@ -35,6 +35,18 @@ Growing crystals draw them in. While you are near [Seeded Amethyst](../items/see
 
 Hit one and it runs off. If it is knocked out, it vanishes in a puff and leaves nothing behind.
 
+<WhenOn feature="basic_bitling_recipe">
+
+<br />
+<br />
+## Crafting one
+
+On this world you can also craft a Basic Bitling:
+
+<RecipeFor id="basic_bitling" />
+
+</WhenOn>
+
 <br />
 <br />
 ## What next

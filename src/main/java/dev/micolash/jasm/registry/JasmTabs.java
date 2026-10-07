@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
+import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
@@ -42,8 +43,10 @@ public final class JasmTabs {
                 for (ArchiveTier tier : ArchiveTier.values()) {
                     output.accept(JasmItems.archive(tier));
                 }
-                for (GeneratorTier tier : GeneratorTier.values()) {
-                    output.accept(JasmItems.generator(tier));
+                if (Feature.GENERATORS.on()) {
+                    for (GeneratorTier tier : GeneratorTier.values()) {
+                        output.accept(JasmItems.generator(tier));
+                    }
                 }
                 output.accept(JasmItems.ENCODING_TERMINAL);
                 output.accept(JasmItems.RECIPE_RACK);
@@ -78,8 +81,10 @@ public final class JasmTabs {
                 output.accept(JasmItems.CRYSTAL_RESONATOR);
                 output.accept(JasmItems.CHIP_WORKSHOP);
                 output.accept(JasmItems.CRYSTAL_FOUNDRY);
-                output.accept(JasmItems.DEPLOYMENT_BAY);
-                output.accept(JasmItems.DEMOLITION_BAY);
+                if (Feature.BAYS.on()) {
+                    output.accept(JasmItems.DEPLOYMENT_BAY);
+                    output.accept(JasmItems.DEMOLITION_BAY);
+                }
                 output.accept(JasmItems.BITLING_STATION);
                 output.accept(JasmItems.NETWORK_BRAIN);
                 output.accept(JasmItems.NETWORK_CHAMBER);

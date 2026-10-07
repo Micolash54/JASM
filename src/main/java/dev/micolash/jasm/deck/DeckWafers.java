@@ -17,9 +17,12 @@ import net.minecraft.world.item.ItemStackTemplate;
  * value that the caller stores back on the Deck. Nothing inside can be changed by accident through a shared stack.
  */
 public record DeckWafers(List<Entry> entries) {
+    /** Slot indexes a Deck can save: 0 up to one below this. */
+    public static final int MAX_SLOTS = 1_024;
+
     public record Entry(int slot, ItemStackTemplate wafer) {
         static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.intRange(0, 255).fieldOf("slot").forGetter(Entry::slot),
+                Codec.intRange(0, MAX_SLOTS - 1).fieldOf("slot").forGetter(Entry::slot),
                 ItemStackTemplate.CODEC.fieldOf("item").forGetter(Entry::wafer))
                 .apply(i, Entry::new));
 
@@ -66,6 +69,16 @@ public record DeckWafers(List<Entry> entries) {
 
     public int count() {
         return entries.size();
+    }
+
+    /** The highest slot holding a wafer, or -1. */
+    public int highestSlot() {
+        return entries.isEmpty() ? -1 : entries.getLast().slot();
+    }
+
+    /** Wafers in slots below {@code slots}. */
+    public int countBelow(int slots) {
+        return (int) entries.stream().filter(entry -> entry.slot() < slots).count();
     }
 
     /** Fresh copies of every wafer, for reading. */

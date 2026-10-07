@@ -2,6 +2,7 @@ package dev.micolash.jasm.client.jei;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.registry.JasmItems;
 import java.util.Locale;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
@@ -21,8 +22,8 @@ public class FoundryCategory extends AbstractRecipeCategory<FoundryCategory.Grow
     public record Grow(int chips, int ticksEach) {
         static Grow fromConfig() {
             return JasmConfig.SPEC.isLoaded()
-                    ? new Grow(JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt(), JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getAsInt())
-                    : new Grow(JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getDefault(), JasmConfig.FOUNDRY_TICKS_PER_CRYSTAL.getDefault());
+                    ? new Grow(JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt(), Tuning.FOUNDRY_TICKS_PER_CRYSTAL)
+                    : new Grow(JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getDefault(), Tuning.FOUNDRY_TICKS_PER_CRYSTAL);
         }
     }
 

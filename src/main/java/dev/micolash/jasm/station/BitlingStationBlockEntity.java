@@ -1,6 +1,6 @@
 package dev.micolash.jasm.station;
 
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -152,7 +152,7 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
                 setChanged();
             }
         } else {
-            int used = Math.min(charge, JasmConfig.STATION_ROAM_DRAIN.getAsInt());
+            int used = Math.min(charge, Tuning.STATION_ROAM_DRAIN);
             if (used > 0) {
                 critter.set(JasmComponents.ENERGY.get(), charge - used);
                 setChanged();
@@ -209,7 +209,7 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
     /** The Bitling was knocked out: it comes back after a wait. */
     public void knockedOut() {
         bitlingId = null;
-        knockedOut = JasmConfig.STATION_RESPAWN_SECONDS.getAsInt() * 20;
+        knockedOut = Tuning.STATION_RESPAWN_SECONDS * 20;
         charging = false;
         status = StationStatus.KNOCKED_OUT;
         setChanged();
@@ -218,11 +218,11 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
     // --- settings, for the screen ---
 
     public int maxRadius() {
-        return Math.max(MIN_RADIUS, JasmConfig.STATION_RADIUS_MAX.getAsInt());
+        return Math.max(MIN_RADIUS, Tuning.STATION_RADIUS_MAX);
     }
 
     public int radius() {
-        int value = radius < 0 ? JasmConfig.STATION_RADIUS_DEFAULT.getAsInt() : radius;
+        int value = radius < 0 ? Tuning.STATION_RADIUS_DEFAULT : radius;
         return Math.clamp(value, MIN_RADIUS, maxRadius());
     }
 

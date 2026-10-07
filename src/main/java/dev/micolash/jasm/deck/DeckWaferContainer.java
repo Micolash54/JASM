@@ -27,14 +27,26 @@ public final class DeckWaferContainer implements Container {
     private final ItemStack deck;
     private final Player player;
     private final NonNullList<ItemStack> stacks;
+    /** Slots that take wafers; the ones after them hold wafers left over from a bigger Deck and only give them back. */
+    private final int usable;
     /** The Deck's wafers these stacks were read from; when the Deck holds something else, they are read again. */
     private @Nullable DeckWafers seen;
 
-    public DeckWaferContainer(ItemStack deck, Player player) {
+    public DeckWaferContainer(ItemStack deck, Player player, int size) {
         this.deck = deck;
         this.player = player;
-        this.stacks = NonNullList.withSize(((DeckItem) deck.getItem()).tier().slots(), ItemStack.EMPTY);
+        this.usable = Math.min(size, ((DeckItem) deck.getItem()).tier().slots());
+        this.stacks = NonNullList.withSize(size, ItemStack.EMPTY);
         sync();
+    }
+
+    /** A slot past the tier's count: its wafer can only be taken out. */
+    public boolean isOverflow(int slot) {
+        return slot >= usable;
+    }
+
+    public int usable() {
+        return usable;
     }
 
     private boolean server() {
@@ -115,7 +127,7 @@ public final class DeckWaferContainer implements Container {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return stack.getItem() instanceof WaferItem;
+        return !isOverflow(slot) && stack.getItem() instanceof WaferItem;
     }
 
     /** Nothing to do: every change already went onto the Deck. */

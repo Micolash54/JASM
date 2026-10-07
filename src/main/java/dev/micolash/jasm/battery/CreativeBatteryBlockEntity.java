@@ -1,6 +1,6 @@
 package dev.micolash.jasm.battery;
 
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -53,12 +53,12 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
 
     static void serverTick(Level level, BlockPos pos, BlockState state, CreativeBatteryBlockEntity battery) {
         battery.pushToNeighbours((ServerLevel) level);
-        battery.charge(JasmConfig.BATTERY_CHARGE_PER_TICK.getAsInt());
+        battery.charge(Tuning.BATTERY_CHARGE_PER_TICK);
     }
 
     /** One tick of output: up to the per-side limit into each touching block that takes FE. JASM blocks are handed it directly. */
     public void pushToNeighbours(ServerLevel level) {
-        int amount = JasmConfig.BATTERY_PUSH_PER_FACE_PER_TICK.getAsInt();
+        int amount = Tuning.BATTERY_PUSH_PER_FACE_PER_TICK;
         if (amount <= 0) {
             return;
         }

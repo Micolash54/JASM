@@ -4,7 +4,9 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.AutocraftState;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
+import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
@@ -47,7 +49,8 @@ public final class Deliveries {
         NEEDS_UPGRADE,
         THEY_NEED_UPGRADE,
         NO_CHARGE,
-        LOCKED;
+        LOCKED,
+        TURNED_OFF;
 
         public String key() {
             return "screen.jasm.send.refused." + name().toLowerCase(Locale.ROOT);
@@ -81,10 +84,10 @@ public final class Deliveries {
         double dx = from.x * fromScale - to.x * toScale;
         double dz = from.z * fromScale - to.z * toScale;
         double dy = from.y - to.y;
-        double seconds = JasmConfig.SEND_BASE_SECONDS.getAsInt()
+        double seconds = Tuning.SEND_BASE_SECONDS
                 + Math.sqrt(dx * dx + dy * dy + dz * dz) / JasmConfig.SEND_BLOCKS_PER_SECOND.getAsInt();
-        if (!fromLevel.dimension().equals(toLevel.dimension())) seconds += JasmConfig.SEND_DIMENSION_SECONDS.getAsInt();
-        seconds = Math.min(seconds, JasmConfig.SEND_MAX_SECONDS.getAsInt());
+        if (!fromLevel.dimension().equals(toLevel.dimension())) seconds += Tuning.SEND_DIMENSION_SECONDS;
+        seconds = Math.min(seconds, Tuning.SEND_MAX_SECONDS);
         return Math.max(1, Math.round(seconds * 20));
     }
 
@@ -149,6 +152,7 @@ public final class Deliveries {
      * the trip is on its way; the caller then empties the grid. Nothing changes when it is refused.
      */
     public static Refusal send(ServerPlayer sender, ItemStack deck, UUID to, List<ItemStack> items) {
+        if (!Feature.DECK_TO_DECK.on()) return Refusal.TURNED_OFF;
         MinecraftServer server = sender.level().getServer();
         if (pairedTerminal(server, sender, deck) == null) return Refusal.NOT_PAIRED;
         Member member = members(sender, deck).stream().filter(m -> m.player().getUUID().equals(to)).findFirst().orElse(null);

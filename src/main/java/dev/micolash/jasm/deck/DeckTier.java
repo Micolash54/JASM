@@ -1,23 +1,23 @@
 package dev.micolash.jasm.deck;
 
+import dev.micolash.jasm.config.JasmConfig;
+
 /**
- * Deck tiers: how many wafers they carry and how much charge their battery holds (FE). Each item moved in or out
- * costs the same on every tier ({@code energyPerItem} in the config).
+ * Deck tiers: how much charge their battery holds (FE). How many wafers they carry is a world rule. Each item moved
+ * in or out costs the same on every tier ({@code energyPerItem} in the config).
  */
 public enum DeckTier {
-    STARTER("starter_deck", 1, 10_000),
-    BASIC("basic_deck", 3, 25_000),
-    ADVANCED("advanced_deck", 6, 50_000),
-    ELITE("elite_deck", 12, 125_000),
-    ULTIMATE("ultimate_deck", 24, 250_000);
+    STARTER("starter_deck", 10_000),
+    BASIC("basic_deck", 25_000),
+    ADVANCED("advanced_deck", 50_000),
+    ELITE("elite_deck", 125_000),
+    ULTIMATE("ultimate_deck", 250_000);
 
     private final String registryName;
-    private final int slots;
     private final int battery;
 
-    DeckTier(String registryName, int slots, int battery) {
+    DeckTier(String registryName, int battery) {
         this.registryName = registryName;
-        this.slots = slots;
         this.battery = battery;
     }
 
@@ -25,8 +25,9 @@ public enum DeckTier {
         return registryName;
     }
 
+    /** Wafer slots, as this world's rules set them. */
     public int slots() {
-        return slots;
+        return JasmConfig.deckSlots(this);
     }
 
     public int battery() {

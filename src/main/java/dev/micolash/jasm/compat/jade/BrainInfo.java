@@ -85,7 +85,7 @@ public class BrainInfo implements StreamServerDataProvider<BlockAccessor, BrainI
                     return;
                 }
                 BrainStatus status = BrainStatus.values()[Math.clamp(data.status(), 0, BrainStatus.values().length - 1)];
-                tooltip.add(Component.translatable("screen.jasm.brain.machines", data.count(), data.limit()));
+                tooltip.add(Component.translatable("screen.jasm.brain.machines", data.count(), BrainBalance.shown(data.limit())));
                 tooltip.add(NetworkBrainMenu.floorsText(data.floors()));
                 tooltip.add(Component.translatable("screen.jasm.brain.status." + status.name().toLowerCase(Locale.ROOT)));
             });

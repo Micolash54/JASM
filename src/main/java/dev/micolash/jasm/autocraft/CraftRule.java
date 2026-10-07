@@ -3,6 +3,7 @@ package dev.micolash.jasm.autocraft;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.UUIDUtil;
@@ -46,7 +47,7 @@ public record CraftRule(UUID id, ItemResource item, boolean timed, long threshol
 
     /** The same rule with every number kept in range; the screen is never trusted. */
     public CraftRule cleaned() {
-        int shortest = JasmConfig.RULE_MIN_SECONDS.getAsInt();
+        int shortest = Tuning.RULE_MIN_SECONDS;
         int max = JasmConfig.MAX_REQUEST.getAsInt();
         return new CraftRule(id, item, timed, Math.clamp(threshold, 1, max), Math.clamp(seconds, shortest, 86_400), Math.clamp(amount, 1, max),
                 enabled,

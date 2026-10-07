@@ -12,6 +12,12 @@ item_ids:
 
 # Combustion Generators
 
+<WhenOff feature="generators">
+
+**Turned off on this world.** Placed generators keep their fuel and charge but don't burn.
+
+</WhenOff>
+
 <Row>
   <BlockImage id="basic_combustion_generator" scale="3.5" />
   <BlockImage id="advanced_combustion_generator" scale="3.5" />

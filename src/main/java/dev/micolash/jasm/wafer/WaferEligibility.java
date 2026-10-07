@@ -1,7 +1,7 @@
 package dev.micolash.jasm.wafer;
 
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.deck.DeckItem;
 import java.util.Locale;
 import java.util.Optional;
@@ -67,7 +67,7 @@ public final class WaferEligibility {
         if (encoded.isEmpty()) {
             return Result.UNSAVEABLE;
         }
-        if (encoded.get().sizeInBytes() > JasmConfig.WAFER_MAX_ITEM_DATA_BYTES.getAsInt()) {
+        if (encoded.get().sizeInBytes() > Tuning.WAFER_MAX_ITEM_DATA_BYTES) {
             return Result.TOO_LARGE;
         }
         return Result.OK;
@@ -82,7 +82,7 @@ public final class WaferEligibility {
         if (encoded.isEmpty()) {
             return Result.UNSAVEABLE;
         }
-        if (encoded.get().sizeInBytes() > JasmConfig.WAFER_MAX_ITEM_DATA_BYTES.getAsInt()) {
+        if (encoded.get().sizeInBytes() > Tuning.WAFER_MAX_ITEM_DATA_BYTES) {
             return Result.TOO_LARGE;
         }
         return Result.OK;

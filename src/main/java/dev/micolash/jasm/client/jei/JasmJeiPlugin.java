@@ -12,8 +12,11 @@ import dev.micolash.jasm.client.EncodingTerminalScreen;
 import dev.micolash.jasm.client.ReceivedRecipes;
 import dev.micolash.jasm.client.StoragePortScreen;
 import dev.micolash.jasm.client.TransferPortScreen;
+import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.core.BitlingKind;
+import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.core.BitlingStage;
+import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.registry.JasmItems;
@@ -134,7 +137,12 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "bitling", 3, JasmItems.bitlings());
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
         info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
-        info(registration, "network_brain", 2, List.of(JasmItems.NETWORK_BRAIN.get()));
+        BrainBalance brain = BrainBalance.fromConfig();
+        registration.addItemStackInfo(List.of(new ItemStack(JasmItems.NETWORK_BRAIN.get())), new Component[]{
+                Component.translatable("jei.jasm.info.network_brain.1", BrainBalance.shown(brain.limit(false, 0)),
+                        BrainBalance.shown(brain.limit(true, 0))),
+                Component.empty(),
+                Component.translatable("jei.jasm.info.network_brain.2", BrainBalance.shown(brain.limit(true, 1)))});
         info(registration, "network_chamber", 1, List.of(JasmItems.NETWORK_CHAMBER.get()));
         info(registration, "basic_bitling", 2, List.of(JasmItems.bitling(BitlingKind.BASIC, BitlingStage.BITLING),
                 JasmItems.WILD_BITLING_SPAWN_EGG.get()));
@@ -168,7 +176,26 @@ public class JasmJeiPlugin implements IModPlugin {
         recipes.addRecipes(GeneratorFuelCategory.TYPE, fuels);
         recipes.addRecipes(QuenchingCategory.TYPE, ReceivedRecipes.quenching().stream().map(QuenchingCategory.Quench::of).toList());
         recipes.addRecipes(WorkshopRecipeCategory.TYPE, ReceivedRecipes.workshop());
+        hideTurnedOffFeatures(runtime);
         JeiMaterials.start(runtime);
+    }
+
+    /** Features this world turned off: their items and recipes leave JEI. JEI starts again on every join, so this follows the world being played. */
+    private static void hideTurnedOffFeatures(IJeiRuntime runtime) {
+        List<ItemStack> offItems = Arrays.stream(Feature.values()).filter(feature -> !feature.on())
+                .flatMap(feature -> feature.items().stream()).map(ItemStack::new).toList();
+        if (!offItems.isEmpty()) {
+            runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, offItems);
+        }
+        IRecipeManager recipes = runtime.getRecipeManager();
+        var offRecipes = recipes.createRecipeLookup(RecipeTypes.CRAFTING).get()
+                .filter(holder -> holder.value() instanceof SwitchableRecipe recipe && !recipe.feature().on()).toList();
+        if (!offRecipes.isEmpty()) {
+            recipes.hideRecipes(RecipeTypes.CRAFTING, offRecipes);
+        }
+        if (!Feature.GENERATORS.on()) {
+            recipes.hideRecipeCategory(GeneratorFuelCategory.TYPE);
+        }
     }
 
     @Override

@@ -79,8 +79,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     private final DeckWaferContainer wafers;
     private final int waferSlots;
     private int rows = MIN_ROWS;
+    private final DeckPages pages;
     private final int sideColumns;
     private final int sideRows;
+    /** Client side only: the wafer page shown. */
+    private int wafersPage;
     private final @Nullable DeckGridContainer grid;
     private final ResultContainer result = new ResultContainer();
     /** First grid slot and the result slot in {@link #slots}; -1 on a normal Deck. */
@@ -109,18 +112,24 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Server side. */
     public DeckMenu(int containerId, Inventory inventory, int deckSlot) {
+        this(containerId, inventory, deckSlot, DeckItem.containerSize(inventory.getItem(deckSlot)));
+    }
+
+    /** Both sides: the server says how many wafer slots, so the two always build the same slots. */
+    private DeckMenu(int containerId, Inventory inventory, int deckSlot, int waferSlots) {
         super(JasmMenus.DECK.get(), containerId);
         this.player = inventory.player;
         this.deckSlot = deckSlot;
         this.deck = inventory.getItem(deckSlot);
-        this.wafers = new DeckWaferContainer(deck, player);
-        this.waferSlots = wafers.getContainerSize();
-        this.sideColumns = Math.max(1, (waferSlots + SIDE_ROWS - 1) / SIDE_ROWS);
-        this.sideRows = Math.max(1, (waferSlots + sideColumns - 1) / sideColumns);
+        this.wafers = new DeckWaferContainer(deck, player, waferSlots);
+        this.waferSlots = waferSlots;
+        this.pages = new DeckPages(waferSlots);
+        this.sideColumns = pages.columns();
+        this.sideRows = pages.rows();
 
-        // Wafers fill the side panel column by column, top to bottom.
+        // Wafers fill the side panel column by column, top to bottom, a page at a time.
         for (int i = 0; i < waferSlots; i++) {
-            addSlot(new WaferSlot(wafers, i, 5 + (i / sideRows) * 18, SIDE_TOP + 7 + (i % sideRows) * 18));
+            addSlot(new WaferSlot(wafers, i, 5 + pages.column(i) * 18, SIDE_TOP + 7 + pages.row(i) * 18));
         }
         int x = mainX();
         for (int i = 0; i < 36; i++) {
@@ -185,7 +194,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Client side: the server tells which inventory slot holds the Deck. */
     public static DeckMenu client(int containerId, Inventory inventory, RegistryFriendlyByteBuf data) {
-        return new DeckMenu(containerId, inventory, data.readVarInt());
+        return new DeckMenu(containerId, inventory, data.readVarInt(), data.readVarInt());
     }
 
     private Slot playerSlot(Inventory inventory, int index, int x, int y) {
@@ -305,9 +314,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         return sideRows;
     }
 
-    /** Where the main panel starts, right of the wafer panel. */
+    /** Where the main panel starts, right of the wafer panel. With pages, the panel is 2px wider for the page arrows. */
     public int mainX() {
-        return 8 + sideColumns * 18;
+        return 8 + sideColumns * 18 + (pages.pages() > 1 ? 2 : 0);
     }
 
     /** Width of the whole screen: the main panel with the scroll bar column, and the tab column. */
@@ -317,6 +326,28 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     public int waferSlots() {
         return waferSlots;
+    }
+
+    public DeckPages pages() {
+        return pages;
+    }
+
+    /** Client side: the wafer page shown. */
+    public int wafersPage() {
+        return wafersPage;
+    }
+
+    public void setWafersPage(int page) {
+        wafersPage = Math.clamp(page, 0, pages.pages() - 1);
+    }
+
+    /** Wafer slots that take wafers; the rest are the overflow strip. */
+    public int usableWaferSlots() {
+        return wafers.usable();
+    }
+
+    public boolean isOverflow(int slot) {
+        return wafers.isOverflow(slot);
     }
 
     public int upgradeSlot() { return upgradeSlot; }
@@ -432,7 +463,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
             slot.setChanged();
         } else if (stack.getItem() instanceof WaferItem) {
-            moveItemStackTo(stack, 0, waferSlots, false);
+            moveItemStackTo(stack, 0, usableWaferSlots(), false);
             slot.setChanged();
         } else if (player instanceof ServerPlayer serverPlayer) {
             DeckStorage.deposit(WaferStore.get(serverPlayer.level().getServer()), deck, stack, serverPlayer, DeckStorage.Excess.VOID);
@@ -784,13 +815,19 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
         /** Shows a faint wafer while empty. */
         @Override
-        public Identifier getNoItemIcon() {
-            return EMPTY_WAFER;
+        public @Nullable Identifier getNoItemIcon() {
+            return wafers.isOverflow(getContainerSlot()) ? null : EMPTY_WAFER;
+        }
+
+        /** The server keeps every wafer slot active; the client shows one page of them. */
+        @Override
+        public boolean isActive() {
+            return super.isActive() && (!player.level().isClientSide() || pages.pageOf(getContainerSlot()) == wafersPage);
         }
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return stack.getItem() instanceof WaferItem;
+            return !wafers.isOverflow(getContainerSlot()) && stack.getItem() instanceof WaferItem;
         }
 
         @Override

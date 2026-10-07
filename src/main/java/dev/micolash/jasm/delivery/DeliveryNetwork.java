@@ -2,6 +2,7 @@ package dev.micolash.jasm.delivery;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
@@ -103,6 +104,7 @@ public final class DeliveryNetwork {
     /** What stops this Deck sending to anyone at all, before a player is picked. */
     static Deliveries.Refusal overall(ServerPlayer player, DeckMenu menu) {
         ItemStack deck = menu.deck();
+        if (!Feature.DECK_TO_DECK.on()) return Deliveries.Refusal.TURNED_OFF;
         if (Deliveries.pairedTerminal(player.level().getServer(), player, deck) == null) return Deliveries.Refusal.NOT_PAIRED;
         if (!menu.dimensionAllowed()) return Deliveries.Refusal.LOCKED;
         long count = menu.sendItems().stream().mapToLong(ItemStack::getCount).sum();

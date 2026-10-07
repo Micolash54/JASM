@@ -2,6 +2,7 @@ package dev.micolash.jasm.generator;
 
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
+import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.PowerSides;
@@ -122,6 +123,9 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     public void burn(ServerLevel level) {
         int rate = tier.fePerTick();
         lastOutput = 0;
+        if (!Feature.GENERATORS.on()) {
+            return;
+        }
         if (tier.capacity() - energy.getAmountAsInt() < rate) {
             return;
         }

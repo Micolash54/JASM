@@ -5,6 +5,7 @@ import dev.micolash.jasm.Jasm;
 import guideme.Guide;
 import guideme.GuidesCommon;
 import guideme.PageAnchor;
+import guideme.compiler.TagCompiler;
 import guideme.compiler.tags.RecipeTypeMappingSupplier;
 import net.minecraft.client.Minecraft;
 
@@ -18,6 +19,9 @@ public final class JasmGuide {
                 // GuideME's own recipe boxes would come first, so the guide draws every recipe kind itself.
                 .disableDefaultExtensions(RecipeTypeMappingSupplier.EXTENSION_POINT)
                 .extension(RecipeTypeMappingSupplier.EXTENSION_POINT, new GuideRecipes())
+                // Numbers and switches that follow the world being played.
+                .extension(TagCompiler.EXTENSION_POINT, new GuideRules.RuleTag())
+                .extension(TagCompiler.EXTENSION_POINT, new GuideRules.WhenTag())
                 .build();
     }
 

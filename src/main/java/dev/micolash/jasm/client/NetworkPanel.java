@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.brain.NetworkBrainMenu;
+import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -311,7 +312,7 @@ public final class NetworkPanel {
             colour = JasmGui.GOOD;
         }
         graphics.text(font, state, x + width - KEY_WIDTH - 4 - font.width(state), y, colour, false);
-        graphics.text(font, Component.translatable("screen.jasm.network.machines", header.count(), header.limit()), x + 1, y + 9,
+        graphics.text(font, Component.translatable("screen.jasm.network.machines", header.count(), BrainBalance.shown(header.limit())), x + 1, y + 9,
                 JasmGui.SUBTEXT, false);
         if (header.partial()) {
             graphics.text(font, trimmed(Component.translatable("screen.jasm.network.partial").getString(), width - 2), x + 1, y + ROW + 5,

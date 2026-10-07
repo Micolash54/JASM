@@ -16,7 +16,9 @@ public enum BayStatus {
     NOT_ALLOWED(true),
     FRONT_NOT_LOADED(true),
     /** Someone stands in the space a block would go; nothing announces them leaving, so it looks again. */
-    OBSTRUCTED(true);
+    OBSTRUCTED(true),
+    /** The world turned bays off; they keep what they hold and wait. */
+    TURNED_OFF(false);
 
     private final boolean recheck;
 

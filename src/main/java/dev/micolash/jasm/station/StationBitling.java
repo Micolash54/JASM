@@ -1,7 +1,7 @@
 package dev.micolash.jasm.station;
 
 import dev.micolash.jasm.bitling.BitlingBody;
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.registry.JasmTriggers;
@@ -51,7 +51,7 @@ public class StationBitling extends BitlingBody {
     public void setup(BlockPos station, BitlingKind kind, BitlingStage stage) {
         this.station = station.immutable();
         setKindAndStage(kind, stage);
-        int health = JasmConfig.STATION_HEALTH.getAsInt();
+        int health = Tuning.STATION_HEALTH;
         getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
         setHealth(health);
     }
@@ -130,7 +130,7 @@ public class StationBitling extends BitlingBody {
 
     /** Time to go home: the battery is low, or the network is full and the station has stopped. */
     private static boolean low(BitlingStationBlockEntity home) {
-        return home.stopped() || home.critterEnergy() <= 0 || home.batteryFraction() <= JasmConfig.STATION_RETURN_AT.getAsDouble();
+        return home.stopped() || home.critterEnergy() <= 0 || home.batteryFraction() <= Tuning.STATION_RETURN_AT;
     }
 
     private void charging(BitlingStationBlockEntity home) {
@@ -170,7 +170,7 @@ public class StationBitling extends BitlingBody {
             stuckTicks = 0;
         }
         lastPosition = position();
-        int limit = JasmConfig.STATION_STUCK_SECONDS.getAsInt() * 20;
+        int limit = Tuning.STATION_STUCK_SECONDS * 20;
         if (tickCount % 10 == 0 || getNavigation().isDone()) {
             Path path = getNavigation().createPath(BlockPos.containing(pad), 0);
             if (path == null || !path.canReach()) {

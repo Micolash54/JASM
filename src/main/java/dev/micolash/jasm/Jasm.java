@@ -3,6 +3,8 @@ package dev.micolash.jasm;
 import com.mojang.logging.LogUtils;
 import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Presets;
+import dev.micolash.jasm.config.WorldSettings;
 import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.crystal.Quenching;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -45,12 +47,21 @@ public final class Jasm {
         container.registerConfig(ModConfig.Type.CLIENT, JasmClientConfig.SPEC);
         modBus.addListener((ModConfigEvent.Loading event) -> forgetBrainBalance(event.getConfig()));
         modBus.addListener((ModConfigEvent.Reloading event) -> forgetBrainBalance(event.getConfig()));
+        modBus.addListener((ModConfigEvent.Loading event) -> applyPreset(event.getConfig()));
+        modBus.addListener((ModConfigEvent.Reloading event) -> applyPreset(event.getConfig()));
         modBus.addListener((ModConfigEvent.Unloading event) -> forgetBrainBalance(event.getConfig()));
+        NeoForge.EVENT_BUS.addListener(WorldSettings::onServerAboutToStart);
         // Players don't get crafting recipes from the server by default. Sending them lets recipe viewers like JEI
         // show JASM's recipes even when the server doesn't run the viewer itself. The in-game guide reads these too.
         NeoForge.EVENT_BUS.addListener((OnDatapackSyncEvent event) -> event.sendRecipes(RecipeType.CRAFTING,
                 RecipeType.STONECUTTING, RecipeType.CAMPFIRE_COOKING, RecipeType.BLASTING,
                 JasmRecipes.QUENCHING_TYPE.get(), JasmRecipes.WORKSHOP_TYPE.get()));
+    }
+
+    private static void applyPreset(ModConfig config) {
+        if (config.getSpec() == JasmConfig.SPEC) {
+            Presets.applyIfChosen();
+        }
     }
 
     private static void forgetBrainBalance(ModConfig config) {

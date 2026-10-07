@@ -1,6 +1,6 @@
 package dev.micolash.jasm.client;
 
-import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.crystal.QuenchingRecipe;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmRecipes;
@@ -116,9 +116,7 @@ final class GuideRecipes implements RecipeTypeMappingSupplier {
 
     private static LytStandardRecipeBox<QuenchingRecipe> quenching(RecipeHolder<QuenchingRecipe> holder) {
         QuenchingRecipe recipe = holder.value();
-        // the guide can open before a world is loaded, and then the config has no values yet
-        int ticks = JasmConfig.SPEC.isLoaded() ? JasmConfig.QUENCH_TICKS.getAsInt() : JasmConfig.QUENCH_TICKS.getDefault();
-        String seconds = String.format(Locale.ROOT, "%.1f", ticks / 20.0).replace(".0", "");
+        String seconds = String.format(Locale.ROOT, "%.1f", Tuning.QUENCH_TICKS / 20.0).replace(".0", "");
         return LytStandardRecipeBox.builder()
                 .icon(Items.WATER_BUCKET)
                 .title(Component.translatable("jei.jasm.category.quenching").getString())
