@@ -57,11 +57,11 @@ public class RecipeCardItem extends Item {
     private static void processing(ProcessingCard card, Consumer<Component> builder) {
         ProcessingCard.Amount main = card.main();
         if (!main.isEmpty()) {
-            builder.accept(Component.translatable(main.isFluid() ? "tooltip.jasm.card.makes_fluid" : "tooltip.jasm.card.makes", main.label(),
+            builder.accept(Component.translatable(main.isFluid() || main.isMaterial() ? "tooltip.jasm.card.makes_fluid" : "tooltip.jasm.card.makes", main.label(),
                     main.stack().getHoverName()).withStyle(ChatFormatting.GRAY));
         }
         for (ProcessingCard.Amount extra : card.extras()) {
-            builder.accept(Component.translatable(extra.isFluid() ? "tooltip.jasm.card.also_fluid" : "tooltip.jasm.card.also", extra.label(),
+            builder.accept(Component.translatable(extra.isFluid() || extra.isMaterial() ? "tooltip.jasm.card.also_fluid" : "tooltip.jasm.card.also", extra.label(),
                     extra.stack().getHoverName()).withStyle(ChatFormatting.GRAY));
         }
         builder.accept(Component.translatable("tooltip.jasm.card.processing").withStyle(ChatFormatting.LIGHT_PURPLE));
@@ -71,7 +71,8 @@ public class RecipeCardItem extends Item {
         }
         counts.forEach((key, n) -> {
             boolean fluid = key instanceof GridKey.Fluid;
-            builder.accept(Component.translatable(fluid ? "tooltip.jasm.card.input_fluid" : "tooltip.jasm.card.input",
+            boolean units = fluid || key instanceof GridKey.Material;
+            builder.accept(Component.translatable(units ? "tooltip.jasm.card.input_fluid" : "tooltip.jasm.card.input",
                     fluid ? FluidAmounts.label(n) : String.valueOf(n), ProcessingCard.Amount.of(key, 1).stack().getHoverName())
                     .withStyle(ChatFormatting.DARK_GRAY));
         });

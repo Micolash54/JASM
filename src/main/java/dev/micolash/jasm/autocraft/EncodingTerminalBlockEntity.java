@@ -352,10 +352,15 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         return slot >= 0 && slot < AMOUNTS && FluidMarkerItem.isMarker(example(slot));
     }
 
+    /** Whether processing slot {@code slot} counts in small units (millibuckets or material units) rather than items. */
+    public boolean usesUnits(int slot) {
+        return slot >= 0 && slot < AMOUNTS && (FluidMarkerItem.isMarker(example(slot)) || MaterialMarkerItem.isMarker(example(slot)));
+    }
+
     /** Sets the amount of processing slot {@code slot}, within 1 and the most a card holds. */
     public void setAmount(int slot, int amount) {
         if (slot >= 0 && slot < AMOUNTS) {
-            amounts[slot] = Math.clamp(amount, 1, ProcessingCard.Amount.max(isFluid(slot)));
+            amounts[slot] = Math.clamp(amount, 1, ProcessingCard.Amount.max(example(slot)));
             setChanged();
         }
     }
@@ -365,7 +370,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (slot < 0 || slot >= AMOUNTS) {
             return;
         }
-        amounts[slot] = stack.isEmpty() ? 0 : Math.clamp(amount, 1, ProcessingCard.Amount.max(FluidMarkerItem.isMarker(stack)));
+        amounts[slot] = stack.isEmpty() ? 0 : Math.clamp(amount, 1, ProcessingCard.Amount.max(stack));
         ItemStack example = stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1);
         if (slot < 9) {
             ghost.setItem(slot, example);

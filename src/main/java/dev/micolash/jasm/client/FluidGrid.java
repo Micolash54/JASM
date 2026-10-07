@@ -6,6 +6,8 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.block.FluidModel;
 import net.minecraft.world.item.ItemStack;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.MaterialMarkerItem;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckFluids;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -51,8 +53,11 @@ final class FluidGrid {
     /** Draws a stack, or the fluid a fluid marker stands for, in a 16 × 16 cell. */
     static void drawStack(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y) {
         FluidResource fluid = FluidMarkerItem.fluidOf(stack);
+        MaterialKey material = MaterialMarkerItem.materialOf(stack);
         if (fluid != null) {
             draw(graphics, fluid, x, y);
+        } else if (material != null) {
+            MaterialIcons.draw(graphics, material, x, y);
         } else {
             graphics.item(stack, x, y);
         }
@@ -61,6 +66,9 @@ final class FluidGrid {
     /** "3 × Stone" for items, "1.5 B Water" for a fluid marker (the count in millibuckets). */
     static String describe(ItemStack stack, long count) {
         boolean fluid = FluidMarkerItem.isMarker(stack);
+        if (MaterialMarkerItem.isMarker(stack)) {
+            return GridEntries.abbreviate(count) + " " + MaterialIcons.name(MaterialMarkerItem.materialOf(stack)).getString();
+        }
         return fluid ? FluidAmounts.label(count) + " " + stack.getHoverName().getString()
                 : GridEntries.abbreviate(count) + " × " + stack.getHoverName().getString();
     }

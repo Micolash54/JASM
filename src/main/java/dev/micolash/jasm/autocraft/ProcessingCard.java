@@ -4,7 +4,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,25 +32,32 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     /** Most millibuckets of one fluid in one slot. */
     public static final int MAX_FLUID = 32_000;
 
-    /** Some of one item, or some millibuckets of one fluid; empty where a slot is empty. */
-    public record Amount(ItemResource item, FluidResource fluid, int count) {
-        public static final Amount EMPTY = new Amount(ItemResource.EMPTY, FluidResource.EMPTY, 0);
+    /** Most units of one material in one slot. */
+    public static final int MAX_MATERIAL = MAX_FLUID;
+
+    /** Some of one item, some millibuckets of one fluid, or some units of one other mod's material; empty where a slot is empty. */
+    public record Amount(ItemResource item, FluidResource fluid, @Nullable MaterialKey material, int count) {
+        public static final Amount EMPTY = new Amount(ItemResource.EMPTY, FluidResource.EMPTY, null, 0);
 
         /** Some of one item, as before fluids. */
         public Amount(ItemResource item, int count) {
-            this(item, FluidResource.EMPTY, count);
+            this(item, FluidResource.EMPTY, null, count);
         }
 
         public static final Codec<Amount> CODEC = RecordCodecBuilder.create(i -> i.group(
                 ItemResource.OPTIONAL_CODEC.optionalFieldOf("item", ItemResource.EMPTY).forGetter(Amount::item),
                 FluidResource.CODEC.optionalFieldOf("fluid", FluidResource.EMPTY).forGetter(Amount::fluid),
+                MaterialKey.CODEC.optionalFieldOf("material").forGetter(a -> Optional.ofNullable(a.material)),
                 Codec.INT.optionalFieldOf("count", 0).forGetter(Amount::count))
-                .apply(i, Amount::of));
+                .apply(i, (item, fluid, material, count) -> of(item, fluid, material.orElse(null), count)));
 
         static final StreamCodec<RegistryFriendlyByteBuf, Amount> STREAM_CODEC = StreamCodec.of(
                 (buf, amount) -> {
-                    buf.writeBoolean(amount.isFluid());
-                    if (amount.isFluid()) {
+                    // 0 an item, 1 a fluid, 2 a material
+                    buf.writeByte(amount.isMaterial() ? 2 : amount.isFluid() ? 1 : 0);
+                    if (amount.isMaterial()) {
+                        MaterialKey.STREAM_CODEC.encode(buf, amount.material);
+                    } else if (amount.isFluid()) {
                         FluidResource.STREAM_CODEC.encode(buf, amount.fluid);
                     } else {
                         ItemResource.STREAM_CODEC.encode(buf, amount.item);
@@ -56,62 +65,89 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
                     ByteBufCodecs.VAR_INT.encode(buf, amount.count);
                 },
                 buf -> {
-                    boolean fluid = buf.readBoolean();
-                    ItemResource item = fluid ? ItemResource.EMPTY : ItemResource.STREAM_CODEC.decode(buf);
-                    FluidResource resource = fluid ? FluidResource.STREAM_CODEC.decode(buf) : FluidResource.EMPTY;
-                    return of(item, resource, ByteBufCodecs.VAR_INT.decode(buf));
+                    int kind = buf.readByte();
+                    MaterialKey material = kind == 2 ? MaterialKey.STREAM_CODEC.decode(buf) : null;
+                    FluidResource fluid = kind == 1 ? FluidResource.STREAM_CODEC.decode(buf) : FluidResource.EMPTY;
+                    ItemResource item = kind == 0 ? ItemResource.STREAM_CODEC.decode(buf) : ItemResource.EMPTY;
+                    return of(item, fluid, material, ByteBufCodecs.VAR_INT.decode(buf));
                 });
 
         /**
          * Empty unless both something and a count are there; the count kept within 1 and {@link #MAX_AMOUNT} (or
-         * {@link #MAX_FLUID} millibuckets). An item wins over a fluid on a card that somehow has both.
+         * {@link #MAX_FLUID} millibuckets, or {@link #MAX_MATERIAL} units). An item wins over a fluid, and a fluid over a
+         * material, on a card that somehow has more than one.
          */
-        public static Amount of(ItemResource item, FluidResource fluid, int count) {
+        public static Amount of(ItemResource item, FluidResource fluid, @Nullable MaterialKey material, int count) {
             if (count <= 0) {
                 return EMPTY;
             }
             if (!item.isEmpty()) {
-                return new Amount(item, FluidResource.EMPTY, Math.min(count, MAX_AMOUNT));
+                return new Amount(item, FluidResource.EMPTY, null, Math.min(count, MAX_AMOUNT));
             }
-            return fluid.isEmpty() ? EMPTY : new Amount(ItemResource.EMPTY, fluid, Math.min(count, MAX_FLUID));
+            if (!fluid.isEmpty()) {
+                return new Amount(ItemResource.EMPTY, fluid, null, Math.min(count, MAX_FLUID));
+            }
+            return material == null ? EMPTY : new Amount(ItemResource.EMPTY, FluidResource.EMPTY, material, Math.min(count, MAX_MATERIAL));
+        }
+
+        public static Amount of(ItemResource item, FluidResource fluid, int count) {
+            return of(item, fluid, null, count);
         }
 
         public static Amount of(ItemResource item, int count) {
-            return of(item, FluidResource.EMPTY, count);
+            return of(item, FluidResource.EMPTY, null, count);
         }
 
         public static Amount of(FluidResource fluid, int millibuckets) {
-            return of(ItemResource.EMPTY, fluid, millibuckets);
+            return of(ItemResource.EMPTY, fluid, null, millibuckets);
         }
 
-        /** The stack's item and its count; a fluid marker is its fluid, and the count is the millibuckets. */
+        public static Amount of(MaterialKey material, int units) {
+            return of(ItemResource.EMPTY, FluidResource.EMPTY, material, units);
+        }
+
+        /** The stack's item and its count; a marker is its fluid or material, and the count is the millibuckets or units. */
         public static Amount of(ItemStack stack) {
             return of(stack, stack.getCount());
         }
 
-        /** What an example stack stands for, in some amount: an item (count) or a fluid marker's fluid (millibuckets). */
+        /** What an example stack stands for, in some amount: an item (count), a fluid marker's fluid or a material marker's material. */
         public static Amount of(ItemStack example, int count) {
             if (example.isEmpty()) {
                 return EMPTY;
             }
             FluidResource fluid = FluidMarkerItem.fluidOf(example);
-            return fluid != null ? of(fluid, count) : of(ItemResource.of(example), count);
+            if (fluid != null) {
+                return of(fluid, count);
+            }
+            MaterialKey material = MaterialMarkerItem.materialOf(example);
+            return material != null ? of(material, count) : of(ItemResource.of(example), count);
         }
 
         public static Amount of(GridKey key, int count) {
+            if (key instanceof GridKey.Material material) {
+                return of(material.key(), count);
+            }
             return key instanceof GridKey.Fluid fluid ? of(fluid.resource(), count) : of(((GridKey.Item) key).resource(), count);
         }
 
         public boolean isEmpty() {
-            return item.isEmpty() && fluid.isEmpty();
+            return item.isEmpty() && fluid.isEmpty() && material == null;
         }
 
         public boolean isFluid() {
             return !fluid.isEmpty();
         }
 
+        public boolean isMaterial() {
+            return material != null;
+        }
+
         /** What the slot holds, or null when empty. */
         public @Nullable GridKey key() {
+            if (isMaterial()) {
+                return new GridKey.Material(material);
+            }
             if (isFluid()) {
                 return new GridKey.Fluid(fluid);
             }
@@ -123,8 +159,16 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
             return fluid ? MAX_FLUID : MAX_AMOUNT;
         }
 
-        /** As a stack to show; the count may be more than a stack holds. A fluid shows as its marker. */
+        /** The most a slot holding this example stack takes: more for a fluid or material marker than for an item. */
+        public static int max(ItemStack example) {
+            return FluidMarkerItem.isMarker(example) || MaterialMarkerItem.isMarker(example) ? MAX_FLUID : MAX_AMOUNT;
+        }
+
+        /** As a stack to show; the count may be more than a stack holds. A fluid or material shows as its marker. */
         public ItemStack stack() {
+            if (isMaterial()) {
+                return MaterialMarkerItem.of(material);
+            }
             if (isFluid()) {
                 return FluidMarkerItem.of(fluid);
             }
@@ -133,10 +177,10 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
 
         /** The same thing in another amount. Empty when nothing is left. */
         public Amount withCount(int count) {
-            return of(item, fluid, count);
+            return of(item, fluid, material, count);
         }
 
-        /** The amount for people: "3" for items, "250 mB" or "1.5 B" for fluids. */
+        /** The amount for people: "3" for items, "250 mB" or "1.5 B" for fluids, plain units for a material. */
         public String label() {
             return isFluid() ? FluidAmounts.label(count) : String.valueOf(count);
         }

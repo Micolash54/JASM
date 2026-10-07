@@ -3,9 +3,12 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.pool.Material;
+import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.registry.JasmTriggers;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
@@ -30,6 +33,7 @@ import net.minecraft.world.item.crafting.CraftingInput;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.resource.Resource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
@@ -95,6 +99,9 @@ final class JobRunner {
         Set<Card> cards = network == null ? Set.of() : allCards(level, network);
         WaferRecord fluids = fluidRecord(store, job);
         boolean changed = finishCrafts(level, job, record, store);
+        if (job.sent.isEmpty()) {
+            job.noRoom = false;
+        }
         changed |= collect(level, network, job, record, fluids, store);
         if (job.phase == CraftingJob.Phase.CANCELLING && !job.sent.isEmpty()) {
             // Whatever is out in machines stays there; the job stops waiting for it.
@@ -156,7 +163,7 @@ final class JobRunner {
             server.setChanged();
         }
         boolean idle = job.running.isEmpty() && job.sent.isEmpty();
-        job.pause = !idle ? PauseReason.NONE : missingCard ? PauseReason.NO_CARD : machineBlocked;
+        job.pause = job.noRoom ? PauseReason.NO_ROOM : !idle ? PauseReason.NONE : missingCard ? PauseReason.NO_CARD : machineBlocked;
         job.waiting = waiting(level, network, job);
         boolean stepsLeft = job.steps.stream().anyMatch(s -> s.left > 0);
         if (machineBlocked != PauseReason.NONE) {
@@ -254,8 +261,11 @@ final class JobRunner {
         }
         Map<ItemResource, Long> set = new HashMap<>();
         Map<FluidResource, Long> fluidSet = new HashMap<>();
+        Map<MaterialKey, Long> materialSet = new HashMap<>();
         for (ProcessingCard.Amount input : card.usedInputs()) {
-            if (input.isFluid()) {
+            if (input.isMaterial()) {
+                materialSet.merge(input.material(), (long) input.count(), Long::sum);
+            } else if (input.isFluid()) {
                 fluidSet.merge(input.fluid(), (long) input.count(), Long::sum);
             } else {
                 set.merge(input.item(), (long) input.count(), Long::sum);
@@ -266,6 +276,7 @@ final class JobRunner {
         for (CraftingJob.Sent already : job.sent) {
             out.merge(already.at(), 1L, Long::sum);
         }
+        NetworkPool pool = materialSet.isEmpty() || network == null ? null : NetworkPool.of(level, network);
         int sent = 0;
         PauseReason blocked = PauseReason.NONE;
         while (sent < free && step.left > 0) {
@@ -275,13 +286,24 @@ final class JobRunner {
             if (!enough) {
                 break;
             }
+            if (!materialSet.isEmpty() && (pool == null || !materialSet.entrySet().stream()
+                    .allMatch(e -> pool.materialContents().getOrDefault(e.getKey(), 0L) >= e.getValue()))) {
+                // nothing is held back for a job: it waits for the network's storage to hold the material
+                blocked = sent > 0 ? PauseReason.NONE : PauseReason.NO_MATERIAL;
+                break;
+            }
             if (targets.isEmpty()) {
                 blocked = sent > 0 ? PauseReason.NONE : anyMachine ? PauseReason.MACHINE_BUSY : PauseReason.NO_MACHINE;
                 break;
             }
             targets.sort(Comparator.comparingLong(t -> out.getOrDefault(t.at(), 0L)));
             Target target = targets.getFirst();
-            if (!Machines.push(target.port(), target.side(), card.usedInputs())) {
+            Machines.Push pushed = Machines.push(target.port(), target.side(), card.usedInputs(), pool);
+            if (pushed == Machines.Push.SHORT) {
+                blocked = sent > 0 ? PauseReason.NONE : PauseReason.NO_MATERIAL;
+                break;
+            }
+            if (pushed != Machines.Push.SENT) {
                 // Full, or it doesn't take these: try the others, and this one again next tick.
                 targets.remove(target);
                 continue;
@@ -309,6 +331,9 @@ final class JobRunner {
             return false;
         }
         boolean any = false;
+        // a port only has allowance now and then, so the "no room" verdict stands until the next time one has
+        boolean checked = false;
+        boolean[] noRoom = {false};
         Map<AccessPortBlockEntity, List<CraftingJob.Sent>> ports = new LinkedHashMap<>();
         for (CraftingJob.Sent set : job.sent) {
             AccessPortBlockEntity port = Machines.port(level, network, set.port, set.side);
@@ -344,6 +369,8 @@ final class JobRunner {
                 }
             }
             any |= pullFluids(port, here, fluids, store);
+            checked = true;
+            any |= pullMaterials(port, here, level, network, noRoom);
             job.sent.removeIf(CraftingJob.Sent::done);
             for (CraftingJob.Sent set : here) {
                 AccessPortBlockEntity.Lock lock = port.lock(set.side);
@@ -351,6 +378,9 @@ final class JobRunner {
                     port.unlock(set.side);
                 }
             }
+        }
+        if (checked) {
+            job.noRoom = noRoom[0];
         }
         return any;
     }
@@ -399,6 +429,86 @@ final class JobRunner {
                         break;
                     }
                     left -= set.arrive(key, left);
+                }
+            }
+        }
+        return any;
+    }
+
+    /**
+     * Takes the materials the sets on this port wait for out of their machines and into the network's storage, as far as
+     * the port's allowance and the storage's room go. They never rest in the job. When the storage has no room, what
+     * is waited for stays in the machine and the job says so. Returns whether any came.
+     */
+    private static boolean pullMaterials(AccessPortBlockEntity port, List<CraftingJob.Sent> here, ServerLevel level,
+            @Nullable CableNetwork network, boolean[] noRoom) {
+        boolean any = false;
+        NetworkPool pool = null;
+        for (Direction side : here.stream().map(s -> s.side).distinct().toList()) {
+            List<CraftingJob.Sent> onSide = here.stream().filter(s -> s.side == side).toList();
+            Set<MaterialKey> wanted = new LinkedHashSet<>();
+            onSide.forEach(s -> s.waiting.stream().filter(ProcessingCard.Amount::isMaterial).forEach(a -> wanted.add(a.material())));
+            if (wanted.isEmpty()) {
+                continue;
+            }
+            List<Machines.MaterialInlet> vessels = Machines.materialInlets(port, side);
+            if (vessels.isEmpty()) {
+                continue;
+            }
+            if (pool == null && network != null) {
+                pool = NetworkPool.of(level, network);
+            }
+            for (Machines.MaterialInlet vessel : vessels) {
+                ResourceHandler<Resource> handler = vessel.handler();
+                for (int slot = 0; slot < handler.size(); slot++) {
+                    Material material = Material.of(vessel.kind(), handler.getResource(slot));
+                    if (material == null || !wanted.contains(material.key()) || handler.getAmountAsLong(slot) <= 0) {
+                        continue;
+                    }
+                    GridKey key = new GridKey.Material(material.key());
+                    long most = Math.min(onSide.stream().mapToLong(s -> s.wants(key)).sum(), (long) port.transferBudget() * FluidAmounts.PER_SHARE);
+                    if (most <= 0) {
+                        continue;
+                    }
+                    long room = pool == null ? 0 : pool.roomMaterial(material, most, null);
+                    if (room <= 0) {
+                        noRoom[0] = true;
+                        continue;
+                    }
+                    int offered;
+                    try (Transaction tx = Transaction.openRoot()) {
+                        offered = handler.extract(material.resource(), (int) Math.min(room, Integer.MAX_VALUE), tx);   // only asking
+                    }
+                    if (offered <= 0) {
+                        continue;
+                    }
+                    long stored = pool.insertMaterialNow(material, offered, null);
+                    if (stored <= 0) {
+                        noRoom[0] = true;
+                        continue;
+                    }
+                    int got;
+                    try (Transaction tx = Transaction.openRoot()) {
+                        got = handler.extract(material.resource(), (int) stored, tx);
+                        if (got > 0) {
+                            tx.commit();
+                        }
+                    }
+                    if (got < stored) {
+                        pool.extractMaterialNow(material, stored - got, null);
+                    }
+                    if (got <= 0) {
+                        continue;
+                    }
+                    port.transferred((int) FluidAmounts.shares(got));
+                    any = true;
+                    long left = got;
+                    for (CraftingJob.Sent set : onSide) {
+                        if (left <= 0) {
+                            break;
+                        }
+                        left -= set.arrive(key, left);
+                    }
                 }
             }
         }

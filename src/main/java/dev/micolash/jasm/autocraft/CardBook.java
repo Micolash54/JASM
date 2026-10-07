@@ -65,7 +65,7 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         Set<ItemResource> candidates = new LinkedHashSet<>(stored);
         resolved.forEach(r -> candidates.add(r.outputKey()));
         processing.forEach(p -> {
-            if (!p.main().isFluid()) {
+            if (!p.main().isFluid() && !p.main().isMaterial()) {
                 candidates.add(p.main().item());
             }
         });
@@ -92,10 +92,10 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         return byOutput.getOrDefault(key, List.of());
     }
 
-    /** A bucket of fluid takes the room of one item; less than a bucket takes one all the same. */
+    /** A bucket of fluid or material takes the room of one item; less than a bucket takes one all the same. */
     @Override
     public long space(GridKey key, long amount) {
-        return key instanceof GridKey.Fluid ? (amount + FluidAmounts.PER_BUCKET - 1) / FluidAmounts.PER_BUCKET : amount;
+        return key instanceof GridKey.Fluid || key instanceof GridKey.Material ? (amount + FluidAmounts.PER_BUCKET - 1) / FluidAmounts.PER_BUCKET : amount;
     }
 
     /** Every item and fluid some card makes. */

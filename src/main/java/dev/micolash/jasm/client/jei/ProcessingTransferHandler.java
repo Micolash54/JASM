@@ -73,8 +73,14 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
                 items.add(item.get());
                 continue;
             }
-            slot.getDisplayedIngredient(NeoForgeTypes.FLUID_STACK).or(() -> slot.getIngredients(NeoForgeTypes.FLUID_STACK).findFirst())
-                    .filter(fluid -> !fluid.isEmpty()).ifPresent(fluid -> items.add(marker(fluid)));
+            Optional<FluidStack> fluid = slot.getDisplayedIngredient(NeoForgeTypes.FLUID_STACK)
+                    .or(() -> slot.getIngredients(NeoForgeTypes.FLUID_STACK).findFirst()).filter(f -> !f.isEmpty());
+            if (fluid.isPresent()) {
+                items.add(marker(fluid.get()));
+                continue;
+            }
+            // another mod's material, if JEI has a type for it
+            slot.getDisplayedIngredient().or(() -> slot.getAllIngredients().findFirst()).flatMap(JeiMaterials::markerOf).ifPresent(items::add);
         }
         return items;
     }

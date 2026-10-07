@@ -143,6 +143,11 @@ final class JobPlanning {
         Map<GridKey, Long> stock = new LinkedHashMap<>();
         items.forEach((key, count) -> stock.put(new GridKey.Item(key), count));
         DeckFluidStorage.contents(store, deck).forEach((key, mb) -> stock.put(new GridKey.Fluid(key), mb));
+        // other mods' materials live in the network's storage only; a job draws them when it feeds a machine
+        NetworkPool materialPool = PoolAccess.forDeck(player, deck);
+        if (materialPool != null) {
+            materialPool.materialContents().forEach((key, units) -> stock.put(new GridKey.Material(key), units));
+        }
         CardBook book = new CardBook(level, cards(network, player), items.keySet(), card -> reachable(level, network, card));
         FluidResource fluidTarget = FluidMarkerItem.fluidOf(target.toStack(1));
         GridKey goal = fluidTarget != null ? new GridKey.Fluid(fluidTarget) : new GridKey.Item(target);
@@ -220,6 +225,9 @@ final class JobPlanning {
         Map<ItemResource, Long> fromChests = new LinkedHashMap<>();
         try (Transaction tx = Transaction.openRoot()) {
             for (Map.Entry<GridKey, Long> need : preview.plan().taken().entrySet()) {
+                if (need.getKey() instanceof GridKey.Material) {
+                    continue;
+                }
                 long left = need.getValue();
                 for (WaferRecord wafer : wafers) {
                     if (wafer != null && left > 0) {

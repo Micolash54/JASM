@@ -1,5 +1,6 @@
 package dev.micolash.jasm.pool;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
@@ -131,6 +132,60 @@ public final class NetworkPool {
             taken += store.extract(key, amount - taken, tx);
         }
         return taken;
+    }
+
+    // the exact resources under each name, found again when the listing changes (so a job asking every tick doesn't scan)
+    private final Map<MaterialKey, List<Material>> exact = new HashMap<>();
+    private long exactVersion = -1;
+    private long exactTick = Long.MIN_VALUE;
+
+    /**
+     * The exact resources the blocks held under {@code key} at the last look. A look is made when the listing changes,
+     * and again, at most once a tick, when a name turns up nothing (the listing can be a moment behind the blocks).
+     */
+    public List<Material> materialsOf(MaterialKey key) {
+        refresh();
+        long now = level.getGameTime();
+        boolean listingMoved = exactVersion != version;
+        if (listingMoved || !exact.containsKey(key) && exactTick != now) {
+            exact.clear();
+            for (Material material : materialStacks(null).keySet()) exact.computeIfAbsent(material.key(), k -> new ArrayList<>()).add(material);
+            exactVersion = version;
+            exactTick = now;
+        }
+        return exact.getOrDefault(key, List.of());
+    }
+
+    /**
+     * Takes exactly {@code amount} of {@code key} out of the blocks, lowest priority first, or nothing at all (null when
+     * they hold less). The pieces are by exact resource, so they can be put back or handed on.
+     */
+    public @Nullable Map<Material, Long> takeMaterial(MaterialKey key, long amount) {
+        Map<Material, Long> taken = new LinkedHashMap<>();
+        long left = amount;
+        for (Material material : materialsOf(key)) {
+            if (left <= 0) break;
+            long got = extractMaterialNow(material, left, null);
+            if (got > 0) {
+                taken.put(material, got);
+                left -= got;
+            }
+        }
+        if (left > 0) {
+            putBackMaterial(taken);
+            // what was looked at is out of date
+            exactVersion = -1;
+            return null;
+        }
+        return taken;
+    }
+
+    /** Puts pieces from {@link #takeMaterial} back. What no block takes back is logged and lost to the caller. */
+    public void putBackMaterial(Map<Material, Long> pieces) {
+        pieces.forEach((material, amount) -> {
+            long back = insertMaterialNow(material, amount, null);
+            if (back < amount) Jasm.LOGGER.warn("{} units of {} did not fit back into the network's storage", amount - back, material.key().id());
+        });
     }
 
     /** What the blocks hold right now, by exact resource and not from the listing. Leaves out {@code avoid}. */

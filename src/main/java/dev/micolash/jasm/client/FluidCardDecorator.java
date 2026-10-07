@@ -2,6 +2,8 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.autocraft.Card;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.MaterialMarkerItem;
+import dev.micolash.jasm.core.MaterialKey;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -18,10 +20,15 @@ final class FluidCardDecorator implements IItemDecorator {
         }
         Card card = Card.of(stack);
         FluidResource fluid = card == null ? null : FluidMarkerItem.fluidOf(card.result());
-        if (fluid == null) {
+        if (fluid != null) {
+            FluidGrid.draw(graphics, fluid, x, y);
+            return true;
+        }
+        MaterialKey material = card == null ? null : MaterialMarkerItem.materialOf(card.result());
+        if (material == null) {
             return false;
         }
-        FluidGrid.draw(graphics, fluid, x, y);
+        MaterialIcons.draw(graphics, material, x, y);
         return true;
     }
 }

@@ -13,6 +13,7 @@ import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.TrustList;
+import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
@@ -412,6 +413,13 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 if (held != null) {
                     example = FluidMarkerItem.of(held.fluid());
                     count = held.amount();
+                } else if (terminal != null && processing() && buttonNum == 1 && input == ContainerInput.PICKUP) {
+                    // or the material inside, when the container holds one of another mod's
+                    MaterialKinds.Held material = MaterialKinds.held(carried);
+                    if (material != null) {
+                        example = MaterialMarkerItem.of(material.key());
+                        count = (int) Math.min(material.amount(), ProcessingCard.MAX_MATERIAL);
+                    }
                 }
                 if (terminal != null && processing()) {
                     terminal.setProcessingSlot(slot, example, count);
@@ -443,7 +451,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public void setGhost(int slot, ItemStack stack) {
         if (terminal != null && processing() && slot >= 0 && slot < EncodingTerminalBlockEntity.AMOUNTS) {
             terminal.setProcessingSlot(slot, stack, stack.getCount());
-        } else if (slot >= 0 && slot < 9 && !FluidMarkerItem.isMarker(stack)) {
+        } else if (slot >= 0 && slot < 9 && !FluidMarkerItem.isMarker(stack) && !MaterialMarkerItem.isMarker(stack)) {
             ghost.setItem(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
         }
     }
@@ -496,8 +504,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
         if (id >= BUTTON_AMOUNT && id < BUTTON_AMOUNT + EncodingTerminalBlockEntity.AMOUNTS * 4) {
             int slot = (id - BUTTON_AMOUNT) / 4;
-            // Items go up by 1 or 10; fluids by an eighth of a bucket or a whole one.
-            boolean fluid = terminal.isFluid(slot);
+            // Items go up by 1 or 10; fluids and materials by an eighth of a bucket or a whole one.
+            boolean fluid = terminal.usesUnits(slot);
             int small = fluid ? FluidAmounts.PER_SHARE : 1;
             int big = fluid ? FluidAmounts.PER_BUCKET : 10;
             int change = switch ((id - BUTTON_AMOUNT) % 4) {

@@ -22,7 +22,9 @@ The Encoding Terminal writes recipes onto [Recipe Cards](recipe-cards.md). It is
 2. Put an empty or filled Recipe Card in.
 3. Press **Encode**. Take the finished card out first, or it can't write the next one.
 
-For a machine, choose it in the terminal's machine list first. Then fill the right-hand column with what the machine gives back. Scroll over a slot to change its amount, with Shift for bigger steps. Right-click with a full bucket or tank to set a fluid. See the [Access Port](access-port.md).
+For a machine, choose it in the terminal's machine list first. Then fill the right-hand column with what the machine gives back. Scroll over a slot to change its amount, with Shift for bigger steps. Right-click with a full bucket or tank to set a fluid, or the material inside a modded tank. See the [Access Port](access-port.md).
+
+A material can be an ingredient, a result, or made by one card for the next. You can't ask the Deck for one directly.
 
 The Deck tab shows what is on your Deck. Click an item there for a copy to put in the grid. Nothing leaves the Deck.
 

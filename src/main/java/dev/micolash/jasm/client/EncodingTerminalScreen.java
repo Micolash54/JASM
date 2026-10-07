@@ -6,6 +6,8 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.MaterialMarkerItem;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -661,6 +663,13 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             drawAmounts(graphics);
         }
         if (hoveredSlot != null && processingSlot(hoveredSlot) >= 0 && hoveredSlot.isActive() && menu.getCarried().isEmpty()) {
+            MaterialKey hoveredMaterial = MaterialMarkerItem.materialOf(hoveredSlot.getItem());
+            if (hoveredMaterial != null) {
+                graphics.setTooltipForNextFrame(font, List.of(MaterialIcons.name(hoveredMaterial),
+                        Component.literal(String.valueOf(menu.amount(processingSlot(hoveredSlot)))).withStyle(ChatFormatting.GRAY),
+                        Component.literal(MaterialIcons.modName(hoveredMaterial)).withStyle(ChatFormatting.BLUE)),
+                        Optional.empty(), mouseX, mouseY);
+            }
             FluidResource hoveredFluid = FluidMarkerItem.fluidOf(hoveredSlot.getItem());
             if (hoveredFluid != null) {
                 graphics.setTooltipForNextFrame(font, List.of(hoveredFluid.getHoverName(),
@@ -722,8 +731,13 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         for (Slot slot : menu.slots) {
             int index = processingSlot(slot);
             FluidResource fluid = index < 0 || !slot.isActive() ? null : FluidMarkerItem.fluidOf(slot.getItem());
-            if (fluid != null) {
-                FluidGrid.draw(graphics, fluid, leftPos + slot.x, topPos + slot.y);
+            MaterialKey material = index < 0 || !slot.isActive() ? null : MaterialMarkerItem.materialOf(slot.getItem());
+            if (fluid != null || material != null) {
+                if (fluid != null) {
+                    FluidGrid.draw(graphics, fluid, leftPos + slot.x, topPos + slot.y);
+                } else {
+                    MaterialIcons.draw(graphics, material, leftPos + slot.x, topPos + slot.y);
+                }
                 if (slot == hoveredSlot) {
                     graphics.fill(leftPos + slot.x, topPos + slot.y, leftPos + slot.x + 16, topPos + slot.y + 16, JasmGui.HOVER);
                 }

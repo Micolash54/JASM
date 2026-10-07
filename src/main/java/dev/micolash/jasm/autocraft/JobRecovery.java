@@ -116,7 +116,7 @@ final class JobRecovery {
                 return null;
             for (var sent : server.job().sent) {
                 if (sent.port.equals(port.getBlockPos()) && port.lock(sent.side) != null) {
-                    sent.waiting.stream().filter(amount -> !amount.isFluid()).forEach(amount -> expected.add(amount.item()));
+                    sent.waiting.stream().filter(amount -> !amount.isFluid() && !amount.isMaterial()).forEach(amount -> expected.add(amount.item()));
                 }
             }
         }

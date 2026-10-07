@@ -175,6 +175,10 @@ public final class CraftingJob {
                 return Component.translatable("screen.jasm.server.waiting_fluid", machine, FluidAmounts.label(count),
                         fluid.resource().getHoverName(), time);
             }
+            if (what instanceof GridKey.Material material) {
+                return Component.translatable("screen.jasm.server.waiting_material", machine, count,
+                        MaterialMarkerItem.of(material.key()).getHoverName(), time);
+            }
             return Component.translatable("screen.jasm.server.waiting", machine, count, what.item().toStack(1).getHoverName(), time);
         }
     }
@@ -218,6 +222,8 @@ public final class CraftingJob {
     Phase phase;
     /** Why nothing is happening right now, for screens; not saved. */
     PauseReason pause = PauseReason.NONE;
+    /** Set by each collection: a machine holds results of a material that the network's storage has no room for. */
+    boolean noRoom;
     /** The machine the job has waited on longest, for screens; not saved. */
     @Nullable Waiting waiting;
     /** Ticks in a row with nothing running and nothing able to start; not saved. */

@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.autocraft.Card;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.client.renderer.item.ItemModelResolver;
@@ -32,7 +33,7 @@ public final class EncodedCardModel implements ItemModel {
         // An output can itself be a card, or contain one in another item's model.
         Card card = resolvingOutput || stack.isEmpty() ? null : Card.of(stack);
         ItemStack result = card == null ? ItemStack.EMPTY : card.result();
-        if (FluidMarkerItem.isMarker(result)) {
+        if (FluidMarkerItem.isMarker(result) || MaterialMarkerItem.isMarker(result)) {
             // A fluid has no item model: in a slot the card shows nothing, and the fluid is drawn over it (FluidCardDecorator).
             if (displayContext != ItemDisplayContext.GUI) {
                 fallback.update(output, stack, resolver, displayContext, level, owner, seed);

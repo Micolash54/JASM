@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
 import dev.micolash.jasm.bay.BayRedstone;
 import dev.micolash.jasm.bay.DeployMode;
+import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
@@ -57,6 +58,10 @@ public final class JasmComponents {
     /** The fluid a fluid marker stands for. */
     public static final Supplier<DataComponentType<FluidResource>> FLUID_MARKER = COMPONENTS.registerComponentType(
             "fluid_marker", b -> b.persistent(FluidResource.CODEC).networkSynchronized(FluidResource.STREAM_CODEC));
+
+    /** The material a material marker stands for. */
+    public static final Supplier<DataComponentType<MaterialKey>> MATERIAL_MARKER = COMPONENTS.registerComponentType(
+            "material_marker", b -> b.persistent(MaterialKey.CODEC).networkSynchronized(MaterialKey.STREAM_CODEC));
 
     /** A Filled Recipe Card's recipe. */
     public static final Supplier<DataComponentType<RecipeCard>> RECIPE_CARD = COMPONENTS.registerComponentType(

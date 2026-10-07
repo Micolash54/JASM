@@ -33,7 +33,7 @@ The Access Port is how your network talks to other machines. Put one next to a f
 2. Write a processing card for it at an [Encoding Terminal](encoding-terminal.md): what goes in, and up to three things that come back.
 3. Make the machine give its results back into the port, or use a hopper or a pipe.
 
-Jobs send the ingredients in and wait for the results to come back. Fluids work too. Choose several machines and the work is shared between them.
+Jobs send the ingredients in and wait for the results to come back. Fluids work too, and so do other mods' materials (chemicals and the like) kept in tanks behind a [Storage Port](storage-port.md): the job takes them from there and the results go back there. Choose several machines and the work is shared between them.
 
 <br />
 <br />

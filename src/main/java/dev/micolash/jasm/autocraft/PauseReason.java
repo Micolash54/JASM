@@ -17,7 +17,9 @@ public enum PauseReason {
     NO_MACHINE,
     DIMENSION_UPGRADE,
     DECK_CHARGE,
-    NETWORK_FULL;
+    NETWORK_FULL,
+    NO_MATERIAL,
+    NO_ROOM;
 
     private static final PauseReason[] ALL = values();
 

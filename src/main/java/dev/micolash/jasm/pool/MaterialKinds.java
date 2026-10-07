@@ -54,7 +54,7 @@ public final class MaterialKinds {
         return known;
     }
 
-    public record Held(MaterialKey key, Holder<?> holder) {}
+    public record Held(MaterialKey key, Holder<?> holder, long amount) {}
 
     /** The first modded material the stack holds (hydrogen in a filled tank), or null. */
     public static @Nullable Held held(ItemStack stack) {
@@ -67,7 +67,7 @@ public final class MaterialKinds {
                 Resource resource = handler.getResource(slot);
                 MaterialKey key = MaterialKey.of(resource);
                 if (key != null && handler.getAmountAsLong(slot) > 0)
-                    return new Held(key, ((RegisteredResource<?>) resource).typeHolder());
+                    return new Held(key, ((RegisteredResource<?>) resource).typeHolder(), handler.getAmountAsLong(slot));
             }
         }
         return null;

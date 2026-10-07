@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.bay.DemolitionBayItem;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.autocraft.RecipeCardItem;
@@ -44,6 +45,9 @@ public final class JasmItems {
             p -> p.stacksTo(1));
     /** Stands for a fluid in the Encoding Terminal's slots. Never a real item: not in any tab, never given out. */
     public static final DeferredItem<FluidMarkerItem> FLUID_MARKER = ITEMS.registerItem("fluid_marker", FluidMarkerItem::new,
+            p -> p.stacksTo(1));
+    /** Stands for another mod's material in the Encoding Terminal's slots. Never a real item, like the fluid marker. */
+    public static final DeferredItem<MaterialMarkerItem> MATERIAL_MARKER = ITEMS.registerItem("material_marker", MaterialMarkerItem::new,
             p -> p.stacksTo(1));
     public static final DeferredItem<BlockItem> ENCODING_TERMINAL = ITEMS.registerSimpleBlockItem(JasmBlocks.ENCODING_TERMINAL);
     public static final DeferredItem<BlockItem> RECIPE_RACK = ITEMS.registerSimpleBlockItem(JasmBlocks.RECIPE_RACK);

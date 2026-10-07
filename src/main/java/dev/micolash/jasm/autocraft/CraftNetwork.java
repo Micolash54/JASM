@@ -306,9 +306,10 @@ public final class CraftNetwork {
         return Math.clamp(amount, 1, JasmConfig.MAX_REQUEST.getAsInt());
     }
 
-    /** A line of the answer. A fluid travels as its marker item, with the millibuckets as the count. */
+    /** A line of the answer. A fluid or material travels as its marker item, with the millibuckets or units as the count. */
     private static DeckPayloads.Entry entry(GridKey key, long count) {
-        ItemResource shown = key instanceof GridKey.Fluid fluid ? ItemResource.of(FluidMarkerItem.of(fluid.resource())) : key.item();
+        ItemResource shown = key instanceof GridKey.Fluid fluid ? ItemResource.of(FluidMarkerItem.of(fluid.resource()))
+                : key instanceof GridKey.Material material ? ItemResource.of(MaterialMarkerItem.of(material.key())) : key.item();
         return new DeckPayloads.Entry(shown, count);
     }
 
@@ -382,6 +383,10 @@ public final class CraftNetwork {
         }
         List<ItemResource> craftable = new ArrayList<>();
         for (Card card : Jobs.cards(network, player)) {
+            // a material can't be asked for, only used by other cards
+            if (MaterialMarkerItem.isMarker(card.result())) {
+                continue;
+            }
             ItemResource out = ItemResource.of(card.result());
             if (!craftable.contains(out)) {
                 craftable.add(out);

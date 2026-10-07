@@ -189,6 +189,9 @@ public class JasmJeiPlugin implements IModPlugin {
                 } else if (!stack.get().isEmpty()) {
                     stack = Optional.of(stack.get().copyWithCount(1));
                 }
+                if (stack.isEmpty() && screen.getMenu().processing()) {
+                    stack = JeiMaterials.markerOf(ingredient);
+                }
                 if (stack.isEmpty() || stack.get().isEmpty()) {
                     return List.of();
                 }
