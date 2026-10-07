@@ -4,6 +4,9 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.storage.WaferSettings;
+import dev.micolash.jasm.transfer.PortUpgradeLayout;
+import dev.micolash.jasm.transfer.TransferPortMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -20,15 +23,17 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
-/** A bay's panel: the 3×3 grid, the upgrade column, then the player's inventory and hotbar. The tank is drawn, not a slot. */
+/** A bay's panel: the 3×3 grid, the upgrade column, the filter, then the player's inventory and hotbar. The tank is drawn, not a slot. */
 public class BayMenu extends AbstractContainerMenu implements MachineView {
     public static final int GRID_X = 8;
     public static final int GRID_Y = 18;
-    /** The main panel's width; the upgrade column hangs past its right edge, as on the ports. */
-    public static final int WIDTH = 176;
+    /** The main panel's width, the ports' own; the upgrade column hangs past its right edge, as on the ports. */
+    public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
     public static final int UPGRADE_X = WIDTH + 2;
     public static final int UPGRADE_Y = 29;
-    public static final int INVENTORY_Y = 100;
+    public static final int INVENTORY_X = (WIDTH - 162) / 2;
+    public static final int FILTER_Y = 90;
+    public static final int FILTER_ROWS = 2;
     public static final int BUTTON_REDSTONE = 0;
     public static final int BUTTON_MODE = 1;
 
@@ -58,31 +63,45 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     private final ContainerData data;
     private final @Nullable BayBlockEntity bay;
     private final @Nullable BlockPos pos;
+    private WaferSettings filter;
 
     /** Server side. */
     public BayMenu(BayKind kind, int containerId, Inventory inventory, BayBlockEntity bay) {
-        this(kind, containerId, inventory, bay, serverData(bay), bay, bay.getBlockPos());
+        this(kind, containerId, inventory, bay, serverData(bay), bay, bay.getBlockPos(), bay.filter());
+    }
+
+    public static void writeOpening(RegistryFriendlyByteBuf buf, BayBlockEntity bay) {
+        buf.writeBlockPos(bay.getBlockPos());
+        WaferSettings.STREAM_CODEC.encode(buf, bay.filter());
+    }
+
+    /** Where the player's inventory starts: under the filter, or under its heading while the filter is folded away. */
+    public static int inventoryY(boolean collapsed) {
+        return collapsed ? FILTER_Y + 29 : FILTER_Y + TransferPortMenu.filterHeight(FILTER_ROWS) + 15;
     }
 
     /** Client side. */
     public static BayMenu client(BayKind kind, int containerId, Inventory inventory, RegistryFriendlyByteBuf buf) {
         BlockPos pos = buf.readBlockPos();
+        WaferSettings filter = WaferSettings.STREAM_CODEC.decode(buf);
         Container container = new SimpleContainer(BayBlockEntity.SLOTS) {
             @Override
             public boolean canPlaceItem(int slot, ItemStack stack) {
                 return BayBlockEntity.accepts(kind, slot, stack, other -> false);
             }
         };
-        return new BayMenu(kind, containerId, inventory, container, new SimpleContainerData(DATA_COUNT), null, pos);
+        return new BayMenu(kind, containerId, inventory, container, new SimpleContainerData(DATA_COUNT), null, pos, filter);
     }
 
     private BayMenu(BayKind kind, int containerId, Inventory inventory, Container container, ContainerData data,
-            @Nullable BayBlockEntity bay, @Nullable BlockPos pos) {
+            @Nullable BayBlockEntity bay, @Nullable BlockPos pos, WaferSettings filter) {
         super(kind.menu(), containerId);
         this.kind = kind;
         this.data = data;
         this.bay = bay;
         this.pos = pos;
+        this.filter = filter;
+        int inventoryY = inventoryY(false);
         for (int i = 0; i < BayBlockEntity.GRID; i++) {
             addSlot(new GridSlot(container, i, GRID_X + i % 3 * 18, GRID_Y + i / 3 * 18, kind.takesIn()));
         }
@@ -91,11 +110,11 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         }
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
+                addSlot(new Slot(inventory, 9 + row * 9 + column, INVENTORY_X + column * 18, inventoryY + row * 18));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+            addSlot(new Slot(inventory, column, INVENTORY_X + column * 18, inventoryY + 58));
         }
         addDataSlots(data);
     }
@@ -183,6 +202,30 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
 
     public int cycleTicks() {
         return data.get(DATA_CYCLE);
+    }
+
+    public WaferSettings filter() {
+        return bay != null ? bay.filter() : filter;
+    }
+
+    // a row naming nothing known is turned away, unless the bay already had it (its mod was removed since)
+    public boolean configureFilter(WaferSettings wanted) {
+        WaferSettings previous = filter();
+        if (wanted.rules().stream().anyMatch(rule -> !rule.valid()
+                && previous.rules().stream().noneMatch(old -> old.mode() == rule.mode() && old.value().equals(rule.value()))))
+            return false;
+        filter = wanted;
+        if (bay != null) bay.setFilter(wanted);
+        return true;
+    }
+
+    // only on the player's screen, the server never looks at where slots sit
+    public void layout(boolean collapsed) {
+        int top = inventoryY(collapsed);
+        for (int i = 0; i < 36; i++) {
+            Slot slot = slots.get(BayBlockEntity.SLOTS + i);
+            slot.y = i < 27 ? top + i / 9 * 18 : top + 58;
+        }
     }
 
     @Override

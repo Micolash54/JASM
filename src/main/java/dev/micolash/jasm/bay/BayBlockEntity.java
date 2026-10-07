@@ -9,6 +9,7 @@ import dev.micolash.jasm.network.NetworkEnergy;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +37,7 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.common.util.FakePlayer;
@@ -70,6 +72,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     private final ResourceHandler<FluidResource> fluidAutomation;
     private final BayClock clock = new BayClock();
     private BayRedstone redstone = BayRedstone.IGNORE;
+    /** What the bay may take (Demolition) or put out (Deployment). Empty lets everything through. */
+    private WaferSettings filter = WaferSettings.DEFAULT;
     private BayStatus status = BayStatus.SLEEPING;
     private boolean wake = true;
     private boolean signal;
@@ -84,6 +88,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     /** The cycle started after a rest, not straight after the last one. */
     private boolean clientRested = true;
     private int shownLooks;
+    /** When the filter started refusing what is in front, in game ticks, so the Bitling shakes its head from then. */
+    private long clientRefusedSince = Long.MIN_VALUE;
     private ItemStack shownHeld = ItemStack.EMPTY;
 
     protected BayBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -318,6 +324,29 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         wake();
     }
 
+    // --- the filter ---
+
+    public WaferSettings filter() {
+        return filter;
+    }
+
+    // a new filter may let the bay do what it refused, so look at the front again
+    public void setFilter(WaferSettings filter) {
+        if (this.filter.equals(filter)) return;
+        this.filter = filter;
+        setChanged();
+        wake();
+    }
+
+    // components ignored, same as every other filter
+    protected boolean passes(ItemStack stack) {
+        return filter.rank(stack.getItem()) >= 0;
+    }
+
+    protected boolean passes(Fluid fluid) {
+        return filter.rank(fluid) >= 0;
+    }
+
     // --- the grid ---
 
     public ItemStack gridStack(int slot) {
@@ -385,9 +414,9 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         return used;
     }
 
-    /** The first stack in the grid; the Deployment Bay's Bitling holds it up, as what it will place next. */
+    /** The first stack in the grid the filter lets out; the Deployment Bay's Bitling holds it up, as what it will place next. */
     protected ItemStack held() {
-        for (int slot = 0; slot < GRID; slot++) if (!items.get(slot).isEmpty()) return items.get(slot);
+        for (int slot = 0; slot < GRID; slot++) if (!items.get(slot).isEmpty() && passes(items.get(slot))) return items.get(slot);
         return ItemStack.EMPTY;
     }
 
@@ -492,6 +521,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         ContainerHelper.saveAllItems(output, items);
         tank.serialize(output.child("tank"));
         output.store("redstone", BayRedstone.CODEC, redstone);
+        if (!filter.isDefault()) output.store("filter", WaferSettings.CODEC, filter);
     }
 
     @Override
@@ -501,10 +531,11 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         ContainerHelper.loadAllItems(input, items);
         input.child("tank").ifPresent(tank::deserialize);
         redstone = input.read("redstone", BayRedstone.CODEC).orElse(BayRedstone.IGNORE);
+        filter = input.read("filter", WaferSettings.CODEC).orElse(WaferSettings.DEFAULT);
         wake = true;
     }
 
-    /** The mined bay keeps its upgrades and redstone mode; the grid drops and is never copied onto the item. */
+    /** The mined bay keeps its upgrades, redstone mode and filter; the grid drops and is never copied onto the item. */
     @Override
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
@@ -514,6 +545,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
             components.set(JasmComponents.BAY_UPGRADES.get(), ItemContainerContents.fromItems(upgrades));
         }
         if (redstone != BayRedstone.IGNORE) components.set(JasmComponents.BAY_REDSTONE.get(), redstone);
+        if (!filter.isDefault()) components.set(JasmComponents.BAY_FILTER.get(), filter);
     }
 
     @Override
@@ -524,12 +556,14 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         upgrades.copyInto(list);
         for (int i = 0; i < UPGRADES; i++) items.set(UPGRADE_START + i, list.get(i));
         redstone = components.getOrDefault(JasmComponents.BAY_REDSTONE.get(), BayRedstone.IGNORE);
+        filter = components.getOrDefault(JasmComponents.BAY_FILTER.get(), WaferSettings.DEFAULT);
     }
 
     @Override
     public void removeComponentsFromTag(ValueOutput output) {
         super.removeComponentsFromTag(output);
         output.discard("redstone");
+        output.discard("filter");
     }
 
     // --- what players' games are told ---
@@ -553,7 +587,11 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     @Override
     public void handleUpdateTag(ValueInput input) {
+        BayStatus before = shownStatus();
         shownLooks = input.getIntOr("looks", 0);
+        if (shownStatus() == BayStatus.FILTERED && before != BayStatus.FILTERED) {
+            clientRefusedSince = level == null ? Long.MIN_VALUE : level.getGameTime();
+        }
         shownHeld = input.read("held", ItemStack.CODEC).orElse(ItemStack.EMPTY);
     }
 
@@ -620,5 +658,9 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     public ItemStack shownHeld() {
         return shownHeld;
+    }
+
+    public long clientRefusedSince() {
+        return clientRefusedSince;
     }
 }

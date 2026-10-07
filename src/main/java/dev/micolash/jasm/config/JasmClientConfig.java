@@ -22,6 +22,10 @@ public final class JasmClientConfig {
             .comment("Height of the Deck screen's item grid")
             .defineEnum("deckSize", DeckSize.SMALL);
 
+    public static final ModConfigSpec.BooleanValue BAY_FILTER_COLLAPSED = BUILDER
+            .comment("Folds the filter away on bay panels")
+            .define("bayFilterCollapsed", false);
+
     static {
         BUILDER.pop().push("sounds");
     }
@@ -43,6 +47,15 @@ public final class JasmClientConfig {
 
     public static void setDeckSize(DeckSize size) {
         DECK_SIZE.set(size);
+        SPEC.save();
+    }
+
+    public static boolean bayFilterCollapsed() {
+        return SPEC.isLoaded() && BAY_FILTER_COLLAPSED.get();
+    }
+
+    public static void setBayFilterCollapsed(boolean collapsed) {
+        BAY_FILTER_COLLAPSED.set(collapsed);
         SPEC.save();
     }
 

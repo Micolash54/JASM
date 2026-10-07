@@ -83,6 +83,10 @@ public class BayRenderer implements BlockEntityRenderer<BayBlockEntity, BayRende
     /** How big the held item is, as a block drawn on the ground (a quarter block) scaled up to 5/16 of the Bitling. */
     private static final float HELD_SCALE = 1.25F;
     private static final float BEAM_HALF_WIDTH = 0.3F / 16;
+    /** While the filter refuses the block in front, the Bitling shakes its head once and again every this many seconds. */
+    private static final float REFUSE_EVERY = 5;
+    /** Seconds to ease into the head shake and back out. */
+    private static final float REFUSE_BLEND = 0.15F;
 
     private final BitlingAnimations animations;
     private final ItemModelResolver itemModelResolver;
@@ -154,6 +158,10 @@ public class BayRenderer implements BlockEntityRenderer<BayBlockEntity, BayRende
         // Each bay is a little out of step with the next, so a row of them doesn't move as one.
         long offset = Math.floorMod(bay.getBlockPos().asLong() * 7919L, 2000L);
         state.seconds = (level.getGameTime() + offset + partialTicks) / 20F;
+        long refused = bay.clientRefusedSince();
+        // Not seen arriving (the bay was already refusing when it came into view): start with the next shake, not now.
+        state.refused = refused == Long.MIN_VALUE ? state.seconds + REFUSE_EVERY / 2
+                : (level.getGameTime() - refused + partialTicks) / 20F;
     }
 
     @Override
@@ -217,6 +225,7 @@ public class BayRenderer implements BlockEntityRenderer<BayBlockEntity, BayRende
             }
         } else {
             pose = animations.sample(rest, restTime);
+            if (state.status == BayStatus.FILTERED) pose = refuse(state, index, pose);
             if (state.after < BLEND_TICKS) {
                 float end = BayTiming.clip(BayTiming.progress(1, state.pair, myTurn), BayTiming.window(state.ticks, state.pair));
                 pose = BitlingAnimations.mix(animations.sample(work, end * workLength), pose, smooth(state.after / BLEND_TICKS));
@@ -242,6 +251,18 @@ public class BayRenderer implements BlockEntityRenderer<BayBlockEntity, BayRende
         poseStack.popPose();
 
         if (demolition && t >= BEAM_FROM) beam(state, spotX, pose, poseStack, collector);
+    }
+
+    private Map<String, float[]> refuse(State state, int index, Map<String, float[]> resting) {
+        BitlingAnimations.Clip clip = animations.clip("bay_refuse");
+        if (clip == null || clip.length() <= 0) return resting;
+        // The second Bitling a moment later, so the two don't shake as one.
+        float time = state.refused - index * 0.2F;
+        if (time < 0) return resting;
+        time %= REFUSE_EVERY;
+        if (time >= clip.length()) return resting;
+        float blend = smooth(Math.min(time, clip.length() - time) / REFUSE_BLEND);
+        return BitlingAnimations.mix(resting, animations.sample(clip, time), blend);
     }
 
     private void part(@Nullable BlockStateModelPart model, String bone, Map<String, float[]> pose, PoseStack poseStack,
@@ -337,5 +358,6 @@ public class BayRenderer implements BlockEntityRenderer<BayBlockEntity, BayRende
         float since;
         float after;
         float seconds;
+        float refused;
     }
 }

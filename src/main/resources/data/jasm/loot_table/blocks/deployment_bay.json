@@ -14,6 +14,7 @@
                 "jasm:owner",
                 "jasm:bay_upgrades",
                 "jasm:bay_redstone",
+                "jasm:bay_filter",
                 "jasm:deploy_mode"
               ],
               "source": "block_entity",

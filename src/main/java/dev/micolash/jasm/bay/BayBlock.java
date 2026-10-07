@@ -115,7 +115,7 @@ public class BayBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof BayBlockEntity bay
                 && MachineAccess.canUse(bay, serverPlayer)) {
-            serverPlayer.openMenu(bay, buf -> buf.writeBlockPos(pos));
+            serverPlayer.openMenu(bay, buf -> BayMenu.writeOpening(buf, bay));
         }
         return InteractionResult.SUCCESS;
     }

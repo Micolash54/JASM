@@ -18,7 +18,9 @@ public enum BayStatus {
     /** Someone stands in the space a block would go; nothing announces them leaving, so it looks again. */
     OBSTRUCTED(true),
     /** The world turned bays off; they keep what they hold and wait. */
-    TURNED_OFF(false);
+    TURNED_OFF(false),
+    /** The filter says no. A new block, a grid change or a new filter wakes it */
+    FILTERED(false);
 
     private final boolean recheck;
 

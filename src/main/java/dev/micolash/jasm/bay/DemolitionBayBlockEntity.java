@@ -5,6 +5,7 @@ import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmTags;
+import dev.micolash.jasm.storage.WaferSettings;
 import java.util.ArrayList;
 import java.util.List;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -14,6 +15,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
@@ -22,6 +24,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -70,11 +73,16 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         BlockState state = level.getBlockState(front);
         FluidState fluid = level.getFluidState(front);
         if (scoopable(state, fluid)) {
-            if (!level.mayInteract(fakePlayer(level), front)) return Plan.idle(BayStatus.NOT_ALLOWED);
-            return roomForBucket(fluid.getType()) ? Plan.scoop(JasmConfig.DEMOLITION_SCOOP_COST.getAsInt())
-                    : Plan.idle(BayStatus.TANK_FULL);
+            if (passes(fluid.getType())) {
+                if (!level.mayInteract(fakePlayer(level), front)) return Plan.idle(BayStatus.NOT_ALLOWED);
+                return roomForBucket(fluid.getType()) ? Plan.scoop(JasmConfig.DEMOLITION_SCOOP_COST.getAsInt())
+                        : Plan.idle(BayStatus.TANK_FULL);
+            }
+            // A plain pool is refused; a waterlogged block may still be broken.
+            if (state.liquid()) return Plan.idle(BayStatus.FILTERED);
         }
         if (!breakable(level, front, state)) return Plan.idle(BayStatus.SLEEPING);
+        if (!passes(state)) return Plan.idle(BayStatus.FILTERED);
         FakePlayer player = fakePlayer(level);
         if (!level.mayInteract(player, front)) return Plan.idle(BayStatus.NOT_ALLOWED);
         List<ItemStack> drops = drops(level, front, state, player);
@@ -86,7 +94,7 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
     protected BayStatus act(ServerLevel level, BlockPos front) {
         BlockState state = level.getBlockState(front);
         FluidState fluid = level.getFluidState(front);
-        if (scoopable(state, fluid)) {
+        if (scoopable(state, fluid) && passes(fluid.getType())) {
             FakePlayer player = fakePlayer(level);
             if (!level.mayInteract(player, front)) return BayStatus.NOT_ALLOWED;
             if (!roomForBucket(fluid.getType())) return BayStatus.TANK_FULL;
@@ -97,7 +105,9 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             pay(cost);
             return BayStatus.WORKING;
         }
+        if (scoopable(state, fluid) && state.liquid()) return BayStatus.FILTERED;
         if (!breakable(level, front, state)) return BayStatus.SLEEPING;
+        if (!passes(state)) return BayStatus.FILTERED;
         FakePlayer player = fakePlayer(level);
         if (!level.mayInteract(player, front)) return BayStatus.NOT_ALLOWED;
         List<ItemStack> drops = drops(level, front, state, player);
@@ -112,7 +122,8 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             // Whatever no longer fits lies in front and is picked up once there's room.
             if (!drop.isEmpty()) Block.popResource(level, front, drop);
         }
-        // Blocks that throw their contents out as they break (barrels, chests) leave them lying here.
+        // Blocks that throw their contents out as they break (barrels, chests) leave them lying here. The filter let
+        // the block through, so what it held comes along too.
         for (ItemEntity spilled : level.getEntitiesOfClass(ItemEntity.class, new AABB(front).inflate(0.2), ItemEntity::isAlive)) {
             storeEntity(spilled);
         }
@@ -136,7 +147,8 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
     protected void everyHalfSecond(ServerLevel level) {
         if (allFull() || !level.isLoaded(front())) return;
         for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, faceBox(worldPosition, facing()), ItemEntity::isAlive)) {
-            storeEntity(entity);
+            // What the filter refuses stays on the ground.
+            if (passes(entity.getItem())) storeEntity(entity);
         }
     }
 
@@ -160,6 +172,23 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             case WEST -> box.setMinX(box.maxX - depth);
             case EAST -> box.setMaxX(box.minX + depth);
         };
+    }
+
+    /**
+     * Whether the filter lets this block be broken. The block is named by its item where it has one, and by the block
+     * itself for block tags and blocks without an item.
+     */
+    private boolean passes(BlockState state) {
+        WaferSettings filter = filter();
+        if (filter.rules().isEmpty()) return true;
+        Item item = state.getBlock().asItem();
+        var block = BuiltInRegistries.BLOCK.wrapAsHolder(state.getBlock());
+        var id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        for (WaferSettings.Filter rule : filter.rules()) {
+            if (!rule.enabled()) continue;
+            if (item != Items.AIR && rule.matches(item) || rule.matches(block, id)) return rule.allow();
+        }
+        return !filter.hasAllow();
     }
 
     private static boolean breakable(ServerLevel level, BlockPos pos, BlockState state) {

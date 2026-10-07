@@ -37,9 +37,18 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
 
     @Override
     protected Plan plan(ServerLevel level, BlockPos front) {
-        boolean anyItem = usedSlots() > 0;
-        boolean anyFluid = mode == DeployMode.PLACE && tank.getAmountAsLong(0) >= FluidAmounts.PER_BUCKET;
-        if (!anyItem && !anyFluid) return Plan.idle(BayStatus.SLEEPING);
+        boolean anyItem = false;
+        boolean refused = false;
+        for (int slot = 0; slot < GRID; slot++) {
+            ItemStack stack = items.get(slot);
+            if (stack.isEmpty()) continue;
+            if (passes(stack)) anyItem = true;
+            else refused = true;
+        }
+        boolean fluid = mode == DeployMode.PLACE && tank.getAmountAsLong(0) >= FluidAmounts.PER_BUCKET;
+        boolean anyFluid = fluid && passes(tank.getResource(0).getFluid());
+        refused |= fluid && !anyFluid;
+        if (!anyItem && !anyFluid) return Plan.idle(refused ? BayStatus.FILTERED : BayStatus.SLEEPING);
         if (mode == DeployMode.DROP) {
             return crowded(level) ? Plan.idle(BayStatus.TOO_MANY_ITEMS) : Plan.work(JasmConfig.DEPLOYMENT_COST.getAsInt());
         }
@@ -65,7 +74,7 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         if (mode == DeployMode.DROP) {
             for (int slot = 0; slot < GRID; slot++) {
                 ItemStack stack = items.get(slot);
-                if (stack.isEmpty()) continue;
+                if (stack.isEmpty() || !passes(stack)) continue;
                 throwOut(level, stack.split(stack.getMaxStackSize()));
                 gridChanged();
                 pay(plan.cost());
@@ -75,7 +84,7 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         }
         FakePlayer player = fakePlayer(level);
         for (int slot = 0; slot < GRID; slot++) {
-            if (!items.get(slot).isEmpty() && placeFrom(level, player, front, slot)) {
+            if (!items.get(slot).isEmpty() && passes(items.get(slot)) && placeFrom(level, player, front, slot)) {
                 pay(plan.cost());
                 return BayStatus.WORKING;
             }
@@ -90,7 +99,8 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
     /** One bucket from the tank as a source block, by vanilla's bucket rules (Nether water boils away, slabs get waterlogged). */
     private boolean placeFluid(ServerLevel level, FakePlayer player, BlockPos front) {
         FluidResource fluid = tank.getResource(0);
-        if (fluid.isEmpty() || tank.getAmountAsLong(0) < FluidAmounts.PER_BUCKET || !fluid.isComponentsPatchEmpty()) return false;
+        if (fluid.isEmpty() || tank.getAmountAsLong(0) < FluidAmounts.PER_BUCKET || !fluid.isComponentsPatchEmpty()
+                || !passes(fluid.getFluid())) return false;
         // Water is replaceable by water: never pour onto a source of the same fluid.
         if (level.getFluidState(front).isSourceOfType(fluid.getFluid())) return false;
         return !FluidUtil.tryPlaceFluid(tank, player, level, front, true, null).isEmpty();

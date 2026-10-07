@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.client.AccessPortScreen;
 import dev.micolash.jasm.client.ArchiveScreen;
+import dev.micolash.jasm.client.BayScreen;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.client.EncodingTerminalScreen;
 import dev.micolash.jasm.client.ReceivedRecipes;
@@ -290,6 +291,30 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(StoragePortScreen.class, new IGhostIngredientHandler<>() {
             @Override
             public <I> List<Target<I>> getTargetsTyped(StoragePortScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
+                Dropped drop = dropped(ingredient);
+                if (drop == null) return List.of();
+                List<Target<I>> targets = new ArrayList<>();
+                List<Rect2i> areas = screen.filterSlots();
+                for (int i = 0; i < areas.size(); i++) {
+                    int index = i;
+                    targets.add(new Target<>() {
+                        @Override
+                        public Rect2i getArea() { return areas.get(index); }
+                        @Override
+                        public void accept(I dropped) {
+                            if (drop.item() != null) screen.setFilterItem(index, drop.item());
+                            else screen.setFilterMaterial(index, drop.id());
+                        }
+                    });
+                }
+                return targets;
+            }
+            @Override
+            public void onComplete() {}
+        });
+        registration.addGhostIngredientHandler(BayScreen.class, new IGhostIngredientHandler<>() {
+            @Override
+            public <I> List<Target<I>> getTargetsTyped(BayScreen screen, ITypedIngredient<I> ingredient, boolean doStart) {
                 Dropped drop = dropped(ingredient);
                 if (drop == null) return List.of();
                 List<Target<I>> targets = new ArrayList<>();

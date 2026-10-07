@@ -12,6 +12,7 @@ import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.StorageSettings;
+import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.TransferFilters;
 import dev.micolash.jasm.wafer.WaferIdentity;
@@ -118,6 +119,10 @@ public final class JasmComponents {
 
     public static final Supplier<DataComponentType<BayRedstone>> BAY_REDSTONE = COMPONENTS.registerComponentType(
             "bay_redstone", b -> b.persistent(BayRedstone.CODEC).networkSynchronized(BayRedstone.STREAM_CODEC));
+
+    /** A bay's filter, kept on the item when it is picked up. */
+    public static final Supplier<DataComponentType<WaferSettings>> BAY_FILTER = COMPONENTS.registerComponentType(
+            "bay_filter", b -> b.persistent(WaferSettings.CODEC).networkSynchronized(WaferSettings.STREAM_CODEC));
 
     public static final Supplier<DataComponentType<DeployMode>> DEPLOY_MODE = COMPONENTS.registerComponentType(
             "deploy_mode", b -> b.persistent(DeployMode.CODEC).networkSynchronized(DeployMode.STREAM_CODEC));

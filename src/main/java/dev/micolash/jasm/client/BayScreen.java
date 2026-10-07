@@ -2,49 +2,64 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.bay.BayKind;
+import dev.micolash.jasm.bay.BayNetwork;
 import dev.micolash.jasm.bay.BayMenu;
 import dev.micolash.jasm.bay.BayRedstone;
 import dev.micolash.jasm.bay.BayStatus;
 import dev.micolash.jasm.bay.DemolitionBayBlockEntity;
 import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.config.JasmClientConfig;
+import dev.micolash.jasm.storage.WaferSettings;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
  * A bay's panel: the grid with the tank beside it, what the bay is doing and how often, Place / Drop or the enchantments,
- * the power, and the upgrade column past the right edge with the redstone key under it.
+ * the power, the filter (which folds away), and the upgrade column past the right edge with the redstone key under it.
  */
 public class BayScreen extends JasmScreen<BayMenu> {
-    private static final int HEIGHT = BayMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int KEY_X = BayMenu.WIDTH;
     private static final int TANK_X = 66;
     private static final int TANK_Y = 17;
     private static final int TANK_WIDTH = 22;
     private static final int TANK_HEIGHT = 54;
     private static final int SIDE_X = 94;
-    private static final int SIDE_WIDTH = 74;
+    private static final int SIDE_WIDTH = BayMenu.WIDTH - 8 - SIDE_X;
     private static final int MODE_Y = 44;
     private static final int ENCHANT_Y = 43;
     private static final int ENCHANT_HEIGHT = 29;
     private static final int POWER_X = 7;
     private static final int POWER_Y = 78;
-    private static final int POWER_WIDTH = 162;
+    private static final int POWER_WIDTH = BayMenu.WIDTH - 2 * POWER_X;
     private static final int POWER_HEIGHT = 7;
     /** The keys under the upgrade slots: the Demolition Bay's sound key, then the redstone key. */
     private static final int KEYS_Y = BayMenu.UPGRADE_Y + 4 * 18 + 4;
     private static final int KEY_STEP = JasmGui.SIDE_KEY_HEIGHT + 2;
+    /** The filter's heading, as the editor draws it, and the fold key just after it. */
+    private static final int FILTER_LABEL_X = 15;
+    private static final int FILTER_LABEL_Y = BayMenu.FILTER_Y + 3;
+    private static final int FOLD_SIZE = 12;
+    private static final JasmButton.Icon FOLDED = new JasmButton.Icon(Jasm.id("icon/triangle_right"), 4, 6);
+    private static final JasmButton.Icon UNFOLDED = new JasmButton.Icon(Jasm.id("icon/triangle_down"), 6, 4);
     private JasmFrame frame;
     private boolean frameRedstone;
     private @Nullable JasmButton redstone;
@@ -53,11 +68,31 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private @Nullable JasmButton place;
     private @Nullable JasmButton drop;
     private @Nullable BayRedstone shownRedstone;
+    private @Nullable ItemFilterEditor editor;
+    private @Nullable JasmButton fold;
 
     public BayScreen(BayMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, HEIGHT);
-        this.inventoryLabelY = BayMenu.INVENTORY_Y - 11;
+        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, 0);
+        this.inventoryLabelX = BayMenu.INVENTORY_X;
+        layout();
         this.frame = frame(false);
+    }
+
+    private static boolean collapsed() {
+        return JasmClientConfig.bayFilterCollapsed();
+    }
+
+    /** Sizes the panel to the filter, shown or folded away, and moves the inventory under it. */
+    private void layout() {
+        int inventoryY = BayMenu.inventoryY(collapsed());
+        menu.layout(collapsed());
+        imageHeight = inventoryY + 58 + 18 + 6;
+        inventoryLabelY = inventoryY - 11;
+    }
+
+    private void toggleFilter() {
+        JasmClientConfig.setBayFilterCollapsed(!collapsed());
+        rebuildWidgets();
     }
 
     /** The sound key on a Demolition Bay, else nothing, under the upgrade slots; the redstone key goes below it. */
@@ -75,6 +110,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
 
     @Override
     protected void init() {
+        layout();
         super.init();
         frameRedstone = menu.hasRedstoneUpgrade();
         frame = frame(frameRedstone);
@@ -92,6 +128,18 @@ public class BayScreen extends JasmScreen<BayMenu> {
                     leftPos + KEY_X, topPos + KEYS_Y, JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
             soundTooltip();
         }
+        editor = null;
+        if (!collapsed()) {
+            editor = new ItemFilterEditor(font, BayMenu.FILTER_ROWS, false, menu::getCarried, BayMenu.WIDTH - 16);
+            editor.setSave(this::sendFilter);
+            editor.open(menu.filter(), Component.translatable("screen.jasm.bay.filter"), Component.empty(),
+                    ItemStack.EMPTY, leftPos + 8, topPos + BayMenu.FILTER_Y, width, height);
+        }
+        Component foldLabel = Component.translatable(collapsed() ? "screen.jasm.bay.filter_show" : "screen.jasm.bay.filter_hide");
+        fold = addRenderableWidget(JasmButton.icon(() -> collapsed() ? FOLDED : UNFOLDED, foldLabel, b -> toggleFilter(),
+                0, 0, FOLD_SIZE, FOLD_SIZE));
+        fold.setTooltip(Tooltip.create(foldLabel));
+        placeFold();
         if (menu.kind() == BayKind.DEPLOYMENT) {
             int half = SIDE_WIDTH / 2;
             place = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.bay.mode.place"),
@@ -102,6 +150,18 @@ public class BayScreen extends JasmScreen<BayMenu> {
             drop.setTooltip(Tooltip.create(Component.translatable("screen.jasm.bay.mode.drop_hint")));
         }
         containerTick();
+    }
+
+    // the heading turns into "Choose a tag" while picking tags, so the key follows its width
+    private void placeFold() {
+        if (fold == null) return;
+        Component heading = editor != null ? editor.heading() : Component.translatable("screen.jasm.bay.filter");
+        fold.setPosition(leftPos + FILTER_LABEL_X + font.width(heading) + 4, topPos + FILTER_LABEL_Y + 4 - FOLD_SIZE / 2);
+    }
+
+    private void sendFilter(WaferSettings filter) {
+        menu.configureFilter(filter);
+        ClientPacketDistributor.sendToServer(new BayNetwork.Filter(menu.containerId, filter));
     }
 
     private Component soundLabel() {
@@ -192,6 +252,8 @@ public class BayScreen extends JasmScreen<BayMenu> {
     protected void extractLabels(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
+        // Folded away, the editor isn't there to draw its heading.
+        if (editor == null) graphics.text(font, Component.translatable("screen.jasm.bay.filter"), FILTER_LABEL_X, FILTER_LABEL_Y, JasmGui.SUBTEXT, false);
         BayStatus status = menu.status();
         dot(graphics, SIDE_X, 20, statusColor(status));
         graphics.text(font, Component.translatable(status.shortKey()), SIDE_X + 8, 19, JasmGui.TEXT, false);
@@ -245,6 +307,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
 
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        placeFold();
         super.extractContents(graphics, mouseX, mouseY, a);
         int x = mouseX - leftPos;
         int y = mouseY - topPos;
@@ -269,5 +332,57 @@ public class BayScreen extends JasmScreen<BayMenu> {
             List<Component> lines = enchantmentLines();
             if (lines.size() > 2) graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
         }
+        if (editor != null) {
+            graphics.nextStratum();
+            editor.draw(graphics, mouseX, mouseY, a, width, height);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // The fold key sits on the filter's heading, inside the editor's area.
+        if (editor != null && !(fold != null && fold.isMouseOver(event.x(), event.y()))) {
+            if (editor.contains(event.x(), event.y())) return editor.mouseClicked(event, doubleClick);
+            editor.unfocus();
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        return editor != null && editor.mouseDragged(event, width, height) || super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return (editor != null && editor.mouseReleased(event)) | super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double x, double y, double sx, double sy) {
+        return editor != null && editor.contains(x, y) ? editor.mouseScrolled(sy) : super.mouseScrolled(x, y, sx, sy);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        return editor != null && editor.keyPressed(event) || super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        return editor != null && editor.charTyped(event) || super.charTyped(event);
+    }
+
+    // JEI drop target, none while folded
+    public List<Rect2i> filterSlots() {
+        return editor == null ? List.of() : List.of(editor.slotArea());
+    }
+
+    public void setFilterItem(int index, Item item) {
+        if (index == 0 && editor != null) editor.setItem(new ItemStack(item), false);
+    }
+
+    public void setFilterMaterial(int index, Identifier id) {
+        if (index == 0 && editor != null) editor.setMaterial(id);
     }
 }

@@ -179,6 +179,9 @@ class ItemFilterEditor {
         update();
     }
 
+    /** The compact editor's heading: its title, or the prompt while it offers a choice of tags. */
+    Component heading() { return tagChoices.isEmpty() ? title : label("choose_tag"); }
+
     void close() { opened = false; grabX = -1; draggingScroll = false; text.setFocused(false); }
     private void layout() {
         for (Placed placed : buttons) placed.button().setPosition(x + placed.x(), y + placed.y());
@@ -329,7 +332,7 @@ class ItemFilterEditor {
             graphics.text(font, tagChoices.isEmpty() ? rulesLine() : label("choose_tag"), x + 8, y + 26, JasmGui.SUBTEXT, false);
             JasmGui.divider(graphics, x + 7, y + slotY - 29, editorWidth - 14);
         } else {
-            graphics.text(font, tagChoices.isEmpty() ? title : label("choose_tag"), x + 7, y + 3, JasmGui.SUBTEXT, false);
+            graphics.text(font, heading(), x + 7, y + 3, JasmGui.SUBTEXT, false);
         }
         JasmGui.inset(graphics, x + 7, y + listY - 1, editorWidth - (movable ? 30 : 20), rows * rowHeight + 2);
         int displayedRowHeight = tagChoices.isEmpty() ? rowHeight : TAG_ROW_HEIGHT;
@@ -372,7 +375,7 @@ class ItemFilterEditor {
         JasmGui.slot(graphics, x + 8, y + slotY);
         ItemStack preview = ghost();
         if (!preview.isEmpty()) graphics.item(preview, x + 8, y + slotY);
-        if (slotArea().contains(mx, my)) graphics.setTooltipForNextFrame(font, preview.isEmpty() ? label("pick") : preview.getHoverName(), mx, my);
+        if (!preview.isEmpty() && slotArea().contains(mx, my)) graphics.setTooltipForNextFrame(font, preview.getHoverName(), mx, my);
         text.extractRenderState(graphics, mx, my, a);
         for (Placed placed : buttons) if (placed.button().visible) placed.button().extractRenderState(graphics, mx, my, a);
         drawOverlay(graphics, x, y, editorWidth, height);
