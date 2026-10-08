@@ -1,7 +1,5 @@
 {
   "values": [
-    "jasm:data_cable",
-    "jasm:advanced_data_cable",
-    "jasm:elite_data_cable"
+    "jasm:data_cable"
   ]
 }

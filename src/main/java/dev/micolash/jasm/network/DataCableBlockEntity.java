@@ -30,12 +30,11 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 import org.jspecify.annotations.Nullable;
 
-/** A cable's own power pool, and the independent Access Ports mounted on its faces. */
+/** A cable's block, and the independent Access Ports mounted on its faces. */
 public class DataCableBlockEntity extends BlockEntity {
     /** Set while the block goes away, so detaching the last port doesn't remove it a second time. */
     private boolean removing;
@@ -43,26 +42,9 @@ public class DataCableBlockEntity extends BlockEntity {
     private boolean moving;
     private boolean ownersDirty = true;
     private final Map<Direction, AccessPortBlockEntity> ports = new EnumMap<>(Direction.class);
-    private final SimpleEnergyHandler energy;
 
     public DataCableBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.DATA_CABLE_ENTITY.get(), pos, state);
-        int capacity = tier().buffer();
-        energy = new SimpleEnergyHandler(capacity, capacity, capacity) {
-            @Override
-            protected void onEnergyChanged(int previousAmount) {
-                setChanged();
-            }
-        };
-    }
-
-    public CableTier tier() {
-        return getBlockState().getBlock() instanceof DataCableBlock cable ? cable.tier() : CableTier.BASIC;
-    }
-
-    /** The power this cable holds while passing it on. */
-    public SimpleEnergyHandler energy() {
-        return energy;
     }
 
     public List<AccessPortBlockEntity> ports() {
@@ -232,7 +214,6 @@ public class DataCableBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        output.putInt("energy", energy.getAmountAsInt());
         var saved = output.childrenList("ports");
         ports.forEach((side, port) -> {
             ValueOutput child = saved.addChild();
@@ -246,7 +227,6 @@ public class DataCableBlockEntity extends BlockEntity {
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         ownersDirty = true;
-        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, energy.getCapacityAsInt()));
         ports.values().forEach(BlockEntity::setRemoved);
         ports.clear();
         for (ValueInput child : input.childrenListOrEmpty("ports")) {

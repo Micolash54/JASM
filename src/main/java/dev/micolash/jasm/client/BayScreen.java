@@ -10,6 +10,7 @@ import dev.micolash.jasm.bay.DemolitionBayBlockEntity;
 import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.storage.WaferSettings;
+import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,8 +34,9 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A bay's panel: the grid with the tank beside it, what the bay is doing and how often, Place / Drop or the enchantments,
- * the power, the filter (which folds away), and the upgrade column past the right edge with the redstone key under it.
+ * A bay's panel: the power in the title row, the grid with the tank beside it, what the bay is doing and how often, Place /
+ * Drop or the enchantments, the filter (which folds away), and the upgrade column past the right edge with the redstone key
+ * under it.
  */
 public class BayScreen extends JasmScreen<BayMenu> {
     private static final int KEY_X = BayMenu.WIDTH;
@@ -47,10 +49,12 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private static final int MODE_Y = 44;
     private static final int ENCHANT_Y = 43;
     private static final int ENCHANT_HEIGHT = 29;
-    private static final int POWER_X = 7;
-    private static final int POWER_Y = 78;
-    private static final int POWER_WIDTH = BayMenu.WIDTH - 2 * POWER_X;
+    // title row, same spot as the rack's
+    private static final int POWER_WIDTH = 50;
+    private static final int POWER_X = BayMenu.WIDTH - 8 - HELP_ROOM - POWER_WIDTH;
+    private static final int POWER_Y = 6;
     private static final int POWER_HEIGHT = 7;
+    private static final int HEIGHT_WITHOUT_ROWS = BayMenu.inventoryY(false, 0) + 58 + 18 + 6;
     /** The keys under the upgrade slots: the Demolition Bay's sound key, then the redstone key. */
     private static final int KEYS_Y = BayMenu.UPGRADE_Y + 4 * 18 + 4;
     private static final int KEY_STEP = JasmGui.SIDE_KEY_HEIGHT + 2;
@@ -70,6 +74,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private @Nullable BayRedstone shownRedstone;
     private @Nullable ItemFilterEditor editor;
     private @Nullable JasmButton fold;
+    private int filterRows = 1;
 
     public BayScreen(BayMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, 0);
@@ -82,10 +87,14 @@ public class BayScreen extends JasmScreen<BayMenu> {
         return JasmClientConfig.bayFilterCollapsed();
     }
 
-    /** Sizes the panel to the filter, shown or folded away, and moves the inventory under it. */
+    /**
+     * Sizes the panel to the filter, shown or folded away, and moves the inventory under it. The filter shows as many rows
+     * as the game window has room for, down to one, like the Deck's grid.
+     */
     private void layout() {
-        int inventoryY = BayMenu.inventoryY(collapsed());
-        menu.layout(collapsed());
+        filterRows = Math.clamp((height - HEIGHT_WITHOUT_ROWS) / TransferPortMenu.FILTER_ROW, 1, BayMenu.FILTER_ROWS);
+        int inventoryY = BayMenu.inventoryY(collapsed(), filterRows);
+        menu.layout(collapsed(), filterRows);
         imageHeight = inventoryY + 58 + 18 + 6;
         inventoryLabelY = inventoryY - 11;
     }
@@ -130,7 +139,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
         }
         editor = null;
         if (!collapsed()) {
-            editor = new ItemFilterEditor(font, BayMenu.FILTER_ROWS, false, menu::getCarried, BayMenu.WIDTH - 16);
+            editor = new ItemFilterEditor(font, filterRows, false, menu::getCarried, BayMenu.WIDTH - 16);
             editor.setSave(this::sendFilter);
             editor.open(menu.filter(), Component.translatable("screen.jasm.bay.filter"), Component.empty(),
                     ItemStack.EMPTY, leftPos + 8, topPos + BayMenu.FILTER_Y, width, height);

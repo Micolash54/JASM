@@ -61,10 +61,6 @@ public final class JasmConfig {
         BUILDER.pop().pop().push("power");
     }
 
-    public static final ModConfigSpec.IntValue ACCEPTOR_RATE = BUILDER
-            .comment("Power Acceptor FE it takes per push and passes on per tick")
-            .defineInRange("acceptorRate", 10_000, 1, 100_000_000);
-
     public static final ModConfigSpec.IntValue TERMINAL_DRAIN = BUILDER
             .comment("FE the Encoding Terminal uses each tick")
             .defineInRange("terminalDrain", 5, 0, 1_000_000);
@@ -92,18 +88,6 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_ELITE = BUILDER
             .comment("FE each Elite Processor adds to its server's use per tick")
             .defineInRange("eliteProcessorDrain", 80, 0, 1_000_000);
-
-    public static final ModConfigSpec.IntValue CABLE_RATE = BUILDER
-            .comment("FE a Data Cable network moves into or out of each block it touches, per tick. Between two cables, the slower one sets the rate")
-            .defineInRange("cableRate", 1_000, 1, Integer.MAX_VALUE);
-
-    public static final ModConfigSpec.IntValue ADVANCED_CABLE_RATE = BUILDER
-            .comment("Advanced Data Cable transfer rate, FE per tick")
-            .defineInRange("advancedCableRate", 10_000, 1, Integer.MAX_VALUE);
-
-    public static final ModConfigSpec.IntValue ELITE_CABLE_RATE = BUILDER
-            .comment("Elite Data Cable transfer rate, FE per tick")
-            .defineInRange("eliteCableRate", 50_000, 1, Integer.MAX_VALUE);
 
     public static final ModConfigSpec.IntValue RESONATOR_DRAIN = BUILDER
             .comment("FE a powered Crystal Resonator uses each tick")

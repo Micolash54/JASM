@@ -32,7 +32,6 @@ import dev.micolash.jasm.crystal.SeededAmethystBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
-import dev.micolash.jasm.network.CableTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.station.BitlingStationBlock;
@@ -215,12 +214,9 @@ public final class JasmBlocks {
     public static final Supplier<BlockEntityType<DataCableBlockEntity>> DATA_CABLE_ENTITY = BLOCK_ENTITIES.register(
             "data_cable", () -> new BlockEntityType<>(DataCableBlockEntity::new, cables().stream().map(DeferredBlock::get).toArray(Block[]::new)));
 
-    private static final Map<CableTier, DeferredBlock<DataCableBlock>> CABLES = new EnumMap<>(CableTier.class);
+    public static final DeferredBlock<DataCableBlock> DATA_CABLE = BLOCKS.registerBlock("data_cable", DataCableBlock::new, JasmBlocks::cableProperties);
 
     static {
-        for (CableTier tier : CableTier.values()) {
-            CABLES.put(tier, BLOCKS.registerBlock(tier.registryName(), p -> new DataCableBlock(p, tier), JasmBlocks::cableProperties));
-        }
         // Dyed cables were removed: those in saved worlds become plain Data Cables.
         for (DyeColor color : DyeColor.values()) {
             BLOCKS.addAlias(Jasm.id(color.getSerializedName() + "_data_cable"), Jasm.id("data_cable"));
@@ -233,12 +229,8 @@ public final class JasmBlocks {
                 .isRedstoneConductor((state, level, pos) -> false);
     }
 
-    public static DeferredBlock<DataCableBlock> cable(CableTier tier) {
-        return CABLES.get(tier);
-    }
-
     public static List<DeferredBlock<DataCableBlock>> cables() {
-        return List.copyOf(CABLES.values());
+        return List.of(DATA_CABLE);
     }
 
     public static DeferredBlock<CombustionGeneratorBlock> generator(GeneratorTier tier) {

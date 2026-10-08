@@ -222,11 +222,6 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     }
 
     @Override
-    public EnergyHandler networkOutput() {
-        return output;
-    }
-
-    @Override
     public void neighboursChanged() {
         sides.changed();
     }

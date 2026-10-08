@@ -1,5 +1,6 @@
 package dev.micolash.jasm.compat.jade;
 
+import dev.micolash.jasm.acceptor.PowerAcceptorBlockEntity;
 import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlock;
@@ -40,7 +41,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(ArchiveInfo.INSTANCE, ArchiveBlockEntity.class);
         registration.registerBlockDataProvider(GeneratorInfo.INSTANCE, CombustionGeneratorBlockEntity.class);
         registration.registerEnergyStorage(InfiniteEnergy.INSTANCE, CreativeBatteryBlockEntity.class);
-        registration.registerEnergyStorage(CableEnergy.INSTANCE, DataCableBlockEntity.class);
+        registration.registerEnergyStorage(HiddenEnergy.INSTANCE, PowerAcceptorBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, DataCableBlockEntity.class);
         registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);
@@ -55,7 +56,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(ArchiveInfo.Client.INSTANCE, ArchiveBlock.class);
         registration.registerBlockComponent(GeneratorInfo.Client.INSTANCE, CombustionGeneratorBlock.class);
         registration.registerEnergyStorageClient(InfiniteEnergy.INSTANCE);
-        registration.registerEnergyStorageClient(CableEnergy.INSTANCE);
+        registration.registerEnergyStorageClient(HiddenEnergy.INSTANCE);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, DataCableBlock.class);
         registration.registerBlockComponent(WorkshopInfo.Client.INSTANCE, ChipWorkshopBlock.class);

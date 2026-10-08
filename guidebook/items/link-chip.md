@@ -18,7 +18,6 @@ The chip for the third tier of JASM. A Link Chip can only be made by a Bitling i
 <br />
 ## What it is for
 
-* Eight [Data Cables](data-cables.md) round a Link Chip make eight Advanced Data Cables.
 * Third-tier recipes need it, like the Advanced Deck, the 16K wafers and the [Access Port](access-port.md).
 * Hand one to a wild Bitling to [make friends](../mechanics/befriending-bitlings.md).
 * A Link Bitling is made from eight of them.

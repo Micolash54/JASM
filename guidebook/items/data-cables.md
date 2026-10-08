@@ -3,37 +3,26 @@ navigation:
   title: Data Cables
   parent: items/index.md
   position: 300
-  icon: advanced_data_cable
+  icon: data_cable
 item_ids:
 - jasm:data_cable
-- jasm:advanced_data_cable
-- jasm:elite_data_cable
 ---
 
 # Data Cables
 
-<Row>
-  <BlockImage id="data_cable" scale="8" />
-  <BlockImage id="advanced_data_cable" scale="8" />
-  <BlockImage id="elite_data_cable" scale="8" />
-</Row>
+<BlockImage id="data_cable" scale="8" />
 
-Data Cables join your crafting blocks into one network and carry power between them. Any two cables join, whatever the tier.
+Data Cables join your crafting blocks into one network and carry power between them. Any two cables join.
 
-| Cable | Power it moves | Made from |
-| --- | --- | --- |
-| Data Cable | 1,000 FE a tick | iron, redstone and an amethyst shard |
-| Advanced | 10,000 FE a tick | 8 Data Cables round a Link Chip |
-| Elite | 50,000 FE a tick | 8 Advanced round an Advanced Link Chip |
-
-Each recipe makes 8 cables.
+Cables hold no power and have no speed limit. Whatever a generator or Power Acceptor pushes into one goes straight to the machines on the network that need it. It is made from iron, redstone and an amethyst shard, and each recipe makes 8 cables.
 
 <br />
 <br />
 ## Good to know
 
-* Every cable passes power on at its own speed, so a slower cable only slows the power that goes through it.
+* Machines only get power from a cable, a generator or a [Power Acceptor](power-acceptor.md) they touch. Touching machines don't pass power on to each other.
 * Machines that simply touch each other form a network too, with no cable at all.
+* Water and other fluids can't wash a cable or its ports away.
 * Different players' networks never join.
 * Cables don't count toward the [machine limit](network-brain.md).
 * A cable can carry up to six thin [Access Ports](access-port.md), one on each face.
@@ -44,12 +33,4 @@ See [networks](../mechanics/networks.md) for the rules in full.
 <br />
 ## Recipes
 
-<Column>
-  <Row>
-    <RecipeFor id="data_cable" />
-    <RecipeFor id="advanced_data_cable" />
-  </Row>
-  <Row>
-    <RecipeFor id="elite_data_cable" />
-  </Row>
-</Column>
+<RecipeFor id="data_cable" />

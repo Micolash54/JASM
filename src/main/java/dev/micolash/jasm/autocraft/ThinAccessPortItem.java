@@ -1,6 +1,5 @@
 package dev.micolash.jasm.autocraft;
 
-import dev.micolash.jasm.network.CableTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.PlacementAchievements;
@@ -51,7 +50,7 @@ public class ThinAccessPortItem extends Item {
             return InteractionResult.FAIL;
         }
         if (level.isClientSide()) return InteractionResult.SUCCESS;
-        BlockState host = JasmBlocks.cable(CableTier.BASIC).get().defaultBlockState().setValue(DataCableBlock.CORE, false);
+        BlockState host = JasmBlocks.DATA_CABLE.get().defaultBlockState().setValue(DataCableBlock.CORE, false);
         if (!level.setBlock(pos, host, Block.UPDATE_ALL) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity cable)) {
             return InteractionResult.FAIL;
         }

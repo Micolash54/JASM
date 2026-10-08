@@ -15,16 +15,19 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.PipeBlock;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -34,6 +37,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -42,21 +46,22 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
-/** A Data Cable in one of three tiers. Any two cables join, and any cable joins a JASM network block. */
-public class DataCableBlock extends PipeBlock implements EntityBlock {
+/**
+ * A Data Cable. Any two cables join, and any cable joins a JASM network block. Fluids can't flow into it or wash it away,
+ * and it can't be waterlogged.
+ */
+public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBlockContainer {
     public static final BooleanProperty HAS_PORTS = BooleanProperty.create("has_ports");
     /** False for a space that only holds thin ports, placed without a cable. It stays off the network until a cable fills it. */
     public static final BooleanProperty CORE = BooleanProperty.create("core");
-    private final CableTier tier;
 
     @Override
     protected MapCodec<DataCableBlock> codec() {
-        return simpleCodec(properties -> new DataCableBlock(properties, tier));
+        return simpleCodec(DataCableBlock::new);
     }
 
-    public DataCableBlock(BlockBehaviour.Properties properties, CableTier tier) {
+    public DataCableBlock(BlockBehaviour.Properties properties) {
         super(6.0F, properties);
-        this.tier = tier;
         registerDefaultState(stateDefinition.any().setValue(NORTH, false).setValue(EAST, false).setValue(SOUTH, false)
                 .setValue(WEST, false).setValue(UP, false).setValue(DOWN, false).setValue(HAS_PORTS, false).setValue(CORE, true));
     }
@@ -241,8 +246,20 @@ public class DataCableBlock extends PipeBlock implements EntityBlock {
         return new ItemStack(this);
     }
 
-    public CableTier tier() {
-        return tier;
+    // running water used to wash cables and their ports away
+    @Override
+    protected boolean canBeReplaced(BlockState state, Fluid fluid) {
+        return false;
+    }
+
+    @Override
+    public boolean canPlaceLiquid(@Nullable LivingEntity user, BlockGetter level, BlockPos pos, BlockState state, Fluid type) {
+        return false;
+    }
+
+    @Override
+    public boolean placeLiquid(LevelAccessor level, BlockPos pos, BlockState state, FluidState fluidState) {
+        return false;
     }
 
     @Override

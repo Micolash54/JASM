@@ -22,7 +22,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ChunkEvent;
-import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -563,18 +562,6 @@ public final class Networks {
             claimUnowned(pos, owner);
         }
         return true;
-    }
-
-    @SubscribeEvent
-    static void onLevelTick(LevelTickEvent.Post event) {
-        if (event.getLevel() instanceof ServerLevel level) {
-            Networks networks = LEVELS.get(level);
-            if (networks != null) {
-                for (CableNetwork network : new ArrayList<>(networks.all)) {
-                    network.tick();
-                }
-            }
-        }
     }
 
     @SubscribeEvent
