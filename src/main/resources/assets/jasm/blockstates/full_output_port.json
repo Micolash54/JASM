@@ -1,0 +1,221 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "jasm:block/full_output_port/core"
+      }
+    },
+    {
+      "when": {
+        "north": "none"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/cap"
+      }
+    },
+    {
+      "when": {
+        "north": "link"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/link"
+      }
+    },
+    {
+      "when": {
+        "north": "machine"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine"
+      }
+    },
+    {
+      "when": {
+        "north": "busy"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine"
+      }
+    },
+    {
+      "when": {
+        "east": "none"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/cap",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "east": "link"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/link",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "east": "machine"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "east": "busy"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "south": "none"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/cap",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "south": "link"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/link",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "south": "machine"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "south": "busy"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "west": "none"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/cap",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "west": "link"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/link",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "west": "machine"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "west": "busy"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "up": "none"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/cap",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "link"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/link",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "machine"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "up": "busy"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "down": "none"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/cap",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "down": "link"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/link",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "down": "machine"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "down": "busy"
+      },
+      "apply": {
+        "model": "jasm:block/full_output_port/machine",
+        "x": 90
+      }
+    }
+  ]
+}

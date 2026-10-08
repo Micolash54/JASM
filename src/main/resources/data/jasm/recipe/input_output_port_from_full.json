@@ -1,0 +1,13 @@
+{
+  "type": "jasm:upgrade",
+  "pattern": [
+    "P"
+  ],
+  "key": {
+    "P": "jasm:full_input_output_port"
+  },
+  "source": "jasm:full_input_output_port",
+  "result": {
+    "id": "jasm:input_output_port"
+  }
+}

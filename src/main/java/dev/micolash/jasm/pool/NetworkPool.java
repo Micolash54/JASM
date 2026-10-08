@@ -61,10 +61,11 @@ public final class NetworkPool {
     public List<PoolStore> stores(@Nullable BlockPos avoid) {
         Map<BlockPos, PoolStore> byBlock = new LinkedHashMap<>();
         for (StoragePortBlockEntity port : network.machines(StoragePortBlockEntity.class)) {
-            if (!port.storeActive() || port.chestPos().equals(avoid)) continue;
-            PoolStore store = port.store();
-            PoolStore known = byBlock.get(store.chestPos());
-            if (known == null || store.priority() > known.priority()) byBlock.put(store.chestPos(), store);
+            for (PoolStore store : port.stores()) {
+                if (!store.active() || store.chestPos().equals(avoid)) continue;
+                PoolStore known = byBlock.get(store.chestPos());
+                if (known == null || store.priority() > known.priority()) byBlock.put(store.chestPos(), store);
+            }
         }
         return new ArrayList<>(byBlock.values());
     }

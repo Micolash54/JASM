@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     private final StoragePortBlockEntity port;
+    private final Direction face;
     private final FluidSide fluidSide = new FluidSide();
     private final MaterialSide materialSide = new MaterialSide();
     private @Nullable BlockCapabilityCache<ResourceHandler<ItemResource>, Direction> items;
@@ -38,10 +39,14 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     private @Nullable List<BlockCapabilityCache<ResourceHandler<Resource>, @Nullable Direction>> materials;
     private boolean busy;
 
-    PoolStore(StoragePortBlockEntity port) { this.port = port; }
+    PoolStore(StoragePortBlockEntity port, Direction face) {
+        this.port = port;
+        this.face = face;
+    }
 
     public StorageSettings settings() { return port.settings(); }
-    public BlockPos chestPos() { return port.chestPos(); }
+    public BlockPos chestPos() { return port.getBlockPos().relative(face); }
+    public boolean active() { return port.storeActive(face); }
     /** The fluid side of this store, for ordering fluids. */
     public PoolRouter.Unit<FluidResource> fluidUnit() { return fluidSide; }
     /** The same for other mods' materials. */
@@ -52,9 +57,9 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     @Override
     public boolean wafer() { return false; }
     @Override
-    public boolean canRead() { return settings().access().canRead() && port.storeActive(); }
+    public boolean canRead() { return settings().access().canRead() && active(); }
     @Override
-    public boolean canWrite() { return settings().access().canWrite() && port.storeActive(); }
+    public boolean canWrite() { return settings().access().canWrite() && active(); }
     @Override
     public boolean prefers(ItemResource key) { return settings().lists(key.getItem()) || count(key) > 0; }
     public boolean passes(ItemResource key) { return settings().passes(key.getItem()); }
@@ -88,7 +93,7 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
 
     /** The level, if the port may use its block right now: loaded, active, and not a crafting block, Archive or cable. */
     private @Nullable ServerLevel usableLevel() {
-        if (!(port.getLevel() instanceof ServerLevel level) || !port.storeActive()) return null;
+        if (!(port.getLevel() instanceof ServerLevel level) || !active()) return null;
         var entity = level.getBlockEntity(chestPos());
         return entity instanceof MachineBlockEntity || entity instanceof ArchiveBlockEntity || entity instanceof DataCableBlockEntity
                 ? null : level;
@@ -97,14 +102,14 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     private @Nullable ResourceHandler<ItemResource> itemHandler() {
         ServerLevel level = usableLevel();
         if (level == null) return null;
-        if (items == null) items = BlockCapabilityCache.create(Capabilities.Item.BLOCK, level, chestPos(), port.face().getOpposite());
+        if (items == null) items = BlockCapabilityCache.create(Capabilities.Item.BLOCK, level, chestPos(), face.getOpposite());
         return items.getCapability();
     }
 
     private @Nullable ResourceHandler<FluidResource> fluidHandler() {
         ServerLevel level = usableLevel();
         if (level == null) return null;
-        if (fluids == null) fluids = BlockCapabilityCache.create(Capabilities.Fluid.BLOCK, level, chestPos(), port.face().getOpposite());
+        if (fluids == null) fluids = BlockCapabilityCache.create(Capabilities.Fluid.BLOCK, level, chestPos(), face.getOpposite());
         return fluids.getCapability();
     }
 
@@ -113,7 +118,7 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
         if (level == null) return null;
         if (materials == null) {
             List<BlockCapabilityCache<ResourceHandler<Resource>, @Nullable Direction>> caches = new ArrayList<>();
-            for (var kind : MaterialKinds.blocks()) caches.add(BlockCapabilityCache.create(kind, level, chestPos(), port.face().getOpposite()));
+            for (var kind : MaterialKinds.blocks()) caches.add(BlockCapabilityCache.create(kind, level, chestPos(), face.getOpposite()));
             materials = List.copyOf(caches);
         }
         return materials;

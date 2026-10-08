@@ -62,7 +62,7 @@ public class AccessPortBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected MapCodec<AccessPortBlock> codec() {
+    protected MapCodec<? extends AccessPortBlock> codec() {
         return simpleCodec(AccessPortBlock::new);
     }
 

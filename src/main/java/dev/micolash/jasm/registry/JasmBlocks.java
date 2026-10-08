@@ -34,8 +34,12 @@ import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
+import dev.micolash.jasm.pool.StoragePortBlockEntity;
 import dev.micolash.jasm.station.BitlingStationBlock;
 import dev.micolash.jasm.station.BitlingStationBlockEntity;
+import dev.micolash.jasm.transfer.FullPortBlock;
+import dev.micolash.jasm.transfer.TransferPortBlockEntity;
+import dev.micolash.jasm.transfer.TransferPortKind;
 import dev.micolash.jasm.workshop.ChipWorkshopBlock;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import java.util.EnumMap;
@@ -123,6 +127,17 @@ public final class JasmBlocks {
     public static final Supplier<BlockEntityType<AccessPortBlockEntity>> ACCESS_PORT_ENTITY = BLOCK_ENTITIES.register(
             "access_port", () -> new BlockEntityType<>(AccessPortBlockEntity::new, ACCESS_PORT.get()));
 
+    public static final DeferredBlock<FullPortBlock> FULL_INPUT_PORT = fullPort("full_input_port", TransferPortKind.INPUT);
+    public static final DeferredBlock<FullPortBlock> FULL_OUTPUT_PORT = fullPort("full_output_port", TransferPortKind.OUTPUT);
+    public static final DeferredBlock<FullPortBlock> FULL_INPUT_OUTPUT_PORT = fullPort("full_input_output_port", TransferPortKind.INPUT_OUTPUT);
+    public static final DeferredBlock<FullPortBlock> FULL_STORAGE_PORT = fullPort("full_storage_port", TransferPortKind.STORAGE);
+
+    public static final Supplier<BlockEntityType<TransferPortBlockEntity>> FULL_PORT_ENTITY = BLOCK_ENTITIES.register(
+            "full_port", () -> new BlockEntityType<>(TransferPortBlockEntity::full,
+                    FULL_INPUT_PORT.get(), FULL_OUTPUT_PORT.get(), FULL_INPUT_OUTPUT_PORT.get()));
+    public static final Supplier<BlockEntityType<StoragePortBlockEntity>> FULL_STORAGE_PORT_ENTITY = BLOCK_ENTITIES.register(
+            "full_storage_port", () -> new BlockEntityType<>(StoragePortBlockEntity::full, FULL_STORAGE_PORT.get()));
+
     // Seeded Amethyst wears Seeded -> Worn -> Cracked -> Block of Amethyst, so the chain is registered back to front.
     public static final DeferredBlock<SeededAmethystBlock> CRACKED_SEEDED_AMETHYST = BLOCKS.registerBlock("cracked_seeded_amethyst",
             p -> new SeededAmethystBlock(p, () -> Blocks.AMETHYST_BLOCK), JasmBlocks::seededProperties);
@@ -199,6 +214,11 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<NetworkChamberBlockEntity>> NETWORK_CHAMBER_ENTITY = BLOCK_ENTITIES.register(
             "network_chamber", () -> new BlockEntityType<>(NetworkChamberBlockEntity::new, NETWORK_CHAMBER.get()));
+
+    private static DeferredBlock<FullPortBlock> fullPort(String id, TransferPortKind kind) {
+        return BLOCKS.registerBlock(id, p -> new FullPortBlock(kind, p), p -> p.mapColor(MapColor.COLOR_GRAY)
+                .requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL).noOcclusion());
+    }
 
     private static BlockBehaviour.Properties seededProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.COLOR_PURPLE).randomTicks().strength(1.5F).sound(SoundType.AMETHYST).requiresCorrectToolForDrops()

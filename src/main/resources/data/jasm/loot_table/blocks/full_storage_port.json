@@ -1,0 +1,34 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "jasm:full_storage_port",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy",
+                "jasm:owner",
+                "jasm:transfer_filters",
+                "jasm:redstone_mode",
+                "jasm:storage_settings",
+                "minecraft:custom_name"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jasm:blocks/full_storage_port"
+}

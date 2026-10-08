@@ -57,6 +57,10 @@ public final class JasmTabs {
                 output.accept(JasmItems.OUTPUT_PORT);
                 output.accept(JasmItems.INPUT_OUTPUT_PORT);
                 output.accept(JasmItems.STORAGE_PORT);
+                output.accept(JasmItems.FULL_INPUT_PORT);
+                output.accept(JasmItems.FULL_OUTPUT_PORT);
+                output.accept(JasmItems.FULL_INPUT_OUTPUT_PORT);
+                output.accept(JasmItems.FULL_STORAGE_PORT);
                 output.accept(JasmItems.SPEED_UPGRADE);
                 output.accept(JasmItems.REDSTONE_UPGRADE);
                 output.accept(JasmItems.POWER_UPGRADE);
