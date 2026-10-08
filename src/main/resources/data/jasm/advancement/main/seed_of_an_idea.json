@@ -1,4 +1,5 @@
 {
+  "parent": "jasm:main/jasm",
   "criteria": {
     "seed_of_an_idea": {
       "conditions": {
@@ -21,10 +22,7 @@
     "description": {
       "translate": "advancements.jasm.seed_of_an_idea.description"
     },
-    "frame": "task",
-    "background": "jasm:block/network_casing",
-    "show_toast": false,
-    "announce_to_chat": false
+    "frame": "task"
   },
   "requirements": [
     [

@@ -1,0 +1,27 @@
+{
+  "criteria": {
+    "jasm": {
+      "trigger": "minecraft:tick"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:basic_bitling"
+    },
+    "title": {
+      "translate": "advancements.jasm.jasm.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.jasm.description"
+    },
+    "frame": "task",
+    "background": "jasm:block/network_casing",
+    "show_toast": false,
+    "announce_to_chat": false
+  },
+  "requirements": [
+    [
+      "jasm"
+    ]
+  ]
+}

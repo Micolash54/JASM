@@ -7,7 +7,7 @@
       "L": "jasm:advanced_logic_chip",
       "I": "minecraft:iron_ingot",
       "D": "minecraft:dispenser",
-      "C": "jasm:data_cable"
+      "C": "jasm:basic_bitling"
     },
     "pattern": [
       "ILI",

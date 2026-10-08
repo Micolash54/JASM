@@ -901,5 +901,7 @@
   "advancements.jasm.server_room.title": "Server Room",
   "advancements.jasm.server_room.description": "Craft a Crafting Server",
   "advancements.jasm.hands_free.title": "Hands Free",
-  "advancements.jasm.hands_free.description": "Finish an autocrafting job"
+  "advancements.jasm.hands_free.description": "Finish an autocrafting job",
+  "advancements.jasm.jasm.title": "JASM",
+  "advancements.jasm.jasm.description": "Welcome to JASM"
 }
