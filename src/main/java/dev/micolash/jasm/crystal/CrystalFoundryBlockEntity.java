@@ -4,6 +4,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
 import net.minecraft.core.BlockPos;
@@ -13,6 +14,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -43,6 +45,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
+    private final MachineSides.Gated<ItemResource> itemGates = new MachineSides.Gated<>(automation);
+    private final MachineSides sides = new MachineSides(MachineSides.ALL, false, this::sidesChanged);
     private boolean growing;
     private int made;
     private int progress;
@@ -59,6 +63,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
                 case CrystalFoundryMenu.DATA_PER_SEED -> JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt();
                 case CrystalFoundryMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
                 case CrystalFoundryMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
+                case CrystalFoundryMenu.DATA_SIDES -> sides.packed(MachineSides.Kind.ITEMS);
                 case CrystalFoundryMenu.DATA_FLAGS ->
                     (growing ? CrystalFoundryMenu.FLAG_GROWING : 0) | (running() ? CrystalFoundryMenu.FLAG_POWERED : 0)
                             | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0);
@@ -82,6 +87,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     public static void serverTick(Level level, BlockPos pos, BlockState state, CrystalFoundryBlockEntity foundry) {
         foundry.tick();
         foundry.syncGrowth(level);
+        foundry.pushOutputs((ServerLevel) level);
     }
 
     /** What players were last told: 1 growing, 2 busy, and the progress it was at. -1 until the first tick. */
@@ -232,6 +238,16 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         return automation;
     }
 
+    @Override
+    public MachineSides sides() {
+        return sides;
+    }
+
+    @Override
+    protected MachineSides.Gated<ItemResource> itemGates() {
+        return itemGates;
+    }
+
     public static boolean accepts(int slot, ItemStack stack) {
         return slot == INPUT && stack.is(JasmItems.CRYSTAL_SEED.get());
     }
@@ -286,7 +302,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         progress = Math.max(0, input.getIntOr("progress", 0));
     }
 
-    /** Hoppers and pipes: Crystal Seeds in, Blank Chips out. */
+    /** Hoppers and pipes, where the I/O grid lets them: Crystal Seeds in, Blank Chips out. */
     private static final class Automation extends DelegatingResourceHandler<ItemResource> {
         Automation(ResourceHandler<ItemResource> slots) {
             super(slots);

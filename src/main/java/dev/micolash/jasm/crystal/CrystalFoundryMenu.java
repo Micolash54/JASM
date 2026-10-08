@@ -33,7 +33,8 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     static final int DATA_ENERGY_LOW = 4;
     static final int DATA_ENERGY_HIGH = 5;
     static final int DATA_FLAGS = 6;
-    static final int DATA_COUNT = 7;
+    static final int DATA_SIDES = 7;
+    static final int DATA_COUNT = 8;
 
     static final int FLAG_GROWING = 1;
     static final int FLAG_POWERED = 2;
@@ -43,6 +44,7 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     private static final int HOTBAR_START = MACHINE_SLOTS + 27;
     private static final int HOTBAR_END = HOTBAR_START + 9;
 
+    private final Container container;
     private final ContainerData data;
     private final ContainerLevelAccess access;
     private final @Nullable Block block;
@@ -51,6 +53,7 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     public CrystalFoundryMenu(int containerId, Inventory inventory, Container container, ContainerData data, ContainerLevelAccess access,
             @Nullable Block block) {
         super(JasmMenus.CRYSTAL_FOUNDRY.get(), containerId);
+        this.container = container;
         this.data = data;
         this.access = access;
         this.block = block;
@@ -106,6 +109,17 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
 
     public boolean full() {
         return (data.get(DATA_FLAGS) & FLAG_FULL) != 0;
+    }
+
+    /** The I/O grid's item faces, two bits each. */
+    public int sides() {
+        return data.get(DATA_SIDES);
+    }
+
+    /** Only the I/O grid's face buttons. */
+    @Override
+    public boolean clickMenuButton(Player player, int id) {
+        return container instanceof CrystalFoundryBlockEntity foundry && foundry.sides().click(id);
     }
 
     @Override

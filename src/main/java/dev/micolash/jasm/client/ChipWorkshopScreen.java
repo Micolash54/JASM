@@ -8,6 +8,8 @@ import dev.micolash.jasm.workshop.WorkshopNeed;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.RandomSource;
@@ -19,13 +21,15 @@ import org.jspecify.annotations.Nullable;
  * The Workshop screen. The Workshop's own panel sits in the middle of the screen: the Single/Batch button by the
  * title, the Blank Chip slot and progress in the first column, the output grid in the second, then the player's
  * inventory. The critter's panel hangs off its left side: slot, name, status, a speech bubble, the Byteling's
- * standard/Advanced switch, then its training and battery bars.
+ * standard/Advanced switch, then its training and battery bars. The I/O grid's key hangs off the right side.
  */
 public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private JasmFrame frame;
     private static final int SIDE = ChipWorkshopMenu.SIDE_WIDTH;
     private static final int MAIN_X = ChipWorkshopMenu.MAIN_X;
-    private static final int WIDTH = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
+    /** The I/O grid's key hangs off the Workshop panel's right side. */
+    private static final int KEY_X = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
+    private static final int WIDTH = KEY_X + JasmGui.SIDE_KEY_WIDTH + 3;
     /** Both panels are the same height; the critter's holds a speech bubble, a switch and two bars. */
     private static final int SIDE_HEIGHT = 178;
     private static final int HEIGHT = SIDE_HEIGHT;
@@ -63,6 +67,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
 
     private JasmButton batchButton;
     private JasmButton advancedButton;
+    private @Nullable IoGridWindow io;
     private final RandomSource random = RandomSource.create();
     private int line = -1;
     private int lineTicks;
@@ -89,6 +94,10 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         advancedButton = addRenderableWidget(JasmButton.text(advancedLabel(),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_ADVANCED),
                 leftPos + SIDE_PAD, topPos + ADVANCED_Y, SIDE_TEXT_WIDTH, BAR_HEIGHT));
+        if (io == null) {
+            io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
+        }
+        addRenderableWidget(io.key(leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), topPos));
     }
 
     private Component batchLabel() {
@@ -174,7 +183,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         int x = leftPos;
         int y = topPos;
         if (frame == null)
-            frame = JasmFrame.rounded(new int[]{0, 0, SIDE, SIDE_HEIGHT}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight});
+            frame = JasmFrame.rounded(new int[]{0, 0, SIDE, SIDE_HEIGHT}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight},
+                    JasmGui.sideStrip(KEY_X, 1));
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
@@ -198,8 +208,16 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     }
 
     @Override
-    public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+    public void extractContents(GuiGraphicsExtractor graphics, int realX, int realY, float a) {
+        // Under the I/O window nothing else lights up or shows a tooltip.
+        boolean hidden = io.contains(realX, realY);
+        int mouseX = hidden ? -1000 : realX;
+        int mouseY = hidden ? -1000 : realY;
         super.extractContents(graphics, mouseX, mouseY, a);
+        if (io.isOpen()) {
+            graphics.nextStratum();
+            io.draw(graphics, realX, realY, a);
+        }
         BitlingItem critter = critter();
         if (critter == null || mouseX < leftPos + SIDE_PAD || mouseX >= leftPos + SIDE_PAD + SIDE_TEXT_WIDTH) {
             return;
@@ -287,5 +305,40 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         if (!lines.isEmpty()) {
             graphics.text(font, lines.getFirst(), (SIDE - font.width(lines.getFirst())) / 2, y, color, false);
         }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (io.contains(event.x(), event.y())) return io.mouseClicked(event, doubleClick);
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        return io.mouseDragged(event, width, height) || super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return io.mouseReleased() | super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double x, double y, double sx, double sy) {
+        return io.contains(x, y) || super.mouseScrolled(x, y, sx, sy);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (io.isOpen() && event.isEscape()) {
+            io.close();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    protected boolean hasClickedOutside(double x, double y, int left, int top) {
+        return !io.contains(x, y) && super.hasClickedOutside(x, y, left, top);
     }
 }

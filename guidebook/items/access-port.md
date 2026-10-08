@@ -31,7 +31,7 @@ The Access Port is how your network talks to other machines. Put one next to a f
 
 1. Join the port to your network with a [Data Cable](data-cables.md).
 2. Write a processing card for it at an [Encoding Terminal](encoding-terminal.md): what goes in, and up to three things that come back.
-3. Make the machine give its results back into the port, or use a hopper or a pipe.
+3. Make the machine give its results back into the port, or use a hopper or a pipe. A JASM machine with an Input / Output key works with the port only through the side facing it: Input takes the ingredients, Output sends the results back into the port.
 
 Fluids work too. Several machines share the work.
 

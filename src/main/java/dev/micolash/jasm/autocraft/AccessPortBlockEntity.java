@@ -64,8 +64,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * An Access Port. Every block touching it that takes items (a furnace, a modded machine, a multiblock's input) is a
- * machine the network can use; cables and other crafting blocks are not. Which sides have machines is looked up each
- * time, so machines placed or removed later count at once.
+ * machine the network can use; cables and crafting blocks without an I/O grid are not. Which sides have machines is
+ * looked up each time, so machines placed or removed later count at once.
  *
  * <p>While a job has sent a set of ingredients into one of its machines, that side is locked to the job and the port
  * takes in returns for the job. Full-block ports also accept ordinary items and forward them to a paired Deck.

@@ -96,11 +96,12 @@ public final class Machines {
     public static @Nullable ResourceHandler<ItemResource> inlet(Level level, BlockPos pos, Direction side) {
         if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity machine && !machine.opensToPorts()
                 || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
-            // Another crafting block is no machine. Bays are, since ports fill and empty them.
+            // Another crafting block is no machine. The ones with an I/O grid are, through the faces it opens.
             return null;
         }
         ResourceHandler<ItemResource> handler = level.getCapability(Capabilities.Item.BLOCK, pos, side);
-        if (handler != null) {
+        if (handler != null || level.getBlockEntity(pos) instanceof MachineBlockEntity) {
+            // a face the grid keeps shut is shut, even though the machine is a container underneath
             return handler;
         }
         if (level.getBlockEntity(pos) instanceof WorldlyContainer worldly) {

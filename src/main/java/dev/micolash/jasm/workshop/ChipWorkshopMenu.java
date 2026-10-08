@@ -50,7 +50,8 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     static final int DATA_REQUIRED_HIGH = 9;
     static final int DATA_FLAGS = 10;
     static final int DATA_NEED = 11;
-    static final int DATA_COUNT = 12;
+    static final int DATA_SIDES = 12;
+    static final int DATA_COUNT = 13;
 
     static final int FLAG_BATCH = 1;
     static final int FLAG_ADVANCED = 2;
@@ -171,6 +172,11 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         return slots.get(MACHINE_SLOTS - 1).getItem();
     }
 
+    /** The I/O grid's item faces, two bits each. */
+    public int sides() {
+        return data.get(DATA_SIDES);
+    }
+
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (workshop == null) {
@@ -184,7 +190,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
             workshop.toggleAdvanced();
             return true;
         }
-        return false;
+        return workshop.sides().click(id);
     }
 
     @Override

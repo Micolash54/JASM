@@ -82,6 +82,9 @@ public abstract class MachineBlock extends BaseEntityBlock {
         super.onPlace(state, level, pos, oldState, movedByPiston);
         if (level instanceof ServerLevel serverLevel && !oldState.is(this)) {
             Networks.invalidate(serverLevel, pos);
+        } else if (oldState.is(this) && oldState.getValue(FACING) != state.getValue(FACING)) {
+            // Turned: the I/O grid turns with the front, so each side now shows a different face.
+            level.invalidateCapabilities(pos);
         }
     }
 

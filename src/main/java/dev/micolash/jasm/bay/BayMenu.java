@@ -1,5 +1,6 @@
 package dev.micolash.jasm.bay;
 
+import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineView;
@@ -50,7 +51,9 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     static final int DATA_TANK_HIGH = 9;
     static final int DATA_FLAGS = 10;
     static final int DATA_CYCLE = 11;
-    static final int DATA_COUNT = 12;
+    static final int DATA_SIDES_ITEMS = 12;
+    static final int DATA_SIDES_FLUIDS = 13;
+    static final int DATA_COUNT = 14;
 
     static final int FLAG_REDSTONE_UPGRADE = 1;
     static final int FLAG_DROP = 2;
@@ -142,6 +145,8 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
                             | (bay instanceof DeploymentBayBlockEntity deploy && deploy.mode() == DeployMode.DROP ? FLAG_DROP : 0)
                             | bay.redstone().ordinal() << REDSTONE_SHIFT;
                     case DATA_CYCLE -> bay.cycleTicks();
+                    case DATA_SIDES_ITEMS -> bay.sides().packed(MachineSides.Kind.ITEMS);
+                    case DATA_SIDES_FLUIDS -> bay.sides().packed(MachineSides.Kind.FLUIDS);
                     default -> 0;
                 };
             }
@@ -201,6 +206,11 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         return BayRedstone.byId(data.get(DATA_FLAGS) >> REDSTONE_SHIFT);
     }
 
+    /** The I/O grid's faces for items or fluids, two bits each. */
+    public int sides(MachineSides.Kind kind) {
+        return data.get(kind == MachineSides.Kind.ITEMS ? DATA_SIDES_ITEMS : DATA_SIDES_FLUIDS);
+    }
+
     public int cycleTicks() {
         return data.get(DATA_CYCLE);
     }
@@ -240,7 +250,7 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
             deploy.toggleMode();
             return true;
         }
-        return false;
+        return bay.sides().click(id);
     }
 
     @Override

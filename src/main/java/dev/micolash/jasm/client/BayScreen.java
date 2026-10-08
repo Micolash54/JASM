@@ -55,7 +55,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private static final int POWER_Y = 6;
     private static final int POWER_HEIGHT = 7;
     private static final int HEIGHT_WITHOUT_ROWS = BayMenu.inventoryY(false, 0) + 58 + 18 + 6;
-    /** The keys under the upgrade slots: the Demolition Bay's sound key, then the redstone key. */
+    /** The keys under the upgrade slots: the I/O grid's, the Demolition Bay's sound key, then the redstone key. */
     private static final int KEYS_Y = BayMenu.UPGRADE_Y + 4 * 18 + 4;
     private static final int KEY_STEP = JasmGui.SIDE_KEY_HEIGHT + 2;
     /** The filter's heading, as the editor draws it, and the fold key just after it. */
@@ -68,6 +68,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private boolean frameRedstone;
     private @Nullable JasmButton redstone;
     private @Nullable JasmButton sound;
+    private @Nullable IoGridWindow io;
     private boolean shownMuted;
     private @Nullable JasmButton place;
     private @Nullable JasmButton drop;
@@ -104,15 +105,20 @@ public class BayScreen extends JasmScreen<BayMenu> {
         rebuildWidgets();
     }
 
-    /** The sound key on a Demolition Bay, else nothing, under the upgrade slots; the redstone key goes below it. */
+    /** The sound key on a Demolition Bay, under the I/O key. */
+    private static int soundY() {
+        return KEYS_Y + KEY_STEP;
+    }
+
+    /** The redstone key goes below the others. */
     private int redstoneY() {
-        return menu.kind() == BayKind.DEMOLITION ? KEYS_Y + KEY_STEP : KEYS_Y;
+        return menu.kind() == BayKind.DEMOLITION ? soundY() + KEY_STEP : KEYS_Y + KEY_STEP;
     }
 
     /** The main panel with the upgrade column joined to it, long enough for the keys under the slots. */
     private JasmFrame frame(boolean withRedstone) {
         int bottom = withRedstone ? redstoneY() + JasmGui.SIDE_KEY_HEIGHT
-                : menu.kind() == BayKind.DEMOLITION ? KEYS_Y + JasmGui.SIDE_KEY_HEIGHT : BayMenu.UPGRADE_Y + 3 * 18 + 17;
+                : menu.kind() == BayKind.DEMOLITION ? soundY() + JasmGui.SIDE_KEY_HEIGHT : KEYS_Y + JasmGui.SIDE_KEY_HEIGHT;
         return JasmFrame.rounded(new int[]{0, 0, BayMenu.WIDTH, imageHeight},
                 new int[]{KEY_X - 14, BayMenu.UPGRADE_Y - 4, 38, bottom + 5 - (BayMenu.UPGRADE_Y - 4)});
     }
@@ -134,9 +140,11 @@ public class BayScreen extends JasmScreen<BayMenu> {
             sound = addRenderableWidget(JasmButton.icon(
                     () -> new JasmButton.Icon(Jasm.id(JasmClientConfig.bayLaserMuted() ? "icon/sound_off" : "icon/sound_on"), 12, 12),
                     soundLabel(), b -> JasmClientConfig.setBayLaserMuted(!JasmClientConfig.bayLaserMuted()),
-                    leftPos + KEY_X, topPos + KEYS_Y, JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+                    leftPos + KEY_X, topPos + soundY(), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
             soundTooltip();
         }
+        if (io == null) io = new IoGridWindow(font, true, menu::sides, this::click);
+        addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
         editor = null;
         if (!collapsed()) {
             editor = new ItemFilterEditor(font, filterRows, false, menu::getCarried, BayMenu.WIDTH - 16);
@@ -315,8 +323,12 @@ public class BayScreen extends JasmScreen<BayMenu> {
     }
 
     @Override
-    public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+    public void extractContents(GuiGraphicsExtractor graphics, int realX, int realY, float a) {
         placeFold();
+        // Under the I/O window nothing else lights up or shows a tooltip.
+        boolean hidden = io.contains(realX, realY);
+        int mouseX = hidden ? -1000 : realX;
+        int mouseY = hidden ? -1000 : realY;
         super.extractContents(graphics, mouseX, mouseY, a);
         int x = mouseX - leftPos;
         int y = mouseY - topPos;
@@ -345,10 +357,15 @@ public class BayScreen extends JasmScreen<BayMenu> {
             graphics.nextStratum();
             editor.draw(graphics, mouseX, mouseY, a, width, height);
         }
+        if (io.isOpen()) {
+            graphics.nextStratum();
+            io.draw(graphics, realX, realY, a);
+        }
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (io.contains(event.x(), event.y())) return io.mouseClicked(event, doubleClick);
         // The fold key sits on the filter's heading, inside the editor's area.
         if (editor != null && !(fold != null && fold.isMouseOver(event.x(), event.y()))) {
             if (editor.contains(event.x(), event.y())) return editor.mouseClicked(event, doubleClick);
@@ -359,27 +376,38 @@ public class BayScreen extends JasmScreen<BayMenu> {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-        return editor != null && editor.mouseDragged(event, width, height) || super.mouseDragged(event, dx, dy);
+        return io.mouseDragged(event, width, height) || editor != null && editor.mouseDragged(event, width, height)
+                || super.mouseDragged(event, dx, dy);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        return (editor != null && editor.mouseReleased(event)) | super.mouseReleased(event);
+        return io.mouseReleased() | (editor != null && editor.mouseReleased(event)) | super.mouseReleased(event);
     }
 
     @Override
     public boolean mouseScrolled(double x, double y, double sx, double sy) {
+        if (io.contains(x, y)) return true;
         return editor != null && editor.contains(x, y) ? editor.mouseScrolled(sy) : super.mouseScrolled(x, y, sx, sy);
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (io.isOpen() && event.isEscape()) {
+            io.close();
+            return true;
+        }
         return editor != null && editor.keyPressed(event) || super.keyPressed(event);
     }
 
     @Override
     public boolean charTyped(CharacterEvent event) {
         return editor != null && editor.charTyped(event) || super.charTyped(event);
+    }
+
+    @Override
+    protected boolean hasClickedOutside(double x, double y, int left, int top) {
+        return !io.contains(x, y) && super.hasClickedOutside(x, y, left, top);
     }
 
     // JEI drop target, none while folded

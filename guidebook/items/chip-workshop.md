@@ -50,6 +50,8 @@ With no power at all, the critter keeps going until its battery runs flat, then 
 
 Blank Chips can go in any of the four slots, and the critter keeps making chips even with other things beside them. A few things aren't chips: a Byteling builds the <ItemLink id="synapse_core" /> from what is in the grid.
 
+Its Input / Output key sets each side. Input fills the grid. Output sends finished chips out into whatever is on that side, and lets them be pulled out there too. The Blank Chips in the grid never leave through a side. Every side starts closed.
+
 A Chip Workshop counts toward a network's [machine limit](network-brain.md).
 
 <br />

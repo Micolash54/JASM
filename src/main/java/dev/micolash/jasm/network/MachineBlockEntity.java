@@ -1,8 +1,10 @@
 package dev.micolash.jasm.network;
 
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
@@ -14,7 +16,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -23,6 +30,8 @@ import org.jspecify.annotations.Nullable;
  * until charged again.
  */
 public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
+    private static final int PUSH_TICKS = 10;
+    private static final int PUSH_ITEMS = 64;
     protected final NetworkEnergy energy;
     private @Nullable UUID owner;
     private String ownerName = "";
@@ -54,9 +63,79 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return true;
     }
 
-    /** Whether ports, hoppers and Access Ports may reach this block's own slots. Only the bays. */
+    /** Whether ports, hoppers and Access Ports may reach this block's own slots: only machines with an I/O grid, as it allows. */
     public boolean opensToPorts() {
-        return false;
+        return sides() != null;
+    }
+
+    /** The I/O grid, for the machines that have one. */
+    public @Nullable MachineSides sides() {
+        return null;
+    }
+
+    /** The machine's item slots as automation sees them, before the grid has its say; null without a grid. */
+    protected MachineSides.@Nullable Gated<ItemResource> itemGates() {
+        return null;
+    }
+
+    /** The same for its tank; null for machines without one. */
+    protected MachineSides.@Nullable Gated<FluidResource> fluidGates() {
+        return null;
+    }
+
+    /** Which way the machine's front looks. */
+    public Direction frontSide() {
+        BlockState state = getBlockState();
+        return state.hasProperty(MachineBlock.FACING) ? state.getValue(MachineBlock.FACING) : Direction.NORTH;
+    }
+
+    /** What hoppers, pipes and ports reach through {@code side}: as much as that face's mode allows, or nothing. */
+    public @Nullable ResourceHandler<ItemResource> itemsThrough(@Nullable Direction side) {
+        MachineSides sides = sides();
+        MachineSides.Gated<ItemResource> gates = itemGates();
+        if (side == null || sides == null || gates == null) return null;
+        return gates.through(sides.mode(MachineSides.Kind.ITEMS, MachineFace.of(frontSide(), side)));
+    }
+
+    public @Nullable ResourceHandler<FluidResource> fluidsThrough(@Nullable Direction side) {
+        MachineSides sides = sides();
+        MachineSides.Gated<FluidResource> gates = fluidGates();
+        if (side == null || sides == null || gates == null) return null;
+        return gates.through(sides.mode(MachineSides.Kind.FLUIDS, MachineFace.of(frontSide(), side)));
+    }
+
+    /** A player changed the grid: what neighbours reach through each face changed with it. */
+    protected void sidesChanged() {
+        setChanged();
+        if (level != null) level.invalidateCapabilities(worldPosition);
+    }
+
+    /**
+     * Twice a second, sends what the machine made out of each Output face into the block there, up to a stack (or a
+     * bucket) a face. Neighbours that aren't loaded are skipped.
+     */
+    protected void pushOutputs(ServerLevel level) {
+        MachineSides sides = sides();
+        if (sides == null || !sides.anyOut() || (level.getGameTime() + worldPosition.asLong()) % PUSH_TICKS != 0) return;
+        MachineSides.Gated<ItemResource> items = itemGates();
+        MachineSides.Gated<FluidResource> fluids = fluidGates();
+        Direction front = frontSide();
+        for (MachineFace face : MachineFace.values()) {
+            boolean pushItems = items != null && sides.mode(MachineSides.Kind.ITEMS, face).out();
+            boolean pushFluids = fluids != null && sides.hasFluids() && sides.mode(MachineSides.Kind.FLUIDS, face).out();
+            if (!pushItems && !pushFluids) continue;
+            Direction side = face.toWorld(front);
+            BlockPos next = worldPosition.relative(side);
+            if (!level.isLoaded(next)) continue;
+            if (pushItems) {
+                ResourceHandlerUtil.move(items.through(FaceMode.OUTPUT), level.getCapability(Capabilities.Item.BLOCK, next, side.getOpposite()),
+                        resource -> true, PUSH_ITEMS, null);
+            }
+            if (pushFluids) {
+                ResourceHandlerUtil.move(fluids.through(FaceMode.OUTPUT), level.getCapability(Capabilities.Fluid.BLOCK, next, side.getOpposite()),
+                        resource -> true, FluidAmounts.PER_BUCKET, null);
+            }
+        }
     }
 
     public boolean stopped() {
@@ -181,6 +260,8 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         output.putString("owner_name", ownerName);
         output.putBoolean("network_blocked", networkBlocked);
         output.putBoolean("running", running);
+        MachineSides sides = sides();
+        if (sides != null) sides.save(output);
     }
 
     @Override
@@ -191,6 +272,8 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         ownerName = input.getStringOr("owner_name", "");
         networkBlocked = input.getBooleanOr("network_blocked", false);
         running = input.getBooleanOr("running", false);
+        MachineSides sides = sides();
+        if (sides != null) sides.load(input);
     }
 
     /** The mined item keeps the charge and the owner. */

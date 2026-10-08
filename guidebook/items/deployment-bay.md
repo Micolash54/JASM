@@ -30,7 +30,7 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 <br />
 ## Good to know
 
-* An [Output Port](item-ports.md) fills it.
+* Its Input / Output key opens sides for items and fluids separately, each Input or closed. An [Output Port](item-ports.md), hopper or pipe fills it through a side set to Input. Every side starts closed.
 * It runs on cable power and doesn't take up a place on the machine limit.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can work once for each redstone pulse.
 * In drop mode it pauses while 32 entities are near, so it can't flood a spot with items.

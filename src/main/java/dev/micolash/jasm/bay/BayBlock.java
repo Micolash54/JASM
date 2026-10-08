@@ -144,8 +144,11 @@ public class BayBlock extends BaseEntityBlock {
         super.onPlace(state, level, pos, oldState, movedByPiston);
         if (!(level instanceof ServerLevel serverLevel)) return;
         if (!oldState.is(this)) Networks.invalidate(serverLevel, pos);
-        // Turned by a wrench: a new front to look at.
-        else if (level.getBlockEntity(pos) instanceof BayBlockEntity bay) bay.wake();
+        // Turned by a wrench: a new front to look at, and the I/O grid turned with it.
+        else if (level.getBlockEntity(pos) instanceof BayBlockEntity bay) {
+            bay.wake();
+            if (oldState.getValue(FACING) != state.getValue(FACING)) level.invalidateCapabilities(pos);
+        }
     }
 
     @Override
