@@ -18,7 +18,7 @@ Put it between the other mod's power and a [Data Cable](data-cables.md) or machi
 
 | At a glance | |
 | --- | --- |
-| Speed | 10,000 FE a tick by default |
+| Speed | no limit: it holds no power and passes on whatever the cables and machines beside it can take |
 | Direction | in only; it never gives power back |
 
 If you only need to charge a [Deck](decks.md), a [Combustion Generator](combustion-generators.md) is simpler.

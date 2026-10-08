@@ -3,10 +3,7 @@ package dev.micolash.jasm.bay;
 import com.mojang.authlib.GameProfile;
 import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
-import dev.micolash.jasm.network.NetworkEnergy;
-import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferSettings;
@@ -142,11 +139,6 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         }
         boolean halfSecond = (level.getGameTime() + worldPosition.asLong()) % 10 == 0;
         if (halfSecond) {
-            if (energy.getAmountAsInt() < capacity()) {
-                // Asking keeps the cable network alive, and the network is what brings power along the cables.
-                Networks.at(level, worldPosition);
-                drawThroughPorts(level);
-            }
             everyHalfSecond(level);
         }
         if (clock.running()) {
@@ -194,27 +186,6 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         setStatus(BayStatus.WORKING);
         level.blockEvent(worldPosition, getBlockState().getBlock(), EVENT_CYCLE,
                 Math.min(ticks, EVENT_SCOOP - 1) | (plan.scoop() ? EVENT_SCOOP : 0));
-    }
-
-    /**
-     * A thin port on the cable behind the bay takes that face, so the cable no longer links to the bay. The bay draws
-     * power through the port instead, at most what the cable passes on in half a second.
-     */
-    private void drawThroughPorts(ServerLevel level) {
-        for (Direction side : Direction.values()) {
-            int missing = capacity() - energy.getAmountAsInt();
-            if (missing <= 0) return;
-            BlockPos next = worldPosition.relative(side);
-            if (!level.isLoaded(next) || !(level.getBlockEntity(next) instanceof DataCableBlockEntity cable)
-                    || cable.port(side.getOpposite()) == null) continue;
-            Networks.at(level, next);
-            int held = cable.energy().getAmountAsInt();
-            int moved = Math.min(missing, Math.min(held, cable.tier().rate() * 10));
-            if (moved <= 0) continue;
-            cable.energy().set(held - moved);
-            energy.set(energy.getAmountAsInt() + moved);
-            if (energy instanceof NetworkEnergy fromCables) fromCables.fromNetwork(moved);
-        }
     }
 
     /** Pays {@code fe} if the buffer holds it. */

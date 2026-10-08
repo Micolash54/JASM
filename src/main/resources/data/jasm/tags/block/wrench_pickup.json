@@ -11,8 +11,6 @@
     "jasm:encoding_terminal",
     "jasm:recipe_rack",
     "jasm:data_cable",
-    "jasm:advanced_data_cable",
-    "jasm:elite_data_cable",
     "jasm:crafting_server",
     "jasm:access_port",
     "jasm:crystal_resonator",

@@ -29,7 +29,6 @@ import net.neoforged.neoforge.transfer.DelegatingResourceHandler;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.access.ItemAccess;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
-import net.neoforged.neoforge.transfer.energy.InfiniteEnergyHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
@@ -103,11 +102,6 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     /** What hoppers and pipes see. */
     public ResourceHandler<ItemResource> automation() {
         return automation;
-    }
-
-    @Override
-    public EnergyHandler networkOutput() {
-        return InfiniteEnergyHandler.INSTANCE;
     }
 
     @Override

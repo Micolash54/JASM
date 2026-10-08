@@ -51,7 +51,7 @@ public final class JasmItems {
             p -> p.stacksTo(1));
     public static final DeferredItem<BlockItem> ENCODING_TERMINAL = ITEMS.registerSimpleBlockItem(JasmBlocks.ENCODING_TERMINAL);
     public static final DeferredItem<BlockItem> RECIPE_RACK = ITEMS.registerSimpleBlockItem(JasmBlocks.RECIPE_RACK);
-    private static final List<DeferredItem<BlockItem>> CABLES = new ArrayList<>();
+    public static final DeferredItem<BlockItem> DATA_CABLE = ITEMS.registerSimpleBlockItem(JasmBlocks.DATA_CABLE);
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
     public static final DeferredItem<ThinAccessPortItem> THIN_ACCESS_PORT = ITEMS.registerItem("thin_access_port", ThinAccessPortItem::new);
@@ -138,7 +138,6 @@ public final class JasmItems {
         for (GeneratorTier tier : GeneratorTier.values()) {
             GENERATORS.put(tier, ITEMS.registerSimpleBlockItem(JasmBlocks.generator(tier)));
         }
-        JasmBlocks.cables().forEach(cable -> CABLES.add(ITEMS.registerSimpleBlockItem(cable)));
         for (DyeColor color : DyeColor.values()) {
             ITEMS.addAlias(Jasm.id(color.getSerializedName() + "_data_cable"), Jasm.id("data_cable"));
         }
@@ -199,9 +198,8 @@ public final class JasmItems {
         }).get();
     }
 
-    /** Every Data Cable item, undyed first. */
     public static List<BlockItem> cables() {
-        return CABLES.stream().map(DeferredItem::get).toList();
+        return List.of(DATA_CABLE.get());
     }
 
     /** Every Deck, normal and crafting. */

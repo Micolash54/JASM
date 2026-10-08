@@ -32,7 +32,8 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     public static final int UPGRADE_X = WIDTH + 2;
     public static final int UPGRADE_Y = 29;
     public static final int INVENTORY_X = (WIDTH - 162) / 2;
-    public static final int FILTER_Y = 90;
+    public static final int FILTER_Y = 76;
+    // a short game window gets fewer
     public static final int FILTER_ROWS = 2;
     public static final int BUTTON_REDSTONE = 0;
     public static final int BUTTON_MODE = 1;
@@ -75,9 +76,9 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         WaferSettings.STREAM_CODEC.encode(buf, bay.filter());
     }
 
-    /** Where the player's inventory starts: under the filter, or under its heading while the filter is folded away. */
-    public static int inventoryY(boolean collapsed) {
-        return collapsed ? FILTER_Y + 29 : FILTER_Y + TransferPortMenu.filterHeight(FILTER_ROWS) + 15;
+    /** Where the player's inventory starts: under a filter of {@code rows} rows, or under its heading while it is folded away. */
+    public static int inventoryY(boolean collapsed, int rows) {
+        return collapsed ? FILTER_Y + 29 : FILTER_Y + TransferPortMenu.filterHeight(rows) + 15;
     }
 
     /** Client side. */
@@ -101,7 +102,7 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         this.bay = bay;
         this.pos = pos;
         this.filter = filter;
-        int inventoryY = inventoryY(false);
+        int inventoryY = inventoryY(false, FILTER_ROWS);
         for (int i = 0; i < BayBlockEntity.GRID; i++) {
             addSlot(new GridSlot(container, i, GRID_X + i % 3 * 18, GRID_Y + i / 3 * 18, kind.takesIn()));
         }
@@ -220,8 +221,8 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     }
 
     // only on the player's screen, the server never looks at where slots sit
-    public void layout(boolean collapsed) {
-        int top = inventoryY(collapsed);
+    public void layout(boolean collapsed, int rows) {
+        int top = inventoryY(collapsed, rows);
         for (int i = 0; i < 36; i++) {
             Slot slot = slots.get(BayBlockEntity.SLOTS + i);
             slot.y = i < 27 ? top + i / 9 * 18 : top + 58;

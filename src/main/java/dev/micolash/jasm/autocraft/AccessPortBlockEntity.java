@@ -57,6 +57,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
@@ -305,7 +306,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     protected boolean canPowerSide(Direction side) { return true; }
 
-    /** The upgrade sends spare charge to nearby machines, even without a crafting job. */
+    /**
+     * The upgrade sends spare charge to the machines it faces, even without a crafting job: other mods' machines and
+     * JASM ones alike. Without the upgrade a port passes no power on at all.
+     */
     protected void sendPower() {
         if (level == null || networkBlocked() || !hasPowerUpgrade() || stopped()) return;
         for (Direction side : Direction.values()) {
@@ -316,11 +320,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             if (!level.isLoaded(targetPos)) continue;
             var targetBlock = level.getBlockState(targetPos).getBlock();
             var entity = level.getBlockEntity(targetPos);
-            // JASM blocks share power through their own network.
-            if (targetBlock instanceof DataCableBlock || entity instanceof MachineBlockEntity
-                    || entity instanceof ArchiveBlockEntity || entity instanceof NetworkPowerSource)
-                continue;
-            var target = level.getCapability(Capabilities.Energy.BLOCK, targetPos, side.getOpposite());
+            // Cables hold no power and power sources take none.
+            if (targetBlock instanceof DataCableBlock || entity instanceof NetworkPowerSource) continue;
+            // JASM machines and Archives show other mods no power input, so they are handed it directly.
+            EnergyHandler target = entity instanceof MachineBlockEntity machine ? machine.energy()
+                    : entity instanceof ArchiveBlockEntity archive ? archive.energy()
+                    : level.getCapability(Capabilities.Energy.BLOCK, targetPos, side.getOpposite());
             if (target == null) continue;
             try (Transaction tx = Transaction.openRoot()) {
                 int accepted = target.insert(available, tx);

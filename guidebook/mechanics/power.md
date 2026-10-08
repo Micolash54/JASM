@@ -24,8 +24,9 @@ Most JASM blocks run on FE.
 ## How it travels
 
 * A generator pushes power into every block it touches.
-* [Data Cables](../items/data-cables.md) carry it through a network, each at its own speed. A slower cable slows what passes through it.
+* [Data Cables](../items/data-cables.md) carry it through a network, as fast as it comes in.
 * A machine that touches a generator needs no cable.
+* Machines don't pass power on to each other. Each one needs a cable, a generator or a Power Acceptor touching it.
 
 <br />
 <br />
