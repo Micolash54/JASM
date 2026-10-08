@@ -24,6 +24,9 @@ public final class MachineCapabilities {
         // Full ports accept buffered items on every side, and never give anything out.
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.ACCESS_PORT_ENTITY.get(),
                 (port, side) -> new WorldlyContainerWrapper(port, side == null ? Direction.UP : side));
+        // Full Input and Input Output Ports take pushed items on every side; the other full ports take none.
+        event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.FULL_PORT_ENTITY.get(),
+                (port, side) -> port.takesPushes() ? new WorldlyContainerWrapper(port, side == null ? Direction.UP : side) : null);
         event.registerBlockEntity(Capabilities.Item.BLOCK, JasmBlocks.DATA_CABLE_ENTITY.get(), DataCableBlockEntity::itemInput);
     }
 }

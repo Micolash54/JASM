@@ -8,6 +8,9 @@ item_ids:
 - jasm:input_port
 - jasm:output_port
 - jasm:input_output_port
+- jasm:full_input_port
+- jasm:full_output_port
+- jasm:full_input_output_port
 ---
 
 # Item ports
@@ -27,13 +30,31 @@ item_ids:
 </GameScene>
 </Row>
 
-Ports mount on a [Data Cable](data-cables.md) and move items and fluids between the network and the block next to them.
+Ports move items and fluids between the network and the blocks next to them.
 
 | Port | Does |
 | --- | --- |
 | Input Port | pulls into a linked [Deck](decks.md) |
 | Output Port | pushes out of the Deck |
 | Input Output Port | both, with output first |
+
+<br />
+<br />
+## Two shapes
+
+<GameScene zoom="3.5" padding="2">
+  <IsometricCamera yaw="20" pitch="30" />
+  <Block id="jasm:full_input_port" x="0" y="0" z="0" p:east="machine" p:west="link" />
+  <Block id="minecraft:chest" x="1" y="0" z="0" />
+  <Block id="jasm:data_cable" x="-1" y="0" z="0" />
+</GameScene>
+
+* **Thin:** sits on a [Data Cable](data-cables.md) face and works on the block in front of it.
+* **Block:** joins the network like a machine and works on every block it touches, with one set of filters and one speed shared between them.
+* On a JASM machine, a block port only moves what that face's I/O setting allows.
+* A block Input or Input Output Port also takes items pushed into it by hoppers, pipes or machines.
+
+Convert one shape into the other in a crafting grid.
 
 <br />
 <br />
@@ -77,5 +98,10 @@ An Input or Output Port is an Access Port with a hopper or dropper, a Link Chip 
   </Row>
   <Row>
     <RecipeFor id="input_output_port" />
+  </Row>
+  <Row>
+    <RecipeFor id="full_input_port" />
+    <RecipeFor id="full_output_port" />
+    <RecipeFor id="full_input_output_port" />
   </Row>
 </Column>

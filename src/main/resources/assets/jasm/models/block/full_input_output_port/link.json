@@ -1,0 +1,8 @@
+{
+  "parent": "jasm:block/access_port/link",
+  "textures": {
+    "particle": "jasm:block/full_input_output_port",
+    "parts": "jasm:block/full_input_output_port",
+    "pad": "jasm:block/full_input_output_port_pad"
+  }
+}

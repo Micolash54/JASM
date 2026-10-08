@@ -53,6 +53,7 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HopperBlock;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -130,6 +131,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     public AccessPortBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.ACCESS_PORT_ENTITY.get(), pos, state, CAPACITY);
+    }
+
+    protected AccessPortBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state, CAPACITY);
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
@@ -383,8 +388,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         }
     }
 
+    // a full port shows a pad on every block it serves
+    protected boolean shownAsMachine(Direction side) {
+        return hasMachine(side);
+    }
+
     private PortSide sideLooks(Direction side) {
-        if (hasMachine(side)) {
+        if (shownAsMachine(side)) {
             return locks.containsKey(side) ? PortSide.BUSY : PortSide.MACHINE;
         }
         BlockPos pos = worldPosition.relative(side);

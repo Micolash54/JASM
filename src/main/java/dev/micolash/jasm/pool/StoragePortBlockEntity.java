@@ -1,8 +1,13 @@
 package dev.micolash.jasm.pool;
 
+import dev.micolash.jasm.archive.ArchiveBlockEntity;
+import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import dev.micolash.jasm.transfer.TransferPortKind;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentGetter;
@@ -14,26 +19,49 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import org.jspecify.annotations.Nullable;
 
 /**
- * A port that lends the block in front of it (a chest, a tank, a cauldron) to the network's storage. It does no work
+ * A port that lends the block in front of it (a chest, a tank, a cauldron) to the network's storage. A full port lends
+ * every such block it touches. It does no work
  * of its own: it pays its standing power use each tick, and the network pool reads the block when a Deck, port or job
  * asks.
  */
 public class StoragePortBlockEntity extends TransferPortBlockEntity {
-    private final Direction face;
-    private final PoolStore store = new PoolStore(this);
+    // one store per lent face, rebuilt only when the faces change
+    private @Nullable List<PoolStore> stores;
     private StorageSettings settings = StorageSettings.DEFAULT;
 
     public StoragePortBlockEntity(BlockPos pos, BlockState state, Direction face) {
         super(pos, state, TransferPortKind.STORAGE, face);
-        this.face = face;
     }
 
-    public Direction face() { return face; }
-    public BlockPos chestPos() { return worldPosition.relative(face); }
+    private StoragePortBlockEntity(BlockPos pos, BlockState state) {
+        super(JasmBlocks.FULL_STORAGE_PORT_ENTITY.get(), pos, state, TransferPortKind.STORAGE);
+    }
+
+    public static StoragePortBlockEntity full(BlockPos pos, BlockState state) {
+        return new StoragePortBlockEntity(pos, state);
+    }
+
     public StorageSettings settings() { return settings; }
-    public PoolStore store() { return store; }
+
+    public List<PoolStore> stores() {
+        List<PoolStore> found = stores;
+        if (found == null) {
+            List<PoolStore> made = new ArrayList<>(6);
+            for (Direction side : workFaces()) made.add(new PoolStore(this, side));
+            stores = found = List.copyOf(made);
+        }
+        return found;
+    }
+
+    // thin port shortcuts
+    public BlockPos chestPos() { return worldPosition.relative(workFaces().getFirst()); }
+
+    public PoolStore store() { return stores().getFirst(); }
+
+    public boolean storeActive() { return storeActive(workFaces().getFirst()); }
 
     public void setSettings(StorageSettings settings) {
         if (this.settings.equals(settings)) return;
@@ -42,9 +70,23 @@ public class StoragePortBlockEntity extends TransferPortBlockEntity {
         if (level instanceof ServerLevel serverLevel) NetworkPool.touch(serverLevel, worldPosition);
     }
 
-    /** Whether the pool may use this port's block right now. */
-    public boolean storeActive() {
-        return installed() && running() && !networkBlocked() && level != null && level.isLoaded(chestPos());
+    public boolean storeActive(Direction side) {
+        return installed() && running() && !networkBlocked() && level != null && works(side)
+                && level.isLoaded(worldPosition.relative(side));
+    }
+
+    /** A crafting block or Archive is never lent, as on the thin port. */
+    @Override
+    protected boolean serves(Direction side) {
+        if (!super.serves(side)) return false;
+        var entity = level.getBlockEntity(worldPosition.relative(side));
+        return !(entity instanceof MachineBlockEntity || entity instanceof ArchiveBlockEntity);
+    }
+
+    @Override
+    protected void servedChanged() {
+        stores = null;
+        if (level instanceof ServerLevel serverLevel) NetworkPool.touch(serverLevel, worldPosition);
     }
 
     @Override

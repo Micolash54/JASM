@@ -1,0 +1,13 @@
+{
+  "type": "jasm:upgrade",
+  "pattern": [
+    "P"
+  ],
+  "key": {
+    "P": "jasm:storage_port"
+  },
+  "source": "jasm:storage_port",
+  "result": {
+    "id": "jasm:full_storage_port"
+  }
+}
