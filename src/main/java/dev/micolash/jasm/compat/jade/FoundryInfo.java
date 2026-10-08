@@ -52,7 +52,7 @@ public class FoundryInfo implements StreamServerDataProvider<BlockAccessor, Foun
         public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
             decodeFromData(accessor).ifPresent(data -> tooltip.add(data.made() < 0
                     ? Component.translatable("screen.jasm.foundry.no_seed")
-                    : Component.translatable("screen.jasm.foundry.seed", data.made(), data.perSeed())));
+                    : Component.translatable("screen.jasm.foundry.seed", Math.max(0, data.perSeed() - data.made()), data.perSeed())));
         }
     }
 }

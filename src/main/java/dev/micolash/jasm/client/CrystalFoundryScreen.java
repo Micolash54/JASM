@@ -59,20 +59,29 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         Component count = menu.growing()
-                ? Component.translatable("screen.jasm.foundry.seed", menu.made(), menu.perSeed())
+                ? Component.translatable("screen.jasm.foundry.seed_life")
                 : Component.translatable("screen.jasm.foundry.no_seed");
         boolean networkFull = ClientNetworkStatus.full(menu.containerId) != null;
         int color = networkFull ? JasmGui.BAD : menu.full() ? JasmGui.WARN : !menu.powered() && menu.growing() ? JasmGui.BAD : JasmGui.SUBTEXT;
+        boolean seedLife = menu.growing();
         if (networkFull) {
+            seedLife = false;
             // A stopped network matters more than a full output or a missing seed.
             count = MachineStatusText.noPower(menu.containerId, "screen.jasm.foundry.no_power", font, PROGRESS_WIDTH + 24);
         } else if (menu.full()) {
+            seedLife = false;
             count = Component.translatable("screen.jasm.foundry.full");
         } else if (!menu.powered() && menu.growing()) {
+            seedLife = false;
             // Only the room between the seed slot and the output grid.
             count = MachineStatusText.noPower(menu.containerId, "screen.jasm.foundry.no_power", font, PROGRESS_WIDTH + 24);
         }
         graphics.text(font, count, PROGRESS_X + (PROGRESS_WIDTH - font.width(count)) / 2, COUNT_Y, color, false);
+        if (seedLife) {
+            // Counts down from the full number: a new seed shows 16 / 16.
+            Component left = Component.literal(Math.max(0, menu.perSeed() - menu.made()) + " / " + menu.perSeed());
+            graphics.text(font, left, PROGRESS_X + (PROGRESS_WIDTH - font.width(left)) / 2, COUNT_Y + font.lineHeight, color, false);
+        }
         Component power = Component.translatable("screen.jasm.workshop.power_amount", String.format("%,d", menu.energy()),
                 String.format("%,d", CrystalFoundryBlockEntity.CAPACITY));
         JasmGui.labelledBar(graphics, font, power, POWER_X, CrystalFoundryMenu.ROW_Y, POWER_WIDTH, ROW_HEIGHT,

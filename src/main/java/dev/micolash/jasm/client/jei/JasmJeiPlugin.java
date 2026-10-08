@@ -134,6 +134,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "archive", 2, Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
         info(registration, "crystal_seed", 3, List.of(JasmItems.CRYSTAL_SEED.get(), JasmItems.SEEDED_AMETHYST.get(),
                 JasmItems.WORN_SEEDED_AMETHYST.get(), JasmItems.CRACKED_SEEDED_AMETHYST.get()));
+        info(registration, "data_crystal", 2, List.of(JasmItems.DATA_CRYSTAL.get()));
         info(registration, "crystal_resonator", 2, List.of(JasmItems.CRYSTAL_RESONATOR.get()));
         info(registration, "bitling", 3, JasmItems.bitlings());
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));

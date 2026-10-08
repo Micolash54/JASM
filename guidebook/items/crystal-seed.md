@@ -16,7 +16,7 @@ A Crystal Seed turns a Block of Amethyst into <ItemLink id="seeded_amethyst" />,
 
 * Use it on a Block of Amethyst. The seed is used up (not in creative mode).
 * The [Crystal Foundry](crystal-foundry.md) also takes seeds, and makes Blank Chips from them.
-* You can make a seed from amethyst, copper and redstone, or from four <ItemLink id="crystal_dust" /> and a redstone.
+* You can make a seed from amethyst, wheat seeds and redstone, or from four <ItemLink id="crystal_dust" /> and a redstone.
 * More in [Growing Data Crystals](../mechanics/growing-crystals.md).
 
 <br />
