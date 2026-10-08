@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:basic_bitling"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_logic_chip": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:logic_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_logic_chip"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:basic_bitling"
+    ]
+  }
+}
