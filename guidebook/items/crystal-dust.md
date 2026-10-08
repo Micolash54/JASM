@@ -13,6 +13,7 @@ item_ids:
 <ItemImage id="crystal_dust" scale="4" />
 
 Crystal Dust is what a bud gives when you break it before it is fully grown.
+A wild Bitling that gets knocked out leaves one or two as well.
 
 * Four dust and a redstone make a <ItemLink id="crystal_seed" />.
 * Buds are the early stages of [Seeded Amethyst](seeded-amethyst.md).

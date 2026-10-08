@@ -23,6 +23,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.storage.ValueInput;
@@ -33,7 +34,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * A Bitling living free in the world. It roams around where it was found, or around a Data Crystal that drew it over.
  * Hand it a typed chip and it looks it over, nods, and becomes a Basic Bitling item. Feed it a Data Crystal and it eats
- * it and follows you for a while.
+ * it and follows you for a while. Trade it a diamond and it leaves you a Block of Amethyst. Knocked out, it leaves
+ * a little Crystal Dust.
  */
 public class WildBitling extends BitlingBody {
     private static final int GARDEN_RADIUS = 12;
@@ -49,11 +51,15 @@ public class WildBitling extends BitlingBody {
     private static final double FOLLOW_WALK_WITHIN = 8;
     private static final double FOLLOW_STOP_WITHIN = 2.5;
     private static final int FOLLOW_PATH_EVERY = 10;
+    /** Crystal Dust left behind when it is knocked out: this many at least, and this many more at most. */
+    private static final int DEATH_DUST_LEAST = 1;
+    private static final int DEATH_DUST_MOST = 2;
 
     /** What it is busy with after being handed something. */
     private enum Treat {
         CHIP,
-        CRYSTAL
+        CRYSTAL,
+        DIAMOND
     }
 
     private @Nullable Vec3 garden;
@@ -193,7 +199,13 @@ public class WildBitling extends BitlingBody {
                     actTicks = NOD_TICKS;
                 }
             }
-            case NOD -> befriend(level);
+            case NOD -> {
+                if (treat == Treat.DIAMOND) {
+                    trade(level);
+                } else {
+                    befriend(level);
+                }
+            }
             case EAT -> finishEating(level);
             default -> setAct(Act.STAND);
         }
@@ -205,6 +217,20 @@ public class WildBitling extends BitlingBody {
         spawnAtLocation(level, new ItemStack(JasmItems.bitling(BitlingKind.BASIC, BitlingStage.BITLING)));
         setHeld(ItemStack.EMPTY);
         discard();
+    }
+
+    /** Pleased with the diamond: it sets a Block of Amethyst down at its feet and carries on. */
+    private void trade(ServerLevel level) {
+        setHeld(ItemStack.EMPTY);
+        treat = null;
+        spawnAtLocation(level, new ItemStack(Items.AMETHYST_BLOCK));
+        level.sendParticles(ParticleTypes.HAPPY_VILLAGER, getX(), getY() + getBbHeight() + 0.1, getZ(), 5, 0.2, 0.1, 0.2, 0.0);
+        setAct(Act.STAND);
+        waitTicks = 20;
+        if (runAfter) {
+            runAfter = false;
+            startHurtRun(level);
+        }
     }
 
     private void finishEating(ServerLevel level) {
@@ -287,7 +313,7 @@ public class WildBitling extends BitlingBody {
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        boolean known = stack.is(JasmTags.TYPED_CHIPS) || stack.is(JasmItems.DATA_CRYSTAL) || refused(stack);
+        boolean known = stack.is(JasmTags.TYPED_CHIPS) || stack.is(JasmItems.DATA_CRYSTAL) || stack.is(Items.DIAMOND) || refused(stack);
         if (!(level() instanceof ServerLevel level)) {
             return known || inSequence() ? InteractionResult.SUCCESS : InteractionResult.PASS;
         }
@@ -296,6 +322,10 @@ public class WildBitling extends BitlingBody {
         }
         if (stack.is(JasmTags.TYPED_CHIPS)) {
             take(player, stack, Treat.CHIP, INSPECT_CHIP_TICKS);
+            return InteractionResult.SUCCESS;
+        }
+        if (stack.is(Items.DIAMOND)) {
+            take(player, stack, Treat.DIAMOND, INSPECT_CHIP_TICKS);
             return InteractionResult.SUCCESS;
         }
         if (stack.is(JasmItems.DATA_CRYSTAL) && followTicks <= 0) {
@@ -345,12 +375,14 @@ public class WildBitling extends BitlingBody {
         return hurt;
     }
 
-    /** Knocked out, it vanishes in a puff and leaves nothing behind, not even what it was holding. */
+    /** Knocked out, it vanishes in a puff and leaves a little Crystal Dust, but not what it was holding. */
     @Override
     public void die(DamageSource source) {
         setHeld(ItemStack.EMPTY);
         if (level() instanceof ServerLevel level) {
             poof(level);
+            spawnAtLocation(level, new ItemStack(JasmItems.CRYSTAL_DUST.get(),
+                    DEATH_DUST_LEAST + random.nextInt(DEATH_DUST_MOST - DEATH_DUST_LEAST + 1)));
         }
         discard();
     }

@@ -36,6 +36,15 @@ Bitlings are small robot helpers that work the [Chip Workshop](chip-workshop.md)
 
 <br />
 <br />
+## Wild Bitlings
+
+* Hand one a typed chip to get a Basic Bitling item.
+* Hand one a Data Crystal and it follows you for a while.
+* Hand one a diamond and it leaves a Block of Amethyst.
+* Knocked out, it leaves one or two <ItemLink id="crystal_dust" />.
+
+<br />
+<br />
 ## Basic Bitling
 
 You can't craft one. [Find a wild Bitling](../mechanics/befriending-bitlings.md) and hand it a chip.
