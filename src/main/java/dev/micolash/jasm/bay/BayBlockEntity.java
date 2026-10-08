@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferSettings;
@@ -67,6 +68,10 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     protected final FluidStacksResourceHandler tank;
     private final ResourceHandler<ItemResource> itemAutomation;
     private final ResourceHandler<FluidResource> fluidAutomation;
+    private final MachineSides.Gated<ItemResource> itemGates;
+    private final MachineSides.Gated<FluidResource> fluidGates;
+    /** The Deployment Bay only takes in and the Demolition Bay only gives out, so each offers just that or None. */
+    private final MachineSides sides;
     private final BayClock clock = new BayClock();
     private BayRedstone redstone = BayRedstone.IGNORE;
     /** What the bay may take (Demolition) or put out (Deployment). Empty lets everything through. */
@@ -100,6 +105,9 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         };
         itemAutomation = new BayAutomation.Items(VanillaContainerWrapper.of(this), kind().takesIn());
         fluidAutomation = new BayAutomation.Fluids(tank, kind().takesIn());
+        itemGates = new MachineSides.Gated<>(itemAutomation);
+        fluidGates = new MachineSides.Gated<>(fluidAutomation);
+        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true, this::sidesChanged);
     }
 
     public abstract BayKind kind();
@@ -130,6 +138,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, BayBlockEntity bay) {
         bay.tick((ServerLevel) level);
+        bay.pushOutputs((ServerLevel) level);
     }
 
     private void tick(ServerLevel level) {
@@ -235,17 +244,32 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     }
 
     @Override
-    public boolean opensToPorts() {
-        return true;
-    }
-
-    @Override
     public boolean running() {
         return status != BayStatus.NO_POWER;
     }
 
     public Direction facing() {
         return getBlockState().getValue(BayBlock.FACING);
+    }
+
+    @Override
+    public Direction frontSide() {
+        return facing();
+    }
+
+    @Override
+    public MachineSides sides() {
+        return sides;
+    }
+
+    @Override
+    protected MachineSides.Gated<ItemResource> itemGates() {
+        return itemGates;
+    }
+
+    @Override
+    protected MachineSides.Gated<FluidResource> fluidGates() {
+        return fluidGates;
     }
 
     public BlockPos front() {

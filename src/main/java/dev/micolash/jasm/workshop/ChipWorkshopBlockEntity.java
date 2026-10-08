@@ -7,6 +7,7 @@ import dev.micolash.jasm.core.ChipType;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.core.Training;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
@@ -70,6 +71,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     /** Chips from an old save that no longer fit the output; dropped at the Workshop on the next tick. */
     private final List<ItemStack> overflow = new ArrayList<>();
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
+    private final MachineSides.Gated<ItemResource> itemGates = new MachineSides.Gated<>(automation);
+    private final MachineSides sides = new MachineSides(MachineSides.ALL, false, this::sidesChanged);
     private boolean batch;
     private boolean advancedSelected;
     private int progress;
@@ -110,6 +113,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
                 case ChipWorkshopMenu.DATA_TRAINED_HIGH -> ContainerWords.high(BitlingItem.trained(critter));
                 case ChipWorkshopMenu.DATA_REQUIRED_LOW -> ContainerWords.low(required(critter));
                 case ChipWorkshopMenu.DATA_REQUIRED_HIGH -> ContainerWords.high(required(critter));
+                case ChipWorkshopMenu.DATA_SIDES -> sides.packed(MachineSides.Kind.ITEMS);
                 case ChipWorkshopMenu.DATA_FLAGS ->
                     (batch ? ChipWorkshopMenu.FLAG_BATCH : 0) | (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
                             | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
@@ -141,6 +145,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, ChipWorkshopBlockEntity workshop) {
         workshop.tick((ServerLevel) level);
+        workshop.pushOutputs((ServerLevel) level);
         // Compared with what players were last told, since a critter can also be taken out between two ticks.
         if (workshop.looksChanged(workshop.looks())) {
             workshop.lookChanged();
@@ -566,6 +571,16 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         return automation;
     }
 
+    @Override
+    public MachineSides sides() {
+        return sides;
+    }
+
+    @Override
+    protected MachineSides.Gated<ItemResource> itemGates() {
+        return itemGates;
+    }
+
     /** Players may put anything but a critter in the grid; the critter slot takes only critters. */
     public static boolean accepts(int slot, ItemStack stack) {
         if (slot >= GRID_FIRST && slot < GRID_FIRST + GRID_SIZE) {
@@ -719,7 +734,10 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         }
     }
 
-    /** Hoppers and pipes: Blank Chips and recipe ingredients in, finished items out. The critter slot is for players only. */
+    /**
+     * Hoppers and pipes, where the I/O grid lets them: Blank Chips and recipe ingredients in, finished items out. The
+     * critter slot is for players only.
+     */
     private final class Automation extends DelegatingResourceHandler<ItemResource> {
         Automation(ResourceHandler<ItemResource> slots) {
             super(slots);

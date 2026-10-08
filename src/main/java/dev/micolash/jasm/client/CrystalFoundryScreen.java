@@ -4,14 +4,18 @@ import dev.micolash.jasm.crystal.CrystalFoundryBlockEntity;
 import dev.micolash.jasm.crystal.CrystalFoundryMenu;
 import dev.micolash.jasm.registry.JasmItems;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Foundry screen: the seed slot, the crystal it is growing with the progress under it and how many crystals the
- * seed has made so far, the output grid, and the power across the full width.
+ * seed has made so far, the output grid, and the power across the full width. The I/O grid's key hangs off the right
+ * side.
  */
 public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     private static final int WIDTH = 176;
@@ -25,17 +29,26 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     private static final int POWER_X = 8;
     private static final int POWER_WIDTH = WIDTH - 16;
     private static final int ROW_HEIGHT = 12;
+    private static final int KEY_X = WIDTH;
+    private static final JasmFrame FRAME = JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, JasmGui.sideStrip(KEY_X, 1));
     private final ItemStack crystal = new ItemStack(JasmItems.DATA_CRYSTAL.get());
+    private @Nullable IoGridWindow io;
 
     public CrystalFoundryScreen(CrystalFoundryMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, WIDTH, HEIGHT);
+        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, HEIGHT);
         this.inventoryLabelY = CrystalFoundryMenu.INVENTORY_Y - 10;
     }
 
     @Override
     protected void init() {
         super.init();
+        // The panel stays centred; its key hangs off the side.
+        leftPos = Math.max(0, (width - WIDTH) / 2);
         addHelp(WIDTH - 7, "items/crystal-foundry.md");
+        if (io == null) {
+            io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
+        }
+        addRenderableWidget(io.key(leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), topPos));
     }
 
     @Override
@@ -43,7 +56,7 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         int x = leftPos;
         int y = topPos;
-        JasmGui.panel(graphics, x, y, imageWidth, imageHeight);
+        FRAME.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
@@ -86,5 +99,51 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
                 String.format("%,d", CrystalFoundryBlockEntity.CAPACITY));
         JasmGui.labelledBar(graphics, font, power, POWER_X, CrystalFoundryMenu.ROW_Y, POWER_WIDTH, ROW_HEIGHT,
                 menu.energy() / (double) CrystalFoundryBlockEntity.CAPACITY);
+    }
+
+    @Override
+    public void extractContents(GuiGraphicsExtractor graphics, int realX, int realY, float a) {
+        // Under the I/O window nothing else lights up or shows a tooltip.
+        boolean hidden = io.contains(realX, realY);
+        super.extractContents(graphics, hidden ? -1000 : realX, hidden ? -1000 : realY, a);
+        if (io.isOpen()) {
+            graphics.nextStratum();
+            io.draw(graphics, realX, realY, a);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (io.contains(event.x(), event.y())) return io.mouseClicked(event, doubleClick);
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        return io.mouseDragged(event, width, height) || super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        return io.mouseReleased() | super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseScrolled(double x, double y, double sx, double sy) {
+        return io.contains(x, y) || super.mouseScrolled(x, y, sx, sy);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (io.isOpen() && event.isEscape()) {
+            io.close();
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    protected boolean hasClickedOutside(double x, double y, int left, int top) {
+        return !io.contains(x, y) && super.hasClickedOutside(x, y, left, top);
     }
 }
