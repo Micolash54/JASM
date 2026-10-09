@@ -24,7 +24,7 @@ item_ids:
   <BlockImage id="elite_combustion_generator" scale="3.5" />
 </Row>
 
-Burn anything a furnace burns and get power. A generator sends it into every block it touches, and charges Decks and other chargeable items in its charging slot.
+Burn anything a furnace burns and get power. A generator charges Decks and other chargeable items in its charging slot first, then sends what is left into every block it touches.
 
 | Tier | Burns | Makes | Holds | Gives per block |
 | --- | --- | --- | --- | --- |

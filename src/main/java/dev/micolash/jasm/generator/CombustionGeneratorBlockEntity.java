@@ -48,7 +48,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Burns one fuel item at a time for as long as a furnace would, adding FE to its buffer every tick. It only burns
  * while the buffer has room, so fuel is never wasted: a full generator keeps its flame banked until power is used.
- * Every tick it pushes FE into touching blocks that take it and charges the item in its charging slot.
+ * Every tick it charges the item in its charging slot first, then pushes what is left into touching blocks that take it.
  */
 public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity implements NetworkPowerSource {
 
@@ -111,8 +111,9 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     static void serverTick(Level level, BlockPos pos, BlockState state, CombustionGeneratorBlockEntity generator) {
         ServerLevel serverLevel = (ServerLevel) level;
         generator.burn(serverLevel);
-        generator.pushToNeighbours(serverLevel);
+        // The charging slot comes first; what is left goes to machines, cables and other blocks.
         generator.charge(generator.tier.transferPerTick());
+        generator.pushToNeighbours(serverLevel);
         boolean lit = generator.burnLeft > 0;
         if (state.getValue(CombustionGeneratorBlock.LIT) != lit) {
             level.setBlock(pos, state.setValue(CombustionGeneratorBlock.LIT, lit), 3);
