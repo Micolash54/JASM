@@ -2,7 +2,9 @@ package dev.micolash.jasm.workshop;
 
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineView;
+import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
+import dev.micolash.jasm.transfer.SpeedUpgradeSlot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -17,7 +19,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import org.jspecify.annotations.Nullable;
 
-/** The Workshop's menu: the 2x2 grid, the 3×2 output grid, critter slot, then the player's inventory and hotbar. */
+/** The Workshop's menu: the 2x2 grid, the 3×2 output grid, critter slot, the upgrade column, then the player's inventory and hotbar. */
 public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineView {
     /** The critter's own panel on the left; the Workshop's main panel starts at {@link #MAIN_X}. */
     public static final int SIDE_WIDTH = 114;
@@ -34,6 +36,9 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     public static final int GRID_X = MAIN_X + 9;
     public static final int GRID_Y = OUTPUT_Y;
     public static final int INVENTORY_Y = OUTPUT_Y + 2 * 18 + 20;
+    /** The upgrade column hangs past the main panel's right edge, as on the bays. */
+    public static final int UPGRADE_X = MAIN_X + MAIN_WIDTH + 2;
+    public static final int UPGRADE_Y = 29;
 
     public static final int BUTTON_BATCH = 0;
     public static final int BUTTON_ADVANCED = 1;
@@ -102,6 +107,9 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
                     OUTPUT_Y + i / OUTPUT_COLUMNS * 18));
         }
         addSlot(new MachineSlot(container, ChipWorkshopBlockEntity.CRITTER, CRITTER_X, CRITTER_Y));
+        for (int i = 0; i < ChipWorkshopBlockEntity.UPGRADES; i++) {
+            addSlot(new SpeedUpgradeSlot(container, ChipWorkshopBlockEntity.UPGRADE_START + i, UPGRADE_X, UPGRADE_Y + i * 18));
+        }
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
                 addSlot(new Slot(inventory, 9 + row * 9 + column, MAIN_X + 8 + column * 18, INVENTORY_Y + row * 18));
@@ -169,7 +177,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
 
     /** The critter in the slot, as this side sees it. */
     public ItemStack critter() {
-        return slots.get(MACHINE_SLOTS - 1).getItem();
+        return slots.get(ChipWorkshopBlockEntity.CRITTER).getItem();
     }
 
     /** The I/O grid's item faces, two bits each. */
@@ -198,7 +206,10 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         return block == null || stillValid(access, player, block);
     }
 
-    /** Shift-click: a critter to its slot, anything else to the grid; out of the Workshop to the hotbar, then the inventory. */
+    /**
+     * Shift-click: a critter to its slot, Speed Upgrades to the upgrade column, anything else to the grid; out of the Workshop
+     * to the hotbar, then the inventory.
+     */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot clicked = slots.get(index);
@@ -211,7 +222,11 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         if (index < MACHINE_SLOTS) {
             moved = moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false) || moveItemStackTo(stack, MACHINE_SLOTS, HOTBAR_START, false);
         } else if (ChipWorkshopBlockEntity.accepts(ChipWorkshopBlockEntity.CRITTER, stack)) {
-            moved = moveItemStackTo(stack, MACHINE_SLOTS - 1, MACHINE_SLOTS, false);
+            moved = moveItemStackTo(stack, ChipWorkshopBlockEntity.CRITTER, ChipWorkshopBlockEntity.CRITTER + 1, false);
+        } else if (stack.is(JasmItems.SPEED_UPGRADE.get())) {
+            // Each upgrade slot holds one, and one move fills one empty slot.
+            moved = false;
+            while (!stack.isEmpty() && moveItemStackTo(stack, ChipWorkshopBlockEntity.UPGRADE_START, MACHINE_SLOTS, false)) moved = true;
         } else {
             moved = moveItemStackTo(stack, 0, ChipWorkshopBlockEntity.GRID_SIZE, false);
         }

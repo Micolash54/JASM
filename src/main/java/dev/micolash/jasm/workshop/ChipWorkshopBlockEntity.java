@@ -12,6 +12,7 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmRecipes;
+import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,7 +60,10 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     public static final int OUTPUT_FIRST = GRID_FIRST + GRID_SIZE;
     public static final int OUTPUT_COUNT = 6;
     public static final int CRITTER = OUTPUT_FIRST + OUTPUT_COUNT;
-    public static final int SLOTS = CRITTER + 1;
+    /** Older Workshops end at the critter, so these load empty. */
+    public static final int UPGRADE_START = CRITTER + 1;
+    public static final int UPGRADES = 4;
+    public static final int SLOTS = UPGRADE_START + UPGRADES;
     /** Only a landing place for power on its way into the critter's battery. */
     public static final int CAPACITY = 1_000;
     public static final int BATCH_SIZE = 8;
@@ -96,6 +100,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     private String progressFor = "";
     /** See {@link WorkshopNeed}. */
     private int need;
+    /** Speed Upgrades in the slots, counted at the start of each tick. */
+    private int upgrades;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -198,6 +204,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     }
 
     private void tick(ServerLevel level) {
+        upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
         if (!overflow.isEmpty()) {
             for (ItemStack stack : overflow) {
                 Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 1, worldPosition.getZ() + 0.5, stack);
@@ -245,7 +252,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             need = gridInput().items().stream().allMatch(ItemStack::isEmpty) ? WorkshopNeed.NONE : WorkshopNeed.NO_RECIPE;
         }
         follow("");
-        int perChip = Tuning.BITLING_DRAIN_PER_CHIP;
+        int perChip = SpeedUpgradeItem.power(Tuning.BITLING_DRAIN_PER_CHIP, upgrades);
         if (!napping && BitlingItem.energy(critter) < Math.max(1, perChip)) {
             napping = true;
             progress = 0;
@@ -321,8 +328,22 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         }
     }
 
+    /** Ticks a recipe takes with the Speed Upgrades inside. */
+    private int recipeTicks(WorkshopRecipe made) {
+        return SpeedUpgradeItem.ticks(made.ticks(), upgrades);
+    }
+
+    /** FE taken from the critter on the tick that moves the recipe on: the same steps as {@link WorkshopRecipe#energyAt}, with the extra power. */
+    private long recipeEnergyAt(WorkshopRecipe made) {
+        long total = SpeedUpgradeItem.power(made.energy(), upgrades);
+        int ticks = recipeTicks(made);
+        int step = Math.min(progress, ticks - 1);
+        return total * (step + 1) / ticks - total * step / ticks;
+    }
+
     private void tickRecipe(ItemStack critter, BitlingItem bitling, WorkshopRecipe made, int[] slots) {
-        long due = made.energyAt(progress);
+        long due = recipeEnergyAt(made);
+        int ticks = recipeTicks(made);
         if (!napping && due > 0 && BitlingItem.energy(critter) < due) {
             // Unlike a chip, a long recipe keeps its progress through a nap.
             napping = true;
@@ -334,13 +355,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
             return;
         }
         ItemStack result = made.result();
-        if (progress + 1 >= made.ticks() && !roomFor(result)) {
+        if (progress + 1 >= ticks && !roomFor(result)) {
             // Done but for the last step: waits for room in the output.
             return;
         }
         working = true;
         critter.set(JasmComponents.ENERGY.get(), (int) (BitlingItem.energy(critter) - due));
-        if (++progress >= made.ticks()) {
+        if (++progress >= ticks) {
             progress = 0;
             for (int slot : slots) {
                 items.get(GRID_FIRST + slot).shrink(1);
@@ -408,9 +429,9 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     /** Ticks an operation takes in the mode it is set to. */
     private int ticksForMode() {
         if (recipe != null && progressFor.equals(recipe.id().toString())) {
-            return recipe.value().ticks();
+            return recipeTicks(recipe.value());
         }
-        return batch ? Tuning.WORKSHOP_TICKS_PER_BATCH : Tuning.WORKSHOP_TICKS_PER_OPERATION;
+        return SpeedUpgradeItem.ticks(batch ? Tuning.WORKSHOP_TICKS_PER_BATCH : Tuning.WORKSHOP_TICKS_PER_OPERATION, upgrades);
     }
 
     /** Chips the next operation makes: one, or up to a batch, as many as there are Blank Chips and battery for. */
@@ -581,10 +602,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
         return itemGates;
     }
 
-    /** Players may put anything but a critter in the grid; the critter slot takes only critters. */
+    /** Players may put anything but a critter in the grid; the critter slot takes only critters, the upgrade slots only Speed Upgrades. */
     public static boolean accepts(int slot, ItemStack stack) {
         if (slot >= GRID_FIRST && slot < GRID_FIRST + GRID_SIZE) {
             return !(stack.getItem() instanceof BitlingItem);
+        }
+        if (slot >= UPGRADE_START && slot < SLOTS) {
+            return stack.is(JasmItems.SPEED_UPGRADE.get());
         }
         return slot == CRITTER && stack.getItem() instanceof BitlingItem;
     }

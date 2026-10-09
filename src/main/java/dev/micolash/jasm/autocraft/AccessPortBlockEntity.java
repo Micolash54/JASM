@@ -19,6 +19,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.transfer.PortOperations;
+import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -162,12 +163,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return getItem(POWER_SLOT).is(JasmItems.POWER_UPGRADE.get());
     }
 
+    public int speedUpgrades() {
+        return SpeedUpgradeItem.count(this, SPEED_START, SPEED_START + PortOperations.UPGRADE_SLOTS);
+    }
+
     public int transferRate() {
-        int upgrades = 0;
-        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
-            if (getItem(SPEED_START + i).is(JasmItems.SPEED_UPGRADE.get())) upgrades++;
-        }
-        return PortOperations.itemsPerOperation(upgrades);
+        return PortOperations.itemsPerOperation(speedUpgrades());
     }
 
     public int transferBudget() {
@@ -351,7 +352,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public int drainPerTick() {
-        return JasmConfig.PORT_DRAIN.getAsInt();
+        return SpeedUpgradeItem.power(JasmConfig.PORT_DRAIN.getAsInt(), speedUpgrades());
     }
 
     public boolean installed() {
