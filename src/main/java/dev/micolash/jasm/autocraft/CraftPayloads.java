@@ -54,6 +54,20 @@ public final class CraftPayloads {
         }
     }
 
+    /** Server → client: what the open Crafting Server's job is crafting right now. Sent only when it changes. */
+    public record ServerNow(int containerId, List<CraftingJob.Now> rows) implements CustomPacketPayload {
+        public static final Type<ServerNow> TYPE = new Type<>(Jasm.id("server_now"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ServerNow> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, ServerNow::containerId,
+                CraftingJob.Now.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_LIST)), ServerNow::rows,
+                ServerNow::new);
+
+        @Override
+        public Type<ServerNow> type() {
+            return TYPE;
+        }
+    }
+
     /** A server the request could go to. */
     public record ServerView(BlockPos pos, int memory, int parallel, boolean busy, boolean fits) {
         static final StreamCodec<RegistryFriendlyByteBuf, ServerView> STREAM_CODEC = StreamCodec.composite(

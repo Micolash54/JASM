@@ -3,13 +3,17 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.core.GridEntries;
+import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
@@ -18,8 +22,8 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * The Crafting Server screen: Processors and Storage Modules in a side panel on the left; in
- * the main panel, the job (what it makes, how far along, what holds it up) with buttons to cancel it or collect its
- * results, and the player's inventory. Opened from a Crafting Deck, it also has a button back to the Deck.
+ * the main panel, the job (what it makes, how far along, what holds it up, and what is crafting right now) with buttons to
+ * cancel it or collect its results, and the player's inventory. Opened from a Crafting Deck, it also has a button back to the Deck.
  */
 public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int MAIN_X = CraftingServerMenu.MAIN_X;
@@ -32,13 +36,28 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int PANEL_X = MAIN_X + 8;
     private static final int PANEL_Y = CraftingServerMenu.JOB_Y - 4;
     private static final int PANEL_W = MAIN_WIDTH - 16;
-    private static final int PANEL_H = 62;
+    private static final int PANEL_H = 108;
     private static final int BUTTONS_Y = PANEL_Y + PANEL_H + 4;
+    /** The list of what is crafting right now, under a line below the job's state. */
+    private static final int LIST_X = CraftingServerMenu.JOB_X;
+    private static final int LIST_Y = CraftingServerMenu.JOB_Y + 34;
+    private static final int ROW_H = 19;
+    private static final int ROWS = 3;
+    private static final int LIST_RIGHT = PANEL_X + 143;
+    private static final int SCROLL_X = PANEL_X + 146;
+    private static final int SCROLL_W = 10;
+    private static final int HANDLE_HEIGHT = 12;
+    private static final int TEXT_X = LIST_X + 19;
+    private static final int ROW_BAR_W = 70;
+    /** The name of the machine a craft is out in. */
+    private static final int MACHINE = 0xFF89B4FA;
 
     private Button cancel;
     private Button collect;
     private Button back;
     private JasmFrame frame;
+    private int scroll;
+    private boolean draggingHandle;
 
     public CraftingServerScreen(CraftingServerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -80,6 +99,10 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         JasmGui.inset(graphics, x + PANEL_X, y + PANEL_Y, PANEL_W, PANEL_H);
         JasmGui.bar(graphics, x + BAR_X, y + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
         if (menu.busy()) {
+            JasmGui.divider(graphics, x + PANEL_X + 2, y + CraftingServerMenu.JOB_Y + 30, PANEL_W - 4);
+            int track = visibleRows() * ROW_H - 1;
+            int offset = maxScroll() == 0 ? 0 : Math.round((track - 2 - HANDLE_HEIGHT) * Math.clamp(scroll, 0, maxScroll()) / (float) maxScroll());
+            JasmGui.scrollBar(graphics, x + SCROLL_X, y + listTop() - 1, SCROLL_W, track, offset, HANDLE_HEIGHT, maxScroll() > 0);
             JasmGui.bar(graphics, x + PANEL_X + 4, y + PANEL_Y + PANEL_H - 10, PANEL_W - 8, 6, menu.progress());
         }
     }
@@ -101,6 +124,16 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
                     String.format("%,d", menu.capacity())), mouseX, mouseY);
         }
+        // A row's full name, and on a machine's row what the job waits on there.
+        int row = (mouseY - topPos - listTop()) / ROW_H;
+        if (menu.busy() && mouseX >= leftPos + LIST_X && mouseX < leftPos + LIST_RIGHT && mouseY >= topPos + listTop() && row < visibleRows()
+                && scroll + row < menu.now().size()) {
+            CraftingJob.Now now = menu.now().get(scroll + row);
+            List<FormattedCharSequence> tip = new ArrayList<>();
+            tip.add(name(now.what().toStack(1)).getVisualOrderText());
+            if (now.machine().isPresent() && menu.waiting() != null) tip.addAll(font.split(menu.waiting().copy().withColor(JasmGui.SUBTEXT), 170));
+            graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
+        }
         if (menu.phase() == CraftingJob.Phase.CRAFTING) {
             int right = leftPos + PANEL_X + 4 + PANEL_W - 8;
             int top = topPos + CraftingServerMenu.JOB_Y + 20;
@@ -111,6 +144,55 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
                 graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
             }
         }
+    }
+
+    private boolean onScrollBar(double mouseX, double mouseY) {
+        return mouseX >= leftPos + SCROLL_X - 1 && mouseX < leftPos + SCROLL_X + SCROLL_W + 1 && mouseY >= topPos + listTop() - 1
+                && mouseY < topPos + listTop() - 1 + visibleRows() * ROW_H - 1;
+    }
+
+    private void scrollToMouse(double mouseY) {
+        double travel = visibleRows() * ROW_H - 3 - HANDLE_HEIGHT;
+        double fraction = Math.clamp((mouseY - topPos - listTop() - HANDLE_HEIGHT / 2.0) / travel, 0.0, 1.0);
+        scroll = (int) Math.round(fraction * maxScroll());
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (menu.busy() && mouseX >= leftPos + LIST_X && mouseX < leftPos + SCROLL_X + SCROLL_W && mouseY >= topPos + listTop()
+                && mouseY < topPos + listTop() + visibleRows() * ROW_H) {
+            scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, maxScroll());
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (menu.busy() && maxScroll() > 0 && onScrollBar(event.x(), event.y())) {
+            draggingHandle = true;
+            scrollToMouse(event.y());
+            return true;
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (draggingHandle) {
+            scrollToMouse(event.y());
+            return true;
+        }
+        return super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (draggingHandle) {
+            draggingHandle = false;
+            return true;
+        }
+        return super.mouseReleased(event);
     }
 
     /** Below the side panel is outside the screen, so items dropped there fall out as usual. */
@@ -155,20 +237,67 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             stateRoom = room - width - 6;
         }
         graphics.text(font, trim(state.getString(), stateRoom), tx, CraftingServerMenu.JOB_Y + 20, JasmGui.SUBTEXT, false);
+        // What holds the job up, over the list: up to two lines, so a long reason is read, not cut.
         PauseReason pause = menu.pause();
-        Component detail = pause != PauseReason.NONE
-                ? Component.translatable(pause.key())
-                : phase == CraftingJob.Phase.RETURNING
-                        ? Component.empty()
-                        : menu.waiting() != null
-                                ? menu.waiting()
-                                : Component.translatable("screen.jasm.server.active", menu.active());
-        // Up to two lines, so a long reason is read, not cut.
-        List<FormattedCharSequence> lines = font.split(detail, room);
-        for (int i = 0; i < Math.min(2, lines.size()); i++) {
-            graphics.text(font, lines.get(i), tx, CraftingServerMenu.JOB_Y + 30 + i * 9, pause == PauseReason.NONE ? JasmGui.MUTED : JasmGui.BAD,
-                    false);
+        if (pause != PauseReason.NONE) {
+            List<FormattedCharSequence> lines = font.split(Component.translatable(pause.key()), room);
+            for (int i = 0; i < Math.min(2, lines.size()); i++) {
+                graphics.text(font, lines.get(i), tx, LIST_Y + i * 9, JasmGui.BAD, false);
+            }
         }
+        // What is crafting right now, a row each: how far its step is, and how many run at once or the machine they are in.
+        List<CraftingJob.Now> rows = menu.now();
+        scroll = Math.clamp(scroll, 0, maxScroll());
+        for (int row = 0; row < visibleRows() && scroll + row < rows.size(); row++) {
+            CraftingJob.Now now = rows.get(scroll + row);
+            int y = listTop() + row * ROW_H;
+            ItemStack stack = now.what().toStack(1);
+            icon(graphics, stack, LIST_X, y);
+            Component right = now.machine().orElse(Component.literal("×" + now.running()));
+            String label = trim(right.getString(), 60);
+            int labelWidth = font.width(label);
+            graphics.text(font, label, LIST_RIGHT - labelWidth, y, now.machine().isPresent() ? MACHINE : JasmGui.GOOD, false);
+            graphics.text(font, trim(name(stack).getString(), LIST_RIGHT - TEXT_X - labelWidth - 4), TEXT_X, y, JasmGui.TEXT, false);
+            String count = amount(stack, now.made()) + "/" + amount(stack, now.total());
+            int countWidth = font.width(count);
+            graphics.text(font, count, LIST_RIGHT - countWidth, y + 9, JasmGui.MUTED, false);
+            JasmGui.bar(graphics, TEXT_X, y + 10, Math.min(ROW_BAR_W, LIST_RIGHT - TEXT_X - countWidth - 4), 5,
+                    now.total() == 0 ? 0 : now.made() / (double) now.total());
+        }
+    }
+
+    /** The list starts a row lower while a reason is shown over it. */
+    private int listTop() {
+        return LIST_Y + (menu.pause() != PauseReason.NONE ? ROW_H : 0);
+    }
+
+    private int visibleRows() {
+        return menu.pause() != PauseReason.NONE ? ROWS - 1 : ROWS;
+    }
+
+    private int maxScroll() {
+        return Math.max(0, menu.now().size() - visibleRows());
+    }
+
+    private static void icon(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y) {
+        FluidResource fluid = FluidMarkerItem.fluidOf(stack);
+        MaterialKey material = MaterialMarkerItem.materialOf(stack);
+        if (fluid != null) {
+            FluidGrid.draw(graphics, fluid, x, y);
+        } else if (material != null) {
+            MaterialIcons.draw(graphics, material, x, y);
+        } else {
+            graphics.item(stack, x, y);
+        }
+    }
+
+    private static Component name(ItemStack stack) {
+        MaterialKey material = MaterialMarkerItem.materialOf(stack);
+        return material != null ? MaterialIcons.name(material) : stack.getHoverName();
+    }
+
+    private static String amount(ItemStack stack, long count) {
+        return FluidMarkerItem.isMarker(stack) ? FluidAmounts.label(count) : GridEntries.abbreviate(count);
     }
 
     private static final int PIP = 3;

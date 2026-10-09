@@ -14,7 +14,11 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -183,6 +187,20 @@ public final class CraftingJob {
         }
     }
 
+    /**
+     * One kind of craft running right now, for screens: what it makes, how much of it the job has made out of how much,
+     * how many run at once, and the machine's name when they are out in one (empty when they run in the server).
+     */
+    public record Now(ItemResource what, long made, long total, int running, Optional<Component> machine) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, Now> STREAM_CODEC = StreamCodec.composite(
+                ItemResource.STREAM_CODEC, Now::what,
+                ByteBufCodecs.VAR_LONG, Now::made,
+                ByteBufCodecs.VAR_LONG, Now::total,
+                ByteBufCodecs.VAR_INT, Now::running,
+                ByteBufCodecs.optional(ComponentSerialization.STREAM_CODEC), Now::machine,
+                Now::new);
+    }
+
     public static final Codec<CraftingJob> CODEC = RecordCodecBuilder.create(i -> i.group(
             UUIDUtil.CODEC.fieldOf("id").forGetter(j -> j.id),
             Codec.LONG.fieldOf("serial").forGetter(j -> j.serial),
@@ -340,6 +358,35 @@ public final class CraftingJob {
 
     public PauseReason pause() {
         return pause;
+    }
+
+    /** What is crafting right now, one entry per step with crafts running, the final item first and its ingredients after. */
+    public List<Now> now() {
+        int[] running = new int[steps.size()];
+        Component[] machine = new Component[steps.size()];
+        for (Running craft : this.running) {
+            if (craft.step < running.length) running[craft.step]++;
+        }
+        for (Sent set : sent) {
+            if (set.step >= running.length) continue;
+            running[set.step]++;
+            if (machine[set.step] == null && steps.get(set.step).card instanceof ProcessingCard card) {
+                // The name the machine had when the card was written; looking it up in the world each time would cost more.
+                String name = card.machines().stream().filter(m -> m.at().equals(set.at())).map(ProcessingCard.Machine::name)
+                        .findFirst().orElse("");
+                machine[set.step] = name.isBlank() ? Component.translatable("screen.jasm.server.machine") : Component.literal(name);
+            }
+        }
+        List<Now> now = new ArrayList<>();
+        for (int i = steps.size() - 1; i >= 0; i--) {
+            if (running[i] == 0) continue;
+            Step step = steps.get(i);
+            long each = step.card instanceof ProcessingCard card ? card.main().count() : step.card.result().getCount();
+            long made = Math.max(0, step.total - step.left - running[i]);
+            now.add(new Now(ItemResource.of(step.card.result()), made * each, step.total * each, running[i],
+                    Optional.ofNullable(machine[i])));
+        }
+        return now;
     }
 
     /** How far along, from 0 to 1, by crafts finished. */

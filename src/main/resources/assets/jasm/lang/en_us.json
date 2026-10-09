@@ -28,7 +28,7 @@
   "screen.jasm.server.crafting": "Crafting: %s%%",
   "screen.jasm.server.cancelling": "Stopping...",
   "screen.jasm.server.returning": "Handing results back",
-  "screen.jasm.server.active": "%s running",
+  "screen.jasm.server.machine": "Machine",
   "screen.jasm.server.pause.no_power": "Waiting for power",
   "screen.jasm.server.pause.no_card": "A Recipe Card is missing",
   "screen.jasm.server.pause.waiting_player": "Waiting for its Deck",
