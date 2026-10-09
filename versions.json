@@ -2,13 +2,15 @@
   "lines": {
     "26.1": {
       "mc": "26.1.2",
-      "jasm": "0.6.2",
+      "jasm": "0.6.3",
       "pages": [
         "getting-started.html",
         "index.html",
         "items/access-port.html",
         "items/advanced-chips.html",
+        "items/advanced-crafting-server.html",
         "items/archives.html",
+        "items/battery.html",
         "items/bitling-station.html",
         "items/bitlings.html",
         "items/blank-chip.html",
@@ -17,6 +19,7 @@
         "items/combustion-generators.html",
         "items/crafting-decks.html",
         "items/crafting-server.html",
+        "items/crafting-upgrade.html",
         "items/crystal-dust.html",
         "items/crystal-foundry.html",
         "items/crystal-resonator.html",
@@ -46,6 +49,7 @@
         "items/redstone-upgrade.html",
         "items/seeded-amethyst.html",
         "items/speed-upgrade.html",
+        "items/stock-upgrade.html",
         "items/storage-modules.html",
         "items/storage-port.html",
         "items/synapse-core.html",
