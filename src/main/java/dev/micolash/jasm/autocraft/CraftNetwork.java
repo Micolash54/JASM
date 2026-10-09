@@ -76,6 +76,7 @@ public final class CraftNetwork {
                 .playToClient(CraftPayloads.PortLinkedPlayer.TYPE, CraftPayloads.PortLinkedPlayer.STREAM_CODEC, CraftNetwork::onPortLinkedPlayer)
                 .playToClient(CraftPayloads.TerminalDeck.TYPE, CraftPayloads.TerminalDeck.STREAM_CODEC, CraftNetwork::onTerminalDeck)
                 .playToClient(CraftPayloads.ServerWaiting.TYPE, CraftPayloads.ServerWaiting.STREAM_CODEC, CraftNetwork::onServerWaiting)
+                .playToClient(CraftPayloads.ServerNow.TYPE, CraftPayloads.ServerNow.STREAM_CODEC, CraftNetwork::onServerNow)
                 .playToClient(CraftPayloads.TrustView.TYPE, CraftPayloads.TrustView.STREAM_CODEC, CraftNetwork::onTrustView)
                 .playToClient(CraftPayloads.Status.TYPE, CraftPayloads.Status.STREAM_CODEC, CraftNetwork::onStatus)
                 .playToClient(CraftPayloads.Answer.TYPE, CraftPayloads.Answer.STREAM_CODEC, CraftNetwork::onAnswer);
@@ -253,6 +254,12 @@ public final class CraftNetwork {
     private static void onServerWaiting(CraftPayloads.ServerWaiting payload, IPayloadContext context) {
         if (context.player().containerMenu instanceof CraftingServerMenu menu && menu.containerId == payload.containerId()) {
             menu.setWaiting(payload.line().orElse(null));
+        }
+    }
+
+    private static void onServerNow(CraftPayloads.ServerNow payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof CraftingServerMenu menu && menu.containerId == payload.containerId()) {
+            menu.setNow(payload.rows());
         }
     }
 

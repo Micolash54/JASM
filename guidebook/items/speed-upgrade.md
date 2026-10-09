@@ -15,7 +15,7 @@ item_ids:
 Makes a port or a bay work faster.
 
 * A port has four upgrade slots, one Speed Upgrade in each. Four of them move 96 items every operation, up from 1. See [item ports](item-ports.md).
-* A [Deployment Bay](deployment-bay.md) or [Demolition Bay](demolition-bay.md) takes them too. Each upgrade shortens its action, down to half a second.
+* A [Deployment Bay](deployment-bay.md) or [Demolition Bay](demolition-bay.md) takes them too. Each upgrade shortens its action, down to a quarter of a second with four upgrades. The power per action goes up too: four upgrades cost eight times as much for the same action.
 
 Upgrades stack normally in your inventory and in storage.
 

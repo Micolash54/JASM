@@ -32,6 +32,7 @@ public class JasmButton extends Button {
 
     private final @Nullable Supplier<Icon> icon;
     private final boolean wrap;
+    private boolean small;
     private boolean held;
     private long flashUntil;
     private boolean selected;
@@ -44,6 +45,13 @@ public class JasmButton extends Button {
 
     public static JasmButton text(Component message, OnPress onPress, int x, int y, int width, int height) {
         return (JasmButton) Button.builder(message, onPress).bounds(x, y, width, height).build(b -> new JasmButton(b, null, false));
+    }
+
+    /** A text button whose label is drawn at {@link JasmGui#SMALL_TEXT} size. */
+    public static JasmButton smallText(Component message, OnPress onPress, int x, int y, int width, int height) {
+        JasmButton button = text(message, onPress, x, y, width, height);
+        button.small = true;
+        return button;
     }
 
     public static JasmButton wrappedText(Component message, OnPress onPress, int x, int y, int width, int height) {
@@ -117,6 +125,11 @@ public class JasmButton extends Button {
                 graphics.text(font, line, getX() + (getWidth() - font.width(line)) / 2, y, bright ? JasmGui.TEXT : JasmGui.MUTED, false);
                 y += font.lineHeight;
             }
+        } else if (small) {
+            var font = Minecraft.getInstance().font;
+            int width = JasmGui.smallWidth(font, getMessage());
+            JasmGui.smallText(graphics, font, getMessage(), getX() + (getWidth() - width + 1) / 2,
+                    getY() + Math.round((getHeight() - 7 * JasmGui.SMALL_TEXT) / 2), bright ? JasmGui.TEXT : JasmGui.MUTED);
         } else {
             var font = Minecraft.getInstance().font;
             int width = font.width(getMessage());

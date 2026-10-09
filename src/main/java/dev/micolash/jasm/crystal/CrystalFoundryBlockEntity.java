@@ -7,6 +7,7 @@ import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
@@ -40,7 +41,10 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     public static final int INPUT = 0;
     public static final int OUTPUT_FIRST = 1;
     public static final int OUTPUT_COUNT = 9;
-    public static final int SLOTS = OUTPUT_FIRST + OUTPUT_COUNT;
+    /** Older Foundries have nothing past the outputs, so these load empty. */
+    public static final int UPGRADE_START = OUTPUT_FIRST + OUTPUT_COUNT;
+    public static final int UPGRADES = 4;
+    public static final int SLOTS = UPGRADE_START + UPGRADES;
     public static final int CAPACITY = 50_000;
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
@@ -52,13 +56,15 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     private int progress;
     /** Whether the last tick grew the crystal along; only for the power it takes. */
     private boolean busy;
+    /** Speed Upgrades in the slots, counted at the start of each tick. */
+    private int upgrades;
 
     private final ContainerData data = new ContainerData() {
         @Override
         public int get(int index) {
             return switch (index) {
                 case CrystalFoundryMenu.DATA_PROGRESS -> progress;
-                case CrystalFoundryMenu.DATA_TICKS -> Tuning.FOUNDRY_TICKS_PER_CRYSTAL;
+                case CrystalFoundryMenu.DATA_TICKS -> ticksPerCrystal();
                 case CrystalFoundryMenu.DATA_MADE -> made;
                 case CrystalFoundryMenu.DATA_PER_SEED -> JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt();
                 case CrystalFoundryMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
@@ -135,7 +141,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         tag.putBoolean("growing", growing);
         tag.putBoolean("busy", busy);
         tag.putInt("progress", progress);
-        tag.putInt("ticks", Tuning.FOUNDRY_TICKS_PER_CRYSTAL);
+        tag.putInt("ticks", ticksPerCrystal());
         return tag;
     }
 
@@ -157,7 +163,13 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         shownAt = level == null ? 0 : level.getGameTime();
     }
 
+    /** Ticks one crystal takes: the bays' speed-up for the Speed Upgrades inside. */
+    public int ticksPerCrystal() {
+        return SpeedUpgradeItem.ticks(Tuning.FOUNDRY_TICKS_PER_CRYSTAL, upgrades);
+    }
+
     private void tick() {
+        upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
         busy = false;
         if (!growing && items.get(INPUT).is(JasmItems.CRYSTAL_SEED.get())) {
             items.get(INPUT).shrink(1);
@@ -174,7 +186,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
         if (!payForTick()) {
             return;
         }
-        if (++progress >= Tuning.FOUNDRY_TICKS_PER_CRYSTAL) {
+        if (++progress >= ticksPerCrystal()) {
             progress = 0;
             output();
             if (++made >= JasmConfig.FOUNDRY_CRYSTALS_PER_SEED.getAsInt()) {
@@ -214,7 +226,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
 
     @Override
     public int drainPerTick() {
-        return busy ? JasmConfig.FOUNDRY_DRAIN.getAsInt() : 0;
+        return busy ? SpeedUpgradeItem.perTick(JasmConfig.FOUNDRY_DRAIN.getAsInt(), Tuning.FOUNDRY_TICKS_PER_CRYSTAL, ticksPerCrystal(), upgrades) : 0;
     }
 
     public boolean growing() {
@@ -249,6 +261,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     }
 
     public static boolean accepts(int slot, ItemStack stack) {
+        if (slot >= UPGRADE_START && slot < SLOTS) return stack.is(JasmItems.SPEED_UPGRADE.get());
         return slot == INPUT && stack.is(JasmItems.CRYSTAL_SEED.get());
     }
 
@@ -320,13 +333,13 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
 
         @Override
         public int extract(int index, ItemResource resource, int amount, TransactionContext transaction) {
-            return index >= OUTPUT_FIRST ? super.extract(index, resource, amount, transaction) : 0;
+            return index >= OUTPUT_FIRST && index < UPGRADE_START ? super.extract(index, resource, amount, transaction) : 0;
         }
 
         @Override
         public int extract(ItemResource resource, int amount, TransactionContext transaction) {
             int taken = 0;
-            for (int slot = OUTPUT_FIRST; slot < SLOTS && taken < amount; slot++) {
+            for (int slot = OUTPUT_FIRST; slot < UPGRADE_START && taken < amount; slot++) {
                 taken += extract(slot, resource, amount - taken, transaction);
             }
             return taken;

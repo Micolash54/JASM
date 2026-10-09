@@ -23,6 +23,7 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.DataSlot;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -76,10 +77,10 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
                 public boolean isActive() { return !linkCover.covers(this); }
                 @Override
                 public boolean mayPlace(ItemStack stack) {
-                    if (stack.is(JasmItems.SPEED_UPGRADE.get())) return true;
-                    if (!stack.is(JasmItems.REDSTONE_UPGRADE.get())) return false;
+                    if (!TransferPortBlockEntity.takesUpgrade(kind, stack)) return false;
+                    if (!TransferPortBlockEntity.single(stack)) return true;
                     for (int j = 0; j < PortOperations.UPGRADE_SLOTS; j++) {
-                        if (getSlot(j) != this && getSlot(j).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return false;
+                        if (getSlot(j) != this && getSlot(j).getItem().is(stack.getItem())) return false;
                     }
                     return true;
                 }
@@ -132,9 +133,12 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
     }
     public TransferFilters filters() { return filters; }
     public RedstoneMode redstoneMode() { return port == null ? redstoneMode : port.redstoneMode(); }
-    public boolean hasRedstoneUpgrade() {
+    public boolean hasRedstoneUpgrade() { return hasUpgrade(JasmItems.REDSTONE_UPGRADE.get()); }
+    /** Whether the Output filter shows its Stock fields. */
+    public boolean hasStockUpgrade() { return kind.exports() && hasUpgrade(JasmItems.STOCK_UPGRADE.get()); }
+    private boolean hasUpgrade(Item upgrade) {
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
-            if (getSlot(i).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return true;
+            if (getSlot(i).getItem().is(upgrade)) return true;
         }
         return false;
     }
@@ -205,7 +209,7 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
                 moved = true;
             }
             if (!moved) return ItemStack.EMPTY;
-        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        } else if (TransferPortBlockEntity.single(stack)) {
             if (!moveItemStackTo(stack, 0, LINK_IN, false)) return ItemStack.EMPTY;
         } else if (stack.is(JasmItems.POWER_UPGRADE.get())) {
             if (!moveItemStackTo(stack, POWER, POWER + 1, false)) return ItemStack.EMPTY;

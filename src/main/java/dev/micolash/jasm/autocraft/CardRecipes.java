@@ -79,7 +79,7 @@ public final class CardRecipes {
         private final CraftingRecipe recipe;
         private final List<ItemStack> encoded;
         private final ItemStack output;
-        /** What one craft of the encoded grid leaves in each slot, worked out when first asked. */
+        /** What one craft of the encoded grid leaves in each of the nine slots, worked out when first asked. */
         private @Nullable List<ItemStack> leftovers;
 
         Resolved(RecipeCard card, CraftingRecipe recipe, List<ItemStack> encoded, ItemStack output) {
@@ -95,13 +95,28 @@ public final class CardRecipes {
          */
         public boolean returnsSelf(int slot) {
             ItemStack there = encoded.get(slot);
-            if (there.isEmpty()) {
-                return false;
-            }
+            ItemStack left = leftover(slot);
+            return !there.isEmpty() && !left.isEmpty() && sameBesidesWear(left, there);
+        }
+
+        /** What one craft of the encoded grid leaves in grid slot {@code slot}, or empty. */
+        public ItemStack leftover(int slot) {
             if (leftovers == null) {
-                leftovers = List.copyOf(recipe.getRemainingItems(CraftingInput.of(3, 3, encoded)));
+                // The recipe sees the grid cut down to its used rows and columns, so its leftovers are placed back by position.
+                CraftingInput.Positioned positioned = CraftingInput.ofPositioned(3, 3, encoded);
+                CraftingInput input = positioned.input();
+                List<ItemStack> left = recipe.getRemainingItems(input);
+                NonNullList<ItemStack> bySlot = NonNullList.withSize(9, ItemStack.EMPTY);
+                for (int i = 0; i < left.size() && input.width() > 0; i++) {
+                    int row = positioned.top() + i / input.width();
+                    int column = positioned.left() + i % input.width();
+                    if (row < 3 && column < 3) {
+                        bySlot.set(row * 3 + column, left.get(i));
+                    }
+                }
+                leftovers = List.copyOf(bySlot);
             }
-            return slot < leftovers.size() && !leftovers.get(slot).isEmpty() && sameBesidesWear(leftovers.get(slot), there);
+            return leftovers.get(slot);
         }
 
         /** The same item with the same data, whatever its wear. */
@@ -145,8 +160,9 @@ public final class CardRecipes {
         /**
          * Whether {@code candidate} may stand in for the encoded item in {@code slot}: the recipe still matches with it
          * there. Items carrying extra data (enchantments, damage, names) only stand in when the encoded item had the
-         * same data, so a worn or enchanted tool is never used up by accident. The exception is what the recipe itself
-         * hands back worn: that goes in again, so a crystal that returns with a little wear keeps serving.
+         * same data, so a worn or enchanted tool is never used up by accident. A slot whose item the recipe hands back
+         * keeps to that item, at any wear: a card with a regular crystal never takes a Master one, and a crystal that
+         * returns with a little wear keeps serving.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
             ItemStack there = encoded.get(slot);
@@ -157,8 +173,11 @@ public final class CardRecipes {
                 return true;
             }
             ItemStack stack = candidate.toStack(1);
-            boolean again = returnsSelf(slot) && sameBesidesWear(stack, there);
-            if (!again && !stack.getComponentsPatch().equals(DataComponentPatch.EMPTY)) {
+            if (returnsSelf(slot)) {
+                if (!sameBesidesWear(stack, there)) {
+                    return false;
+                }
+            } else if (!stack.getComponentsPatch().equals(DataComponentPatch.EMPTY)) {
                 return false;
             }
             NonNullList<ItemStack> test = NonNullList.withSize(9, ItemStack.EMPTY);

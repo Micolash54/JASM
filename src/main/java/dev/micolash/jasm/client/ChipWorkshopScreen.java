@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.workshop.BitlingItem;
+import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopMenu;
 import dev.micolash.jasm.workshop.WorkshopNeed;
 import java.util.List;
@@ -21,14 +22,16 @@ import org.jspecify.annotations.Nullable;
  * The Workshop screen. The Workshop's own panel sits in the middle of the screen: the Single/Batch button by the
  * title, the Blank Chip slot and progress in the first column, the output grid in the second, then the player's
  * inventory. The critter's panel hangs off its left side: slot, name, status, a speech bubble, the Byteling's
- * standard/Advanced switch, then its training and battery bars. The I/O grid's key hangs off the right side.
+ * standard/Advanced switch, then its training and battery bars. The upgrade column hangs off the right side with the I/O
+ * grid's key under it, as on the bays.
  */
 public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private JasmFrame frame;
     private static final int SIDE = ChipWorkshopMenu.SIDE_WIDTH;
     private static final int MAIN_X = ChipWorkshopMenu.MAIN_X;
-    /** The I/O grid's key hangs off the Workshop panel's right side. */
+    /** The upgrade column and the I/O grid's key hang off the Workshop panel's right side. */
     private static final int KEY_X = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
+    private static final int KEYS_Y = ChipWorkshopMenu.UPGRADE_Y + ChipWorkshopBlockEntity.UPGRADES * 18 + 4;
     private static final int WIDTH = KEY_X + JasmGui.SIDE_KEY_WIDTH + 3;
     /** Both panels are the same height; the critter's holds a speech bubble, a switch and two bars. */
     private static final int SIDE_HEIGHT = 178;
@@ -97,7 +100,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         if (io == null) {
             io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
         }
-        addRenderableWidget(io.key(leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), topPos));
+        addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
     }
 
     private Component batchLabel() {
@@ -184,7 +187,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         int y = topPos;
         if (frame == null)
             frame = JasmFrame.rounded(new int[]{0, 0, SIDE, SIDE_HEIGHT}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight},
-                    JasmGui.sideStrip(KEY_X, 1));
+                    new int[]{KEY_X - 14, ChipWorkshopMenu.UPGRADE_Y - 4, 38,
+                            KEYS_Y + JasmGui.SIDE_KEY_HEIGHT + 5 - (ChipWorkshopMenu.UPGRADE_Y - 4)});
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);

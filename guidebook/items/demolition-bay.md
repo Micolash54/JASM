@@ -24,7 +24,7 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 
 | At a glance | |
 | --- | --- |
-| Speed | 2 seconds, down to half a second with 3 [Speed Upgrades](speed-upgrade.md) |
+| Speed | 2 seconds, down to a quarter of a second with 4 [Speed Upgrades](speed-upgrade.md) |
 | Breaking | 6 FE for each point of cost: 1, plus the block's hardness and drops, times enchantments |
 | Scooping | 50 FE a bucket |
 | Holds | 10,000 FE and 16 buckets |
@@ -35,6 +35,7 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 
 * Its Input / Output key opens sides for items and fluids separately, each Output or closed. A side set to Output sends what it broke or scooped into whatever is there, and an [Input Port](item-ports.md), hopper or pipe can empty it there. Every side starts closed.
 * It runs on cable power and doesn't take up a place on the machine limit.
+* Speed Upgrades raise the power per break or scoop as well as the speed. Four upgrades cost eight times the power for each action.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can work once for each redstone pulse.
 * You can add [filters](../mechanics/type-filters.md) to decide what it may or may not break. Works for items and fluids.
 

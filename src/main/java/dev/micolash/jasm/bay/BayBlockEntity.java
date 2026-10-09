@@ -8,6 +8,7 @@ import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferSettings;
+import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.List;
@@ -186,7 +187,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
             setStatus(plan.status());
             return;
         }
-        if (energy.getAmountAsInt() < plan.cost()) {
+        if (!canPay(plan.cost())) {
             setStatus(BayStatus.NO_POWER);
             return;
         }
@@ -197,8 +198,19 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
                 Math.min(ticks, EVENT_SCOOP - 1) | (plan.scoop() ? EVENT_SCOOP : 0));
     }
 
-    /** Pays {@code fe} if the buffer holds it. */
+    /** What an action costing {@code fe} on its own really costs, with this bay's Speed Upgrades. */
+    private int powerFor(int fe) {
+        return SpeedUpgradeItem.power(fe, speedUpgrades());
+    }
+
+    /** Whether the buffer holds the whole cost, including the Speed Upgrades' extra. */
+    protected boolean canPay(int fe) {
+        return energy.getAmountAsInt() >= powerFor(fe);
+    }
+
+    /** Pays {@code fe}, plus the Speed Upgrades' extra, if the buffer holds it. */
     protected boolean pay(int fe) {
+        fe = powerFor(fe);
         int amount = energy.getAmountAsInt();
         if (amount < fe) return false;
         if (fe > 0) energy.set(amount - fe);
@@ -295,9 +307,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     // --- upgrades and redstone ---
 
     public int speedUpgrades() {
-        int count = 0;
-        for (int i = UPGRADE_START; i < SLOTS; i++) if (items.get(i).is(JasmItems.SPEED_UPGRADE.get())) count++;
-        return count;
+        return SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
     }
 
     public boolean hasRedstoneUpgrade() {

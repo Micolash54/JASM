@@ -36,6 +36,8 @@ public final class JasmGui {
     private static final int NOTICE = 0xE811111B;
     private static final int SHADOW = 0x6E000000;
     private static final float ITEM_COUNT_SCALE = 0.7F;
+    /** Text a little smaller than normal, for crowded lines like a filter row's keys. */
+    public static final float SMALL_TEXT = 0.8F;
 
     private static final Identifier SLOT = Jasm.id("slot");
     private static final Identifier INSET = Jasm.id("inset");
@@ -135,6 +137,20 @@ public final class JasmGui {
         graphics.pose().scale(scale, scale);
         graphics.text(font, count, -font.width(count), -font.lineHeight + 1, 0xFFFFFFFF, true);
         graphics.pose().popMatrix();
+    }
+
+    /** Text at {@link #SMALL_TEXT} size, its top left corner at the given spot. */
+    public static void smallText(GuiGraphicsExtractor graphics, Font font, Component text, int x, int y, int color) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        graphics.pose().scale(SMALL_TEXT, SMALL_TEXT);
+        graphics.text(font, text, 0, 0, color, false);
+        graphics.pose().popMatrix();
+    }
+
+    /** How wide {@code text} is at {@link #SMALL_TEXT} size. */
+    public static int smallWidth(Font font, Component text) {
+        return Math.round(font.width(text) * SMALL_TEXT);
     }
 
     /** Smaller counts anchored to the bottom right of a Deck item. */

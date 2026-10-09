@@ -8,9 +8,10 @@ public final class BayClock {
     private int left;
     private boolean pulse;
 
-    /** Ticks a cycle lasts with this many Speed Upgrades. Past the end of the table, the last entry. */
+    /** Four-entry settings give the fourth upgrade half the last time; other missing entries use the last. */
     public static int ticksFor(int speedUpgrades, List<? extends Integer> table) {
         if (table.isEmpty()) return 20;
+        if (speedUpgrades >= 4 && table.size() == 4) return Math.max(1, table.getLast() / 2);
         int index = Math.clamp(speedUpgrades, 0, table.size() - 1);
         return Math.max(1, table.get(index));
     }

@@ -29,6 +29,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -55,6 +56,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     private int turn;
     private TransferFilters filters = TransferFilters.DEFAULT;
     private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
+    private final PortCrafting crafting = new PortCrafting();
 
     public TransferPortBlockEntity(BlockPos pos, BlockState state, TransferPortKind kind, Direction face) {
         super(pos, state);
@@ -86,11 +88,24 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     public void setFilters(TransferFilters filters) { this.filters = filters; setChanged(); }
     public RedstoneMode redstoneMode() { return redstoneMode; }
     public void setRedstoneMode(RedstoneMode mode) { redstoneMode = mode; setChanged(); }
-    public boolean hasRedstoneUpgrade() {
+    public boolean hasRedstoneUpgrade() { return hasUpgrade(JasmItems.REDSTONE_UPGRADE.get()); }
+    /** Output side only: the Crafting and Stock Upgrades do nothing on a port that doesn't export. */
+    public boolean hasCraftingUpgrade() { return kind.exports() && hasUpgrade(JasmItems.CRAFTING_UPGRADE.get()); }
+    public boolean hasStockUpgrade() { return kind.exports() && hasUpgrade(JasmItems.STOCK_UPGRADE.get()); }
+    private boolean hasUpgrade(Item upgrade) {
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
-            if (getItem(SPEED_START + i).is(JasmItems.REDSTONE_UPGRADE.get())) return true;
+            if (getItem(SPEED_START + i).is(upgrade)) return true;
         }
         return false;
+    }
+    /** Upgrades a port holds one of at most, in any of its upgrade slots. */
+    public static boolean single(ItemStack stack) {
+        return stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CRAFTING_UPGRADE.get()) || stack.is(JasmItems.STOCK_UPGRADE.get());
+    }
+    /** Whether a port of this kind takes {@code stack} in its upgrade slots, ignoring what the other slots hold. */
+    public static boolean takesUpgrade(TransferPortKind kind, ItemStack stack) {
+        if (stack.is(JasmItems.CRAFTING_UPGRADE.get()) || stack.is(JasmItems.STOCK_UPGRADE.get())) return kind.exports();
+        return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get());
     }
     @Override
     public boolean hasMachine(Direction side) { return false; }
@@ -141,9 +156,10 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        if (slot >= SPEED_START && slot < INVENTORY_SIZE && stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        if (slot >= SPEED_START && slot < INVENTORY_SIZE && single(stack)) {
+            if (!takesUpgrade(kind, stack)) return false;
             for (int i = SPEED_START; i < INVENTORY_SIZE; i++) {
-                if (i != slot && getItem(i).is(JasmItems.REDSTONE_UPGRADE.get())) return false;
+                if (i != slot && getItem(i).is(stack.getItem())) return false;
             }
             return true;
         }
@@ -200,7 +216,10 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         // Thin ports in one block space read the same signal, each using its own mode.
         if (hasRedstoneUpgrade() && !redstoneMode.allows(world.hasNeighborSignal(worldPosition))) return;
         int budget = transferBudget();
-        if (budget <= 0) return;
+        // The Crafting Upgrade looks once a second, each port on its own tick.
+        boolean craft = hasCraftingUpgrade() && filters.output().hasAllow() && (world.getGameTime() + worldPosition.asLong()) % 20 == 0
+                && crafting.due(world.getGameTime());
+        if (budget <= 0 && !craft) return;
         var network = Networks.at(world, worldPosition);
         var pairing = network == null ? null : destination(network);
         if (pairing == null) return;
@@ -214,15 +233,18 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             return;
         var store = WaferStore.get(world.getServer());
         var storage = DeckStorage.checked(store, deck, player);
-        // Items and fluids share one allowance: an item is one share, and 125 mB of fluid is one share.
-        var allowance = new Allowance((int) Math.min(budget, DeckStorage.affordable(deck)), budget);
-        if (takesPushes()) allowance.itemsMoved(sendIntake(storage, allowance.forItems()));
-        List<Direction> faces = workFaces();
-        // A full port's faces take turns at going first, so one busy chest can't keep the others waiting.
-        int start = faces.isEmpty() ? 0 : Math.floorMod(turn++, faces.size());
-        for (int i = 0; i < faces.size() && allowance.shares > 0; i++) {
-            moveThrough(world, faces.get((start + i) % faces.size()), storage, store, deck, player, allowance);
+        if (budget > 0) {
+            // Items and fluids share one allowance: an item is one share, and 125 mB of fluid is one share.
+            var allowance = new Allowance((int) Math.min(budget, DeckStorage.affordable(deck)), budget);
+            if (takesPushes()) allowance.itemsMoved(sendIntake(storage, allowance.forItems()));
+            List<Direction> faces = workFaces();
+            // A full port's faces take turns at going first, so one busy chest can't keep the others waiting.
+            int start = faces.isEmpty() ? 0 : Math.floorMod(turn++, faces.size());
+            for (int i = 0; i < faces.size() && allowance.shares > 0; i++) {
+                moveThrough(world, faces.get((start + i) % faces.size()), storage, store, deck, player, allowance);
+            }
         }
+        if (craft) crafting.run(this, world, network, player, deck, storage);
         Jobs.refreshOpenDeck(player, deck);
     }
 
@@ -235,17 +257,22 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         if (inventory == null && tank == null && materials.isEmpty()) return;
         storage.avoiding(target);
         // Output takes the shared allowance first. Neither filter list disables the other direction.
+        boolean stock = hasStockUpgrade();
         if (inventory != null && kind.exports() && filters.output().hasAllow()) {
             var contents = storage.contents();
             var keys = new ArrayList<>(contents.keySet());
             keys.removeIf(key -> filters.output().rank(key.getItem()) < 0);
             keys.sort(Comparator.comparingInt(key -> filters.output().rank(key.getItem())));
+            long[] left = stock ? PortStock.itemsLeft(filters.output(), inventory) : null;
             for (var key : keys) {
                 if (allowance.forItems() <= 0) break;
+                int row = filters.output().rank(key.getItem());
+                long most = Math.min(Math.min(allowance.forItems(), contents.get(key)), PortStock.of(left, row));
+                if (most <= 0) continue;
                 // No transaction is open while the Deck moves things: its storage blocks open their own.
                 int accepted;
                 try (var tx = Transaction.openRoot()) {
-                    accepted = inventory.insert(key, (int) Math.min(allowance.forItems(), contents.get(key)), tx);   // only asking
+                    accepted = inventory.insert(key, (int) most, tx);   // only asking
                 }
                 if (accepted <= 0) continue;
                 var stacks = storage.withdrawQuietly(key, accepted);
@@ -261,6 +288,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 if (inserted > 0) {
                     allowance.itemsMoved(inserted);
                     transferred(inserted);
+                    PortStock.sent(left, row, inserted);
                 }
             }
         }
@@ -297,12 +325,14 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         }
         int shares = allowance.shares;
         if (tank != null && shares > 0) {
-            if (kind.exports() && filters.output().hasAllow()) shares -= fluidsOut(target, tank, storage, store, deck, player, shares);
+            if (kind.exports() && filters.output().hasAllow())
+                shares -= fluidsOut(tank, storage, deck, stock ? PortStock.fluidsLeft(filters.output(), tank) : null, shares);
             if (kind.imports() && shares > 0) shares -= fluidsIn(target, tank, storage, store, deck, player, shares);
         }
         if (!materials.isEmpty() && shares > 0) {
             if (kind.exports() && filters.output().hasAllow())
-                shares -= TransferMaterials.out(materials, storage, deck, filters.output(), shares, this::transferred);
+                shares -= TransferMaterials.out(materials, storage, deck, filters.output(),
+                        stock ? PortStock.materialsLeft(filters.output(), materials) : null, shares, this::transferred);
             if (kind.imports() && shares > 0)
                 shares -= TransferMaterials.in(materials, storage, deck, filters.input(), shares, this::transferred);
         }
@@ -346,9 +376,11 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         return taken;
     }
 
-    /** Pours fluid from the Deck into the block, as far as it takes and the allowance and charge go. Returns the shares used. */
-    private int fluidsOut(BlockPos target, ResourceHandler<FluidResource> tank, DeckStorage.Checked storage, WaferStore store, ItemStack deck,
-            ServerPlayer player, int shares) {
+    /**
+     * Pours fluid from the Deck into the block, as far as it takes, the allowance and charge go, and {@code left} (mB per
+     * Output row, null without a Stock Upgrade) allows. Returns the shares used.
+     */
+    private int fluidsOut(ResourceHandler<FluidResource> tank, DeckStorage.Checked storage, ItemStack deck, long @Nullable [] left, int shares) {
         var contents = storage.fluidContents();
         var keys = new ArrayList<>(contents.keySet());
         keys.removeIf(key -> filters.output().rank(key.getFluid()) < 0);
@@ -357,11 +389,14 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         for (var key : keys) {
             long room = Math.min((long) (shares - used) * FluidAmounts.PER_SHARE, DeckStorage.affordableFluid(deck));
             if (room <= 0) break;
+            int row = filters.output().rank(key.getFluid());
+            long limit = PortStock.of(left, row);
+            if (limit <= 0) continue;
             // No transaction is open while the Deck moves things: its storage blocks open their own.
             long accepted;
             try (var tx = Transaction.openRoot()) {
-                accepted = tank.insert(key, (int) Math.min(room, contents.get(key)), tx);   // only asking
-                if (accepted <= 0 && room < FluidAmounts.PER_BUCKET) {
+                accepted = tank.insert(key, (int) Math.min(Math.min(room, contents.get(key)), limit), tx);   // only asking
+                if (accepted <= 0 && room < FluidAmounts.PER_BUCKET && limit >= FluidAmounts.PER_BUCKET) {
                     // Some blocks (a cauldron) only take a whole bucket: offer one and pay it back out of the next operations.
                     long bucket = Math.min(Math.min(FluidAmounts.PER_BUCKET, contents.get(key)), DeckStorage.affordableFluid(deck));
                     accepted = tank.insert(key, (int) bucket, tx);
@@ -381,6 +416,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 int moved = (int) FluidAmounts.shares(inserted);
                 used += moved;
                 transferred(moved);
+                PortStock.sent(left, row, inserted);
             }
         }
         return used;

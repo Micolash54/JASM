@@ -15,6 +15,7 @@ public class JasmField extends EditBox {
     private static final Identifier HIGHLIGHTED = Jasm.id("field_highlighted");
     private static final Identifier FOCUSED = Jasm.id("field_focused");
     private static final int PAD = 4;
+    private float scale = 1F;
 
     public JasmField(Font font, int x, int y, int width, int height, Component narration) {
         super(font, x, y, width, height, narration);
@@ -31,14 +32,19 @@ public class JasmField extends EditBox {
         super.setHint(hint.copy().withStyle(style -> style.withColor(JasmGui.MUTED & 0xFFFFFF)));
     }
 
+    /** Draws the text at {@link JasmGui#SMALL_TEXT} size, for a small field on a crowded line. */
+    public void setSmallText() {
+        scale = JasmGui.SMALL_TEXT;
+    }
+
     @Override
     public int getInnerWidth() {
-        return getWidth() - 2 * PAD;
+        return (int) ((getWidth() - 2 * PAD) / scale);
     }
 
     @Override
     public void onClick(MouseButtonEvent event, boolean doubleClick) {
-        super.onClick(new MouseButtonEvent(event.x() - PAD, event.y(), event.buttonInfo()), doubleClick);
+        super.onClick(new MouseButtonEvent(getX() + (event.x() - getX() - PAD) / scale, event.y(), event.buttonInfo()), doubleClick);
     }
 
     @Override
@@ -47,7 +53,9 @@ public class JasmField extends EditBox {
         Identifier sprite = isFocused() ? FOCUSED : isHovered() && isActive() ? HIGHLIGHTED : NORMAL;
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, getX(), getY(), getWidth(), getHeight());
         graphics.pose().pushMatrix();
-        graphics.pose().translate(PAD, (getHeight() - 8) / 2);
+        graphics.pose().translate(getX() + PAD, getY() + (int) ((getHeight() - 8 * scale) / 2));
+        graphics.pose().scale(scale, scale);
+        graphics.pose().translate(-getX(), -getY());
         super.extractWidgetRenderState(graphics, mouseX, mouseY, a);
         graphics.pose().popMatrix();
     }

@@ -70,7 +70,7 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
     protected BayStatus act(ServerLevel level, BlockPos front) {
         Plan plan = plan(level, front);
         if (plan.status() != BayStatus.WORKING) return plan.status();
-        if (energy.getAmountAsInt() < plan.cost()) return BayStatus.NO_POWER;
+        if (!canPay(plan.cost())) return BayStatus.NO_POWER;
         if (mode == DeployMode.DROP) {
             for (int slot = 0; slot < GRID; slot++) {
                 ItemStack stack = items.get(slot);

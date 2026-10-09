@@ -115,6 +115,8 @@ public final class CraftPlanner<K> {
     public static final int MAX_STEPS = 256;
 
     private final Book<K> book;
+    /** Crafts the server runs at once: how many copies of an item that comes back are worth taking. */
+    private final long lanes;
     private final Map<K, Long> stock;
     private final Map<K, Long> taken = new LinkedHashMap<>();
     private final Map<K, Long> missing = new LinkedHashMap<>();
@@ -128,10 +130,11 @@ public final class CraftPlanner<K> {
     private long size;
     private boolean tooComplex;
 
-    private CraftPlanner(Book<K> book, Map<K, Long> stock, boolean record) {
+    private CraftPlanner(Book<K> book, Map<K, Long> stock, boolean record, long lanes) {
         this.book = book;
         this.stock = new HashMap<>(stock);
         this.takings = record ? new ArrayList<>() : null;
+        this.lanes = Math.max(1, lanes);
     }
 
     /** Plans {@code amount} (rounded up to whole crafts) of {@code target} from {@code stock}. */
@@ -141,7 +144,15 @@ public final class CraftPlanner<K> {
 
     /** As above; with {@code tree} the plan also records which craft feeds which. */
     public static <K> Plan<K> plan(K target, long amount, Map<K, Long> stock, Book<K> book, boolean tree) {
-        CraftPlanner<K> planner = new CraftPlanner<>(book, stock, tree);
+        return plan(target, amount, stock, book, tree, 1);
+    }
+
+    /**
+     * As above, for a server that runs {@code lanes} crafts at once: an item a craft hands back is taken once for each
+     * craft that can run at the same time, as far as there are copies to spare. Only the first copy is ever required.
+     */
+    public static <K> Plan<K> plan(K target, long amount, Map<K, Long> stock, Book<K> book, boolean tree, long lanes) {
+        CraftPlanner<K> planner = new CraftPlanner<>(book, stock, tree, lanes);
         List<Pattern<K>> patterns = book.patternsFor(target);
         if (patterns.isEmpty() || amount <= 0) {
             return new Plan<>(Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
@@ -171,6 +182,9 @@ public final class CraftPlanner<K> {
         }
         // What each craft hands back is used again by the next one, so a mold that returns is needed once, not every time.
         Map<K, Long> reused = new HashMap<>();
+        // Extra copies of what comes back, so that more crafts can run at once: wanted, never required.
+        Map<List<K>, Long> extras = new LinkedHashMap<>();
+        Map<List<K>, K> extraKeys = new HashMap<>();
         for (Map.Entry<List<K>, Long> group : groups.entrySet()) {
             long needed = saturatingMul(crafts, group.getValue());
             K key = crafts > 1 ? group.getKey().stream().filter(pattern.remainders()::containsKey).findFirst().orElse(null) : null;
@@ -182,12 +196,23 @@ public final class CraftPlanner<K> {
                     long once = Math.min(needed, saturatingAdd(firstCraft, later));
                     reused.merge(key, needed - once, Long::sum);
                     needed = once;
+                    long extra = saturatingMul(Math.min(crafts, lanes) - 1, Math.min(back, group.getValue()));
+                    if (extra > 0) {
+                        extras.put(group.getKey(), extra);
+                        extraKeys.put(group.getKey(), key);
+                    }
                 }
             }
             supply(group.getKey(), needed, depth, pattern);
             if (tooComplex) {
                 return;
             }
+        }
+        // Only once every slot has what it needs, so an extra copy never takes what another slot required.
+        for (Map.Entry<List<K>, Long> extra : extras.entrySet()) {
+            long lent = useAvailable(extra.getKey(), extra.getValue(), pattern);
+            // They come back after the step like the first copy.
+            reused.merge(extraKeys.get(extra.getKey()), -lent, Long::sum);
         }
         addStep(pattern, crafts);
         if (tooComplex) {
@@ -225,15 +250,7 @@ public final class CraftPlanner<K> {
         if (options.isEmpty()) {
             return;
         }
-        // Take what is already there, most plentiful first; ties keep the encoded order.
-        List<K> byAmount = new ArrayList<>(options);
-        byAmount.sort(Comparator.comparingLong((K k) -> available(k)).reversed());
-        for (K option : byAmount) {
-            if (needed <= 0) {
-                return;
-            }
-            needed -= use(option, needed, consumer);
-        }
+        needed -= useAvailable(options, needed, consumer);
         if (needed <= 0) {
             return;
         }
@@ -246,6 +263,20 @@ public final class CraftPlanner<K> {
         }
         missing.merge(options.getFirst(), needed, Long::sum);
         take(new Taking<>(consumer, null, Kind.MISSING, options.getFirst()));
+    }
+
+    /** Takes up to {@code amount} of what is already there for {@code options}, most plentiful first; ties keep the encoded order. Returns how many. */
+    private long useAvailable(List<K> options, long amount, Pattern<K> consumer) {
+        List<K> byAmount = new ArrayList<>(options);
+        byAmount.sort(Comparator.comparingLong((K k) -> available(k)).reversed());
+        long got = 0;
+        for (K option : byAmount) {
+            if (got >= amount) {
+                break;
+            }
+            got += use(option, amount - got, consumer);
+        }
+        return got;
     }
 
     private void craft(K key, Pattern<K> pattern, long needed, int depth, Pattern<K> consumer) {
