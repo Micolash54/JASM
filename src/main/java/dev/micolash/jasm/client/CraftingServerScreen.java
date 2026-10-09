@@ -88,11 +88,11 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int x = leftPos;
         int y = topPos;
         if (frame == null)
-            frame = JasmFrame.rounded(new int[]{0, 0, CraftingServerMenu.SIDE_WIDTH, CraftingServerMenu.SIDE_HEIGHT},
+            frame = JasmFrame.rounded(new int[]{0, 0, CraftingServerMenu.SIDE_WIDTH, menu.sideHeight()},
                     new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight});
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
-            if (slot.index != CraftingServerMenu.SLOT_SHOWN) {
+            if (slot.index != menu.shownSlot()) {
                 JasmGui.slot(graphics, x + slot.x, y + slot.y);
             }
         }
@@ -198,7 +198,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     /** Below the side panel is outside the screen, so items dropped there fall out as usual. */
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
-        return mouseX < left + MAIN_X && mouseY >= top + CraftingServerMenu.SIDE_HEIGHT || super.hasClickedOutside(mouseX, mouseY, left, top);
+        return mouseX < left + MAIN_X && mouseY >= top + menu.sideHeight() || super.hasClickedOutside(mouseX, mouseY, left, top);
     }
 
     @Override
@@ -215,7 +215,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             graphics.text(font, idle, tx + 20, CraftingServerMenu.JOB_Y + 4, menu.running() ? JasmGui.MUTED : JasmGui.BAD, false);
             return;
         }
-        ItemStack target = menu.getSlot(CraftingServerMenu.SLOT_SHOWN).getItem();
+        ItemStack target = menu.getSlot(menu.shownSlot()).getItem();
         if (!target.isEmpty()) {
             FluidResource fluid = FluidMarkerItem.fluidOf(target);
             if (fluid != null) {

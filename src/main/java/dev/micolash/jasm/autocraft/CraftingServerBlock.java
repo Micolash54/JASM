@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 /** The Crafting Server. Pistons can't move it, so a running job never ends up somewhere else. */
 public class CraftingServerBlock extends MachineBlock {
     @Override
-    protected MapCodec<CraftingServerBlock> codec() {
+    protected MapCodec<? extends CraftingServerBlock> codec() {
         return simpleCodec(CraftingServerBlock::new);
     }
 

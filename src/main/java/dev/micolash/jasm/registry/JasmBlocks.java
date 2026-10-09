@@ -8,6 +8,9 @@ import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.AccessPortBlock;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
+import dev.micolash.jasm.autocraft.AdvancedCraftingServerBlock;
+import dev.micolash.jasm.autocraft.AdvancedCraftingServerBlockEntity;
+import dev.micolash.jasm.autocraft.AdvancedCraftingServerTopBlockEntity;
 import dev.micolash.jasm.autocraft.CraftingServerBlock;
 import dev.micolash.jasm.autocraft.CraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlock;
@@ -119,6 +122,15 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<CraftingServerBlockEntity>> CRAFTING_SERVER_ENTITY = BLOCK_ENTITIES.register(
             "crafting_server", () -> new BlockEntityType<>(CraftingServerBlockEntity::new, CRAFTING_SERVER.get()));
+
+    public static final DeferredBlock<AdvancedCraftingServerBlock> ADVANCED_CRAFTING_SERVER = BLOCKS.registerBlock("advanced_crafting_server",
+            AdvancedCraftingServerBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.5F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<AdvancedCraftingServerBlockEntity>> ADVANCED_CRAFTING_SERVER_ENTITY = BLOCK_ENTITIES.register(
+            "advanced_crafting_server", () -> new BlockEntityType<>(AdvancedCraftingServerBlockEntity::new, ADVANCED_CRAFTING_SERVER.get()));
+
+    public static final Supplier<BlockEntityType<AdvancedCraftingServerTopBlockEntity>> ADVANCED_CRAFTING_SERVER_TOP_ENTITY = BLOCK_ENTITIES.register(
+            "advanced_crafting_server_top", () -> new BlockEntityType<>(AdvancedCraftingServerTopBlockEntity::new, ADVANCED_CRAFTING_SERVER.get()));
 
     public static final DeferredBlock<AccessPortBlock> ACCESS_PORT = BLOCKS.registerBlock("access_port",
             AccessPortBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)

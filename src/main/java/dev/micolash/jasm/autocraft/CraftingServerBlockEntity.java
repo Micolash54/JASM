@@ -4,6 +4,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
+import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
@@ -19,8 +20,10 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -36,7 +39,9 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     public static final int SLOTS = PROCESSOR_SLOTS + MEMORY_SLOTS;
     public static final int CAPACITY = 100_000;
 
-    private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
+    private final int processorSlots;
+    private final int slots;
+    private NonNullList<ItemStack> items;
     private @Nullable CraftingJob job;
     /** Checked once after loading: a job the list of running jobs says is here, but the block lost in a crash. */
     private boolean adoptChecked;
@@ -76,7 +81,15 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     };
 
     public CraftingServerBlockEntity(BlockPos pos, BlockState state) {
-        super(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), pos, state, CAPACITY);
+        this(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), pos, state, PROCESSOR_SLOTS, MEMORY_SLOTS, CAPACITY);
+    }
+
+    protected CraftingServerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state, int processorSlots, int memorySlots,
+            int capacity) {
+        super(type, pos, state, capacity);
+        this.processorSlots = processorSlots;
+        this.slots = processorSlots + memorySlots;
+        this.items = NonNullList.withSize(slots, ItemStack.EMPTY);
     }
 
     static void serverTick(Level level, BlockPos pos, BlockState state, CraftingServerBlockEntity server) {
@@ -92,7 +105,12 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         CraftingJob job = server.job;
         // What the job makes; the screen writes the amount beside it.
         server.shown.setItem(0, job == null || job.target() == null ? ItemStack.EMPTY : job.target().create().copyWithCount(1));
-        server.syncLooks(server.looks());
+        server.syncShown(serverLevel);
+    }
+
+    /** Tells players what changed on the block's outside. */
+    protected void syncShown(ServerLevel level) {
+        syncLooks(looks());
     }
 
     /** Three bits per slot, the part's tier plus one (0 when empty), then one bit for power. */
@@ -136,7 +154,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     @Override
     public int drainPerTick() {
         int drain = JasmConfig.SERVER_DRAIN.getAsInt();
-        for (int i = 0; i < PROCESSOR_SLOTS; i++) {
+        for (int i = 0; i < processorSlots; i++) {
             ProcessorTier tier = ServerPartItem.processorOf(items.get(i));
             if (tier != null) {
                 drain += tier.drainPerTick();
@@ -148,7 +166,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     /** Crafts this server runs at the same time. */
     public int parallel() {
         int crafts = 0;
-        for (int i = 0; i < PROCESSOR_SLOTS; i++) {
+        for (int i = 0; i < processorSlots; i++) {
             ProcessorTier tier = ServerPartItem.processorOf(items.get(i));
             if (tier != null) {
                 crafts += tier.crafts();
@@ -160,13 +178,26 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     /** Items a job here may hold. */
     public int memory() {
         int capacity = 0;
-        for (int i = PROCESSOR_SLOTS; i < SLOTS; i++) {
+        for (int i = processorSlots; i < slots; i++) {
             MemoryTier tier = ServerPartItem.memoryOf(items.get(i));
             if (tier != null) {
                 capacity += tier.capacity();
             }
         }
         return capacity;
+    }
+
+    public int processorSlots() {
+        return processorSlots;
+    }
+
+    public int memorySlots() {
+        return slots - processorSlots;
+    }
+
+    /** The menu type players open this server with. */
+    public MenuType<CraftingServerMenu> menuType() {
+        return JasmMenus.CRAFTING_SERVER.get();
     }
 
     public @Nullable CraftingJob job() {
@@ -191,12 +222,17 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     }
 
     public static boolean accepts(int slot, ItemStack stack) {
-        return slot < PROCESSOR_SLOTS ? ServerPartItem.processorOf(stack) != null : ServerPartItem.memoryOf(stack) != null;
+        return accepts(slot, stack, PROCESSOR_SLOTS);
+    }
+
+    /** Whether {@code stack} fits {@code slot} of a server whose first {@code processors} slots hold Processors. */
+    public static boolean accepts(int slot, ItemStack stack, int processors) {
+        return slot < processors ? ServerPartItem.processorOf(stack) != null : ServerPartItem.memoryOf(stack) != null;
     }
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return accepts(slot, stack);
+        return accepts(slot, stack, processorSlots);
     }
 
     /** Nothing leaves while a job runs, not even through a hopper. */
@@ -222,7 +258,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
 
     @Override
     public int getContainerSize() {
-        return SLOTS;
+        return slots;
     }
 
     @Override
@@ -254,7 +290,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
+        items = NonNullList.withSize(slots, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         job = input.read("job", CraftingJob.CODEC).orElse(null);
     }

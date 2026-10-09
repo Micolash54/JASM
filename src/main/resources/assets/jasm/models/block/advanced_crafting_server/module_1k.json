@@ -1,0 +1,21 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "jasm:block/advanced_crafting_server_parts",
+    "parts": "jasm:block/advanced_crafting_server_parts"
+  },
+  "elements": [
+    {
+      "name": "module",
+      "from": [1, 19, 1],
+      "to": [11, 20, 2],
+      "faces": {
+        "north": {"uv": [0, 4, 10, 5], "texture": "#parts"},
+        "east": {"uv": [11, 4, 12, 5], "texture": "#parts"},
+        "west": {"uv": [11, 4, 12, 5], "texture": "#parts"},
+        "up": {"uv": [11, 4, 12, 5], "texture": "#parts"},
+        "down": {"uv": [11, 4, 12, 5], "texture": "#parts"}
+      }
+    }
+  ]
+}

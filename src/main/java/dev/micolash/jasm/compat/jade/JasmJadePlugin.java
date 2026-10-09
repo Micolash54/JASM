@@ -5,6 +5,8 @@ import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlock;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
+import dev.micolash.jasm.autocraft.AdvancedCraftingServerBlockEntity;
+import dev.micolash.jasm.autocraft.AdvancedCraftingServerTopBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.brain.NetworkBrainBlock;
@@ -66,6 +68,15 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, AccessPortBlock.class);
         registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkBrainBlock.class);
         registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkChamberBlock.class);
+        // The top half of an Advanced Crafting Server shows the server below it.
+        registration.addRayTraceCallback((hit, accessor, original) -> {
+            if (accessor instanceof BlockAccessor block && block.getBlockEntity() instanceof AdvancedCraftingServerTopBlockEntity top
+                    && top.server() instanceof AdvancedCraftingServerBlockEntity server) {
+                return registration.blockAccessor().from(block).blockState(server.getBlockState()).blockEntity(server)
+                        .hit(block.getHitResult().withPosition(server.getBlockPos())).build();
+            }
+            return accessor;
+        });
         // A Recipe Rack says how many cards it holds; the list of every card would only crowd the box.
         registration.addTooltipCollectedCallback((box, accessor) -> {
             if (accessor instanceof BlockAccessor block && block.getBlock() instanceof DataCableBlock

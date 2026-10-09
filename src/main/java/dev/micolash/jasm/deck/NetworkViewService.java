@@ -3,6 +3,7 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
+import dev.micolash.jasm.autocraft.AdvancedCraftingServerTopBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
@@ -231,7 +232,8 @@ public final class NetworkViewService {
                 return false;
             }
             BlockEntity entity = level.getBlockEntity(pos);
-            if (entity instanceof NetworkChamberBlockEntity) {
+            // The top half of an Advanced Crafting Server is the same machine as the bottom.
+            if (entity instanceof NetworkChamberBlockEntity || entity instanceof AdvancedCraftingServerTopBlockEntity) {
                 return false;
             }
             return !(entity instanceof NetworkBrainBlockEntity) || cell == root;

@@ -6,7 +6,6 @@ import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmMenus;
 import java.util.List;
@@ -25,6 +24,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -88,6 +88,11 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     /** Whether this was opened from a Deck, and whether the viewer owns the current job. */
     private final ContainerData remoteData;
     private final Player viewer;
+    /** Processor slots come first, then the same number of rows' worth of Storage Module slots. */
+    private final int processors;
+    private final int slotShown;
+    /** FE the server holds when full. */
+    private final int capacity;
     /** What the job waits on at a machine: on the server the line last sent, on the client the last received. */
     private @Nullable Component waiting;
     /** What is crafting right now: on the server the list last sent (null before the first), on the client the last received. */
@@ -96,28 +101,45 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
 
     /** Server side, at the block. */
     public CraftingServerMenu(int containerId, Inventory inventory, CraftingServerBlockEntity server, ContainerLevelAccess access) {
-        this(containerId, inventory, server, server.shown(), server.data(), access, server, null, -1);
+        this(server.menuType(), containerId, inventory, server, server.shown(), server.data(), access, server, null, -1,
+                server.processorSlots(), server.memorySlots(), server.capacity());
     }
 
     /** Server side, from the Crafting Deck in {@code deckSlot}. */
     public static CraftingServerMenu remote(int containerId, Inventory inventory, CraftingServerBlockEntity server, UUID deckId, int deckSlot) {
-        return new CraftingServerMenu(containerId, inventory, server, server.shown(), server.data(), ContainerLevelAccess.NULL, server, deckId,
-                deckSlot);
+        return new CraftingServerMenu(server.menuType(), containerId, inventory, server, server.shown(), server.data(), ContainerLevelAccess.NULL,
+                server, deckId, deckSlot, server.processorSlots(), server.memorySlots(), server.capacity());
     }
 
     /** Client side. */
     public CraftingServerMenu(int containerId, Inventory inventory) {
-        this(containerId, inventory, new SimpleContainer(CraftingServerBlockEntity.SLOTS) {
-            @Override
-            public boolean canPlaceItem(int slot, ItemStack stack) {
-                return CraftingServerBlockEntity.accepts(slot, stack);
-            }
-        }, new SimpleContainer(1), new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null, null, -1);
+        this(JasmMenus.CRAFTING_SERVER.get(), containerId, inventory, CraftingServerBlockEntity.PROCESSOR_SLOTS,
+                CraftingServerBlockEntity.MEMORY_SLOTS, CraftingServerBlockEntity.CAPACITY);
     }
 
-    private CraftingServerMenu(int containerId, Inventory inventory, Container parts, Container shown, ContainerData data,
-            ContainerLevelAccess access, @Nullable CraftingServerBlockEntity server, @Nullable UUID deckId, int deckSlot) {
-        super(JasmMenus.CRAFTING_SERVER.get(), containerId);
+    /** Client side, for the Advanced Crafting Server. */
+    public static CraftingServerMenu advanced(int containerId, Inventory inventory) {
+        return new CraftingServerMenu(JasmMenus.ADVANCED_CRAFTING_SERVER.get(), containerId, inventory,
+                AdvancedCraftingServerBlockEntity.PROCESSOR_SLOTS, AdvancedCraftingServerBlockEntity.MEMORY_SLOTS,
+                AdvancedCraftingServerBlockEntity.CAPACITY);
+    }
+
+    private CraftingServerMenu(MenuType<?> type, int containerId, Inventory inventory, int processors, int modules, int capacity) {
+        this(type, containerId, inventory, new SimpleContainer(processors + modules) {
+            @Override
+            public boolean canPlaceItem(int slot, ItemStack stack) {
+                return CraftingServerBlockEntity.accepts(slot, stack, processors);
+            }
+        }, new SimpleContainer(1), new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null, null, -1, processors, modules, capacity);
+    }
+
+    private CraftingServerMenu(MenuType<?> type, int containerId, Inventory inventory, Container parts, Container shown, ContainerData data,
+            ContainerLevelAccess access, @Nullable CraftingServerBlockEntity server, @Nullable UUID deckId, int deckSlot, int processors,
+            int modules, int capacity) {
+        super(type, containerId);
+        this.processors = processors;
+        this.slotShown = processors + modules;
+        this.capacity = capacity;
         this.data = data;
         this.access = access;
         this.server = server;
@@ -127,11 +149,11 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         this.viewer = inventory.player;
         remoteData.set(0, deckId != null ? 1 : 0);
         remoteData.set(1, server != null && server.job() != null && server.job().requester().equals(viewer.getUUID()) ? 1 : 0);
-        for (int i = 0; i < CraftingServerBlockEntity.PROCESSOR_SLOTS; i++) {
+        for (int i = 0; i < processors; i++) {
             addSlot(new PartSlot(this, parts, i, PARTS_X, PARTS_Y + i * 18, EMPTY_PROCESSOR));
         }
-        for (int i = 0; i < CraftingServerBlockEntity.MEMORY_SLOTS; i++) {
-            addSlot(new PartSlot(this, parts, CraftingServerBlockEntity.PROCESSOR_SLOTS + i, PARTS_X + 18, PARTS_Y + i * 18, EMPTY_MODULE));
+        for (int i = 0; i < modules; i++) {
+            addSlot(new PartSlot(this, parts, processors + i, PARTS_X + 18, PARTS_Y + i * 18, EMPTY_MODULE));
         }
         addSlot(new EncodingTerminalMenu.FakeSlot(shown, 0, JOB_X, JOB_Y));
         for (int row = 0; row < 3; row++) {
@@ -195,6 +217,16 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         this.now = now;
     }
 
+    /** The menu slot showing what the job makes; the player's inventory follows it. */
+    public int shownSlot() {
+        return slotShown;
+    }
+
+    /** How tall the parts panel is: one row per Processor. */
+    public int sideHeight() {
+        return SIDE_HEIGHT + (processors - CraftingServerBlockEntity.PROCESSOR_SLOTS) * 18;
+    }
+
     /** Whether this screen was opened from a Crafting Deck, so it can go back to it. */
     public boolean opensFromDeck() {
         return remoteData.get(0) != 0;
@@ -209,7 +241,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     }
 
     public int capacity() {
-        return CraftingServerBlockEntity.CAPACITY;
+        return capacity;
     }
 
     public boolean running() {
@@ -258,7 +290,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
             return true;
         }
         boolean reachable = deckId == null
-                ? stillValid(access, player, JasmBlocks.CRAFTING_SERVER.get())
+                ? stillValid(access, player, server.getBlockState().getBlock())
                 : player instanceof ServerPlayer serverPlayer && carriesDeck(serverPlayer) && server.getLevel() != null
                         && server.getLevel().isLoaded(server.getBlockPos());
         return !server.isRemoved() && reachable
@@ -273,7 +305,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
 
     @Override
     public void clicked(int slotIndex, int buttonNum, ContainerInput input, Player player) {
-        if (slotIndex == SLOT_SHOWN) {
+        if (slotIndex == slotShown) {
             return;
         }
         super.clicked(slotIndex, buttonNum, input, player);
@@ -313,14 +345,15 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         }
         ItemStack stack = clicked.getItem();
         ItemStack before = stack.copy();
-        int hotbar = SLOT_INVENTORY + 27;
+        int inventory = slotShown + 1;
+        int hotbar = inventory + 27;
         boolean moved;
-        if (index < SLOT_SHOWN) {
-            moved = moveItemStackTo(stack, hotbar, hotbar + 9, false) || moveItemStackTo(stack, SLOT_INVENTORY, hotbar, false);
+        if (index < slotShown) {
+            moved = moveItemStackTo(stack, hotbar, hotbar + 9, false) || moveItemStackTo(stack, inventory, hotbar, false);
         } else if (ServerPartItem.processorOf(stack) != null) {
-            moved = moveItemStackTo(stack, 0, CraftingServerBlockEntity.PROCESSOR_SLOTS, false);
+            moved = moveItemStackTo(stack, 0, processors, false);
         } else if (ServerPartItem.memoryOf(stack) != null) {
-            moved = moveItemStackTo(stack, CraftingServerBlockEntity.PROCESSOR_SLOTS, SLOT_SHOWN, false);
+            moved = moveItemStackTo(stack, processors, slotShown, false);
         } else {
             moved = false;
         }
@@ -348,7 +381,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return CraftingServerBlockEntity.accepts(getContainerSlot(), stack) && !menu.busy();
+            return CraftingServerBlockEntity.accepts(getContainerSlot(), stack, menu.processors) && !menu.busy();
         }
 
         @Override
