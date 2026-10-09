@@ -228,8 +228,8 @@ public final class JasmConfig {
     }
 
     public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BAY_CYCLE_TICKS = BUILDER
-            .comment("Ticks one bay action takes with 0, 1, 2 and 3 Speed Upgrades; more use the last. Under 20, two Bitlings take turns")
-            .defineList("cycleTicks", List.of(40, 30, 20, 10), () -> 20, value -> value instanceof Integer i && i >= 1);
+            .comment("Ticks one bay action takes with 0 to 4 Speed Upgrades. A four-entry list gives the fourth upgrade half the last entry; otherwise extra upgrades use the last. Under 20, two Bitlings take turns")
+            .defineList("cycleTicks", List.of(40, 30, 20, 10, 5), () -> 20, value -> value instanceof Integer i && i >= 1);
 
     public static final ModConfigSpec.IntValue BAY_ENERGY_CAPACITY = BUILDER
             .comment("FE a bay holds")

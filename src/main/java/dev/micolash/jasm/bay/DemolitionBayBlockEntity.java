@@ -99,7 +99,7 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             if (!level.mayInteract(player, front)) return BayStatus.NOT_ALLOWED;
             if (!roomForBucket(fluid.getType())) return BayStatus.TANK_FULL;
             int cost = JasmConfig.DEMOLITION_SCOOP_COST.getAsInt();
-            if (energy.getAmountAsInt() < cost) return BayStatus.NO_POWER;
+            if (!canPay(cost)) return BayStatus.NO_POWER;
             // The bay's own tank: only what ports and pipes see refuses fluid.
             if (FluidUtil.tryPickupFluid(tank, player, level, front, (TransactionContext) null).isEmpty()) return BayStatus.SLEEPING;
             pay(cost);
@@ -113,7 +113,7 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         List<ItemStack> drops = drops(level, front, state, player);
         if (!fitsAll(drops)) return BayStatus.GRID_FULL;
         int cost = breakCost(level, front, state, drops);
-        if (energy.getAmountAsInt() < cost) return BayStatus.NO_POWER;
+        if (!canPay(cost)) return BayStatus.NO_POWER;
         // The same event a player breaking it would fire, so claim mods can stop it.
         if (CommonHooks.fireBlockBreak(level, GameType.SURVIVAL, player, front, state).isCanceled()) return BayStatus.NOT_ALLOWED;
         if (!level.destroyBlock(front, false)) return BayStatus.SLEEPING;

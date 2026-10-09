@@ -187,7 +187,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
             setStatus(plan.status());
             return;
         }
-        if (energy.getAmountAsInt() < powerFor(plan.cost())) {
+        if (!canPay(plan.cost())) {
             setStatus(BayStatus.NO_POWER);
             return;
         }
@@ -201,6 +201,11 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     /** What an action costing {@code fe} on its own really costs, with this bay's Speed Upgrades. */
     private int powerFor(int fe) {
         return SpeedUpgradeItem.power(fe, speedUpgrades());
+    }
+
+    /** Whether the buffer holds the whole cost, including the Speed Upgrades' extra. */
+    protected boolean canPay(int fe) {
+        return energy.getAmountAsInt() >= powerFor(fe);
     }
 
     /** Pays {@code fe}, plus the Speed Upgrades' extra, if the buffer holds it. */
