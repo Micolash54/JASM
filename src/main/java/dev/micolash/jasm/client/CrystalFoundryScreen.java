@@ -14,8 +14,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Foundry screen: the seed slot, the crystal it is growing with the progress under it and how many crystals the
- * seed has made so far, the output grid, and the power across the full width. The I/O grid's key hangs off the right
- * side.
+ * seed has made so far, the output grid, and the power across the full width. The upgrade column hangs off the right
+ * side with the I/O grid's key under it, as on the bays.
  */
 public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     private static final int WIDTH = 176;
@@ -30,7 +30,10 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
     private static final int POWER_WIDTH = WIDTH - 16;
     private static final int ROW_HEIGHT = 12;
     private static final int KEY_X = WIDTH;
-    private static final JasmFrame FRAME = JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, JasmGui.sideStrip(KEY_X, 1));
+    /** The I/O key sits under the upgrade slots. */
+    private static final int KEYS_Y = CrystalFoundryMenu.UPGRADE_Y + CrystalFoundryBlockEntity.UPGRADES * 18 + 4;
+    private static final JasmFrame FRAME = JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT},
+            new int[]{KEY_X - 14, CrystalFoundryMenu.UPGRADE_Y - 4, 38, KEYS_Y + JasmGui.SIDE_KEY_HEIGHT + 5 - (CrystalFoundryMenu.UPGRADE_Y - 4)});
     private final ItemStack crystal = new ItemStack(JasmItems.DATA_CRYSTAL.get());
     private @Nullable IoGridWindow io;
 
@@ -48,7 +51,7 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
         if (io == null) {
             io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
         }
-        addRenderableWidget(io.key(leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), topPos));
+        addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
     }
 
     @Override
