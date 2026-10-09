@@ -1,15 +1,15 @@
 {
   "type": "minecraft:crafting_shaped",
   "key": {
-    "I": "minecraft:iron_ingot",
+    "E": "jasm:elite_processor",
+    "Y": "jasm:synapse_core",
     "S": "jasm:crafting_server",
-    "P": "jasm:advanced_processor",
-    "L": "jasm:logic_chip"
+    "D": "jasm:data_cable"
   },
   "pattern": [
-    "ILI",
-    "SPS",
-    "ILI"
+    "EYE",
+    "SES",
+    "YDY"
   ],
   "result": {
     "id": "jasm:advanced_crafting_server"
