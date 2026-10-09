@@ -110,6 +110,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     }
     private void createEditor(boolean output, int rows, int top) {
         var editor = new ItemFilterEditor(font, rows, false, menu::getCarried, TransferPortMenu.WIDTH - 16);
+        if (output) editor.setStock(menu::hasStockUpgrade);
         editor.setSave(settings -> {
             menu.configure(output, settings);
             ClientPacketDistributor.sendToServer(new TransferNetwork.Configure(menu.containerId, output, settings));

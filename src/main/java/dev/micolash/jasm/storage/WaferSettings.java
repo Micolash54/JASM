@@ -44,20 +44,23 @@ public record WaferSettings(List<Filter> rules) {
     }
 
     public static final class Filter {
+        public static final int MAX_STOCK = 999_999;
         public static final Codec<Filter> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Mode.CODEC.fieldOf("mode").forGetter(Filter::mode), Codec.STRING.fieldOf("value").forGetter(Filter::value),
                 Codec.BOOL.optionalFieldOf("allow", true).forGetter(Filter::allow),
                 Codec.BOOL.optionalFieldOf("enabled", true).forGetter(Filter::enabled),
-                Codec.BOOL.optionalFieldOf("void", false).forGetter(Filter::voidExcess)).apply(i, Filter::new));
+                Codec.BOOL.optionalFieldOf("void", false).forGetter(Filter::voidExcess),
+                Codec.INT.optionalFieldOf("stock", 0).forGetter(Filter::stock)).apply(i, Filter::new));
         public static final StreamCodec<ByteBuf, Filter> STREAM_CODEC = StreamCodec.composite(
                 Mode.STREAM_CODEC, Filter::mode, ByteBufCodecs.STRING_UTF8, Filter::value,
                 ByteBufCodecs.BOOL, Filter::allow, ByteBufCodecs.BOOL, Filter::enabled,
-                ByteBufCodecs.BOOL, Filter::voidExcess, Filter::new);
+                ByteBufCodecs.BOOL, Filter::voidExcess, ByteBufCodecs.VAR_INT, Filter::stock, Filter::new);
         private final Mode mode;
         private final String value;
         private final boolean allow;
         private final boolean enabled;
         private final boolean voidExcess;
+        private final int stock;
         private final @Nullable Identifier id;
         private final @Nullable Item item;
         private final @Nullable TagKey<Item> tag;
@@ -72,12 +75,18 @@ public record WaferSettings(List<Filter> rules) {
         }
 
         public Filter(Mode mode, String value, boolean allow, boolean enabled, boolean voidExcess) {
+            this(mode, value, allow, enabled, voidExcess, 0);
+        }
+
+        public Filter(Mode mode, String value, boolean allow, boolean enabled, boolean voidExcess, int stock) {
             this.mode = mode;
             this.value = value.trim();
             this.allow = allow;
             this.enabled = enabled;
             // Only an Allow row can destroy leftovers.
             this.voidExcess = voidExcess && allow;
+            // Only an Allow row keeps a stock; 0 means no limit.
+            this.stock = allow ? Math.clamp(stock, 0, MAX_STOCK) : 0;
             id = mode == Mode.MOD_ID ? null : Identifier.tryParse(this.value);
             item = mode == Mode.MATERIAL && id != null ? BuiltInRegistries.ITEM.getOptional(id).orElse(null) : null;
             fluid = mode == Mode.MATERIAL && id != null ? BuiltInRegistries.FLUID.getOptional(id).orElse(null) : null;
@@ -91,19 +100,22 @@ public record WaferSettings(List<Filter> rules) {
         public boolean allow() { return allow; }
         public boolean enabled() { return enabled; }
         public boolean voidExcess() { return voidExcess; }
+        /** How many of what this row matches an Output Port with a Stock Upgrade keeps in the block it feeds; 0 for no limit. */
+        public int stock() { return stock; }
+        public Filter withStock(int stock) { return new Filter(mode, value, allow, enabled, voidExcess, stock); }
 
         @Override
         public boolean equals(Object other) {
             return other instanceof Filter filter && mode == filter.mode && value.equals(filter.value)
-                    && allow == filter.allow && enabled == filter.enabled && voidExcess == filter.voidExcess;
+                    && allow == filter.allow && enabled == filter.enabled && voidExcess == filter.voidExcess && stock == filter.stock;
         }
 
         @Override
-        public int hashCode() { return Objects.hash(mode, value, allow, enabled, voidExcess); }
+        public int hashCode() { return Objects.hash(mode, value, allow, enabled, voidExcess, stock); }
 
         @Override
         public String toString() {
-            return "Filter[mode=" + mode + ", value=" + value + ", allow=" + allow + ", enabled=" + enabled + ", void=" + voidExcess + "]";
+            return "Filter[mode=" + mode + ", value=" + value + ", allow=" + allow + ", enabled=" + enabled + ", void=" + voidExcess + ", stock=" + stock + "]";
         }
 
         // loose on purpose: any registry that knows the ID counts, so a chemical can be named too

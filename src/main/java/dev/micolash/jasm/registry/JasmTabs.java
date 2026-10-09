@@ -63,6 +63,8 @@ public final class JasmTabs {
                 output.accept(JasmItems.FULL_STORAGE_PORT);
                 output.accept(JasmItems.SPEED_UPGRADE);
                 output.accept(JasmItems.REDSTONE_UPGRADE);
+                output.accept(JasmItems.CRAFTING_UPGRADE);
+                output.accept(JasmItems.STOCK_UPGRADE);
                 output.accept(JasmItems.POWER_UPGRADE);
                 output.accept(JasmItems.DIMENSION_UPGRADE);
                 for (ProcessorTier tier : ProcessorTier.values()) {
