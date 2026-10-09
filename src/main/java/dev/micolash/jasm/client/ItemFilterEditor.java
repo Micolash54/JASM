@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferSettings.Filter;
@@ -13,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import net.minecraft.client.gui.Font;
@@ -60,11 +62,26 @@ class ItemFilterEditor {
     private ItemStack windowIcon = ItemStack.EMPTY;
     private final Font font;
     private final EditBox text;
+    private final int textWidth;
     private final List<Placed> buttons = new ArrayList<>();
     private final Button[][] rowButtons;
     private final Button modeButton;
     private final Button action;
     private final Button confirm;
+    // Stock fields, shown only while the port holds a Stock Upgrade: one per visible row, and one on the add line.
+    private static final int STOCK_WIDTH = 36;
+    /** Allow, On and the Stock field are shorter than the arrow keys, sitting on the same bottom line. */
+    private static final int SMALL_KEY = 14;
+    private static final int SMALL_DROP = 17 - SMALL_KEY;
+    // the row field ends 6px before the arrow keys
+    private final int stockX;
+    private static final int ADD_STOCK_WIDTH = 34;
+    private final EditBox[] stockFields;
+    private final EditBox addStock;
+    private BooleanSupplier stockShown = () -> false;
+    private @Nullable EditBox stockFocus;
+    // the rule the focused row field belongs to
+    private int stockRule = -1;
     private final HashMap<Selector, List<ItemStack>> icons = new HashMap<>();
     private WaferSettings draft = WaferSettings.DEFAULT;
     private Mode mode = Mode.MATERIAL;
@@ -101,9 +118,16 @@ class ItemFilterEditor {
         int shrink = BASE_WIDTH - editorWidth;
         this.rowButtons = new Button[rows][6];
         this.font = font;
-        text = new JasmField(font, 0, 0, 236 - shrink, 14, label("value"));
+        textWidth = 236 - shrink;
+        text = new JasmField(font, 0, 0, textWidth, 14, label("value"));
         text.setMaxLength(256);
         text.setResponder(value -> { icons.clear(); update(); });
+        stockFields = new EditBox[rows];
+        for (int row = 0; row < rows; row++) {
+            stockFields[row] = stockField(STOCK_WIDTH, SMALL_KEY);
+            ((JasmField) stockFields[row]).setSmallText();
+        }
+        addStock = stockField(ADD_STOCK_WIDTH, 14);
         if (movable) place(JasmButton.icon(() -> CLOSE, label("close"), b -> close(), 0, 0, 11, 11), WIDTH - 16, 5);
         // The kind and allow/deny keys share one width, just enough for the longest word either can show.
         int keyWidth = Math.max(font.width(label("allow")), font.width(label("deny")));
@@ -118,17 +142,20 @@ class ItemFilterEditor {
         confirm.setTooltip(Tooltip.create(label("add")));
         // The wafer window has room for a Void key between the On key and the arrows.
         int controlsX = compact ? 10 : 159;
-        int toggleWidth = Math.max(Math.max(font.width(label("allow")), font.width(label("deny"))),
-                Math.max(font.width(label("on")), font.width(label("off")))) + 10;
-        int actionWidth = compact ? toggleWidth : 38;
-        int enabledWidth = compact ? toggleWidth : 28;
+        // Allow and On use the smaller text, so a row's keys and its Stock field fit on one line.
+        int toggleWidth = Math.max(Math.max(JasmGui.smallWidth(font, label("allow")), JasmGui.smallWidth(font, label("deny"))),
+                Math.max(JasmGui.smallWidth(font, label("on")), JasmGui.smallWidth(font, label("off")))) + 10;
+        int actionWidth = toggleWidth;
+        int enabledWidth = toggleWidth;
         int arrowsX = compact ? editorWidth - 60 : controlsX + 102;
+        stockX = arrowsX - 6 - STOCK_WIDTH;
         for (int row = 0; row < rows; row++) {
             final int visible = row;
             int py = listY + row * rowHeight + (compact ? 16 : 4);
-            rowButtons[row][0] = place(JasmButton.text(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, 17), controlsX, py);
-            rowButtons[row][1] = place(JasmButton.text(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, 17),
-                    controlsX + actionWidth + 2, py);
+            rowButtons[row][0] = place(JasmButton.smallText(Component.empty(), b -> change(visible, 0), 0, 0, actionWidth, SMALL_KEY),
+                    controlsX, py + SMALL_DROP);
+            rowButtons[row][1] = place(JasmButton.smallText(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, SMALL_KEY),
+                    controlsX + actionWidth + 2, py + SMALL_DROP);
             if (!compact) {
                 rowButtons[row][5] = place(JasmButton.text(Component.empty(), b -> change(visible, 5), 0, 0, 30, 17),
                         controlsX + actionWidth + 2 + enabledWidth + 2, py);
@@ -140,13 +167,57 @@ class ItemFilterEditor {
         }
     }
 
+    private EditBox stockField(int width, int height) {
+        EditBox field = new JasmField(font, 0, 0, width, height, label("stock"));
+        field.setMaxLength(6);
+        field.setFilter(value -> value.chars().allMatch(Character::isDigit));
+        field.setHint(label("stock_any"));
+        field.visible = false;
+        return field;
+    }
+
+    /** Shows the Stock fields and badges while {@code shown} says so: an Output list on a port with a Stock Upgrade. */
+    void setStock(BooleanSupplier shown) { stockShown = shown; }
+    private boolean stock() { return stockShown.getAsBoolean(); }
+    /** A field's number; empty or 0 means no limit. */
+    private static int stockOf(EditBox field) {
+        String value = field.getValue();
+        return value.isEmpty() ? 0 : (int) Math.min(Filter.MAX_STOCK, Long.parseLong(value));
+    }
+    private static String stockText(int stock) { return stock > 0 ? Integer.toString(stock) : ""; }
+
+    /** Saves the focused row field's number and lets go of it. The add line's field keeps its number until the row is added. */
+    private void commitStock() {
+        EditBox field = stockFocus;
+        stockFocus = null;
+        if (field == null) return;
+        field.setFocused(false);
+        int at = stockRule;
+        stockRule = -1;
+        if (field == addStock || at < 0 || at >= draft.rules().size()) return;
+        Filter rule = draft.rules().get(at);
+        int stock = stockOf(field);
+        if (stock == rule.stock()) { field.setValue(stockText(stock)); return; }
+        List<Filter> rules = new ArrayList<>(draft.rules());
+        rules.set(at, rule.withStock(stock));
+        send(new WaferSettings(rules));
+    }
+
+    private void focusStock(EditBox field, int rule) {
+        if (stockFocus != field) commitStock();
+        text.setFocused(false);
+        stockFocus = field;
+        stockRule = rule;
+        field.setFocused(true);
+    }
+
     /** The line above the rows. The wafer window shows the last emptying result there instead. */
     Component rulesLine() { return label("rules"); }
     private Component label(String key) { return Component.translatable("screen.jasm.filter." + key); }
     Button place(Button button, int px, int py) { buttons.add(new Placed(button, px, py)); return button; }
     boolean isOpen() { return opened; }
     void setSave(Consumer<WaferSettings> save) { this.save = save; }
-    void unfocus() { text.setFocused(false); }
+    void unfocus() { text.setFocused(false); commitStock(); }
     boolean contains(double mx, double my) { return isOpen() && mx >= x && mx < x + editorWidth && my >= y && my < y + height; }
     Optional<Rect2i> area() {
         return isOpen() ? Optional.of(new Rect2i(x, y, editorWidth + (movable ? 3 : 0), height + (movable ? 3 : 0))) : Optional.empty();
@@ -173,6 +244,9 @@ class ItemFilterEditor {
         icons.clear();
         text.setValue("");
         text.setFocused(false);
+        stockFocus = null;
+        stockRule = -1;
+        addStock.setValue("");
         x = left;
         y = top;
         fit(width, screenHeight);
@@ -182,10 +256,12 @@ class ItemFilterEditor {
     /** The compact editor's heading: its title, or the prompt while it offers a choice of tags. */
     Component heading() { return tagChoices.isEmpty() ? title : label("choose_tag"); }
 
-    void close() { opened = false; grabX = -1; draggingScroll = false; text.setFocused(false); }
+    void close() { opened = false; grabX = -1; draggingScroll = false; text.setFocused(false); commitStock(); }
     private void layout() {
         for (Placed placed : buttons) placed.button().setPosition(x + placed.x(), y + placed.y());
         text.setPosition(x + 30, y + slotY + 1);
+        for (int row = 0; row < rows; row++) stockFields[row].setPosition(x + stockX, y + listY + row * rowHeight + 16 + SMALL_DROP);
+        addStock.setPosition(x + 30 + textWidth - ADD_STOCK_WIDTH + 2, y + slotY + 1);
     }
     private void send(WaferSettings settings) {
         draft = settings;
@@ -202,10 +278,19 @@ class ItemFilterEditor {
         modeButton.setMessage(label(mode.getSerializedName()));
         action.setMessage(JasmGui.state(label(allow ? "allow" : "deny"), allow));
         if (confirm != null) confirm.active = tagChoices.isEmpty() && candidate().valid();
+        boolean stock = compact && stock();
+        // The name field gives the add line's Stock field its room.
+        text.setWidth(stock ? textWidth - ADD_STOCK_WIDTH - 2 : textWidth);
+        addStock.visible = stock && tagChoices.isEmpty();
         for (int row = 0; row < rows; row++) {
             int at = scroll + row;
             boolean visible = tagChoices.isEmpty() && at < draft.rules().size();
             for (Button button : rowButtons[row]) if (button != null) button.visible = visible;
+            EditBox field = stockFields[row];
+            // Deny rows show no field.
+            field.visible = visible && stock && draft.rules().get(at).allow();
+            if (field.visible && field != stockFocus && !field.getValue().equals(stockText(draft.rules().get(at).stock())))
+                field.setValue(stockText(draft.rules().get(at).stock()));
             if (!visible) continue;
             Filter rule = draft.rules().get(at);
             rowButtons[row][0].setMessage(JasmGui.state(label(rule.allow() ? "allow" : "deny"), rule.allow()));
@@ -219,6 +304,8 @@ class ItemFilterEditor {
             rowButtons[row][2].active = at > 0;
             rowButtons[row][3].active = at + 1 < draft.rules().size();
         }
+        // The upgrade was taken out, or the row turned to Deny, while its field was being typed in.
+        if (stockFocus != null && !stockFocus.visible) commitStock();
     }
     private void change(int row, int control) {
         int at = scroll + row;
@@ -226,9 +313,9 @@ class ItemFilterEditor {
         List<Filter> rules = new ArrayList<>(draft.rules());
         Filter rule = rules.get(at);
         switch (control) {
-            case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled(), rule.voidExcess()));
-            case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled(), rule.voidExcess()));
-            case 5 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), rule.enabled(), !rule.voidExcess()));
+            case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled(), rule.voidExcess(), rule.stock()));
+            case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled(), rule.voidExcess(), rule.stock()));
+            case 5 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), rule.enabled(), !rule.voidExcess(), rule.stock()));
             case 2 -> {
                 if (at > 0) Collections.swap(rules, at, at - 1);
             }
@@ -242,7 +329,9 @@ class ItemFilterEditor {
     private void add() {
         if (!tagChoices.isEmpty() || !candidate().valid()) return;
         List<Filter> rules = new ArrayList<>(draft.rules());
-        rules.add(candidate());
+        rules.add(compact && stock() ? candidate().withStock(stockOf(addStock)) : candidate());
+        if (stockFocus == addStock) commitStock();
+        addStock.setValue("");
         send(new WaferSettings(rules));
         scroll = Math.max(0, rules.size() - rows);
         ghost = ItemStack.EMPTY;
@@ -345,6 +434,14 @@ class ItemFilterEditor {
                 int rowRight = x + editorWidth - (movable ? 23 : 13);
                 if (mx >= x + 8 && mx < rowRight && my >= py && my < py + rowHeight) graphics.fill(x + 8, py, rowRight, py + rowHeight, JasmGui.HOVER);
                 smallItem(graphics, icon(rule), x + 10, py + (compact ? 1 : 5));
+                // A row with a Stock number shows it on its icon, the way the Deck shows counts.
+                if (compact && stock() && rule.allow() && rule.stock() > 0)
+                    JasmGui.itemCount(graphics, font, GridEntries.abbreviate(rule.stock()), x + 8, py);
+                if (stockFields[row].visible) {
+                    Component stockLabel = label("stock");
+                    JasmGui.smallText(graphics, font, stockLabel, x + stockX - 4 - JasmGui.smallWidth(font, stockLabel),
+                            py + 16 + SMALL_DROP + Math.round((SMALL_KEY - 7 * JasmGui.SMALL_TEXT) / 2), JasmGui.SUBTEXT);
+                }
                 int color = rule.enabled() ? JasmGui.TEXT : JasmGui.MUTED;
                 Component kind = label(rule.mode().getSerializedName());
                 if (compact) {
@@ -378,6 +475,11 @@ class ItemFilterEditor {
         if (!preview.isEmpty() && slotArea().contains(mx, my)) graphics.setTooltipForNextFrame(font, preview.getHoverName(), mx, my);
         text.extractRenderState(graphics, mx, my, a);
         for (Placed placed : buttons) if (placed.button().visible) placed.button().extractRenderState(graphics, mx, my, a);
+        for (EditBox field : stockFields) if (field.visible) field.extractRenderState(graphics, mx, my, a);
+        if (addStock.visible) {
+            graphics.text(font, label("stock"), addStock.getX(), y + slotY - 9, JasmGui.SUBTEXT, false);
+            addStock.extractRenderState(graphics, mx, my, a);
+        }
         drawOverlay(graphics, x, y, editorWidth, height);
     }
 
@@ -385,6 +487,21 @@ class ItemFilterEditor {
         if (locked()) return contains(event.x(), event.y());
         layout();
         update();
+        EditBox hit = addStock.visible && addStock.isMouseOver(event.x(), event.y()) ? addStock : null;
+        int hitRule = -1;
+        for (int row = 0; row < rows && hit == null; row++) {
+            if (stockFields[row].visible && stockFields[row].isMouseOver(event.x(), event.y())) {
+                hit = stockFields[row];
+                hitRule = scroll + row;
+            }
+        }
+        if (hit != null) {
+            focusStock(hit, hitRule);
+            hit.mouseClicked(event, doubleClick);
+            return true;
+        }
+        // Clicking away confirms a Stock number.
+        commitStock();
         for (Placed placed : buttons) if (placed.button().visible && placed.button().mouseClicked(event, doubleClick)) return true;
         if (slotArea().contains((int) event.x(), (int) event.y())) { setItem(carried.get(), event.hasShiftDown()); return true; }
         if (event.x() >= x + scrollX() && event.y() >= y + listY && event.y() < y + listY + rows * rowHeight) {
@@ -439,6 +556,7 @@ class ItemFilterEditor {
     }
     boolean mouseScrolled(double delta) {
         if (locked()) return true;
+        commitStock();
         int value = Math.clamp(offset() - (int) Math.signum(delta), 0, maxScroll());
         if (tagChoices.isEmpty()) scroll = value;
         else tagScroll = value;
@@ -446,7 +564,14 @@ class ItemFilterEditor {
     }
     boolean keyPressed(KeyEvent event) {
         if (locked()) return true;
+        if (stockFocus != null && !event.isEscape()) {
+            if (!event.isConfirmation()) stockFocus.keyPressed(event);
+            else if (stockFocus == addStock) add();
+            else commitStock();
+            return true;
+        }
         if (event.isEscape()) {
+            commitStock();
             if (!tagChoices.isEmpty()) {
                 tagChoices = List.of();
                 update();
@@ -464,5 +589,8 @@ class ItemFilterEditor {
         }
         return false;
     }
-    boolean charTyped(CharacterEvent event) { return locked() || text.isFocused() && text.charTyped(event); }
+    boolean charTyped(CharacterEvent event) {
+        if (stockFocus != null) return stockFocus.charTyped(event);
+        return locked() || text.isFocused() && text.charTyped(event);
+    }
 }

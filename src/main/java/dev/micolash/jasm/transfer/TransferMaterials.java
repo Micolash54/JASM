@@ -24,9 +24,12 @@ import org.jspecify.annotations.Nullable;
 final class TransferMaterials {
     private TransferMaterials() {}
 
-    /** Pushes pool materials the Output filter names into the block, as far as the allowance, the charge and the block go. */
-    static int out(List<Machines.MaterialInlet> inlets, DeckStorage.Checked storage, ItemStack deck, WaferSettings output, int shares,
-            IntConsumer transferred) {
+    /**
+     * Pushes pool materials the Output filter names into the block, as far as the allowance, the charge, the block and
+     * {@code left} (per Output row, null without a Stock Upgrade) go.
+     */
+    static int out(List<Machines.MaterialInlet> inlets, DeckStorage.Checked storage, ItemStack deck, WaferSettings output, long @Nullable [] left,
+            int shares, IntConsumer transferred) {
         var stacks = new ArrayList<>(storage.materialStacks().keySet());
         stacks.removeIf(m -> output.rank(m.holder(), m.key().id()) < 0);
         stacks.sort(Comparator.comparingInt(m -> output.rank(m.holder(), m.key().id())));
@@ -36,6 +39,9 @@ final class TransferMaterials {
             if (block == null) continue;
             long most = Math.min((long) (shares - used) * FluidAmounts.PER_SHARE, DeckStorage.affordableFluid(deck));
             if (most <= 0) break;
+            int row = output.rank(material.holder(), material.key().id());
+            most = Math.min(most, PortStock.of(left, row));
+            if (most <= 0) continue;
             int accepted;
             try (var tx = Transaction.openRoot()) {
                 accepted = block.insert(material.resource(), (int) Math.min(most, Integer.MAX_VALUE), tx);   // only asking
@@ -53,6 +59,7 @@ final class TransferMaterials {
                 int moved = (int) FluidAmounts.shares(inserted);
                 used += moved;
                 transferred.accept(moved);
+                PortStock.sent(left, row, inserted);
             }
         }
         return used;
