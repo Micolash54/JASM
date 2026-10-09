@@ -40,6 +40,8 @@ public final class JasmItems {
 
     public static final DeferredItem<BlockItem> CREATIVE_BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.CREATIVE_BATTERY);
     public static final DeferredItem<BlockItem> POWER_ACCEPTOR = ITEMS.registerSimpleBlockItem(JasmBlocks.POWER_ACCEPTOR);
+    public static final DeferredItem<BlockItem> THIN_POWER_ACCEPTOR = ITEMS.registerSimpleBlockItem(JasmBlocks.THIN_POWER_ACCEPTOR);
+    public static final DeferredItem<BlockItem> BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.BATTERY);
     public static final DeferredItem<Item> RECIPE_CARD = ITEMS.registerSimpleItem("recipe_card");
     public static final DeferredItem<RecipeCardItem> FILLED_RECIPE_CARD = ITEMS.registerItem("filled_recipe_card", RecipeCardItem::new,
             p -> p.stacksTo(1));

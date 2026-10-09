@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "jasm:battery",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jasm:blocks/battery"
+}
