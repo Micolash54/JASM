@@ -45,7 +45,8 @@ public class BatteryScreen extends JasmScreen<BatteryMenu> {
         Component out = Component.translatable("screen.jasm.battery.out", String.format("%,d", menu.out()));
         graphics.text(font, in, MARGIN, FLOW_Y, menu.in() > 0 ? JasmGui.GOOD : JasmGui.SUBTEXT, false);
         graphics.text(font, out, WIDTH - MARGIN - font.width(out), FLOW_Y, menu.out() > 0 ? JasmGui.WARN : JasmGui.SUBTEXT, false);
-        Component blocks = Component.translatable("screen.jasm.battery.blocks", String.format("%,d", menu.blocks()));
+        Component blocks = Component.translatable("screen.jasm.battery.blocks", String.format("%,d", menu.blocks()),
+                String.format("%,d", menu.maxBlocks()));
         graphics.text(font, blocks, (WIDTH - font.width(blocks)) / 2, BLOCKS_Y, JasmGui.MUTED, false);
     }
 }

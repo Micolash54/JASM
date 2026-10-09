@@ -1,8 +1,12 @@
 package dev.micolash.jasm.battery;
 
 import com.mojang.serialization.MapCodec;
+import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
+import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -66,9 +70,40 @@ public class BatteryBlock extends BaseEntityBlock {
         builder.add(CHARGE, FULL);
     }
 
+    /** The most blocks one battery may have in this world. */
+    public static int maxBlocks() {
+        return JasmConfig.orDefault(JasmConfig.BATTERY_MAX_BLOCKS);
+    }
+
+    /** No state, so no placing, when the block would make a battery of more than {@link #maxBlocks()}, joining several if it must. */
     @Override
-    public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return joined(defaultBlockState(), context.getLevel(), context.getClickedPos());
+    public @Nullable BlockState getStateForPlacement(BlockPlaceContext context) {
+        Level level = context.getLevel();
+        BlockPos pos = context.getClickedPos();
+        if (sizeWith(level, pos, maxBlocks()) > maxBlocks()) {
+            return null;
+        }
+        return joined(defaultBlockState(), level, pos);
+    }
+
+    /** Blocks in the battery a new block at {@code pos} would make, counted only until it passes {@code limit}. Never pulls in a chunk. */
+    static int sizeWith(Level level, BlockPos pos, int limit) {
+        Set<BlockPos> seen = new HashSet<>();
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        seen.add(pos);
+        queue.add(pos);
+        int size = 0;
+        while (!queue.isEmpty() && size <= limit) {
+            BlockPos at = queue.poll();
+            size++;
+            for (Direction side : Direction.values()) {
+                BlockPos next = at.relative(side);
+                if (seen.add(next) && level.isLoaded(next) && level.getBlockState(next).getBlock() instanceof BatteryBlock) {
+                    queue.add(next);
+                }
+            }
+        }
+        return size;
     }
 
     /** A battery beside a new block joins up with it at once. */

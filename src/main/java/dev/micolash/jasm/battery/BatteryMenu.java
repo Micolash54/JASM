@@ -23,7 +23,8 @@ public class BatteryMenu extends AbstractContainerMenu {
     private static final int IN = 2;
     private static final int OUT = 3;
     private static final int BLOCKS = 4;
-    static final int DATA_COUNT = 5 * WORDS;
+    private static final int MAX_BLOCKS = 5;
+    static final int DATA_COUNT = 6 * WORDS;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -78,6 +79,11 @@ public class BatteryMenu extends AbstractContainerMenu {
         return read(BLOCKS);
     }
 
+    /** Most blocks one battery may have in this world. */
+    public long maxBlocks() {
+        return read(MAX_BLOCKS);
+    }
+
     @Override
     public boolean stillValid(Player player) {
         return access.evaluate((level, pos) -> level.getBlockEntity(pos) == battery
@@ -108,7 +114,8 @@ public class BatteryMenu extends AbstractContainerMenu {
                 case CAPACITY -> group.energy().getCapacityAsLong();
                 case IN -> group.flowIn();
                 case OUT -> group.flowOut();
-                default -> group.size();
+                case BLOCKS -> group.size();
+                default -> BatteryBlock.maxBlocks();
             };
             return (int) (value >>> 16 * (index % WORDS)) & 0xFFFF;
         }

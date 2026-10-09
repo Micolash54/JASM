@@ -113,6 +113,10 @@ public final class JasmConfig {
             .comment("FE the battery of a Byteling holds")
             .defineInRange("batteryByteling", 400_000, 1, Integer.MAX_VALUE);
 
+    public static final ModConfigSpec.IntValue BATTERY_MAX_BLOCKS = BUILDER
+            .comment("Blocks one Battery may have. A block that would join up a bigger one can't be placed. A battery already bigger keeps working and all its power, it just can't grow")
+            .defineInRange("batteryMaxBlocks", 100, 1, 4_096);
+
     static {
         BUILDER.pop().push("autocrafting");
     }

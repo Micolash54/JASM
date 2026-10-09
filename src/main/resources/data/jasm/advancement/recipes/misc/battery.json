@@ -7,11 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_power_acceptor": {
+    "has_memory_chip": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:power_acceptor"
+            "items": "jasm:memory_chip"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_power_acceptor"
+      "has_memory_chip"
     ]
   ],
   "rewards": {

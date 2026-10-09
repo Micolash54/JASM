@@ -1,6 +1,7 @@
 package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.battery.BatteryItem;
 import dev.micolash.jasm.bay.DemolitionBayItem;
 import dev.micolash.jasm.archive.ArchiveTier;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
@@ -42,7 +43,8 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> CREATIVE_BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.CREATIVE_BATTERY);
     public static final DeferredItem<BlockItem> POWER_ACCEPTOR = ITEMS.registerSimpleBlockItem(JasmBlocks.POWER_ACCEPTOR);
     public static final DeferredItem<ThinPowerAcceptorItem> THIN_POWER_ACCEPTOR = ITEMS.registerItem("thin_power_acceptor", ThinPowerAcceptorItem::new);
-    public static final DeferredItem<BlockItem> BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.BATTERY);
+    public static final DeferredItem<BatteryItem> BATTERY = ITEMS.registerItem("battery",
+            properties -> new BatteryItem(JasmBlocks.BATTERY.get(), properties.useBlockDescriptionPrefix()));
     public static final DeferredItem<Item> RECIPE_CARD = ITEMS.registerSimpleItem("recipe_card");
     public static final DeferredItem<RecipeCardItem> FILLED_RECIPE_CARD = ITEMS.registerItem("filled_recipe_card", RecipeCardItem::new,
             p -> p.stacksTo(1));
