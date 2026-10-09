@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "jasm:block/crystal_resonator"
+    "model": "jasm:block/crystal_resonator_off"
   }
 }

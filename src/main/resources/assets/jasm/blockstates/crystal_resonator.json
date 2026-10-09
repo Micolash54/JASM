@@ -1,18 +1,33 @@
 {
   "variants": {
-    "facing=north": {
+    "facing=north,powered=true": {
       "model": "jasm:block/crystal_resonator"
     },
-    "facing=east": {
+    "facing=east,powered=true": {
       "model": "jasm:block/crystal_resonator",
       "y": 90
     },
-    "facing=south": {
+    "facing=south,powered=true": {
       "model": "jasm:block/crystal_resonator",
       "y": 180
     },
-    "facing=west": {
+    "facing=west,powered=true": {
       "model": "jasm:block/crystal_resonator",
+      "y": 270
+    },
+    "facing=north,powered=false": {
+      "model": "jasm:block/crystal_resonator_off"
+    },
+    "facing=east,powered=false": {
+      "model": "jasm:block/crystal_resonator_off",
+      "y": 90
+    },
+    "facing=south,powered=false": {
+      "model": "jasm:block/crystal_resonator_off",
+      "y": 180
+    },
+    "facing=west,powered=false": {
+      "model": "jasm:block/crystal_resonator_off",
       "y": 270
     }
   }

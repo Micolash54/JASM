@@ -7,16 +7,22 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
 /** The Crystal Resonator: with power, it makes touching plants and budding blocks grow faster. It has no screen. */
 public class ResonatorBlock extends MachineBlock {
+    /** Whether the last tick was paid for: only then does the crystal glow. */
+    public static final BooleanProperty POWERED = BooleanProperty.create("powered");
+
     @Override
     protected MapCodec<ResonatorBlock> codec() {
         return simpleCodec(ResonatorBlock::new);
@@ -24,6 +30,13 @@ public class ResonatorBlock extends MachineBlock {
 
     public ResonatorBlock(BlockBehaviour.Properties properties) {
         super(properties);
+        registerDefaultState(defaultBlockState().setValue(POWERED, false));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        super.createBlockStateDefinition(builder);
+        builder.add(POWERED);
     }
 
     @Override

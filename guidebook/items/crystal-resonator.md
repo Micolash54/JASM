@@ -20,7 +20,7 @@ item_ids:
 A powered Crystal Resonator makes the <ItemLink id="seeded_amethyst" /> next to it grow faster.
 
 * It runs on power like any other machine, from a [Data Cable](data-cables.md) network or a generator next to it. It uses 10 FE each tick by default.
-* Every Seeded Amethyst touching it gets one extra growth attempt every 3.5 seconds (70 ticks) by default.
+* Every Seeded Amethyst touching it gets one extra growth attempt every 0.75 seconds (15 ticks) by default.
 * Several Resonators add up.
 * Each extra growth has a 6% chance by default of wearing the block down, half the natural 12%. A seed gives more crystals in total.
 * It counts toward a network's machine limit. See [the Network Brain](network-brain.md).

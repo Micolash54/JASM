@@ -5,7 +5,7 @@
     "particle": "jasm:block/network_casing",
     "casing": "jasm:block/network_casing",
     "top": "jasm:block/crystal_resonator_top",
-    "core": "jasm:block/crystal_resonator_core"
+    "core": "jasm:block/crystal_resonator_core_off"
   },
   "elements": [
     {
@@ -651,8 +651,6 @@
           8
         ]
       },
-      "shade": false,
-      "light_emission": 15,
       "faces": {
         "north": {
           "uv": [
@@ -731,8 +729,6 @@
           8
         ]
       },
-      "shade": false,
-      "light_emission": 15,
       "faces": {
         "north": {
           "uv": [
@@ -802,8 +798,6 @@
           8
         ]
       },
-      "shade": false,
-      "light_emission": 15,
       "faces": {
         "north": {
           "uv": [

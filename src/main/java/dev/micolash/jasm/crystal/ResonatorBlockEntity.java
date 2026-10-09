@@ -38,7 +38,12 @@ public class ResonatorBlockEntity extends MachineBlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, ResonatorBlockEntity resonator) {
-        if (resonator.payForTick() && ++resonator.sincePulse >= JasmConfig.RESONATOR_INTERVAL.getAsInt()) {
+        boolean powered = resonator.payForTick();
+        BlockState now = resonator.getBlockState();
+        if (now.getValue(ResonatorBlock.POWERED) != powered && level.isLoaded(pos)) {
+            level.setBlock(pos, now.setValue(ResonatorBlock.POWERED, powered), Block.UPDATE_CLIENTS);
+        }
+        if (powered && ++resonator.sincePulse >= JasmConfig.RESONATOR_INTERVAL.getAsInt()) {
             resonator.sincePulse = 0;
             resonator.pulse((ServerLevel) level);
         }

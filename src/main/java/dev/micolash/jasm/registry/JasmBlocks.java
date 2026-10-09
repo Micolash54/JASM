@@ -156,7 +156,7 @@ public final class JasmBlocks {
             p -> new AmethystClusterBlock(3.0F, 8.0F, p), p -> budProperties(p, SoundType.SMALL_AMETHYST_BUD, 1));
 
     public static final DeferredBlock<ResonatorBlock> CRYSTAL_RESONATOR = BLOCKS.registerBlock("crystal_resonator",
-            ResonatorBlock::new, p -> p.mapColor(MapColor.COLOR_PURPLE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            ResonatorBlock::new, p -> p.mapColor(MapColor.COLOR_PURPLE).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL).noOcclusion());
 
     public static final Supplier<BlockEntityType<ResonatorBlockEntity>> CRYSTAL_RESONATOR_ENTITY = BLOCK_ENTITIES.register(
             "crystal_resonator", () -> new BlockEntityType<>(ResonatorBlockEntity::new, CRYSTAL_RESONATOR.get()));
