@@ -3,6 +3,8 @@ package dev.micolash.jasm.bitling;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.WildRate;
 import dev.micolash.jasm.registry.JasmEntities;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -16,7 +18,8 @@ import org.jspecify.annotations.Nullable;
 /** A growing Data Crystal now and then draws a wild Bitling over to have a look. */
 public final class CrystalAttraction {
     private static final int PLAYER_RANGE = 48;
-    private static final int CROWD_RANGE = 32;
+    private static final int NEARBY_RANGE = 32;
+    private static final int MAX_NEARBY_BITLINGS = 10;
     private static final int MIN_DISTANCE = 12;
     private static final int MAX_DISTANCE = 24;
 
@@ -36,9 +39,19 @@ public final class CrystalAttraction {
 
     public static @Nullable WildBitling attract(ServerLevel level, BlockPos crystal, RandomSource random) {
         Vec3 centre = Vec3.atCenterOf(crystal);
-        if (level.getNearestPlayer(centre.x, centre.y, centre.z, PLAYER_RANGE, p -> !p.isSpectator()) == null
-                || !level.getEntitiesOfClass(WildBitling.class, new AABB(crystal).inflate(CROWD_RANGE)).isEmpty()) {
+        if (level.getNearestPlayer(centre.x, centre.y, centre.z, PLAYER_RANGE, p -> !p.isSpectator()) == null) {
             return null;
+        }
+        List<WildBitling> nearby = new ArrayList<>(MAX_NEARBY_BITLINGS);
+        level.getEntities(JasmEntities.WILD_BITLING.get(), new AABB(crystal).inflate(NEARBY_RANGE), WildBitling::isAlive,
+                nearby, MAX_NEARBY_BITLINGS);
+        if (nearby.size() >= MAX_NEARBY_BITLINGS) {
+            return null;
+        }
+        for (WildBitling visitor : nearby) {
+            if (crystal.equals(visitor.visiting())) {
+                return null;
+            }
         }
         WildBitling bitling = JasmEntities.WILD_BITLING.get().create(level, EntitySpawnReason.EVENT);
         if (bitling == null) {
