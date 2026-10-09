@@ -15,6 +15,8 @@ import dev.micolash.jasm.autocraft.EncodingTerminalBlock;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlock;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
+import dev.micolash.jasm.battery.BatteryBlock;
+import dev.micolash.jasm.battery.BatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlock;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.bay.BayBlock;
@@ -77,6 +79,13 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<PowerAcceptorBlockEntity>> POWER_ACCEPTOR_ENTITY = BLOCK_ENTITIES.register(
             "power_acceptor", () -> new BlockEntityType<>(PowerAcceptorBlockEntity::new, POWER_ACCEPTOR.get(), THIN_POWER_ACCEPTOR.get()));
+
+    public static final DeferredBlock<BatteryBlock> BATTERY = BLOCKS.registerBlock("battery",
+            BatteryBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)
+                    .noOcclusion().lightLevel(BatteryBlock::light));
+
+    public static final Supplier<BlockEntityType<BatteryBlockEntity>> BATTERY_ENTITY = BLOCK_ENTITIES.register(
+            "battery", () -> new BlockEntityType<>(BatteryBlockEntity::new, BATTERY.get()));
 
     private static final Map<GeneratorTier, DeferredBlock<CombustionGeneratorBlock>> GENERATORS = new EnumMap<>(GeneratorTier.class);
 

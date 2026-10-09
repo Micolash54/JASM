@@ -115,6 +115,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.WRENCH);
                 output.accept(JasmItems.POWER_ACCEPTOR);
                 output.accept(JasmItems.THIN_POWER_ACCEPTOR);
+                output.accept(JasmItems.BATTERY);
                 output.accept(JasmItems.CREATIVE_BATTERY);
             })
             .build());

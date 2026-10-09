@@ -1,0 +1,795 @@
+{
+  "multipart": [
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_0"
+      },
+      "when": {
+        "charge": "0"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_1"
+      },
+      "when": {
+        "charge": "1"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_2"
+      },
+      "when": {
+        "charge": "2"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_3"
+      },
+      "when": {
+        "charge": "3"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_4"
+      },
+      "when": {
+        "charge": "4"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_5"
+      },
+      "when": {
+        "charge": "5"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_6"
+      },
+      "when": {
+        "charge": "6"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_7"
+      },
+      "when": {
+        "charge": "7"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_8"
+      },
+      "when": {
+        "charge": "8"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_9"
+      },
+      "when": {
+        "charge": "9"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_10"
+      },
+      "when": {
+        "charge": "10"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_11"
+      },
+      "when": {
+        "charge": "11"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_12"
+      },
+      "when": {
+        "charge": "12"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_13"
+      },
+      "when": {
+        "charge": "13"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_14"
+      },
+      "when": {
+        "charge": "14"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_15"
+      },
+      "when": {
+        "charge": "15"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/core_16"
+      },
+      "when": {
+        "charge": "16"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_side"
+      },
+      "when": {
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_corner"
+      },
+      "when": {
+        "north": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_side",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_corner",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "east": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_side",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_corner",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "south": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_side",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/fin_corner",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "west": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base"
+      },
+      "when": {
+        "down": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_side"
+      },
+      "when": {
+        "down": "false",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_corner"
+      },
+      "when": {
+        "down": "false",
+        "north": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_side",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "down": "false",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_corner",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "down": "false",
+        "east": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_side",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "down": "false",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_corner",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "down": "false",
+        "south": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_side",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "down": "false",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/base_corner",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "down": "false",
+        "west": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low"
+      },
+      "when": {
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_side"
+      },
+      "when": {
+        "down": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_corner"
+      },
+      "when": {
+        "down": "true",
+        "north": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_side",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "down": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_corner",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "down": "true",
+        "east": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_side",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "down": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_corner",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "down": "true",
+        "south": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_side",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "down": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_low_corner",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "down": "true",
+        "west": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap"
+      },
+      "when": {
+        "up": "false",
+        "full": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_full"
+      },
+      "when": {
+        "up": "false",
+        "full": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_side"
+      },
+      "when": {
+        "up": "false",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_corner"
+      },
+      "when": {
+        "up": "false",
+        "north": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_side",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "up": "false",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_corner",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "up": "false",
+        "east": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_side",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "up": "false",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_corner",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "up": "false",
+        "south": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_side",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "up": "false",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/cap_corner",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "up": "false",
+        "west": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high"
+      },
+      "when": {
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_side"
+      },
+      "when": {
+        "up": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_corner"
+      },
+      "when": {
+        "up": "true",
+        "north": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_side",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "up": "true",
+        "east": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_corner",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "up": "true",
+        "east": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_side",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "up": "true",
+        "south": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_corner",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "up": "true",
+        "south": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_side",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "up": "true",
+        "west": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/joint_high_corner",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "up": "true",
+        "west": "true",
+        "north": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low"
+      },
+      "when": {
+        "north": "false",
+        "west": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high"
+      },
+      "when": {
+        "north": "false",
+        "west": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low_joint"
+      },
+      "when": {
+        "north": "false",
+        "west": "false",
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high_joint"
+      },
+      "when": {
+        "north": "false",
+        "west": "false",
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "east": "false",
+        "north": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "east": "false",
+        "north": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low_joint",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "east": "false",
+        "north": "false",
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high_joint",
+        "y": 90,
+        "uvlock": true
+      },
+      "when": {
+        "east": "false",
+        "north": "false",
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "south": "false",
+        "east": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "south": "false",
+        "east": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low_joint",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "south": "false",
+        "east": "false",
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high_joint",
+        "y": 180,
+        "uvlock": true
+      },
+      "when": {
+        "south": "false",
+        "east": "false",
+        "up": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "west": "false",
+        "south": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "west": "false",
+        "south": "false"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_low_joint",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "west": "false",
+        "south": "false",
+        "down": "true"
+      }
+    },
+    {
+      "apply": {
+        "model": "jasm:block/battery/post_high_joint",
+        "y": 270,
+        "uvlock": true
+      },
+      "when": {
+        "west": "false",
+        "south": "false",
+        "up": "true"
+      }
+    }
+  ]
+}

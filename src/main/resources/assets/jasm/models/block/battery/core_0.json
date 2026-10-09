@@ -1,0 +1,64 @@
+{
+  "textures": {
+    "particle": "jasm:block/battery_cap",
+    "cap": "jasm:block/battery_cap",
+    "plate": "jasm:block/battery_plate",
+    "cap_full": "jasm:block/battery_cap_full",
+    "fin": "jasm:block/battery_fin",
+    "post": "jasm:block/battery_post",
+    "core": "jasm:block/battery_core",
+    "core_lit": "jasm:block/battery_core_lit"
+  },
+  "elements": [
+    {
+      "from": [
+        4,
+        0,
+        4
+      ],
+      "to": [
+        12,
+        16,
+        12
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            0,
+            12,
+            16
+          ],
+          "texture": "#core"
+        },
+        "south": {
+          "uv": [
+            4,
+            0,
+            12,
+            16
+          ],
+          "texture": "#core"
+        },
+        "east": {
+          "uv": [
+            4,
+            0,
+            12,
+            16
+          ],
+          "texture": "#core"
+        },
+        "west": {
+          "uv": [
+            4,
+            0,
+            12,
+            16
+          ],
+          "texture": "#core"
+        }
+      }
+    }
+  ]
+}

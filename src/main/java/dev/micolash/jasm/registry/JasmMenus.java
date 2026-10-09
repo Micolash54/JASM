@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
+import dev.micolash.jasm.battery.BatteryMenu;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.bay.BayKind;
 import dev.micolash.jasm.bay.BayMenu;
@@ -34,6 +35,8 @@ public final class JasmMenus {
             () -> new MenuType<>(CreativeBatteryMenu::new, FeatureFlags.VANILLA_SET));
     public static final Supplier<MenuType<PowerAcceptorMenu>> POWER_ACCEPTOR = MENUS.register("power_acceptor",
             () -> new MenuType<>(PowerAcceptorMenu::new, FeatureFlags.VANILLA_SET));
+    public static final Supplier<MenuType<BatteryMenu>> BATTERY = MENUS.register("battery",
+            () -> new MenuType<>(BatteryMenu::new, FeatureFlags.VANILLA_SET));
     public static final Supplier<MenuType<CombustionGeneratorMenu>> COMBUSTION_GENERATOR = MENUS.register("combustion_generator",
             () -> new MenuType<>(CombustionGeneratorMenu::new, FeatureFlags.VANILLA_SET));
 

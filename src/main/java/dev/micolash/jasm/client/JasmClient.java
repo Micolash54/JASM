@@ -87,6 +87,7 @@ public final class JasmClient {
         event.register(JasmMenus.CREATIVE_BATTERY.get(), CreativeBatteryScreen::new);
         event.register(JasmMenus.COMBUSTION_GENERATOR.get(), CombustionGeneratorScreen::new);
         event.register(JasmMenus.POWER_ACCEPTOR.get(), PowerAcceptorScreen::new);
+        event.register(JasmMenus.BATTERY.get(), BatteryScreen::new);
         event.register(JasmMenus.CHIP_WORKSHOP.get(), ChipWorkshopScreen::new);
         event.register(JasmMenus.DEPLOYMENT_BAY.get(), BayScreen::new);
         event.register(JasmMenus.DEMOLITION_BAY.get(), BayScreen::new);

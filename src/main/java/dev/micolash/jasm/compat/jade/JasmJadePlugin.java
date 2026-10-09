@@ -6,6 +6,7 @@ import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlock;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
+import dev.micolash.jasm.battery.BatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.brain.NetworkBrainBlock;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
@@ -31,8 +32,8 @@ import snownee.jade.api.JadeIds;
 import snownee.jade.api.WailaPlugin;
 
 /**
- * Jade support: who owns an Archive and how many wafers it protects, what a generator is doing, the endless battery,
- * the crafting-network blocks (owner, power, cards, the running job), and the Network Brain.
+ * Jade support: who owns an Archive and how many wafers it protects, what a generator is doing, the endless battery, the
+ * power of a whole Battery, the crafting-network blocks (owner, power, cards, the running job), and the Network Brain.
  */
 @WailaPlugin
 public class JasmJadePlugin implements IWailaPlugin {
@@ -41,6 +42,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(ArchiveInfo.INSTANCE, ArchiveBlockEntity.class);
         registration.registerBlockDataProvider(GeneratorInfo.INSTANCE, CombustionGeneratorBlockEntity.class);
         registration.registerEnergyStorage(InfiniteEnergy.INSTANCE, CreativeBatteryBlockEntity.class);
+        registration.registerEnergyStorage(BatteryEnergy.INSTANCE, BatteryBlockEntity.class);
         registration.registerEnergyStorage(HiddenEnergy.INSTANCE, PowerAcceptorBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, DataCableBlockEntity.class);
@@ -56,6 +58,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(ArchiveInfo.Client.INSTANCE, ArchiveBlock.class);
         registration.registerBlockComponent(GeneratorInfo.Client.INSTANCE, CombustionGeneratorBlock.class);
         registration.registerEnergyStorageClient(InfiniteEnergy.INSTANCE);
+        registration.registerEnergyStorageClient(BatteryEnergy.INSTANCE);
         registration.registerEnergyStorageClient(HiddenEnergy.INSTANCE);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, MachineBlock.class);
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, DataCableBlock.class);

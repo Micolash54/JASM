@@ -3,6 +3,7 @@
     "jasm:creative_battery",
     "jasm:power_acceptor",
     "jasm:thin_power_acceptor",
+    "jasm:battery",
     "jasm:basic_archive",
     "jasm:advanced_archive",
     "jasm:ultimate_archive",

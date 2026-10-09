@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "G": "minecraft:gold_ingot",
+    "R": "minecraft:redstone_block"
+  },
+  "pattern": [
+    "IGI",
+    "IRI",
+    "IGI"
+  ],
+  "result": {
+    "id": "jasm:battery"
+  }
+}

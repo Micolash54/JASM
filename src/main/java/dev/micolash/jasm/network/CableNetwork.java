@@ -1,6 +1,8 @@
 package dev.micolash.jasm.network;
 
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
+import dev.micolash.jasm.battery.BatteryBlockEntity;
+import dev.micolash.jasm.battery.BatteryGroup;
 import dev.micolash.jasm.brain.NetworkBrainBlock;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.core.BrainBalance;
@@ -22,8 +24,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * One crafting network: Data Cables, machines and Archives joined face to face. Cables hold no power: what a source
- * pushes into a cable goes straight to the machines on the network that want it. Machines only get power through a
- * cable, or from a generator or Power Acceptor they touch; they never pass it on to each other.
+ * pushes into a cable goes straight to the machines on the network that want it, and what they don't take to the
+ * Batteries touching its cables. Machines only get power through a cable, or from a generator, Power Acceptor or Battery
+ * they touch; they never pass it on to each other.
  *
  * <p>A network lives until something on it changes, so what it finds about its blocks the first time (which block
  * entities sit where, which cables touch, which machines are of which kind) is kept and reused every tick.
@@ -40,6 +43,7 @@ public final class CableNetwork {
     private @Nullable Map<BlockPos, Member> memberByPos;
     private @Nullable Map<BlockPos, DataCableBlockEntity> loadedCables;
     private @Nullable List<EnergyHandler> consumers;
+    private @Nullable List<BatteryBlockEntity> batteries;
     private final Map<Class<?>, List<?>> byKind = new HashMap<>();
     private long checkedTick = -1;
     private long leaderTick = -1;
@@ -139,6 +143,10 @@ public final class CableNetwork {
         for (Member member : members()) {
             if (member.entity().isRemoved()) return true;
         }
+        consumers();
+        for (BatteryBlockEntity battery : batteries) {
+            if (battery.isRemoved()) return true;
+        }
         return false;
     }
 
@@ -208,24 +216,45 @@ public final class CableNetwork {
     }
 
     /**
-     * Cables hold no power. A source that pushes into any cable of the network offers it here, and it goes straight to
-     * the machines, Archives and ports that still have room, each an equal part first and the rest to whoever can take
-     * it. Only what they can take is accepted, so a source that finds nothing wanting keeps its power (and a generator
-     * stops burning), and how much can move in one tick has no limit.
+     * Cables hold no power. A source that pushes into any cable of the network offers it here. It goes straight to the
+     * machines, Archives and ports that still have room, and what they leave to the network's batteries. Only what they
+     * can take is accepted, so a source that finds nothing wanting keeps its power (and a generator stops burning), and
+     * how much can move in one tick has no limit.
      */
     int feed(int amount, TransactionContext transaction) {
-        if (amount <= 0) {
+        if (amount <= 0 || !current()) {
             return 0;
         }
+        int taken = spread(consumers(), amount, transaction);
+        if (taken < amount && !batteries.isEmpty()) {
+            taken += spread(BatteryGroup.distinct(level, batteries), amount - taken, transaction);
+        }
+        return taken;
+    }
+
+    /** Like {@link #feed}, but only machines, Archives and ports get any: what a battery gives never goes into another. */
+    int feedMachines(int amount, TransactionContext transaction) {
+        if (amount <= 0 || !current()) {
+            return 0;
+        }
+        return spread(consumers(), amount, transaction);
+    }
+
+    /** Checked once a tick: false when a block it remembers has gone, and the network is thrown away. */
+    private boolean current() {
         long now = level.getGameTime();
         if (now != checkedTick) {
             checkedTick = now;
             if (stale()) {
                 Networks.invalidate(level, machines.isEmpty() ? cables.iterator().next() : machines.iterator().next());
-                return 0;
+                return false;
             }
         }
-        List<EnergyHandler> targets = consumers();
+        return true;
+    }
+
+    /** An equal part to each that still has room first, and the rest to whoever can take it. */
+    private int spread(List<EnergyHandler> targets, int amount, TransactionContext transaction) {
         int wanting = 0;
         for (EnergyHandler target : targets) {
             if (target.getAmountAsLong() < target.getCapacityAsLong()) wanting++;
@@ -234,7 +263,7 @@ public final class CableNetwork {
             return 0;
         }
         // Whoever starts goes round, so the odd FE left over doesn't always land on the same block.
-        int start = (int) Math.floorMod(now, (long) targets.size());
+        int start = (int) Math.floorMod(level.getGameTime(), (long) targets.size());
         int share = Math.max(1, amount / wanting);
         int taken = 0;
         for (int i = 0; i < targets.size() && taken < amount; i++) {
@@ -246,6 +275,12 @@ public final class CableNetwork {
         return taken;
     }
 
+    /** The Battery blocks touching the network's cables, found with the machines. A port's face gives a battery nothing. */
+    public List<BatteryBlockEntity> batteries() {
+        consumers();
+        return batteries;
+    }
+
     /**
      * Machines and Archives touching a cable, and the ports on cables. Each buffer once. Found once and kept. A block in
      * front of a port gets nothing from here: only a port with a Power Upgrade passes power on to it.
@@ -254,6 +289,7 @@ public final class CableNetwork {
         if (consumers == null) {
             Set<EnergyHandler> seen = Collections.newSetFromMap(new IdentityHashMap<>());
             List<EnergyHandler> found = new ArrayList<>();
+            List<BatteryBlockEntity> foundBatteries = new ArrayList<>();
             for (var entry : loadedCables().entrySet()) {
                 DataCableBlockEntity cable = entry.getValue();
                 for (Direction side : Direction.values()) {
@@ -263,12 +299,17 @@ public final class CableNetwork {
                         continue;
                     }
                     BlockPos next = entry.getKey().relative(side);
+                    if (level.isLoaded(next) && level.getBlockEntity(next) instanceof BatteryBlockEntity battery) {
+                        foundBatteries.add(battery);
+                        continue;
+                    }
                     // Two chambers of one floor both hand over to their brain: count it once.
                     SimpleEnergyHandler target = machines.contains(next) ? energyAt(next) : null;
                     if (target != null && seen.add(target)) found.add(target);
                 }
             }
             consumers = Collections.unmodifiableList(found);
+            batteries = Collections.unmodifiableList(foundBatteries);
         }
         return consumers;
     }

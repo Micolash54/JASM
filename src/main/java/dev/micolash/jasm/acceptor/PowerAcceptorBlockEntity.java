@@ -1,7 +1,8 @@
 package dev.micolash.jasm.acceptor;
 
+import dev.micolash.jasm.battery.BatteryBlockEntity;
+import dev.micolash.jasm.battery.BatteryGroup;
 import dev.micolash.jasm.network.CableNetwork;
-import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.PowerReceiver;
@@ -9,12 +10,9 @@ import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -33,7 +31,6 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
-import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
@@ -41,9 +38,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Moves power between a JASM network and other mods' blocks, as its mode says. In (the default) it takes FE other mods
  * push in and draws FE from outside power blocks beside it, and hands it straight to touching cables and machines. Out,
- * it pushes the power held by the machines on the network it touches into outside blocks that take FE. It holds nothing
+ * it pushes the power stored in Batteries into outside blocks that take FE: those it touches, and those touching the
+ * cables of the networks it touches. It holds nothing
  * and has no speed limit: it only moves what the other side can take right now. It never touches JASM generators or
- * other Acceptors.
+ * other Acceptors, and never takes the power inside machines.
  */
 public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowerSource, MenuProvider {
     /** Ticks a side keeps its direction after power last moved through it, so a two-way store isn't filled and emptied in turns. */
@@ -55,7 +53,8 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
     private final long[] tookAt = new long[6];
     private final long[] gaveAt = new long[6];
     private final CableNetwork[] poolNetworks = new CableNetwork[6];
-    private @Nullable List<SimpleEnergyHandler> pool;
+    private final PowerReceiver[] poolSides = new PowerReceiver[6];
+    private @Nullable List<BatteryBlockEntity> pool;
     private AcceptorMode mode = AcceptorMode.INPUT;
 
     private final ContainerData data = new ContainerData() {
@@ -163,10 +162,10 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         return taken;
     }
 
-    /** Pushes network power into each outside block beside it that has room. The network is only looked at when one does. */
+    /** Pushes battery power into each outside block beside it that has room. The batteries are only looked at when one does. */
     private void give(ServerLevel level) {
         long now = level.getGameTime();
-        List<SimpleEnergyHandler> buffers = null;
+        List<EnergyHandler> batteries = null;
         for (Direction side : Direction.values()) {
             if (now - tookAt[side.ordinal()] < HOLD) {
                 continue;
@@ -179,10 +178,10 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
             if (room <= 0) {
                 continue;
             }
-            if (buffers == null) {
-                buffers = pool(level);
+            if (batteries == null) {
+                batteries = BatteryGroup.distinct(level, pool(level));
             }
-            if (give(target, room, buffers)) {
+            if (give(target, room, batteries)) {
                 gaveAt[side.ordinal()] = now;
             }
         }
@@ -194,10 +193,10 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         }
     }
 
-    private static boolean give(EnergyHandler target, int room, List<SimpleEnergyHandler> pool) {
+    private static boolean give(EnergyHandler target, int room, List<EnergyHandler> batteries) {
         long held = 0;
-        for (SimpleEnergyHandler buffer : pool) {
-            held += buffer.getAmountAsInt();
+        for (EnergyHandler battery : batteries) {
+            held += battery.getAmountAsLong();
         }
         int want = (int) Math.min(room, held);
         if (want <= 0) {
@@ -205,7 +204,7 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         }
         try (Transaction tx = Transaction.openRoot()) {
             int accepted = target.insert(want, tx);
-            if (accepted > 0 && drain(pool, accepted, tx) == accepted) {
+            if (accepted > 0 && drain(batteries, accepted, tx) == accepted) {
                 tx.commit();
                 return true;
             }
@@ -213,48 +212,49 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         return false;
     }
 
-    /** Takes {@code amount} from the buffers, an equal part from each first and the rest from whoever still holds some. */
-    private static int drain(List<SimpleEnergyHandler> pool, int amount, TransactionContext transaction) {
+    /** Takes {@code amount} from the batteries, an equal part from each first and the rest from whoever still holds some. */
+    private static int drain(List<EnergyHandler> batteries, int amount, TransactionContext transaction) {
         int taken = 0;
-        int share = Math.max(1, amount / pool.size());
+        int share = Math.max(1, amount / batteries.size());
         for (int pass = 0; pass < 2 && taken < amount; pass++) {
-            for (SimpleEnergyHandler buffer : pool) {
+            for (EnergyHandler battery : batteries) {
                 if (taken >= amount) {
                     break;
                 }
-                taken += buffer.extract(pass == 0 ? Math.min(share, amount - taken) : amount - taken, transaction);
+                taken += battery.extract(pass == 0 ? Math.min(share, amount - taken) : amount - taken, transaction);
             }
         }
         return taken;
     }
 
     /**
-     * The power buffers of the machines on the networks of the cables and machines touching this block, each once. A
-     * network is replaced whenever something on it changes, so the list is only built again when one of them is new.
+     * The Battery blocks it may empty: those it touches, and those on the cables of the networks of the blocks it touches.
+     * A network is replaced whenever something on it changes, so the list is only built again when a side or a network
+     * is new.
      */
-    private List<SimpleEnergyHandler> pool(ServerLevel level) {
+    private List<BatteryBlockEntity> pool(ServerLevel level) {
         boolean same = true;
         for (Direction side : Direction.values()) {
-            CableNetwork network = sides.receiver(side) == null ? null : Networks.at(level, worldPosition.relative(side));
-            if (poolNetworks[side.ordinal()] != network) {
+            PowerReceiver receiver = sides.receiver(side);
+            CableNetwork network = receiver == null ? null : Networks.at(level, worldPosition.relative(side));
+            if (poolNetworks[side.ordinal()] != network || poolSides[side.ordinal()] != receiver) {
                 poolNetworks[side.ordinal()] = network;
+                poolSides[side.ordinal()] = receiver;
                 same = false;
             }
         }
         if (same && pool != null) {
             return pool;
         }
-        Set<CableNetwork> done = Collections.newSetFromMap(new IdentityHashMap<>());
-        Set<SimpleEnergyHandler> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        List<SimpleEnergyHandler> found = new ArrayList<>();
-        for (CableNetwork network : poolNetworks) {
-            if (network == null || !done.add(network)) {
-                continue;
+        List<BatteryBlockEntity> found = new ArrayList<>();
+        for (Direction side : Direction.values()) {
+            if (poolSides[side.ordinal()] != null && level.getBlockEntity(worldPosition.relative(side)) instanceof BatteryBlockEntity battery) {
+                found.add(battery);
             }
-            for (MachineBlockEntity machine : network.machines(MachineBlockEntity.class)) {
-                if (seen.add(machine.energy())) {
-                    found.add(machine.energy());
-                }
+        }
+        for (CableNetwork network : poolNetworks) {
+            if (network != null) {
+                found.addAll(network.batteries());
             }
         }
         pool = found;
