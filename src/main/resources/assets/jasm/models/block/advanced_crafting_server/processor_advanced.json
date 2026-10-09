@@ -1,0 +1,21 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "jasm:block/advanced_crafting_server_parts",
+    "parts": "jasm:block/advanced_crafting_server_parts"
+  },
+  "elements": [
+    {
+      "name": "processor",
+      "from": [12, 19, 1],
+      "to": [15, 20, 2],
+      "faces": {
+        "north": {"uv": [0, 1, 3, 2], "texture": "#parts"},
+        "east": {"uv": [4, 1, 5, 2], "texture": "#parts"},
+        "west": {"uv": [4, 1, 5, 2], "texture": "#parts"},
+        "up": {"uv": [4, 1, 5, 2], "texture": "#parts"},
+        "down": {"uv": [4, 1, 5, 2], "texture": "#parts"}
+      }
+    }
+  ]
+}

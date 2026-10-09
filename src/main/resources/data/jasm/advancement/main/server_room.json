@@ -10,6 +10,17 @@
         ]
       },
       "trigger": "minecraft:inventory_changed"
+    },
+    "placed_advanced_server": {
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "jasm:advanced_crafting_server"
+          }
+        ]
+      },
+      "trigger": "minecraft:placed_block"
     }
   },
   "display": {
@@ -26,7 +37,8 @@
   },
   "requirements": [
     [
-      "server_room"
+      "server_room",
+      "placed_advanced_server"
     ]
   ]
 }

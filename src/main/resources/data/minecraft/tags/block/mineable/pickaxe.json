@@ -12,6 +12,7 @@
     "jasm:recipe_rack",
     "jasm:data_cable",
     "jasm:crafting_server",
+    "jasm:advanced_crafting_server",
     "jasm:access_port",
     "jasm:full_input_port",
     "jasm:full_output_port",

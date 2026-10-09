@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "S": "jasm:crafting_server",
+    "P": "jasm:advanced_processor",
+    "L": "jasm:logic_chip"
+  },
+  "pattern": [
+    "ILI",
+    "SPS",
+    "ILI"
+  ],
+  "result": {
+    "id": "jasm:advanced_crafting_server"
+  }
+}

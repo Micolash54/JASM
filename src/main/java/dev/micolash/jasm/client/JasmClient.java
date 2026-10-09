@@ -56,6 +56,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.DATA_CABLE_ENTITY.get(), DataCableRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.RECIPE_RACK_ENTITY.get(), RecipeRackRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CRAFTING_SERVER_ENTITY.get(), CraftingServerRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.ADVANCED_CRAFTING_SERVER_ENTITY.get(), AdvancedCraftingServerRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.ENCODING_TERMINAL_ENTITY.get(), EncodingTerminalRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.CHIP_WORKSHOP_ENTITY.get(), ChipWorkshopRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.NETWORK_BRAIN_ENTITY.get(), NetworkBrainRenderer::new);
@@ -73,6 +74,7 @@ public final class JasmClient {
         event.register(DataCableRenderer.PORT, SimpleUnbakedStandaloneModel.simpleModelWrapper(DataCableRenderer.PORT_ID));
         DataCableRenderer.registerTransferModels(event);
         CraftingServerRenderer.registerModels(event);
+        AdvancedCraftingServerRenderer.registerModels(event);
         EncodingTerminalRenderer.registerModels(event);
         ChipWorkshopRenderer.registerModels(event);
         NetworkBrainRenderer.registerModels(event);
@@ -95,6 +97,7 @@ public final class JasmClient {
         event.register(JasmMenus.ENCODING_TERMINAL.get(), EncodingTerminalScreen::new);
         event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
+        event.register(JasmMenus.ADVANCED_CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ACCESS_PORT.get(), AccessPortScreen::new);
         event.register(JasmMenus.TRANSFER_PORT.get(), TransferPortScreen::new);
         event.register(JasmMenus.STORAGE_PORT.get(), StoragePortScreen::new);

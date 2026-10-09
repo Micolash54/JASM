@@ -51,6 +51,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.ENCODING_TERMINAL);
                 output.accept(JasmItems.RECIPE_RACK);
                 output.accept(JasmItems.CRAFTING_SERVER);
+                output.accept(JasmItems.ADVANCED_CRAFTING_SERVER);
                 output.accept(JasmItems.ACCESS_PORT);
                 output.accept(JasmItems.THIN_ACCESS_PORT);
                 output.accept(JasmItems.INPUT_PORT);

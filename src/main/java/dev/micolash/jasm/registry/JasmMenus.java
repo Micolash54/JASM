@@ -55,6 +55,9 @@ public final class JasmMenus {
     public static final Supplier<MenuType<CraftingServerMenu>> CRAFTING_SERVER = MENUS.register("crafting_server",
             () -> new MenuType<>(CraftingServerMenu::new, FeatureFlags.VANILLA_SET));
 
+    public static final Supplier<MenuType<CraftingServerMenu>> ADVANCED_CRAFTING_SERVER = MENUS.register("advanced_crafting_server",
+            () -> new MenuType<>(CraftingServerMenu::advanced, FeatureFlags.VANILLA_SET));
+
     public static final Supplier<MenuType<AccessPortMenu>> ACCESS_PORT = MENUS.register("access_port",
             () -> IMenuTypeExtension.create(AccessPortMenu::client));
 

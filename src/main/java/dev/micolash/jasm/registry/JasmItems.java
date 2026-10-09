@@ -53,6 +53,7 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> RECIPE_RACK = ITEMS.registerSimpleBlockItem(JasmBlocks.RECIPE_RACK);
     public static final DeferredItem<BlockItem> DATA_CABLE = ITEMS.registerSimpleBlockItem(JasmBlocks.DATA_CABLE);
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
+    public static final DeferredItem<BlockItem> ADVANCED_CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.ADVANCED_CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
     public static final DeferredItem<ThinAccessPortItem> THIN_ACCESS_PORT = ITEMS.registerItem("thin_access_port", ThinAccessPortItem::new);
     public static final DeferredItem<TransferPortItem> INPUT_PORT = ITEMS.registerItem("input_port", TransferPortItem::new);

@@ -1,0 +1,81 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "jasm:block/advanced_crafting_server_fan",
+    "fan": "jasm:block/advanced_crafting_server_fan"
+  },
+  "elements": [
+    {
+      "name": "west_0",
+      "from": [
+        -0.02,
+        4,
+        5
+      ],
+      "to": [
+        -0.02,
+        10,
+        11
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0,
+            0,
+            6,
+            6
+          ],
+          "texture": "#fan"
+        }
+      }
+    },
+    {
+      "name": "west_1",
+      "from": [
+        -0.02,
+        13,
+        5
+      ],
+      "to": [
+        -0.02,
+        19,
+        11
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0,
+            0,
+            6,
+            6
+          ],
+          "texture": "#fan"
+        }
+      }
+    },
+    {
+      "name": "west_2",
+      "from": [
+        -0.02,
+        22,
+        5
+      ],
+      "to": [
+        -0.02,
+        28,
+        11
+      ],
+      "faces": {
+        "west": {
+          "uv": [
+            0,
+            0,
+            6,
+            6
+          ],
+          "texture": "#fan"
+        }
+      }
+    }
+  ]
+}

@@ -127,6 +127,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "recipe_rack", 2, List.of(JasmItems.RECIPE_RACK.get()));
         info(registration, "data_cable", 2, JasmItems.cables());
         info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));
+        info(registration, "advanced_crafting_server", 2, List.of(JasmItems.ADVANCED_CRAFTING_SERVER.get()));
         info(registration, "access_port", 2, List.of(JasmItems.ACCESS_PORT.get()));
         info(registration, "redstone_upgrade", 2, List.of(JasmItems.REDSTONE_UPGRADE.get()));
         info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());

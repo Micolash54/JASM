@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:stock_upgrade"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_link_chip": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:link_chip"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_link_chip"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:stock_upgrade"
+    ]
+  }
+}
