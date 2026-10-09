@@ -90,8 +90,7 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        // Acceptors saved before it had modes only took power in.
-        flow.setMode(input.read("mode", AcceptorMode.CODEC).orElse(AcceptorMode.INPUT));
+        flow.setMode(AcceptorMode.load(input));
     }
 
     /** All six neighbours: JASM blocks are what it feeds, the rest are the outside blocks it trades with. */

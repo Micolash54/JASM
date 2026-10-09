@@ -10,9 +10,9 @@ import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
-/** The Power Acceptor's menu: no slots, just the mode. Button ids 0 to 2 pick a mode. */
+/** The Power Acceptor's menu: no slots, just the mode and the power going through. Button ids pick a mode. */
 public class PowerAcceptorMenu extends AbstractContainerMenu {
-    static final int DATA_COUNT = 1;
+    static final int DATA_COUNT = 3;
 
     private final ContainerData data;
     private final Predicate<Player> valid;
@@ -38,6 +38,11 @@ public class PowerAcceptorMenu extends AbstractContainerMenu {
 
     public AcceptorMode mode() {
         return AcceptorMode.byId(data.get(0));
+    }
+
+    /** FE a tick going through, in or out as the mode says, averaged over the last second. */
+    public int flow() {
+        return data.get(2) << 16 | data.get(1) & 0xFFFF;
     }
 
     @Override

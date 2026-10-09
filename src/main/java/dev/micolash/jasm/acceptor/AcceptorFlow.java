@@ -2,7 +2,6 @@ package dev.micolash.jasm.acceptor;
 
 import dev.micolash.jasm.battery.BatteryBlockEntity;
 import dev.micolash.jasm.battery.BatteryGroup;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -20,17 +19,18 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * How a Power Acceptor moves power between a JASM network and other mods' blocks, as its mode says. In (the default) it
- * accepts the FE other mods' blocks push into it and hands it straight to the network, but only as much as the network's
- * machines and Batteries have room for; it never pulls power out of anything. Out, it pushes the power stored in Batteries
- * into outside blocks that take FE. It holds no power of its own and has no speed limit. It never touches JASM generators
- * or other Acceptors, and never takes the power inside machines. A side keeps the way it first went (a block that pushed
- * power in is never filled, one it filled is never taken from) until the mode is switched or another block takes its
- * place, so power never goes round in circles.
+ * How a Power Acceptor moves power between a JASM network and other mods' blocks, one way only, as its mode says. In (the
+ * default) it accepts the FE other mods' blocks push into it and hands it straight to the network, but only as much as the
+ * network's machines and Batteries have room for; it never pulls power out of anything. Out, it gives the power stored in
+ * Batteries to the outside blocks beside it, as much as each takes. It holds no power of its own and has no speed limit. It
+ * never touches JASM generators or other Acceptors, and never takes the power inside machines.
  *
  * <p>The block and the thin acceptor on a cable share this. Each one says what it has around it through a {@link Site}.
  */
 final class AcceptorFlow {
+    /** Ticks the power flow is averaged over. */
+    private static final int FLOW_TICKS = 20;
+
     /** What one kind of acceptor has around it. */
     interface Site {
         @Nullable Level level();
@@ -51,32 +51,23 @@ final class AcceptorFlow {
         List<BatteryBlockEntity> batteries(ServerLevel level);
     }
 
-    /** Which way power goes through a side. */
-    private enum Way {
-        FREE,
-        /** It pushed power in. */
-        FROM,
-        /** It was given power. */
-        TO
-    }
-
     private final Site site;
-    /** What other mods see on each side, and on no side in particular. */
-    private final Intake[] intakes = new Intake[6];
-    private final Intake anySide = new Intake(null);
+    /** What other mods see, on every side. */
+    private final Intake intake = new Intake();
     private final Map<Direction, BlockCapabilityCache<EnergyHandler, @Nullable Direction>> neighbours = new EnumMap<>(Direction.class);
-    private final Way[] ways = new Way[6];
-    /** The outside block each side's way was learned from: a different one there starts again. */
-    private final EnergyHandler[] wayOf = new EnergyHandler[6];
     private AcceptorMode mode = AcceptorMode.INPUT;
     /** The network's room, worked out at most once a tick and only when someone asks. */
     private long roomTick = Long.MIN_VALUE;
     private int room;
+    /** FE moved since the flow was last worked out, and the FE a tick that makes, averaged over the last second. */
+    private long moved;
+    private int flow;
 
     private final ContainerData data = new ContainerData() {
         @Override
         public int get(int index) {
-            return mode.ordinal();
+            // Synced numbers travel as 16-bit words, so the flow goes as two of them.
+            return index == 0 ? mode.ordinal() : flow >>> 16 * (index - 1) & 0xFFFF;
         }
 
         @Override
@@ -90,29 +81,26 @@ final class AcceptorFlow {
 
     AcceptorFlow(Site site) {
         this.site = site;
-        Arrays.fill(ways, Way.FREE);
-        for (Direction side : Direction.values()) {
-            intakes[side.ordinal()] = new Intake(side);
-        }
     }
 
     AcceptorMode mode() {
         return mode;
     }
 
-    /** Returns whether the mode changed. Switching it is how a player has the acceptor look again at which way each side goes. */
+    /** Returns whether the mode changed. */
     boolean setMode(AcceptorMode mode) {
         if (this.mode == mode) {
             return false;
         }
         this.mode = mode;
-        Arrays.fill(ways, Way.FREE);
+        moved = 0;
+        flow = 0;
         return true;
     }
 
     /** What other mods see on that side: they may push power in, never take it out. */
     EnergyHandler input(@Nullable Direction side) {
-        return side == null ? anySide : intakes[side.ordinal()];
+        return intake;
     }
 
     ContainerData data() {
@@ -121,23 +109,22 @@ final class AcceptorFlow {
 
     void tick(ServerLevel level) {
         site.refresh(level);
-        if (mode.out()) {
+        if (mode == AcceptorMode.OUTPUT) {
             give(level);
+        }
+        if ((level.getGameTime() + site.pos().asLong()) % FLOW_TICKS == 0) {
+            flow = (int) Math.min(Integer.MAX_VALUE, Math.round(moved / (double) FLOW_TICKS));
+            moved = 0;
         }
     }
 
     private @Nullable EnergyHandler outside(ServerLevel level, Direction side) {
-        EnergyHandler handler = null;
-        if (site.open(side)) {
-            handler = neighbours
-                    .computeIfAbsent(side, s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, site.pos().relative(s), s.getOpposite()))
-                    .getCapability();
+        if (!site.open(side)) {
+            return null;
         }
-        if (wayOf[side.ordinal()] != handler) {
-            wayOf[side.ordinal()] = handler;
-            ways[side.ordinal()] = Way.FREE;
-        }
-        return handler;
+        return neighbours
+                .computeIfAbsent(side, s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, site.pos().relative(s), s.getOpposite()))
+                .getCapability();
     }
 
     /**
@@ -162,12 +149,12 @@ final class AcceptorFlow {
         return room;
     }
 
-    /** Pushes battery power into each outside block beside it that has room. The batteries are only looked at when one does. */
+    /** Gives battery power to each outside block beside it that has room. The batteries are only looked at when one does. */
     private void give(ServerLevel level) {
         List<EnergyHandler> batteries = null;
         for (Direction side : Direction.values()) {
             EnergyHandler target = outside(level, side);
-            if (target == null || ways[side.ordinal()] == Way.FROM) {
+            if (target == null) {
                 continue;
             }
             int room = room(target);
@@ -177,9 +164,7 @@ final class AcceptorFlow {
             if (batteries == null) {
                 batteries = BatteryGroup.distinct(level, site.batteries(level));
             }
-            if (give(target, room, batteries)) {
-                ways[side.ordinal()] = Way.TO;
-            }
+            moved += give(target, room, batteries);
         }
     }
 
@@ -189,23 +174,24 @@ final class AcceptorFlow {
         }
     }
 
-    private static boolean give(EnergyHandler target, int room, List<EnergyHandler> batteries) {
+    /** Gives the target as much as it said it takes, or what the batteries hold if less. Returns what went. */
+    private static int give(EnergyHandler target, int room, List<EnergyHandler> batteries) {
         long held = 0;
         for (EnergyHandler battery : batteries) {
             held += battery.getAmountAsLong();
         }
         int want = (int) Math.min(room, held);
         if (want <= 0) {
-            return false;
+            return 0;
         }
         try (Transaction tx = Transaction.openRoot()) {
             int accepted = target.insert(want, tx);
             if (accepted > 0 && drain(batteries, accepted, tx) == accepted) {
                 tx.commit();
-                return true;
+                return accepted;
             }
         }
-        return false;
+        return 0;
     }
 
     /** Takes {@code amount} from the batteries, an equal part from each first and the rest from whoever still holds some. */
@@ -225,20 +211,11 @@ final class AcceptorFlow {
 
     /**
      * What other mods push into. It holds nothing: it reports the network's room as its own, and passes on only what the
-     * network takes. A push that goes through marks its side as one power comes in from.
+     * network takes. What it took counts towards the flow once the transfer is kept.
      */
     private final class Intake extends SnapshotJournal<Integer> implements EnergyHandler {
-        private final @Nullable Direction side;
         /** Taken in the transfer going on now; it only counts once that transfer is kept. */
         private int received;
-
-        Intake(@Nullable Direction side) {
-            this.side = side;
-        }
-
-        private boolean refused() {
-            return !mode.in() || side != null && ways[side.ordinal()] == Way.TO;
-        }
 
         @Override
         public long getAmountAsLong() {
@@ -247,19 +224,19 @@ final class AcceptorFlow {
 
         @Override
         public long getCapacityAsLong() {
-            return refused() ? 0 : room();
+            return mode == AcceptorMode.INPUT ? room() : 0;
         }
 
         @Override
         public int insert(int amount, TransactionContext transaction) {
-            if (amount <= 0 || refused()) {
+            if (amount <= 0 || mode != AcceptorMode.INPUT) {
                 return 0;
             }
             if (site.level() instanceof ServerLevel serverLevel) {
                 site.refresh(serverLevel);
             }
             int taken = site.forward(amount, transaction);
-            if (taken > 0 && side != null) {
+            if (taken > 0) {
                 updateSnapshots(transaction);
                 received += taken;
             }
@@ -283,10 +260,7 @@ final class AcceptorFlow {
 
         @Override
         protected void onRootCommit(Integer original) {
-            if (received > 0 && side != null && site.level() instanceof ServerLevel level) {
-                outside(level, side);
-                ways[side.ordinal()] = Way.FROM;
-            }
+            moved += received;
             received = 0;
         }
     }

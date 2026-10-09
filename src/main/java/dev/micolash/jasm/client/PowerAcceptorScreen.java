@@ -4,10 +4,9 @@ import dev.micolash.jasm.acceptor.AcceptorMode;
 import dev.micolash.jasm.acceptor.PowerAcceptorMenu;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 
-/** The Power Acceptor screen: one key per mode, the chosen one sunk in, and a line saying what it does. */
+/** The Power Acceptor screen: one key per mode, the chosen one sunk in, and the power going through that way. */
 public class PowerAcceptorScreen extends JasmScreen<PowerAcceptorMenu> {
     private static final int WIDTH = 176;
     private static final int MARGIN = 12;
@@ -15,9 +14,10 @@ public class PowerAcceptorScreen extends JasmScreen<PowerAcceptorMenu> {
     private static final int KEYS_Y = 46;
     private static final int KEY_HEIGHT = 18;
     private static final int KEY_GAP = 3;
-    private static final int HEIGHT = KEYS_Y + 3 * KEY_HEIGHT + 2 * KEY_GAP + 12;
+    private static final int MODES = AcceptorMode.values().length;
+    private static final int HEIGHT = KEYS_Y + MODES * KEY_HEIGHT + (MODES - 1) * KEY_GAP + 12;
 
-    private final JasmButton[] keys = new JasmButton[3];
+    private final JasmButton[] keys = new JasmButton[MODES];
 
     public PowerAcceptorScreen(PowerAcceptorMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -57,10 +57,10 @@ public class PowerAcceptorScreen extends JasmScreen<PowerAcceptorMenu> {
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
-        Component about = Component.translatable("screen.jasm.power_acceptor.about_" + menu.mode().getSerializedName());
-        int line = 0;
-        for (FormattedCharSequence wrapped : font.split(about, WIDTH - 2 * MARGIN)) {
-            graphics.text(font, wrapped, MARGIN, TEXT_Y + line++ * 10, JasmGui.SUBTEXT, false);
-        }
+        boolean in = menu.mode() == AcceptorMode.INPUT;
+        Component reading = Component.translatable(in ? "screen.jasm.power_acceptor.in" : "screen.jasm.power_acceptor.out",
+                String.format("%,d", menu.flow()));
+        int colour = menu.flow() <= 0 ? JasmGui.SUBTEXT : in ? JasmGui.GOOD : JasmGui.WARN;
+        graphics.text(font, reading, MARGIN, TEXT_Y, colour, false);
     }
 }

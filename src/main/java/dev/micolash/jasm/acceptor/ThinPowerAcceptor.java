@@ -75,7 +75,7 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
     }
 
     public void load(ValueInput input) {
-        flow.setMode(input.read("mode", AcceptorMode.CODEC).orElse(AcceptorMode.INPUT));
+        flow.setMode(AcceptorMode.load(input));
     }
 
     @Override
