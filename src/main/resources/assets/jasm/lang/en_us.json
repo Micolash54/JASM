@@ -389,7 +389,7 @@
   "jei.jasm.transfer.missing": "Not in Deck or your inventory",
   "block.jasm.creative_battery": "Creative Battery",
   "block.jasm.power_acceptor": "Power Acceptor",
-  "block.jasm.thin_power_acceptor": "Thin Power Acceptor",
+  "item.jasm.thin_power_acceptor": "Thin Power Acceptor",
   "block.jasm.battery": "Battery",
   "screen.jasm.power_acceptor.input": "Input only",
   "screen.jasm.power_acceptor.output": "Output only",

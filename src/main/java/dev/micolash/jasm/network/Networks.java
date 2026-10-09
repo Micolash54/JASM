@@ -408,8 +408,8 @@ public final class Networks {
     /** Whether data passes between two touching blocks. */
     private boolean joins(BlockState from, BlockState to, BlockPos fromPos, BlockPos toPos) {
         Direction face = Direction.getApproximateNearest(toPos.getX() - fromPos.getX(), toPos.getY() - fromPos.getY(), toPos.getZ() - fromPos.getZ());
-        if (level.getBlockEntity(fromPos) instanceof DataCableBlockEntity cable && cable.port(face) != null
-                || level.getBlockEntity(toPos) instanceof DataCableBlockEntity other && other.port(face.getOpposite()) != null)
+        if (level.getBlockEntity(fromPos) instanceof DataCableBlockEntity cable && cable.hasPart(face)
+                || level.getBlockEntity(toPos) instanceof DataCableBlockEntity other && other.hasPart(face.getOpposite()))
             return false;
         if (DataCableBlock.coreless(from) || DataCableBlock.coreless(to)) return false;
         boolean fromCable = from.getBlock() instanceof DataCableBlock;

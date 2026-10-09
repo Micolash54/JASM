@@ -72,6 +72,7 @@ public final class JasmClient {
     static void registerModels(ModelEvent.RegisterStandalone event) {
         event.register(RecipeRackRenderer.CARD_MODEL, SimpleUnbakedStandaloneModel.simpleModelWrapper(RecipeRackRenderer.CARD_MODEL_ID));
         event.register(DataCableRenderer.PORT, SimpleUnbakedStandaloneModel.simpleModelWrapper(DataCableRenderer.PORT_ID));
+        event.register(DataCableRenderer.ACCEPTOR, SimpleUnbakedStandaloneModel.simpleModelWrapper(DataCableRenderer.ACCEPTOR_ID));
         DataCableRenderer.registerTransferModels(event);
         CraftingServerRenderer.registerModels(event);
         AdvancedCraftingServerRenderer.registerModels(event);

@@ -3,7 +3,6 @@ package dev.micolash.jasm.registry;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.acceptor.PowerAcceptorBlock;
 import dev.micolash.jasm.acceptor.PowerAcceptorBlockEntity;
-import dev.micolash.jasm.acceptor.ThinPowerAcceptorBlock;
 import dev.micolash.jasm.archive.ArchiveBlock;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.archive.ArchiveTier;
@@ -76,12 +75,8 @@ public final class JasmBlocks {
     public static final DeferredBlock<PowerAcceptorBlock> POWER_ACCEPTOR = BLOCKS.registerBlock("power_acceptor",
             PowerAcceptorBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
 
-    public static final DeferredBlock<ThinPowerAcceptorBlock> THIN_POWER_ACCEPTOR = BLOCKS.registerBlock("thin_power_acceptor",
-            ThinPowerAcceptorBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)
-                    .noOcclusion());
-
     public static final Supplier<BlockEntityType<PowerAcceptorBlockEntity>> POWER_ACCEPTOR_ENTITY = BLOCK_ENTITIES.register(
-            "power_acceptor", () -> new BlockEntityType<>(PowerAcceptorBlockEntity::new, POWER_ACCEPTOR.get(), THIN_POWER_ACCEPTOR.get()));
+            "power_acceptor", () -> new BlockEntityType<>(PowerAcceptorBlockEntity::new, POWER_ACCEPTOR.get()));
 
     public static final DeferredBlock<BatteryBlock> BATTERY = BLOCKS.registerBlock("battery",
             BatteryBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)

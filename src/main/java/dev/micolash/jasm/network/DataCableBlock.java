@@ -168,7 +168,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
     public static @Nullable Direction hitPort(DataCableBlockEntity cable, Vec3 hit) {
         var local = hit.subtract(Vec3.atLowerCornerOf(cable.getBlockPos()));
         for (Direction side : Direction.values()) {
-            if (cable.port(side) != null && portShape(side).toAabbs().stream().anyMatch(box -> box.inflate(0.00001).contains(local))) return side;
+            if (cable.hasPart(side) && portShape(side).toAabbs().stream().anyMatch(box -> box.inflate(0.00001).contains(local))) return side;
         }
         return null;
     }
@@ -199,6 +199,11 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
             Direction side = hitPort(cable, hit.getLocation());
             if (side != null) {
                 if (player instanceof ServerPlayer serverPlayer) {
+                    var acceptor = cable.acceptor(side);
+                    if (acceptor != null) {
+                        serverPlayer.openMenu(acceptor);
+                        return InteractionResult.SUCCESS;
+                    }
                     cable.syncOwners();
                     var port = cable.port(side);
                     if (MachineAccess.canUse(port, player)) serverPlayer.openMenu(port, port::writeOpening);
@@ -222,7 +227,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
         if (side != null && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
             if (level.isClientSide()) return false;
             cable.syncOwners();
-            if (MachineAccess.canUse(cable.port(side), player)) {
+            if (cable.acceptor(side) != null || MachineAccess.canUse(cable.port(side), player)) {
                 if (level instanceof ServerLevel serverLevel) {
                     var bounds = portShape(side).bounds();
                     var center = bounds.getCenter().add(Vec3.atLowerCornerOf(pos));
@@ -241,7 +246,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
             Player player) {
         if (level instanceof Level world && world.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
             Direction side = selectedPort(world, pos, player);
-            if (side != null) return cable.portItem(cable.port(side));
+            if (side != null) return cable.partItem(side);
         }
         return new ItemStack(this);
     }
@@ -292,7 +297,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
     private boolean connects(BlockGetter level, BlockPos neighbourPos, BlockState neighbour, Direction direction) {
         BlockPos own = neighbourPos.relative(direction.getOpposite());
         if (!loaded(level, own) || !loaded(level, neighbourPos)) return false;
-        if (level.getBlockEntity(own) instanceof DataCableBlockEntity host && host.port(direction) != null) return false;
+        if (level.getBlockEntity(own) instanceof DataCableBlockEntity host && host.hasPart(direction)) return false;
         if (coreless(level.getBlockState(own)) || coreless(neighbour)) return false;
         if (level instanceof ServerLevel serverLevel && level.getBlockState(own).getBlock() instanceof DataCableBlock
                 && (neighbour.getBlock() instanceof DataCableBlock || level.getBlockEntity(neighbourPos) instanceof MachineBlockEntity
@@ -314,7 +319,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
         if (!state.is(this)) {
             return;
         }
-        BlockState updated = state.setValue(HAS_PORTS, level.getBlockEntity(pos) instanceof DataCableBlockEntity host && !host.ports().isEmpty());
+        BlockState updated = state.setValue(HAS_PORTS, level.getBlockEntity(pos) instanceof DataCableBlockEntity host && host.hasParts());
         for (Direction side : Direction.values()) {
             BlockPos next = pos.relative(side);
             // An arm towards a chunk that isn't loaded keeps its shape until that chunk comes back.

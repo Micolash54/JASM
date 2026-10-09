@@ -298,6 +298,8 @@ public final class CableNetwork {
                         if (seen.add(port.energy())) found.add(port.energy());
                         continue;
                     }
+                    // What is in front of a thin acceptor is the acceptor's to trade with, not the cable's to feed.
+                    if (cable.acceptor(side) != null) continue;
                     BlockPos next = entry.getKey().relative(side);
                     if (level.isLoaded(next) && level.getBlockEntity(next) instanceof BatteryBlockEntity battery) {
                         foundBatteries.add(battery);

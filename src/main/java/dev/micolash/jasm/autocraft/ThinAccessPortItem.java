@@ -30,7 +30,7 @@ public class ThinAccessPortItem extends Item {
             side = side.getOpposite();
         }
         if (!(context.getLevel().getBlockEntity(pos) instanceof DataCableBlockEntity cable)) return placeAlone(context);
-        if (context.getLevel().isClientSide()) return cable.port(side) == null ? InteractionResult.SUCCESS : InteractionResult.FAIL;
+        if (context.getLevel().isClientSide()) return !cable.hasPart(side) ? InteractionResult.SUCCESS : InteractionResult.FAIL;
         if (cable.attach(side, context.getItemInHand(), context.getPlayer())) {
             if (context.getLevel() instanceof ServerLevel serverLevel) PlacementAchievements.placed(serverLevel, pos, context.getPlayer());
             if (!context.getPlayer().getAbilities().instabuild) context.getItemInHand().shrink(1);

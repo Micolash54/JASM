@@ -16,16 +16,16 @@ JASM blocks only take power from JASM generators, batteries and cables. The Powe
 
 Put it between the other mod's power and a [Data Cable](data-cables.md) or machine. Right-click it to pick what it does:
 
-* **Input only**: it pulls FE from the power blocks next to it, takes FE that other mods push into it, and feeds the cables and machines it touches. This is the default.
+* **Input only**: it accepts the FE other mods push into it and feeds the cables and machines it touches. It never pulls power out of anything, and only takes what the machines and Batteries on its network have room for. This is the default.
 * **Output only**: it gives the power stored in Batteries to the other mods' blocks next to it: Batteries it touches, and Batteries on the cables of its network. It never takes the power inside machines.
 * **Input Output**: both.
 
 | At a glance | |
 | --- | --- |
-| Speed | no limit: it holds no power and passes on whatever the cables and machines beside it can take |
+| Speed | set by the other mod: it holds no power and passes on whatever is pushed into it, as far as the network has room |
 | Direction | set in its screen: Input only, Output only or Input Output |
 
-The Thin Power Acceptor does the same in the thin port shape. It sits on the face of the block it was placed against.
+The Thin Power Acceptor does the same from a cable face, like a thin [Access Port](access-port.md): its plate faces out, and it only trades power with the block in front of it. Its mode is set the same way, in its screen.
 
 If you only need to charge a [Deck](decks.md), a [Combustion Generator](combustion-generators.md) is simpler.
 

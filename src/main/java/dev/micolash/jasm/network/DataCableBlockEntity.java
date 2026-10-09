@@ -1,5 +1,6 @@
 package dev.micolash.jasm.network;
 
+import dev.micolash.jasm.acceptor.ThinPowerAcceptor;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.pool.StoragePortBlockEntity;
@@ -30,11 +31,12 @@ import net.minecraft.world.level.storage.TagValueInput;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 import org.jspecify.annotations.Nullable;
 
-/** A cable's block, and the independent Access Ports mounted on its faces. */
+/** A cable's block, and the independent Access Ports and thin Power Acceptors mounted on its faces. */
 public class DataCableBlockEntity extends BlockEntity {
     /** Set while the block goes away, so detaching the last port doesn't remove it a second time. */
     private boolean removing;
@@ -42,6 +44,7 @@ public class DataCableBlockEntity extends BlockEntity {
     private boolean moving;
     private boolean ownersDirty = true;
     private final Map<Direction, AccessPortBlockEntity> ports = new EnumMap<>(Direction.class);
+    private final Map<Direction, ThinPowerAcceptor> acceptors = new EnumMap<>(Direction.class);
 
     public DataCableBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.DATA_CABLE_ENTITY.get(), pos, state);
@@ -55,9 +58,29 @@ public class DataCableBlockEntity extends BlockEntity {
         return ports.get(side);
     }
 
+    public @Nullable ThinPowerAcceptor acceptor(Direction side) {
+        return acceptors.get(side);
+    }
+
+    /** What another mod's block on that side may push power into: the thin Power Acceptor there, if any. */
+    public @Nullable EnergyHandler acceptorInput(Direction side) {
+        var acceptor = acceptors.get(side);
+        return acceptor == null ? null : acceptor.input();
+    }
+
+    /** Whether a port or an acceptor sits on that face. Nothing joins across it. */
+    public boolean hasPart(Direction side) {
+        return ports.containsKey(side) || acceptors.containsKey(side);
+    }
+
+    public boolean hasParts() {
+        return !ports.isEmpty() || !acceptors.isEmpty();
+    }
+
     public int portMask() {
         int mask = 0;
         for (Direction side : ports.keySet()) mask |= 1 << side.ordinal();
+        for (Direction side : acceptors.keySet()) mask |= 1 << side.ordinal();
         return mask;
     }
 
@@ -68,14 +91,22 @@ public class DataCableBlockEntity extends BlockEntity {
     }
 
     public boolean attach(Direction side, ItemStack stack, Player player) {
-        if (level == null || (!stack.is(JasmItems.THIN_ACCESS_PORT.get()) && TransferPortKind.of(stack) == null) || ports.containsKey(side))
+        boolean acceptor = stack.is(JasmItems.THIN_POWER_ACCEPTOR.get());
+        if (level == null || (!acceptor && !stack.is(JasmItems.THIN_ACCESS_PORT.get()) && TransferPortKind.of(stack) == null) || hasPart(side))
             return false;
         BlockPos next = worldPosition.relative(side);
         if (level.getBlockState(next).getBlock() instanceof DataCableBlock
-                || level.getBlockEntity(next) instanceof MachineBlockEntity machine && !machine.opensToPorts()
+                || level.getBlockEntity(next) instanceof MachineBlockEntity machine && (acceptor || !machine.opensToPorts())
                 || level.getBlockEntity(next) instanceof ArchiveBlockEntity
                 || level.getBlockEntity(next) instanceof NetworkPowerSource)
             return false;
+        if (acceptor) {
+            // It belongs to nobody, like the Power Acceptor block: anyone may add one to any network.
+            acceptors.put(side, new ThinPowerAcceptor(this, side));
+            if (level instanceof ServerLevel serverLevel) Networks.invalidate(serverLevel, worldPosition);
+            changed();
+            return true;
+        }
         if (level instanceof ServerLevel serverLevel) {
             Networks.at(serverLevel, worldPosition);
             UUID owner = CableClaims.get(serverLevel).owner(serverLevel, worldPosition);
@@ -102,25 +133,35 @@ public class DataCableBlockEntity extends BlockEntity {
 
     public boolean detach(Direction side, boolean drop) {
         AccessPortBlockEntity port = ports.remove(side);
-        if (port == null) return false;
-        if (ports.isEmpty() && !removing && DataCableBlock.coreless(getBlockState()) && level instanceof ServerLevel serverLevel) {
+        boolean acceptor = port == null && acceptors.remove(side) != null;
+        if (port == null && !acceptor) return false;
+        if (!hasParts() && !removing && DataCableBlock.coreless(getBlockState()) && level instanceof ServerLevel serverLevel) {
             // The last port of a space without a cable takes the space with it.
-            if (drop) Block.popResource(level, worldPosition, portItem(port));
-            Containers.dropContents(level, worldPosition, port);
-            port.onChunkUnloaded();
-            port.setRemoved();
+            if (drop) Block.popResource(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
+            if (port != null) {
+                Containers.dropContents(level, worldPosition, port);
+                port.onChunkUnloaded();
+                port.setRemoved();
+            }
             serverLevel.removeBlock(worldPosition, false);
             return true;
         }
         if (level instanceof ServerLevel) {
-            if (drop) Block.popResource(level, worldPosition, portItem(port));
-            Containers.dropContents(level, worldPosition, port);
-            port.onChunkUnloaded();
-            port.setRemoved();
+            if (drop) Block.popResource(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
+            if (port != null) {
+                Containers.dropContents(level, worldPosition, port);
+                port.onChunkUnloaded();
+                port.setRemoved();
+            }
         }
         if (level instanceof ServerLevel serverLevel) Networks.invalidate(serverLevel, worldPosition);
         changed();
         return true;
+    }
+
+    /** What mining the part on that face gives. */
+    public ItemStack partItem(Direction side) {
+        return acceptors.containsKey(side) ? new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()) : portItem(ports.get(side));
     }
 
     public ItemStack portItem(AccessPortBlockEntity port) {
@@ -164,9 +205,11 @@ public class DataCableBlockEntity extends BlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, DataCableBlockEntity cable) {
-        if (state.getValue(DataCableBlock.HAS_PORTS) != !cable.ports.isEmpty() && state.getBlock() instanceof DataCableBlock block
+        if (state.getValue(DataCableBlock.HAS_PORTS) != cable.hasParts() && state.getBlock() instanceof DataCableBlock block
                 && level instanceof ServerLevel serverLevel)
             block.refreshConnections(serverLevel, pos);
+        if (!cable.hasParts()) return;
+        if (level instanceof ServerLevel serverLevel) cable.acceptors.values().forEach(acceptor -> acceptor.tick(serverLevel));
         if (cable.ports.isEmpty()) return;
         if (cable.ownersDirty) cable.syncOwners();
         for (AccessPortBlockEntity port : cable.ports.values()) {
@@ -193,6 +236,7 @@ public class DataCableBlockEntity extends BlockEntity {
         if (level instanceof ServerLevel && !moving) {
             removing = true;
             for (Direction side : List.copyOf(ports.keySet())) detach(side, true);
+            for (Direction side : List.copyOf(acceptors.keySet())) detach(side, true);
         }
         super.preRemoveSideEffects(pos, state);
     }
@@ -221,6 +265,12 @@ public class DataCableBlockEntity extends BlockEntity {
             if (port instanceof TransferPortBlockEntity transfer) child.putString("kind", transfer.kind().name());
             port.saveCustomOnly(child.child("port"));
         });
+        var savedAcceptors = output.childrenList("acceptors");
+        acceptors.forEach((side, acceptor) -> {
+            ValueOutput child = savedAcceptors.addChild();
+            child.store("side", Direction.CODEC, side);
+            acceptor.save(child);
+        });
     }
 
     @Override
@@ -241,6 +291,14 @@ public class DataCableBlockEntity extends BlockEntity {
                 port.loadCustomOnly(child.childOrEmpty("port"));
                 if (level != null) port.setLevel(level);
                 ports.put(side, port);
+            });
+        }
+        acceptors.clear();
+        for (ValueInput child : input.childrenListOrEmpty("acceptors")) {
+            child.read("side", Direction.CODEC).ifPresent(side -> {
+                ThinPowerAcceptor acceptor = new ThinPowerAcceptor(this, side);
+                acceptor.load(child);
+                acceptors.put(side, acceptor);
             });
         }
     }

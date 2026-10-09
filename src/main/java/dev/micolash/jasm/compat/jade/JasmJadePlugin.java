@@ -46,6 +46,8 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerEnergyStorage(InfiniteEnergy.INSTANCE, CreativeBatteryBlockEntity.class);
         registration.registerEnergyStorage(BatteryEnergy.INSTANCE, BatteryBlockEntity.class);
         registration.registerEnergyStorage(HiddenEnergy.INSTANCE, PowerAcceptorBlockEntity.class);
+        // A cable only takes power through a thin Power Acceptor on it, and that holds none either.
+        registration.registerEnergyStorage(HiddenEnergy.INSTANCE, DataCableBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, MachineBlockEntity.class);
         registration.registerBlockDataProvider(MachineInfo.INSTANCE, DataCableBlockEntity.class);
         registration.registerBlockDataProvider(WorkshopInfo.INSTANCE, ChipWorkshopBlockEntity.class);

@@ -1,14 +1,13 @@
 package dev.micolash.jasm.acceptor;
 
 import dev.micolash.jasm.registry.JasmMenus;
+import java.util.function.Predicate;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
-import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /** The Power Acceptor's menu: no slots, just the mode. Button ids 0 to 2 pick a mode. */
@@ -16,15 +15,15 @@ public class PowerAcceptorMenu extends AbstractContainerMenu {
     static final int DATA_COUNT = 1;
 
     private final ContainerData data;
-    private final ContainerLevelAccess access;
-    private final @Nullable PowerAcceptorBlockEntity acceptor;
+    private final Predicate<Player> valid;
+    private final @Nullable ModeHolder acceptor;
 
-    /** Server side. */
-    public PowerAcceptorMenu(int containerId, PowerAcceptorBlockEntity acceptor, ContainerData data, ContainerLevelAccess access) {
+    /** Server side. {@code valid} says whether a player may still use it: the acceptor is still there and close enough. */
+    public PowerAcceptorMenu(int containerId, ModeHolder acceptor, ContainerData data, Predicate<Player> valid) {
         super(JasmMenus.POWER_ACCEPTOR.get(), containerId);
         this.acceptor = acceptor;
         this.data = data;
-        this.access = access;
+        this.valid = valid;
         addDataSlots(data);
     }
 
@@ -33,7 +32,7 @@ public class PowerAcceptorMenu extends AbstractContainerMenu {
         super(JasmMenus.POWER_ACCEPTOR.get(), containerId);
         this.acceptor = null;
         this.data = new SimpleContainerData(DATA_COUNT);
-        this.access = ContainerLevelAccess.NULL;
+        this.valid = player -> true;
         addDataSlots(data);
     }
 
@@ -52,8 +51,7 @@ public class PowerAcceptorMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return access.evaluate((level, pos) -> level.getBlockEntity(pos) == acceptor
-                && player.distanceToSqr(Vec3.atCenterOf(pos)) <= 64, true);
+        return valid.test(player);
     }
 
     @Override

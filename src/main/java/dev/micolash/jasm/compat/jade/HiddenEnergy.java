@@ -10,7 +10,7 @@ import snownee.jade.api.view.IClientExtensionProvider;
 import snownee.jade.api.view.IServerExtensionProvider;
 import snownee.jade.api.view.ViewGroup;
 
-/** The Power Acceptor holds nothing and passes power straight on, so its energy bar is left out. */
+/** A Power Acceptor, full or thin, holds nothing and passes power straight on, so its energy bar is left out. */
 public enum HiddenEnergy implements IServerExtensionProvider<EnergyView.Data>, IClientExtensionProvider<EnergyView.Data, EnergyView> {
     INSTANCE;
 

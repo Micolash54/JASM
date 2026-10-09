@@ -9,6 +9,7 @@ import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.autocraft.RecipeCardItem;
 import dev.micolash.jasm.autocraft.ServerPartItem;
+import dev.micolash.jasm.acceptor.ThinPowerAcceptorItem;
 import dev.micolash.jasm.autocraft.ThinAccessPortItem;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
@@ -40,7 +41,7 @@ public final class JasmItems {
 
     public static final DeferredItem<BlockItem> CREATIVE_BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.CREATIVE_BATTERY);
     public static final DeferredItem<BlockItem> POWER_ACCEPTOR = ITEMS.registerSimpleBlockItem(JasmBlocks.POWER_ACCEPTOR);
-    public static final DeferredItem<BlockItem> THIN_POWER_ACCEPTOR = ITEMS.registerSimpleBlockItem(JasmBlocks.THIN_POWER_ACCEPTOR);
+    public static final DeferredItem<ThinPowerAcceptorItem> THIN_POWER_ACCEPTOR = ITEMS.registerItem("thin_power_acceptor", ThinPowerAcceptorItem::new);
     public static final DeferredItem<BlockItem> BATTERY = ITEMS.registerSimpleBlockItem(JasmBlocks.BATTERY);
     public static final DeferredItem<Item> RECIPE_CARD = ITEMS.registerSimpleItem("recipe_card");
     public static final DeferredItem<RecipeCardItem> FILLED_RECIPE_CARD = ITEMS.registerItem("filled_recipe_card", RecipeCardItem::new,
