@@ -13,11 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.core.Holder;
-import net.minecraft.core.NonNullList;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.PlacementInfo;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -139,16 +137,11 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
                 }
                 slots.add(options.stream().<GridKey>map(GridKey.Item::new).toList());
             }
-            NonNullList<ItemStack> inputs = NonNullList.withSize(9, ItemStack.EMPTY);
             for (int i = 0; i < 9; i++) {
-                inputs.set(i, card.encoded(i));
-            }
-            List<ItemStack> leftovers = card.recipe().getRemainingItems(CraftingInput.of(3, 3, inputs));
-            for (int i = 0; i < leftovers.size(); i++) {
-                ItemStack left = leftovers.get(i);
+                ItemStack left = card.leftover(i);
                 if (!left.isEmpty()) {
                     // A worn copy of the item that went in counts as that item, so the planner sees it come back.
-                    ItemStack kind = i < 9 && card.returnsSelf(i) ? card.encoded(i) : left;
+                    ItemStack kind = card.returnsSelf(i) ? card.encoded(i) : left;
                     remainders.merge(new GridKey.Item(ItemResource.of(kind)), (long) left.getCount(), Long::sum);
                 }
             }
