@@ -23,7 +23,9 @@ import org.jspecify.annotations.Nullable;
 
 /** Every so many powered ticks, gives each touching plant or budding block one extra growth attempt. */
 public class ResonatorBlockEntity extends MachineBlockEntity {
-    public static final int CAPACITY = 10_000;
+    /** Ticks of power it can hold: only a second's worth, so it goes dark soon after its power is cut. */
+    private static final int BUFFER_TICKS = 20;
+    public static final int CAPACITY = BUFFER_TICKS * 10;
     public static final TagKey<Block> GROWTH_ACCELERATABLE = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("jasm", "growth_acceleratable"));
     private final BlockPos[] neighbours;
 
@@ -38,6 +40,7 @@ public class ResonatorBlockEntity extends MachineBlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, ResonatorBlockEntity resonator) {
+        resonator.fitBuffer();
         boolean powered = resonator.payForTick();
         BlockState now = resonator.getBlockState();
         if (now.getValue(ResonatorBlock.POWERED) != powered && level.isLoaded(pos)) {
@@ -46,6 +49,15 @@ public class ResonatorBlockEntity extends MachineBlockEntity {
         if (powered && ++resonator.sincePulse >= JasmConfig.RESONATOR_INTERVAL.getAsInt()) {
             resonator.sincePulse = 0;
             resonator.pulse((ServerLevel) level);
+        }
+    }
+
+    // the drain can be changed in the config, the buffer follows it
+    private void fitBuffer() {
+        int room = Math.max(1, BUFFER_TICKS * drainPerTick());
+        if (energy.getCapacityAsInt() != room) {
+            energy.resize(room);
+            if (energy.getAmountAsInt() > room) energy.set(room);
         }
     }
 

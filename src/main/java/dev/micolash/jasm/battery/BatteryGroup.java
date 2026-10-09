@@ -36,6 +36,8 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 public final class BatteryGroup {
     /** Largest battery walked; blocks beyond it make a battery of their own. */
     public static final int MAX_BLOCKS = 4_096;
+    /** The most one block can hold, in the biggest battery. A block split off keeps what it held, even above its new room. */
+    public static final int MOST_PER_BLOCK = roomPerBlock(MAX_BLOCKS);
     /** Ticks between redraws of the charge. */
     private static final int SHOW_TICKS = 10;
     /** Ticks the power flow is averaged over. */
@@ -70,6 +72,14 @@ public final class BatteryGroup {
         }
         this.bottom = low;
         this.top = high;
+        int room = roomPerBlock(blocks.size());
+        for (BatteryBlockEntity block : blocks) block.resize(room);
+    }
+
+    /** What each block holds in a battery of {@code size} blocks: 1% more for every block, once there are two or more. */
+    public static int roomPerBlock(int size) {
+        if (size < 2) return BatteryBlockEntity.CAPACITY;
+        return (int) Math.min(Integer.MAX_VALUE, BatteryBlockEntity.CAPACITY * (100L + Math.min(size, MAX_BLOCKS)) / 100);
     }
 
     /** The battery {@code start} belongs to, walked from it when not known yet. Never pulls in a chunk. */
@@ -283,7 +293,7 @@ public final class BatteryGroup {
 
         @Override
         public long getCapacityAsLong() {
-            return (long) blocks.size() * BatteryBlockEntity.CAPACITY;
+            return (long) blocks.size() * roomPerBlock(blocks.size());
         }
 
         @Override
@@ -291,7 +301,7 @@ public final class BatteryGroup {
             if (amount <= 0 || !alive) return 0;
             int wanting = 0;
             for (BatteryBlockEntity block : blocks) {
-                if (block.energy().getAmountAsInt() < BatteryBlockEntity.CAPACITY) wanting++;
+                if (block.energy().getAmountAsInt() < block.energy().getCapacityAsInt()) wanting++;
             }
             if (wanting == 0) return 0;
             int share = Math.max(1, amount / wanting);

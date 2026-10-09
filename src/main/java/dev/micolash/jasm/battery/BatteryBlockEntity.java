@@ -1,6 +1,7 @@
 package dev.micolash.jasm.battery;
 
 import dev.micolash.jasm.network.DataCableBlockEntity;
+import dev.micolash.jasm.network.NetworkEnergy;
 import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -32,10 +33,10 @@ import org.jspecify.annotations.Nullable;
  * splitting or breaking a battery never makes or loses any. Everything else goes through its {@link BatteryGroup}.
  */
 public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSource, MenuProvider {
-    /** FE one block holds. */
+    /** FE one block holds on its own. Joined to others it holds a little more, see {@link BatteryGroup#roomPerBlock}. */
     public static final int CAPACITY = 2_000_000;
 
-    private final SimpleEnergyHandler energy = new SimpleEnergyHandler(CAPACITY, CAPACITY, CAPACITY) {
+    private final NetworkEnergy energy = new NetworkEnergy(CAPACITY) {
         @Override
         protected void onEnergyChanged(int previousAmount) {
             if (level != null) level.blockEntityChanged(worldPosition);
@@ -96,6 +97,11 @@ public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSourc
         return energy;
     }
 
+    // set by the battery it joins. what it holds stays, even above the new room
+    void resize(int room) {
+        if (energy.getCapacityAsInt() != room) energy.resize(room);
+    }
+
     /** The whole battery: what goes in or out is spread over all its blocks. */
     public EnergyHandler groupEnergy() {
         return groupEnergy;
@@ -135,7 +141,7 @@ public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSourc
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, CAPACITY));
+        energy.set(Math.clamp(input.getIntOr("energy", 0), 0, BatteryGroup.MOST_PER_BLOCK));
     }
 
     /** The mined item carries this block's share. */
@@ -150,7 +156,7 @@ public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSourc
     @Override
     protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
-        energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, CAPACITY));
+        energy.set(Math.clamp(components.getOrDefault(JasmComponents.ENERGY.get(), 0), 0, BatteryGroup.MOST_PER_BLOCK));
     }
 
     @Override
