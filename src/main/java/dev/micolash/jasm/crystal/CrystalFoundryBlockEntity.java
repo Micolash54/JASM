@@ -8,7 +8,9 @@ import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
+import java.util.stream.IntStream;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
@@ -17,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
@@ -32,12 +35,13 @@ import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Crystal Foundry: grows a fixed number of Data Crystals from each Crystal Seed and cuts each straight into a Blank
  * Chip. A seed is used up as soon as it starts growing.
  */
-public class CrystalFoundryBlockEntity extends MachineBlockEntity {
+public class CrystalFoundryBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     public static final int INPUT = 0;
     public static final int OUTPUT_FIRST = 1;
     public static final int OUTPUT_COUNT = 9;
@@ -46,6 +50,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     public static final int UPGRADES = 4;
     public static final int SLOTS = UPGRADE_START + UPGRADES;
     public static final int CAPACITY = 50_000;
+    /** What a hopper may look at: everything but the upgrade slots. */
+    private static final int[] HOPPER_SLOTS = IntStream.range(0, UPGRADE_START).toArray();
 
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
@@ -198,7 +204,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     }
 
     private boolean roomForOne() {
-        for (int slot = OUTPUT_FIRST; slot < SLOTS; slot++) {
+        for (int slot = OUTPUT_FIRST; slot < UPGRADE_START; slot++) {
             ItemStack stack = items.get(slot);
             if (stack.isEmpty() || stack.is(JasmItems.BLANK_CHIP.get()) && stack.getCount() < stack.getMaxStackSize()) {
                 return true;
@@ -209,14 +215,14 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
 
     /** One Blank Chip into the output, onto a matching stack first. {@link #roomForOne} made sure it fits. */
     private void output() {
-        for (int slot = OUTPUT_FIRST; slot < SLOTS; slot++) {
+        for (int slot = OUTPUT_FIRST; slot < UPGRADE_START; slot++) {
             ItemStack stack = items.get(slot);
             if (stack.is(JasmItems.BLANK_CHIP.get()) && stack.getCount() < stack.getMaxStackSize()) {
                 stack.grow(1);
                 return;
             }
         }
-        for (int slot = OUTPUT_FIRST; slot < SLOTS; slot++) {
+        for (int slot = OUTPUT_FIRST; slot < UPGRADE_START; slot++) {
             if (items.get(slot).isEmpty()) {
                 items.set(slot, new ItemStack(JasmItems.BLANK_CHIP.get()));
                 return;
@@ -268,6 +274,21 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity {
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
         return accepts(slot, stack);
+    }
+
+    @Override
+    public int[] getSlotsForFace(Direction side) {
+        return HOPPER_SLOTS;
+    }
+
+    @Override
+    public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
+        return slot < UPGRADE_START && canPlaceItem(slot, stack);
+    }
+
+    @Override
+    public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+        return slot < UPGRADE_START;
     }
 
     @Override

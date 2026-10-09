@@ -17,7 +17,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
@@ -27,6 +29,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
@@ -51,7 +54,7 @@ import org.jspecify.annotations.Nullable;
  * whatever a cable or a neighbour gives it goes straight into the critter's battery, and each chip made costs the
  * critter some of that. Left without power, the critter works until its battery runs flat, then naps until it is charged.
  */
-public class ChipWorkshopBlockEntity extends MachineBlockEntity {
+public class ChipWorkshopBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     /** The 2x2 grid: Blank Chips for chips, or a Workshop recipe's ingredients. */
     public static final int GRID_FIRST = 0;
     public static final int GRID_SIZE = 4;
@@ -64,6 +67,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     public static final int UPGRADE_START = CRITTER + 1;
     public static final int UPGRADES = 4;
     public static final int SLOTS = UPGRADE_START + UPGRADES;
+    /** What a hopper may look at: everything but the upgrade slots. */
+    private static final int[] HOPPER_SLOTS = IntStream.range(0, UPGRADE_START).toArray();
     /** Only a landing place for power on its way into the critter's battery. */
     public static final int CAPACITY = 1_000;
     public static final int BATCH_SIZE = 8;
@@ -675,6 +680,21 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity {
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
         return accepts(slot, stack);
+    }
+
+    @Override
+    public int[] getSlotsForFace(Direction side) {
+        return HOPPER_SLOTS;
+    }
+
+    @Override
+    public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
+        return slot < UPGRADE_START && canPlaceItem(slot, stack);
+    }
+
+    @Override
+    public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+        return slot < UPGRADE_START;
     }
 
     @Override
