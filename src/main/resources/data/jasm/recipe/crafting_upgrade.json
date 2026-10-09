@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GTG",
+    "TCT",
+    "GTG"
+  ],
+  "key": {
+    "G": "minecraft:gold_ingot",
+    "T": "minecraft:crafting_table",
+    "C": "jasm:link_chip"
+  },
+  "result": {
+    "id": "jasm:crafting_upgrade"
+  }
+}
