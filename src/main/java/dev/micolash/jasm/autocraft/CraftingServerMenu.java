@@ -9,6 +9,7 @@ import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmMenus;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,7 +50,9 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     public static final int MAIN_WIDTH = 176;
     public static final int JOB_X = MAIN_X + 12;
     public static final int JOB_Y = 24;
-    public static final int INVENTORY_Y = 116;
+    public static final int INVENTORY_Y = 162;
+    /** Ticks between checks of what is crafting right now; a change is sent at the next check. */
+    private static final int NOW_EVERY = 5;
 
     public static final int SLOT_SHOWN = CraftingServerBlockEntity.SLOTS;
     public static final int SLOT_INVENTORY = SLOT_SHOWN + 1;
@@ -87,6 +90,9 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     private final Player viewer;
     /** What the job waits on at a machine: on the server the line last sent, on the client the last received. */
     private @Nullable Component waiting;
+    /** What is crafting right now: on the server the list last sent (null before the first), on the client the last received. */
+    private @Nullable List<CraftingJob.Now> now;
+    private int nowTicks;
 
     /** Server side, at the block. */
     public CraftingServerMenu(int containerId, Inventory inventory, CraftingServerBlockEntity server, ContainerLevelAccess access) {
@@ -151,12 +157,22 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
             return;
         }
         CraftingJob job = server.job();
-        Component now = job == null || job.waiting() == null ? null : job.waiting().line();
-        if (!Objects.equals(now, waiting)) {
-            waiting = now;
+        Component line = job == null || job.waiting() == null ? null : job.waiting().line();
+        if (!Objects.equals(line, waiting)) {
+            waiting = line;
             if (player.connection.hasChannel(CraftPayloads.ServerWaiting.TYPE)) {
                 PacketDistributor.sendToPlayer(player,
-                        new CraftPayloads.ServerWaiting(containerId, Optional.ofNullable(now)));
+                        new CraftPayloads.ServerWaiting(containerId, Optional.ofNullable(line)));
+            }
+        }
+        if (now == null || --nowTicks <= 0) {
+            nowTicks = NOW_EVERY;
+            List<CraftingJob.Now> rows = job == null ? List.of() : job.now();
+            if (!rows.equals(now)) {
+                now = rows;
+                if (player.connection.hasChannel(CraftPayloads.ServerNow.TYPE)) {
+                    PacketDistributor.sendToPlayer(player, new CraftPayloads.ServerNow(containerId, rows));
+                }
             }
         }
     }
@@ -168,6 +184,15 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
 
     public void setWaiting(@Nullable Component waiting) {
         this.waiting = waiting;
+    }
+
+    /** Client side: what the job is crafting right now, the final item first. */
+    public List<CraftingJob.Now> now() {
+        return now == null ? List.of() : now;
+    }
+
+    public void setNow(List<CraftingJob.Now> now) {
+        this.now = now;
     }
 
     /** Whether this screen was opened from a Crafting Deck, so it can go back to it. */
