@@ -91,7 +91,7 @@ public final class JasmConfig {
 
     public static final ModConfigSpec.IntValue RESONATOR_DRAIN = BUILDER
             .comment("FE a powered Crystal Resonator uses each tick")
-            .defineInRange("resonatorDrain", 10, 0, 1_000_000);
+            .defineInRange("resonatorDrain", 16, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue FOUNDRY_DRAIN = BUILDER
             .comment("FE the Crystal Foundry uses each tick while growing")
@@ -134,7 +134,7 @@ public final class JasmConfig {
             .defineInRange("seededWearChance", 0.12, 0.0, 1.0);
 
     public static final ModConfigSpec.IntValue RESONATOR_INTERVAL = BUILDER
-            .comment("Ticks between the extra growth attempts a Crystal Resonator gives each Seeded Amethyst it touches")
+            .comment("Ticks between the extra growth attempts a Crystal Resonator gives each plant or budding block it touches")
             .defineInRange("resonatorInterval", 70, 1, 72_000);
 
     public static final ModConfigSpec.DoubleValue RESONATOR_WEAR_CHANCE = BUILDER

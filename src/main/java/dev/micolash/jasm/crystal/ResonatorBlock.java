@@ -15,7 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jspecify.annotations.Nullable;
 
-/** The Crystal Resonator: with power, it makes every Seeded Amethyst it touches grow faster. It has no screen. */
+/** The Crystal Resonator: with power, it makes touching plants and budding blocks grow faster. It has no screen. */
 public class ResonatorBlock extends MachineBlock {
     @Override
     protected MapCodec<ResonatorBlock> codec() {
