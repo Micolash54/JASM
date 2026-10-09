@@ -169,6 +169,14 @@ final class JobPlanning {
                 chosen = i;
             }
         }
+        if (chosen >= 0 && plan.ok() && servers.get(chosen).parallel() > 1) {
+            // With the server known, take a copy of each item that comes back for every craft it runs at once.
+            ServerOption option = servers.get(chosen);
+            CraftPlanner.Plan<GridKey> wider = CraftPlanner.plan(goal, Math.max(1, units), stock, book, tree, option.parallel());
+            if (wider.ok() && wider.size() <= option.memory()) {
+                plan = wider;
+            }
+        }
         String problem = switch (plan.problem()) {
             case NO_PATTERN -> book.unreachable(goal) ? "message.jasm.craft.machine_missing" : "message.jasm.craft.no_card";
             case MISSING -> plan.missing().keySet().stream().anyMatch(book::unreachable)
