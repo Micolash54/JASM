@@ -84,6 +84,7 @@ Fluids share that speed with items.
 
 * A [Power Upgrade](power-upgrade.md) makes the port supply FE to the machine it faces.
 * A [Redstone Upgrade](redstone-upgrade.md) makes it follow a redstone signal.
+* On Output and Input Output Ports, a [Crafting Upgrade](crafting-upgrade.md) crafts what the port sends and a [Stock Upgrade](stock-upgrade.md) keeps a block stocked to a number.
 
 <br />
 <br />

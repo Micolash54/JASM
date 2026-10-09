@@ -6,6 +6,7 @@ navigation:
   icon: power_acceptor
 item_ids:
 - jasm:power_acceptor
+- jasm:thin_power_acceptor
 ---
 
 # Power Acceptor
@@ -34,4 +35,7 @@ If you only need to charge a [Deck](decks.md), a [Combustion Generator](combusti
 <br />
 ## Recipe
 
-<RecipeFor id="power_acceptor" />
+<Row>
+  <RecipeFor id="power_acceptor" />
+  <RecipeFor id="thin_power_acceptor" />
+</Row>

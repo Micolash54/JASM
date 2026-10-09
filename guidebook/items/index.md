@@ -54,6 +54,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Data Cables](data-cables.md): join machines and carry power.
 * [Power Acceptor](power-acceptor.md): moves power between a network and other mods' blocks.
 * [Combustion Generators](combustion-generators.md): burn fuel for power.
+* [Battery](battery.md): stores power and joins up with its neighbours.
 * [Network Brain](network-brain.md): lifts the machine limit.
 * [Network Chamber](network-chamber.md): builds brain floors and towers.
 
@@ -65,6 +66,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Item ports](item-ports.md): move items and fluids in and out of a Deck.
 * [Storage Port](storage-port.md): lends a chest or tank to the network.
 * [Speed Upgrade](speed-upgrade.md), [Redstone Upgrade](redstone-upgrade.md) and [Power Upgrade](power-upgrade.md).
+* [Crafting Upgrade](crafting-upgrade.md) and [Stock Upgrade](stock-upgrade.md): for Output Ports.
 * [Deployment Bay](deployment-bay.md): places blocks and fluids.
 * [Demolition Bay](demolition-bay.md): breaks blocks.
 * [Wrench](wrench.md): turn machines and pick them up.
@@ -77,5 +79,6 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Recipe Cards](recipe-cards.md): hold one recipe each.
 * [Recipe Rack](recipe-rack.md): stores 16 cards.
 * [Crafting Server](crafting-server.md): runs the jobs.
+* [Advanced Crafting Server](advanced-crafting-server.md): the same with room for ten of everything.
 * [Processors](processors.md): how many crafts run at once.
 * [Storage Modules](storage-modules.md): how big a job fits.

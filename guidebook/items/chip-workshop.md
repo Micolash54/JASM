@@ -24,6 +24,7 @@ Put a Bitling in the Chip Workshop and feed it <ItemLink id="blank_chip" />s. It
 | Batch mode | up to 8 chips at once, in 60 seconds |
 | Cost | 2,000 FE from the Bitling's battery for every chip |
 | Input | a 2x2 grid |
+| Upgrades | four slots for [Speed Upgrades](speed-upgrade.md) |
 
 <br />
 <br />

@@ -28,6 +28,7 @@ The Crafting Server does the work. It runs one crafting job at a time. [Processo
 * Its parts are locked in while it works.
 * Broken, it spills whatever its job held.
 * With several servers on a network, a job goes to one that fits and is free.
+* The [Advanced Crafting Server](advanced-crafting-server.md) is a bigger one with ten slots of each.
 * The screen shows what the job is waiting for: power, a card, a machine, space or the Deck.
 * A job can be cancelled. What is left comes back.
 
