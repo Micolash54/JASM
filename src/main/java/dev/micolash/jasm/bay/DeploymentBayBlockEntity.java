@@ -29,7 +29,7 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
     /** Half the size of a dropped item, the gap it keeps from the bay's face, and its push per tick. */
     private static final double THROW_HALF = 0.125;
     private static final double THROW_GAP = 0.03;
-    private static final double THROW_SPEED = 0.15;
+    private static final double THROW_SPEED = 0.10;
 
     private DeployMode mode = DeployMode.PLACE;
 
