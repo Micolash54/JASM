@@ -48,6 +48,8 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 * See what a [Storage Port](storage-port.md) lends to the network.
 * Right-click a wafer to set its [filters](../mechanics/wafer-filters.md) and priority.
 * Link to a network at an [Encoding Terminal](encoding-terminal.md), to receive port deliveries and see the Network tab.
+* Keep the sorting you picked: every Deck you open sorts the same way.
+* Share its search with JEI's, when JEI is installed. A key on the side turns that off.
 * [Send items to other players](../mechanics/sending-items.md).
 * Work outside the Overworld with a [Dimension Upgrade](dimension-upgrade.md).
 
