@@ -2,6 +2,8 @@ package dev.micolash.jasm.acceptor;
 
 import dev.micolash.jasm.battery.BatteryBlockEntity;
 import dev.micolash.jasm.battery.BatteryGroup;
+import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -22,8 +24,8 @@ import org.jspecify.annotations.Nullable;
  * How a Power Acceptor moves power between a JASM network and other mods' blocks, one way only, as its mode says. In (the
  * default) it accepts the FE other mods' blocks push into it and hands it straight to the network, but only as much as the
  * network's machines and Batteries have room for; it never pulls power out of anything. Out, it gives the power stored in
- * Batteries to the outside blocks beside it, as much as each takes. It holds no power of its own and has no speed limit. It
- * never touches JASM generators or other Acceptors, and never takes the power inside machines.
+ * Batteries first, then combustion generators once every battery is empty. It holds no power of its own and has no speed
+ * limit. Other Acceptors and the power inside machines are never sources.
  *
  * <p>The block and the thin acceptor on a cable share this. Each one says what it has around it through a {@link Site}.
  */
@@ -49,6 +51,9 @@ final class AcceptorFlow {
 
         /** The Batteries it may empty. */
         List<BatteryBlockEntity> batteries(ServerLevel level);
+
+        /** Combustion generators only, never machines that happen to store FE. */
+        List<CombustionGeneratorBlockEntity> generators(ServerLevel level);
     }
 
     private final Site site;
@@ -119,7 +124,7 @@ final class AcceptorFlow {
     }
 
     private @Nullable EnergyHandler outside(ServerLevel level, Direction side) {
-        if (!site.open(side)) {
+        if (!site.open(side) || !level.isLoaded(site.pos().relative(side))) {
             return null;
         }
         return neighbours
@@ -165,6 +170,14 @@ final class AcceptorFlow {
                 batteries = BatteryGroup.distinct(level, site.batteries(level));
             }
             moved += give(target, room, batteries);
+            // A partially charged battery still comes first; fallback starts only once all are empty.
+            if (batteries.stream().allMatch(battery -> battery.getAmountAsLong() == 0)) {
+                List<EnergyHandler> generators = new ArrayList<>();
+                for (CombustionGeneratorBlockEntity generator : site.generators(level)) {
+                    if (!generator.isRemoved()) generators.add(generator.output());
+                }
+                moved += give(target, room(target), generators);
+            }
         }
     }
 
@@ -196,6 +209,7 @@ final class AcceptorFlow {
 
     /** Takes {@code amount} from the batteries, an equal part from each first and the rest from whoever still holds some. */
     private static int drain(List<EnergyHandler> batteries, int amount, TransactionContext transaction) {
+        if (batteries.isEmpty()) return 0;
         int taken = 0;
         int share = Math.max(1, amount / batteries.size());
         for (int pass = 0; pass < 2 && taken < amount; pass++) {

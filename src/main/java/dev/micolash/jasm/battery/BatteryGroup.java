@@ -1,6 +1,7 @@
 package dev.micolash.jasm.battery;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.PowerReceiver;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,10 +35,10 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class BatteryGroup {
-    /** Largest battery walked; blocks beyond it make a battery of their own. */
+    /** Scan bound for old batteries too. The placement limit never splits or deletes an existing battery. */
     public static final int MAX_BLOCKS = 4_096;
-    /** The most one block can hold, in the biggest battery. A block split off keeps what it held, even above its new room. */
-    public static final int MOST_PER_BLOCK = roomPerBlock(MAX_BLOCKS);
+    /** Saved charge is independent of today's capacity and config, including items from a larger battery. */
+    public static final int MOST_PER_BLOCK = Integer.MAX_VALUE;
     /** Ticks between redraws of the charge. */
     private static final int SHOW_TICKS = 10;
     /** Ticks the power flow is averaged over. */
@@ -61,6 +62,8 @@ public final class BatteryGroup {
     private long goneOut;
     private long flowIn;
     private long flowOut;
+    private int bonus = -1;
+    private int room;
 
     private BatteryGroup(List<BatteryBlockEntity> blocks) {
         this.blocks = blocks;
@@ -72,14 +75,24 @@ public final class BatteryGroup {
         }
         this.bottom = low;
         this.top = high;
-        int room = roomPerBlock(blocks.size());
-        for (BatteryBlockEntity block : blocks) block.resize(room);
+        refreshCapacity();
     }
 
-    /** What each block holds in a battery of {@code size} blocks: 1% more for every block, once there are two or more. */
+    /** The configured percent for every block, once there are two or more. The placement limit doesn't trim old groups. */
     public static int roomPerBlock(int size) {
         if (size < 2) return BatteryBlockEntity.CAPACITY;
-        return (int) Math.min(Integer.MAX_VALUE, BatteryBlockEntity.CAPACITY * (100L + Math.min(size, MAX_BLOCKS)) / 100);
+        return (int) Math.min(Integer.MAX_VALUE, BatteryBlockEntity.CAPACITY
+                * (100L + (long) Math.min(size, MAX_BLOCKS) * JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS)) / 100);
+    }
+
+    /** A changed bonus resizes once. Each block keeps its saved charge, even above its new room. */
+    void refreshCapacity() {
+        int configured = JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS);
+        if (bonus == configured) return;
+        bonus = configured;
+        room = roomPerBlock(blocks.size());
+        for (BatteryBlockEntity block : blocks) block.resize(room);
+        shown = -1;
     }
 
     /** The battery {@code start} belongs to, walked from it when not known yet. Never pulls in a chunk. */
@@ -269,7 +282,7 @@ public final class BatteryGroup {
         long capacity = energy.getCapacityAsLong();
         int height = (top - bottom + 1) * 16;
         // The lowest and highest two pixels sit behind the base and the cap, so an empty battery shows none and a full one all.
-        int lit = capacity <= 0 || held <= 0 ? 0 : 2 + (int) Math.max(1, Math.round((double) held / capacity * (height - 4)));
+        int lit = capacity <= 0 || held <= 0 ? 0 : 2 + (int) Math.max(1, Math.round(Math.min(1.0, (double) held / capacity) * (height - 4)));
         boolean full = capacity > 0 && held >= capacity;
         for (BatteryBlockEntity block : blocks) {
             int charge = Math.clamp(lit - (block.getBlockPos().getY() - bottom) * 16, 0, 16);
@@ -293,7 +306,7 @@ public final class BatteryGroup {
 
         @Override
         public long getCapacityAsLong() {
-            return (long) blocks.size() * roomPerBlock(blocks.size());
+            return (long) blocks.size() * room;
         }
 
         @Override

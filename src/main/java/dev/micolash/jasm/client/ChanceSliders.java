@@ -20,8 +20,21 @@ public final class ChanceSliders {
     public static Element filter(Context context, String key, Element original) {
         if (!(original.widget() instanceof EditBox box)
                 || !(context.valueSpecs().get(key) instanceof ModConfigSpec.ValueSpec spec)
-                || !(spec.getRange() instanceof ModConfigSpec.Range<?> range)
-                || !(range.getMin() instanceof Double low) || !(range.getMax() instanceof Double high) || low != 0.0 || high != 1.0) {
+                || !(spec.getRange() instanceof ModConfigSpec.Range<?> range)) {
+            return original;
+        }
+        if ((key.equals("batteryMaxBlocks") || key.equals("batteryCapacityBonus"))
+                && range.getMin() instanceof Integer min && range.getMax() instanceof Integer max) {
+            try {
+                IntegerSlider slider = new IntegerSlider(box, Integer.parseInt(box.getValue()), min, max,
+                        key.equals("batteryCapacityBonus"));
+                slider.setTooltip(Tooltip.create(original.tooltip()));
+                return new Element(original.name(), original.tooltip(), slider);
+            } catch (NumberFormatException e) {
+                return original;
+            }
+        }
+        if (!(range.getMin() instanceof Double low) || !(range.getMax() instanceof Double high) || low != 0.0 || high != 1.0) {
             return original;
         }
         double now;
@@ -37,6 +50,39 @@ public final class ChanceSliders {
 
     private static double snap(double value) {
         return Math.round(value * 100) / 100.0;
+    }
+
+    private static final class IntegerSlider extends AbstractSliderButton {
+        private final EditBox box;
+        private final int min;
+        private final int max;
+        private final boolean percent;
+
+        IntegerSlider(EditBox box, int current, int min, int max, boolean percent) {
+            super(0, 0, Button.DEFAULT_WIDTH, Button.DEFAULT_HEIGHT, Component.empty(),
+                    Math.clamp((current - min) / (double) (max - min), 0.0, 1.0));
+            this.box = box;
+            this.min = min;
+            this.max = max;
+            this.percent = percent;
+            updateMessage();
+        }
+
+        private int number() {
+            return min + (int) Math.round(value * (max - min));
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(Component.literal(number() + (percent ? "%" : "")));
+        }
+
+        @Override
+        protected void applyValue() {
+            int number = number();
+            value = (number - min) / (double) (max - min);
+            box.setValue(Integer.toString(number));
+        }
     }
 
     private static final class Slider extends AbstractSliderButton {
