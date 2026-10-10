@@ -633,8 +633,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /**
      * Fills the grid for a recipe (JEI's "+"): the grid is emptied onto the wafers first, then each slot takes one of
      * its allowed items (or as many sets as fit, with {@code max}), from the wafers first and then the inventory,
-     * picking the item there is most of. Slots with nothing to take stay empty, so a recipe the player can only partly
-     * pay for still places what they have.
+     * picking the item there is most of. A slot asking for a plain item also takes it with extra data (crop stats on
+     * seeds, say) when no plain copy is there, the version there is most of. Slots with nothing to take stay empty, so a
+     * recipe the player can only partly pay for still places what they have.
      */
     public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max) {
         if (grid == null || !dimensionAllowed() || wanted.size() > DeckGridContainer.SIZE) {
@@ -654,11 +655,14 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         placing = false;
         Map<ItemResource, Long> available = new HashMap<>();
+        // only read when a slot has no plain copy to take
+        Map<ItemResource, Long> present = null;
         List<@Nullable ItemResource> chosen = new ArrayList<>();
         for (int slot = 0; slot < wanted.size(); slot++) {
             ItemResource best = null;
             long bestCount = 0;
-            for (ItemResource option : grid.getItem(slot).isEmpty() ? wanted.get(slot) : List.<ItemResource>of()) {
+            boolean empty = grid.getItem(slot).isEmpty();
+            for (ItemResource option : empty ? wanted.get(slot) : List.<ItemResource>of()) {
                 if (option.isEmpty() || !allowedInGrid(option.toStack(1))) {
                     continue;
                 }
@@ -666,6 +670,15 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
                 if (count > bestCount) {
                     best = option;
                     bestCount = count;
+                }
+            }
+            if (best == null && empty && !wanted.get(slot).isEmpty()) {
+                if (present == null) {
+                    present = onHand(player, storage);
+                }
+                best = GridVariants.best(wanted.get(slot), present);
+                if (best != null) {
+                    available.putIfAbsent(best, present.get(best));
                 }
             }
             chosen.add(best);
@@ -717,6 +730,19 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         return count;
+    }
+
+    // wafers + inventory, each version counted on its own
+    private Map<ItemResource, Long> onHand(ServerPlayer player, DeckStorage.Checked storage) {
+        Map<ItemResource, Long> total = storage.contents();
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty() && i != deckSlot) {
+                total.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+            }
+        }
+        return total;
     }
 
     /** Wafers and Decks never go in the grid: their contents must always stay where the save rules can see them. */

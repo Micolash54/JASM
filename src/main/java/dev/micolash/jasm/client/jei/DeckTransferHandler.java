@@ -3,6 +3,7 @@ package dev.micolash.jasm.client.jei;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
+import dev.micolash.jasm.deck.GridVariants;
 import dev.micolash.jasm.registry.JasmMenus;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,7 +35,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * JEI's "+" on a crafting recipe fills a Crafting Deck's grid. The screen only says which items each slot may take;
- * the server picks them from the Deck's wafers and the inventory, and checks everything again. When some ingredients
+ * the server picks them from the Deck's wafers and the inventory, taking an item with extra data when the recipe wants
+ * it plain and no plain copy is there, and checks everything again. When some ingredients
  * are missing, the rest still go in. Missing ones the network can craft light up blue, the others red, and the "+"
  * turns blue, or orange while anything red is left. Ctrl-click also asks for the blue ones, one request window after
  * another. Only when nothing at all can be had does the "+" refuse.
@@ -109,6 +111,9 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
                 continue;
             }
             ItemResource found = options.stream().filter(o -> available.getOrDefault(o, 0L) > 0).findFirst().orElse(null);
+            if (found == null) {
+                found = GridVariants.best(options, available);
+            }
             if (found == null) {
                 ItemResource craft = options.stream().filter(menu.view().craftable()::contains).findFirst().orElse(null);
                 if (craft == null) {
