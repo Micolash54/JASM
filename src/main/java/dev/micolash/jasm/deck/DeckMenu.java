@@ -720,13 +720,14 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         return !(stack.getItem() instanceof WaferItem) && !(stack.getItem() instanceof WaferHolderItem);
     }
 
-    /** Vanilla slot code can change a grid stack without telling its container; catch up every tick. */
+    /** Vanilla slot code can change a slot's stack without telling its container; catch up every tick. */
     @Override
     public void broadcastChanges() {
         if (!player.level().isClientSide()) {
             if (emptyingSlot >= 0 && player instanceof ServerPlayer serverPlayer) {
                 DeckNetwork.stepEmptying(serverPlayer, this);
             }
+            wafers.flush();
             upgrade.flush();
             send.flush();
             if (grid != null) {
@@ -760,6 +761,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         super.removed(player);
         emptyingSlot = -1;
         if (!player.level().isClientSide()) {
+            wafers.flush();
             upgrade.flush();
             send.flush();
             if (grid != null) {

@@ -19,14 +19,17 @@ import org.jspecify.annotations.Nullable;
  * change made through a slot goes straight onto the Deck, and every read first checks whether the Deck changed
  * behind it (a storage operation blanked or set up a wafer), so there is never a second copy to keep in step.
  *
- * <p>Wafers never stack, so vanilla slot code only ever puts a stack in or takes one out; it never grows or
- * shrinks one in place, which is what makes writing straight through safe. On the client the slots are filled by
- * the server's slot updates, as in any menu.
+ * <p>Vanilla slot code also changes a slot's stack in place and only calls {@link #setChanged} afterwards: a
+ * shift-click shrinks the wafer to nothing where it sits. Those changes are caught by comparing each slot with what
+ * was last saved, and written onto the Deck in {@link #flush}. On the client the slots are filled by the server's
+ * slot updates, as in any menu.
  */
 public final class DeckWaferContainer implements Container {
     private final ItemStack deck;
     private final Player player;
     private final NonNullList<ItemStack> stacks;
+    /** What each slot held when last read from or saved to the Deck, to spot a stack changed in place. */
+    private final NonNullList<ItemStack> saved;
     /** Slots that take wafers; the ones after them hold wafers left over from a bigger Deck and only give them back. */
     private final int usable;
     /** The Deck's wafers these stacks were read from; when the Deck holds something else, they are read again. */
@@ -37,6 +40,7 @@ public final class DeckWaferContainer implements Container {
         this.player = player;
         this.usable = Math.min(size, ((DeckItem) deck.getItem()).tier().slots());
         this.stacks = NonNullList.withSize(size, ItemStack.EMPTY);
+        this.saved = NonNullList.withSize(size, ItemStack.EMPTY);
         sync();
     }
 
@@ -53,14 +57,51 @@ public final class DeckWaferContainer implements Container {
         return !player.level().isClientSide();
     }
 
-    /** Reads the stacks again if the Deck's wafers changed since they were last read. Server only. */
+    /** Reads the stacks again when the Deck's wafers changed behind them, keeping slots changed in place. Server only. */
     private void sync() {
+        if (seen == null) {
+            read(DeckItem.wafers(deck));
+        } else if (server() && DeckItem.wafers(deck) != seen) {
+            flush();
+        }
+    }
+
+    private void read(DeckWafers wafers) {
+        seen = wafers;
+        for (int i = 0; i < stacks.size(); i++) {
+            stacks.set(i, wafers.get(i));
+            saved.set(i, stacks.get(i).copy());
+        }
+    }
+
+    /**
+     * Saves every slot whose stack was changed in place onto the Deck, then catches up with anything the Deck changed
+     * behind this window. Server only; cheap when nothing changed.
+     */
+    public void flush() {
+        if (!server() || seen == null) {
+            return;
+        }
         DeckWafers now = DeckItem.wafers(deck);
-        if (seen == null || (server() && now != seen)) {
-            seen = now;
-            for (int i = 0; i < stacks.size(); i++) {
-                stacks.set(i, now.get(i));
+        DeckWafers updated = now;
+        for (int i = 0; i < stacks.size(); i++) {
+            ItemStack stack = stacks.get(i);
+            if (!ItemStack.matches(stack, saved.get(i))) {
+                if (stack.isEmpty()) {
+                    stack = ItemStack.EMPTY;
+                    stacks.set(i, stack);
+                }
+                updated = updated.with(i, stack);
+                saved.set(i, stack.copy());
             }
+        }
+        if (updated != now) {
+            deck.set(JasmComponents.DECK_WAFERS.get(), updated);
+        }
+        if (now != seen) {
+            read(updated);
+        } else {
+            seen = updated;
         }
     }
 
@@ -68,6 +109,7 @@ public final class DeckWaferContainer implements Container {
     private void store(int slot, ItemStack stack) {
         sync();
         stacks.set(slot, stack);
+        saved.set(slot, stack.copy());
         if (server()) {
             seen = seen.with(slot, stack);
             deck.set(JasmComponents.DECK_WAFERS.get(), seen);
@@ -130,9 +172,11 @@ public final class DeckWaferContainer implements Container {
         return !isOverflow(slot) && stack.getItem() instanceof WaferItem;
     }
 
-    /** Nothing to do: every change already went onto the Deck. */
+    /** A slot's stack may have changed in place: save it onto the Deck now. */
     @Override
-    public void setChanged() {}
+    public void setChanged() {
+        flush();
+    }
 
     @Override
     public boolean stillValid(Player player) {
