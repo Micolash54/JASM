@@ -9,6 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -21,9 +22,15 @@ import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidUtil;
+import org.jspecify.annotations.Nullable;
 
 /** Places what its grid holds in front of it, as its owner would. */
 public class DeploymentBayBlockEntity extends BayBlockEntity {
+    /** Half the size of a dropped item, the gap it keeps from the bay's face, and its push per tick. */
+    private static final double THROW_HALF = 0.125;
+    private static final double THROW_GAP = 0.03;
+    private static final double THROW_SPEED = 0.15;
+
     private DeployMode mode = DeployMode.PLACE;
 
     public DeploymentBayBlockEntity(BlockPos pos, BlockState state) {
@@ -116,23 +123,49 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
                 >= JasmConfig.BAY_DROP_ENTITY_LIMIT.getAsInt();
     }
 
-    /** Gently out of the front: anywhere across the face, slowly moving away. */
+    /**
+     * Drops the stack just outside the bay's face, at a random spot across it, drifting slowly straight out. When a
+     * full block fills the front space, it goes to the first open space beside that block instead, never back into the
+     * bay.
+     */
     private void throwOut(ServerLevel level, ItemStack stack) {
-        Direction side = facing();
-        double x = worldPosition.getX() + 0.5;
-        double y = worldPosition.getY();
-        double z = worldPosition.getZ() + 0.5;
-        ItemEntity entity = new ItemEntity(level, x, y, z, stack);
-        double extraY = side.getStepY() == -1 ? 1 - entity.getBbHeight() : 0;
-        double height = Math.max(0, 1 - entity.getBbHeight());
-        double width = Math.max(0, 1 - entity.getBbWidth());
-        var random = level.getRandom();
-        double dx = side.getStepX() == 0 ? random.nextFloat() * width - width / 2 : side.getStepX() * (0.525 + entity.getBbWidth() / 2);
-        double dy = side.getStepY() == 0 ? random.nextFloat() * height : side.getStepY() + extraY;
-        double dz = side.getStepZ() == 0 ? random.nextFloat() * width - width / 2 : side.getStepZ() * (0.525 + entity.getBbWidth() / 2);
-        entity.setPos(x + dx, y + dy, z + dz);
-        entity.setDeltaMovement(side.getStepX() * 0.1, side.getStepY() * 0.1, side.getStepZ() * 0.1);
-        level.addFreshEntity(entity);
+        Direction out = facing();
+        BlockPos front = front();
+        if (level.getBlockState(front).isCollisionShapeFullBlock(level, front)) {
+            BlockPos spare = spareSpace(level, front, out.getOpposite());
+            if (spare != null) {
+                spawnThrown(level, stack, out, spare.getX() + 0.5, spare.getY() + 0.5 - THROW_HALF, spare.getZ() + 0.5);
+                return;
+            }
+        }
+        RandomSource random = level.getRandom();
+        double[] middle = new double[3];
+        for (Direction.Axis axis : Direction.Axis.values()) {
+            double spot;
+            if (axis != out.getAxis()) spot = THROW_HALF + random.nextDouble() * (1 - 2 * THROW_HALF);
+            else if (out.getAxisDirection() == Direction.AxisDirection.POSITIVE) spot = THROW_GAP + THROW_HALF;
+            else spot = 1 - THROW_GAP - THROW_HALF;
+            middle[axis.ordinal()] = spot;
+        }
+        spawnThrown(level, stack, out, front.getX() + middle[0], front.getY() + middle[1] - THROW_HALF, front.getZ() + middle[2]);
+    }
+
+    /** Above the front block first, then round its sides, skipping the bay. Only spaces with nothing solid in them. */
+    private static @Nullable BlockPos spareSpace(ServerLevel level, BlockPos front, Direction toBay) {
+        if (toBay != Direction.UP && open(level, front.above())) return front.above();
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            if (side != toBay && open(level, front.relative(side))) return front.relative(side);
+        }
+        return null;
+    }
+
+    private static boolean open(ServerLevel level, BlockPos pos) {
+        return level.isLoaded(pos) && level.getBlockState(pos).getCollisionShape(level, pos).isEmpty();
+    }
+
+    private static void spawnThrown(ServerLevel level, ItemStack stack, Direction out, double x, double y, double z) {
+        level.addFreshEntity(new ItemEntity(level, x, y, z, stack,
+                out.getStepX() * THROW_SPEED, out.getStepY() * THROW_SPEED, out.getStepZ() * THROW_SPEED));
     }
 
     /** Uses the slot's stack on the front space; true if any of it was used. */

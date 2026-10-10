@@ -27,7 +27,6 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.GameType;
@@ -196,29 +195,33 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         return state.getDestroySpeed(level, pos) >= 0;
     }
 
-    /** What the block drops to a diamond tool of its kind carrying the bay's enchantments. */
+    /** What the block drops to the bay's stand-in tool. */
     private List<ItemStack> drops(ServerLevel level, BlockPos pos, BlockState state, FakePlayer player) {
-        ItemStack tool;
-        boolean fallback = false;
-        if (state.is(BlockTags.MINEABLE_WITH_PICKAXE)) tool = new ItemStack(Items.DIAMOND_PICKAXE);
-        else if (state.is(BlockTags.MINEABLE_WITH_AXE)) tool = new ItemStack(Items.DIAMOND_AXE);
-        else if (state.is(BlockTags.MINEABLE_WITH_SHOVEL)) tool = new ItemStack(Items.DIAMOND_SHOVEL);
-        else if (state.is(BlockTags.MINEABLE_WITH_HOE)) tool = new ItemStack(Items.DIAMOND_HOE);
-        else {
-            tool = new ItemStack(Items.DIAMOND_PICKAXE);
-            fallback = true;
+        return Block.getDrops(state, level, pos, level.getBlockEntity(pos), player, toolFor(state));
+    }
+
+    /**
+     * A diamond tool of the block's kind, carrying the bay's enchantments. A block of no kind gets a diamond pickaxe if
+     * it needs a tool or the bay is enchanted, so Silk Touch and Fortune reach it, and bare hands otherwise. Never
+     * shears.
+     */
+    private ItemStack toolFor(BlockState state) {
+        Item tool = toolKind(state);
+        if (tool == null) {
+            if (!state.requiresCorrectToolForDrops() && enchantments.isEmpty()) return ItemStack.EMPTY;
+            tool = Items.DIAMOND_PICKAXE;
         }
-        if (!enchantments.isEmpty()) {
-            EnchantmentHelper.setEnchantments(tool, enchantments);
-            fallback = false;
-        }
-        // As by hand: no tool where none is needed and nothing enchants it (glass breaks to nothing).
-        if (!state.requiresCorrectToolForDrops() && fallback) tool = ItemStack.EMPTY;
-        List<ItemStack> drops = new ArrayList<>();
-        for (ItemStack drop : Block.getDrops(state, level, pos, level.getBlockEntity(pos), player, tool)) {
-            if (!drop.isEmpty()) drops.add(drop);
-        }
-        return drops;
+        ItemStack stack = new ItemStack(tool);
+        if (!enchantments.isEmpty()) stack.set(DataComponents.ENCHANTMENTS, enchantments);
+        return stack;
+    }
+
+    private static @Nullable Item toolKind(BlockState state) {
+        if (state.is(BlockTags.MINEABLE_WITH_PICKAXE)) return Items.DIAMOND_PICKAXE;
+        if (state.is(BlockTags.MINEABLE_WITH_AXE)) return Items.DIAMOND_AXE;
+        if (state.is(BlockTags.MINEABLE_WITH_SHOVEL)) return Items.DIAMOND_SHOVEL;
+        if (state.is(BlockTags.MINEABLE_WITH_HOE)) return Items.DIAMOND_HOE;
+        return null;
     }
 
     private int breakCost(ServerLevel level, BlockPos pos, BlockState state, List<ItemStack> drops) {

@@ -11,17 +11,26 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Placing as someone standing in the bay and looking out of its front, so blocks turn the way they would for a player.
- * It never reaches for the clicked-on block, which can loop forever on some replaceable blocks.
+ * The Deployment Bay using an item on the space in front: aimed at the middle of that space's face toward the bay, as
+ * if its owner stood inside the bay looking straight out. Block items build their own context from this aim and the
+ * bay's stand-in player; spawn eggs, bone meal and armor stands read this one directly.
  */
 final class BayPlaceContext extends BlockPlaceContext {
-    private final Direction look;
-
     BayPlaceContext(Level level, Player player, BlockPos pos, Direction look, ItemStack stack) {
-        super(level, player, InteractionHand.MAIN_HAND, stack, new BlockHitResult(Vec3.atBottomCenterOf(pos), look.getOpposite(), pos, false));
-        this.look = look;
+        super(level, player, InteractionHand.MAIN_HAND, stack, aimAt(pos, look));
     }
 
+    private static BlockHitResult aimAt(BlockPos front, Direction look) {
+        Direction face = look.getOpposite();
+        return new BlockHitResult(Vec3.atCenterOf(front).relative(face, 0.5), face, front, false);
+    }
+
+    /** Read back from the aim, so it works while the parent constructor is still running. */
+    private Direction look() {
+        return getClickedFace().getOpposite();
+    }
+
+    // Always the front space, never the bay behind it.
     @Override
     public BlockPos getClickedPos() {
         return getHitResult().getBlockPos();
@@ -32,27 +41,26 @@ final class BayPlaceContext extends BlockPlaceContext {
         return getLevel().getBlockState(getClickedPos()).canBeReplaced(this);
     }
 
-    // Down first for every look, so torches, buttons and the like go on the floor when they can.
     @Override
     public Direction getNearestLookingDirection() {
-        return Direction.DOWN;
+        return look();
     }
 
+    /** Straight ahead first and back toward the bay last. A sideways bay tries the floor before its side walls. */
     @Override
     public Direction[] getNearestLookingDirections() {
-        return switch (look) {
-            case DOWN -> new Direction[]{Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.UP};
-            case UP -> new Direction[]{Direction.DOWN, Direction.UP, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
-            case NORTH -> new Direction[]{Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.SOUTH};
-            case SOUTH -> new Direction[]{Direction.DOWN, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.NORTH};
-            case WEST -> new Direction[]{Direction.DOWN, Direction.WEST, Direction.SOUTH, Direction.UP, Direction.NORTH, Direction.EAST};
-            case EAST -> new Direction[]{Direction.DOWN, Direction.EAST, Direction.SOUTH, Direction.UP, Direction.NORTH, Direction.WEST};
-        };
+        Direction look = look();
+        if (look.getAxis() == Direction.Axis.Y) {
+            return new Direction[]{look, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, look.getOpposite()};
+        }
+        return new Direction[]{look, Direction.DOWN, look.getClockWise(), look.getCounterClockWise(), Direction.UP, look.getOpposite()};
     }
 
+    /** Up and down bays turn things as if looking south. */
     @Override
     public Direction getHorizontalDirection() {
-        return look.getAxis() == Direction.Axis.Y ? Direction.NORTH : look;
+        Direction look = look();
+        return look.getAxis().isHorizontal() ? look : Direction.SOUTH;
     }
 
     @Override
@@ -62,6 +70,6 @@ final class BayPlaceContext extends BlockPlaceContext {
 
     @Override
     public float getRotation() {
-        return look.get2DDataValue() * 90;
+        return getHorizontalDirection().toYRot();
     }
 }

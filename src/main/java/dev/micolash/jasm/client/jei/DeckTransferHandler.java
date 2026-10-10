@@ -44,11 +44,12 @@ import org.jspecify.annotations.Nullable;
 final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, RecipeHolder<CraftingRecipe>> {
     /** The red JEI itself uses for slots that can't be filled. */
     private static final int MISSING_SLOT = 0x66FF0000;
-    /** Slots the network can craft instead. */
-    private static final int CRAFTABLE_SLOT = 0x400000FF;
-    /** The "+" while some of the recipe is missing, and while all of what's missing can be crafted. */
+    /** A faint deep blue over slots the network can craft, a little lighter than the red. */
+    private static final int CRAFTABLE_SLOT = 0x3A1A2EF0;
+    /** The "+" while anything red is left. */
     private static final int SOME_MISSING = 0x80FFA500;
-    private static final int ALL_CRAFTABLE = 0x804545FF;
+    /** The "+" when everything missing can be crafted: a soft periwinkle, half see-through. */
+    private static final int ALL_CRAFTABLE = 0x7A5A5CF6;
 
     private final IRecipeTransferHandlerHelper helper;
 
