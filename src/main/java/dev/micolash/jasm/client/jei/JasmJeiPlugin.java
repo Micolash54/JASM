@@ -10,6 +10,7 @@ import dev.micolash.jasm.client.ArchiveScreen;
 import dev.micolash.jasm.client.BayScreen;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.client.EncodingTerminalScreen;
+import dev.micolash.jasm.client.ItemListSearch;
 import dev.micolash.jasm.client.ReceivedRecipes;
 import dev.micolash.jasm.client.StoragePortScreen;
 import dev.micolash.jasm.client.TransferPortScreen;
@@ -42,6 +43,7 @@ import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.runtime.IClickableIngredient;
+import mezz.jei.api.runtime.IIngredientFilter;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -181,6 +183,24 @@ public class JasmJeiPlugin implements IModPlugin {
         recipes.addRecipes(WorkshopRecipeCategory.TYPE, ReceivedRecipes.workshop());
         hideTurnedOffFeatures(runtime);
         JeiMaterials.start(runtime);
+        IIngredientFilter filter = runtime.getIngredientFilter();
+        ItemListSearch.setSource(new ItemListSearch.Source() {
+            @Override
+            public String text() {
+                String text = filter.getFilterText();
+                return text == null ? "" : text;
+            }
+
+            @Override
+            public void setText(String text) {
+                filter.setFilterText(text);
+            }
+
+            @Override
+            public boolean focused() {
+                return runtime.getIngredientListOverlay().hasKeyboardFocus();
+            }
+        });
     }
 
     /** Features this world turned off: their items and recipes leave JEI. JEI starts again on every join, so this follows the world being played. */
@@ -204,6 +224,7 @@ public class JasmJeiPlugin implements IModPlugin {
     @Override
     public void onRuntimeUnavailable() {
         JeiMaterials.stop();
+        ItemListSearch.setSource(null);
     }
 
     @Override

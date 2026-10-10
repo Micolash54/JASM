@@ -109,6 +109,10 @@ final class CraftRequestWindow {
     }
 
     void open(ItemResource item, int left, int top, int w, int h) {
+        open(item, 1, left, top, w, h);
+    }
+
+    void open(ItemResource item, long count, int left, int top, int w, int h) {
         target = item;
         wanted = null;
         x = left;
@@ -116,7 +120,7 @@ final class CraftRequestWindow {
         width = w;
         height = h;
         scroll = 0;
-        amount.setValue("1");
+        amount.setValue(String.valueOf(Math.max(1, count)));
         amount.setFocused(true);
         ask();
     }

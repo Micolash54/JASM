@@ -633,7 +633,8 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /**
      * Fills the grid for a recipe (JEI's "+"): the grid is emptied onto the wafers first, then each slot takes one of
      * its allowed items (or as many sets as fit, with {@code max}), from the wafers first and then the inventory,
-     * picking the item there is most of. Slots with nothing to take stay empty.
+     * picking the item there is most of. Slots with nothing to take stay empty, so a recipe the player can only partly
+     * pay for still places what they have.
      */
     public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max) {
         if (grid == null || !dimensionAllowed() || wanted.size() > DeckGridContainer.SIZE) {
@@ -641,20 +642,23 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         }
         var storage = DeckStorage.checked(WaferStore.get(player.level().getServer()), deck, player);
         returnGrid(player, storage);
+        placing = true;
         for (int i = 0; i < DeckGridContainer.SIZE; i++) {
-            ItemStack left = grid.getItem(i);
+            ItemStack left = grid.getItem(i).copy();
             if (!left.isEmpty()) {
-                // Something that couldn't go back to the wafers is in the way; move it to the inventory.
-                grid.setItem(i, ItemStack.EMPTY);
-                player.getInventory().placeItemBackInInventory(left);
+                // Something that couldn't go back to the wafers is in the way; move it to the inventory. If that is full
+                // too, it stays where it is and the slot is left out of the recipe, rather than dropping on the ground.
+                moveItemStackTo(left, waferSlots, waferSlots + 36, false);
+                grid.setItem(i, left.isEmpty() ? ItemStack.EMPTY : left);
             }
         }
+        placing = false;
         Map<ItemResource, Long> available = new HashMap<>();
         List<@Nullable ItemResource> chosen = new ArrayList<>();
-        for (List<ItemResource> options : wanted) {
+        for (int slot = 0; slot < wanted.size(); slot++) {
             ItemResource best = null;
             long bestCount = 0;
-            for (ItemResource option : options) {
+            for (ItemResource option : grid.getItem(slot).isEmpty() ? wanted.get(slot) : List.<ItemResource>of()) {
                 if (option.isEmpty() || !allowedInGrid(option.toStack(1))) {
                     continue;
                 }

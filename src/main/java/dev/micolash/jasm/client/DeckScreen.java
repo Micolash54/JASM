@@ -19,6 +19,7 @@ import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.deck.DeckView;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -75,6 +76,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** The search row along the top: the field, then the sort and size keys. */
     private static final int KEY = 16;
     private static final int KEY_Y = 5;
+    private static final int SEARCH_LENGTH = 64;
     /** The tab keys down the right-hand column, sharing their outlines. */
     private static final int TAB_WIDTH = 21;
     private static final int TAB_HEIGHT = 22;
@@ -103,6 +105,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             new JasmButton.Icon(Jasm.id("icon/tab_rules"), 11, 11), new JasmButton.Icon(Jasm.id("icon/tab_network"), 11, 11)};
     private static final JasmButton.Icon JOBS = new JasmButton.Icon(Jasm.id("icon/jobs"), 11, 13);
     private static final JasmButton.Icon SEND = new JasmButton.Icon(Jasm.id("icon/send"), 11, 11);
+    private static final JasmButton.Icon SEARCH_SYNC = new JasmButton.Icon(Jasm.id("icon/search_sync"), 6, 8);
     private static final JasmButton.Icon[] SIZE_ICONS = {
             new JasmButton.Icon(Jasm.id("icon/size_small"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_medium"), 8, 7),
             new JasmButton.Icon(Jasm.id("icon/size_tall"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_full"), 8, 7)};
@@ -116,8 +119,6 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private static final int BOX_SHADE = 0xFF181825;
 
     private EditBox search;
-    private GridEntries.Sort sort = GridEntries.Sort.NAME;
-    private boolean ascending = true;
     private int scrollRow;
     private int builtVersion = -1;
     private String builtQuery = "";
@@ -156,6 +157,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** The Deck to Deck window: kept while the screen is open, so it stays where it was dragged. */
     private @Nullable DeckSendWindow sendWindow;
     private JasmButton sendButton;
+    private @Nullable JasmButton searchSyncButton;
     private @Nullable JasmButton pageBack;
     private @Nullable JasmButton pageNext;
 
@@ -219,20 +221,26 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         String query = search == null ? "" : search.getValue();
         search = new JasmField(font, leftPos + mainX + 5, topPos + 6, 145, 14, Component.translatable("screen.jasm.deck.search"));
         search.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
-        search.setMaxLength(64);
+        search.setMaxLength(SEARCH_LENGTH);
         search.setValue(query);
-        search.setResponder(text -> scrollRow = 0);
+        search.setResponder(text -> {
+            scrollRow = 0;
+            // Typing here writes into JEI's search too.
+            ItemListSearch.Source jei = syncedSearch();
+            if (jei != null && search.isFocused() && !jei.text().equals(text)) jei.setText(text);
+        });
         addRenderableWidget(search);
         // The three keys right of the search field share their outlines. The last is a pixel wider, so the row ends level with
         // the grid's well.
         int keyX = leftPos + mainX + 152;
-        addRenderableWidget(JasmButton.icon(() -> sort == GridEntries.Sort.NAME ? SORT_NAME : SORT_AMOUNT, sortLabel(), b -> {
-            sort = sort == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME;
+        // The sort and its direction are the player's own choice, kept for every Deck they open.
+        addRenderableWidget(JasmButton.icon(() -> JasmClientConfig.deckSort() == GridEntries.Sort.NAME ? SORT_NAME : SORT_AMOUNT, sortLabel(), b -> {
+            JasmClientConfig.setDeckSort(JasmClientConfig.deckSort() == GridEntries.Sort.NAME ? GridEntries.Sort.AMOUNT : GridEntries.Sort.NAME);
             b.setMessage(sortLabel());
             builtVersion = -1;
         }, keyX, topPos + KEY_Y, KEY, KEY));
-        addRenderableWidget(JasmButton.icon(() -> ascending ? UP : DOWN, directionLabel(), b -> {
-            ascending = !ascending;
+        addRenderableWidget(JasmButton.icon(() -> JasmClientConfig.deckAscending() ? UP : DOWN, directionLabel(), b -> {
+            JasmClientConfig.setDeckAscending(!JasmClientConfig.deckAscending());
             b.setMessage(directionLabel());
             builtVersion = -1;
         }, keyX + KEY - 1, topPos + KEY_Y, KEY, KEY));
@@ -308,6 +316,16 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         sendButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.send.button")));
         sendButton.setLatched(sendWindow.isOpen());
         addRenderableWidget(sendButton);
+        // With JEI running, a last key keeps the two searches together; it stays pressed while on.
+        searchSyncButton = null;
+        if (showsSearchSync()) {
+            searchSyncButton = JasmButton.icon(() -> SEARCH_SYNC, searchSyncLabel(), b -> {
+                JasmClientConfig.setDeckSearchSync(!JasmClientConfig.deckSearchSync());
+                updateSearchSync();
+            }, tabX, topPos + TAB_Y + (sendKeys + 1) * (TAB_HEIGHT - 1), TAB_WIDTH, TAB_HEIGHT);
+            updateSearchSync();
+            addRenderableWidget(searchSyncButton);
+        }
         if (networkPanel == null) networkPanel = new NetworkPanel(menu, font);
         networkPanel.place(leftPos + gridX, topPos + gridY, COLUMNS * 18, rows);
         addRenderableWidget(networkPanel.key());
@@ -377,9 +395,40 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         jobsWindow.open(leftPos + mainX - 3, topPos, MAIN_WIDTH + 5, imageHeight);
     }
 
+    private static boolean showsSearchSync() {
+        return ItemListSearch.source() != null;
+    }
+
+    private Component searchSyncLabel() {
+        return Component.translatable(JasmClientConfig.deckSearchSync() ? "screen.jasm.deck.search_sync.on" : "screen.jasm.deck.search_sync.off");
+    }
+
+    private void updateSearchSync() {
+        if (searchSyncButton == null) return;
+        searchSyncButton.setLatched(JasmClientConfig.deckSearchSync());
+        searchSyncButton.setMessage(searchSyncLabel());
+        searchSyncButton.setTooltip(Tooltip.create(searchSyncLabel()));
+    }
+
+    /** JEI's search while it is running and the player keeps the two searches together. */
+    private ItemListSearch.@Nullable Source syncedSearch() {
+        return JasmClientConfig.deckSearchSync() ? ItemListSearch.source() : null;
+    }
+
+    /** Unless the player is typing in the Deck's search, it follows JEI's. */
+    private void followItemListSearch() {
+        ItemListSearch.Source jei = syncedSearch();
+        if (jei == null || search.isFocused() && !jei.focused()) return;
+        String text = jei.text();
+        if (text.length() > SEARCH_LENGTH) text = text.substring(0, SEARCH_LENGTH);
+        if (!text.equals(search.getValue())) search.setValue(text);
+    }
+
     @Override
     protected void containerTick() {
         super.containerTick();
+        followItemListSearch();
+        nextQueuedCraft();
         craftWindow.tick();
         if (tab == Tab.NETWORK) networkPanel.tick();
     }
@@ -389,6 +438,40 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         super.removed();
         if (networkPanel != null) networkPanel.close();
         if (sendWindow != null) sendWindow.close();
+    }
+
+    /** One craft a ctrl-click on JEI's "+" asked for: what, and how many. */
+    public record QueuedCraft(ItemResource item, int count) {}
+
+    /** Crafts from JEI's "+" waiting for the Deck screen with this menu to come back; taken up or dropped on its next tick. */
+    private record PendingCrafts(int containerId, List<QueuedCraft> crafts) {}
+
+    private static @Nullable PendingCrafts pendingCrafts;
+    /** The request window opens for each of these in turn, as the one before it is started or closed. */
+    private final ArrayDeque<QueuedCraft> craftQueue = new ArrayDeque<>();
+
+    /** Asks for each of {@code crafts} once the Deck screen with menu {@code containerId} is showing again. */
+    public static void queueCrafts(int containerId, List<QueuedCraft> crafts) {
+        pendingCrafts = crafts.isEmpty() ? null : new PendingCrafts(containerId, List.copyOf(crafts));
+    }
+
+    /** Opens the next queued request once nothing else is open. Opening another window drops what is left. */
+    private void nextQueuedCraft() {
+        PendingCrafts pending = pendingCrafts;
+        if (pending != null) {
+            pendingCrafts = null;
+            if (pending.containerId() == menu.containerId) {
+                craftQueue.clear();
+                craftQueue.addAll(pending.crafts());
+            }
+        }
+        if (craftQueue.isEmpty() || craftWindow.isOpen()) return;
+        if (ruleWindow.isOpen() || jobsWindow.isOpen() || filterWindow.isOpen() || !menu.dimensionAllowed()) {
+            craftQueue.clear();
+            return;
+        }
+        QueuedCraft next = craftQueue.poll();
+        craftWindow.open(next.item(), next.count(), leftPos + mainX - 3, topPos, MAIN_WIDTH + 5, imageHeight);
     }
 
     /** Opens the request window for {@code key}, closing the wafer settings if they were open. */
@@ -573,11 +656,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     }
 
     private Component sortLabel() {
-        return Component.translatable(sort == GridEntries.Sort.NAME ? "screen.jasm.deck.sort_name" : "screen.jasm.deck.sort_amount");
+        return Component.translatable(JasmClientConfig.deckSort() == GridEntries.Sort.NAME ? "screen.jasm.deck.sort_name" : "screen.jasm.deck.sort_amount");
     }
 
     private Component directionLabel() {
-        return Component.translatable(ascending ? "screen.jasm.deck.ascending" : "screen.jasm.deck.descending");
+        return Component.translatable(JasmClientConfig.deckAscending() ? "screen.jasm.deck.ascending" : "screen.jasm.deck.descending");
     }
 
     // --- grid contents ---
@@ -614,7 +697,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 entries.add(entry(key, view.contents().getOrDefault(key, 0L)));
             }
         }
-        visible = GridEntries.view(entries, SearchQuery.parse(builtQuery), sort, ascending);
+        visible = GridEntries.view(entries, SearchQuery.parse(builtQuery), JasmClientConfig.deckSort(), JasmClientConfig.deckAscending());
         scrollRow = Math.min(scrollRow, maxScroll());
     }
 
@@ -740,7 +823,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     /**
      * The panels as one shape: the wafers on the left, the main panel with its wider search row, the scroll column on
-     * the right and the tab column, as tall as its keys. Rebuilt when the grid changes height.
+     * the right and the tab column, as tall as its keys (and the JEI search key, when JEI is running). Rebuilt when the
+     * grid changes height.
      */
     private JasmFrame frame() {
         if (frame == null) {
@@ -750,8 +834,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                     new int[]{0, DeckMenu.SIDE_TOP, mainX, menu.sideRows() * 18 + 38},
                     new int[]{mainX + 190, 25, 28, menu.gridEnd() - 18}));
             // A Crafting Deck's wider column takes in the scroll column's top; a normal Deck's holds only its two keys.
-            if (menu.isCrafting()) rects.add(new int[]{mainX + 190, 25, 51, tabColumnHeight(shown.size() + 2)});
-            else rects.add(new int[]{mainX + 214, 25, 27, tabColumnHeight(shown.size() + 1)});
+            int syncKey = showsSearchSync() ? 1 : 0;
+            if (menu.isCrafting()) rects.add(new int[]{mainX + 190, 25, 51, tabColumnHeight(shown.size() + 2 + syncKey)});
+            else rects.add(new int[]{mainX + 214, 25, 27, tabColumnHeight(shown.size() + 1 + syncKey)});
             panels = rects;
             frame = JasmFrame.rounded(rects.toArray(int[][]::new));
         }
