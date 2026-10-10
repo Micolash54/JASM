@@ -89,6 +89,7 @@ public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSourc
         if (group == null || !group.alive()) {
             group = BatteryGroup.of(level, this);
         }
+        group.refreshCapacity();
         return group;
     }
 

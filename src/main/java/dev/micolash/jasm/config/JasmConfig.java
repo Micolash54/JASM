@@ -115,7 +115,11 @@ public final class JasmConfig {
 
     public static final ModConfigSpec.IntValue BATTERY_MAX_BLOCKS = BUILDER
             .comment("Blocks one Battery may have. A block that would join up a bigger one can't be placed. A battery already bigger keeps working and all its power, it just can't grow")
-            .defineInRange("batteryMaxBlocks", 100, 1, 4_096);
+            .defineInRange("batteryMaxBlocks", 64, 1, 256);
+
+    public static final ModConfigSpec.IntValue BATTERY_CAPACITY_BONUS = BUILDER
+            .comment("Extra capacity in each Battery block, in percent per block in the group. A lone block has no bonus. Lowering this keeps stored power, even above the new capacity")
+            .defineInRange("batteryCapacityBonus", 2, 0, 100);
 
     static {
         BUILDER.pop().push("autocrafting");
@@ -212,6 +216,10 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue WILD_SPAWN_RATE = BUILDER
             .comment("How often a growing Seeded Amethyst draws a wild Bitling over, in percent. 100 is normal, 0 means never")
             .defineInRange("spawnRate", 100, 0, 1_000);
+
+    public static final ModConfigSpec.BooleanValue WILD_DIAMOND_AMETHYST = BUILDER
+            .comment("Wild Bitlings accept diamonds and leave an amethyst block. Off: they refuse diamonds without taking them")
+            .define("diamondAmethystDrop", true);
 
     public static final ModConfigSpec.BooleanValue BASIC_BITLING_RECIPE = BUILDER
             .worldRestart()

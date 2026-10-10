@@ -223,7 +223,9 @@ public class WildBitling extends BitlingBody {
     private void trade(ServerLevel level) {
         setHeld(ItemStack.EMPTY);
         treat = null;
-        spawnAtLocation(level, new ItemStack(Items.AMETHYST_BLOCK));
+        if (JasmConfig.WILD_DIAMOND_AMETHYST.getAsBoolean()) {
+            spawnAtLocation(level, new ItemStack(Items.AMETHYST_BLOCK));
+        }
         level.sendParticles(ParticleTypes.HAPPY_VILLAGER, getX(), getY() + getBbHeight() + 0.1, getZ(), 5, 0.2, 0.1, 0.2, 0.0);
         setAct(Act.STAND);
         waitTicks = 20;
@@ -324,7 +326,7 @@ public class WildBitling extends BitlingBody {
             take(player, stack, Treat.CHIP, INSPECT_CHIP_TICKS);
             return InteractionResult.SUCCESS;
         }
-        if (stack.is(Items.DIAMOND)) {
+        if (stack.is(Items.DIAMOND) && JasmConfig.WILD_DIAMOND_AMETHYST.getAsBoolean()) {
             take(player, stack, Treat.DIAMOND, INSPECT_CHIP_TICKS);
             return InteractionResult.SUCCESS;
         }

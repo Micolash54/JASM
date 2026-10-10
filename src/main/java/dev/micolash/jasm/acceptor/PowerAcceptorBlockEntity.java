@@ -1,6 +1,7 @@
 package dev.micolash.jasm.acceptor;
 
 import dev.micolash.jasm.battery.BatteryBlockEntity;
+import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.Networks;
@@ -8,6 +9,8 @@ import dev.micolash.jasm.network.PowerReceiver;
 import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,13 +33,16 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Power Acceptor block. It moves power between a JASM network and other mods' blocks on every side it has, as its mode
- * says (see {@link AcceptorFlow}). Out, it empties the Batteries it touches and those on the cables of the networks it touches.
+ * says (see {@link AcceptorFlow}). Out, Batteries come first, then combustion generators when the Batteries are empty.
  */
 public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowerSource, MenuProvider, ModeHolder {
     private final PowerSides sides = new PowerSides();
     private final CableNetwork[] poolNetworks = new CableNetwork[6];
     private final PowerReceiver[] poolSides = new PowerReceiver[6];
     private @Nullable List<BatteryBlockEntity> pool;
+    private final AcceptorGenerators generatorCache = new AcceptorGenerators();
+    private List<CombustionGeneratorBlockEntity> generators = List.of();
+    private boolean generatorsDirty = true;
     private final AcceptorFlow flow = new AcceptorFlow(new Around());
 
     public PowerAcceptorBlockEntity(BlockPos pos, BlockState state) {
@@ -67,6 +73,7 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
     @Override
     public void neighboursChanged() {
         sides.changed();
+        generatorsDirty = true;
     }
 
     @Override
@@ -152,7 +159,8 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
             }
             List<BatteryBlockEntity> found = new ArrayList<>();
             for (Direction side : Direction.values()) {
-                if (poolSides[side.ordinal()] != null && level.getBlockEntity(worldPosition.relative(side)) instanceof BatteryBlockEntity battery) {
+                if (poolSides[side.ordinal()] != null && level.isLoaded(worldPosition.relative(side))
+                        && level.getBlockEntity(worldPosition.relative(side)) instanceof BatteryBlockEntity battery) {
                     found.add(battery);
                 }
             }
@@ -162,7 +170,25 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
                 }
             }
             pool = found;
+            generatorsDirty = true;
             return found;
+        }
+
+        @Override
+        public List<CombustionGeneratorBlockEntity> generators(ServerLevel level) {
+            batteries(level);
+            if ((level.getGameTime() + worldPosition.asLong()) % 20 == 0) generatorsDirty = true;
+            if (generatorsDirty || generatorCache.changed() || generators.stream().anyMatch(CombustionGeneratorBlockEntity::isRemoved)) {
+                generatorsDirty = false;
+                var found = new LinkedHashSet<>(generatorCache.find(level, Arrays.asList(poolNetworks)));
+                for (Direction side : Direction.values()) {
+                    BlockPos next = worldPosition.relative(side);
+                    if (level.isLoaded(next) && level.getBlockEntity(next) instanceof CombustionGeneratorBlockEntity generator
+                            && !generator.isRemoved()) found.add(generator);
+                }
+                generators = List.copyOf(found);
+            }
+            return generators;
         }
     }
 }

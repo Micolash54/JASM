@@ -40,7 +40,7 @@ Bitlings are small robot helpers that work the [Chip Workshop](chip-workshop.md)
 
 * Hand one a typed chip to get a Basic Bitling item.
 * Hand one a Data Crystal and it follows you for a while.
-* Hand one a diamond and it leaves a Block of Amethyst.
+* Hand one a diamond and it leaves a Block of Amethyst, unless diamond trades are disabled in the settings.
 * Knocked out, it leaves one or two <ItemLink id="crystal_dust" />.
 
 <br />

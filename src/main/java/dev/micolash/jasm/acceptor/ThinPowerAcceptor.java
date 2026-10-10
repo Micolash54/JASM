@@ -1,6 +1,7 @@
 package dev.micolash.jasm.acceptor;
 
 import dev.micolash.jasm.battery.BatteryBlockEntity;
+import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.NetworkPowerSource;
@@ -39,6 +40,8 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
     private @Nullable PowerReceiver cable;
     private @Nullable CableNetwork poolNetwork;
     private @Nullable List<BatteryBlockEntity> pool;
+    private final AcceptorGenerators generatorCache = new AcceptorGenerators();
+    private List<CombustionGeneratorBlockEntity> generators = List.of();
 
     public ThinPowerAcceptor(DataCableBlockEntity host, Direction side) {
         this.host = host;
@@ -142,8 +145,18 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
             if (pool == null || network != poolNetwork) {
                 poolNetwork = network;
                 pool = network == null ? List.of() : network.batteries();
+                generators = generatorCache.find(level, network == null ? List.of() : List.of(network));
             }
             return pool;
+        }
+
+        @Override
+        public List<CombustionGeneratorBlockEntity> generators(ServerLevel level) {
+            batteries(level);
+            if (generatorCache.changed() || generators.stream().anyMatch(CombustionGeneratorBlockEntity::isRemoved)) {
+                generators = generatorCache.find(level, poolNetwork == null ? List.of() : List.of(poolNetwork));
+            }
+            return generators;
         }
     }
 }
