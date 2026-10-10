@@ -27,36 +27,36 @@
         "north": {
           "uv": [
             0,
-            0,
+            13,
             16,
-            3
+            16
           ],
           "texture": "#casing"
         },
         "east": {
           "uv": [
             0,
-            0,
+            13,
             16,
-            3
+            16
           ],
           "texture": "#casing"
         },
         "south": {
           "uv": [
             0,
-            0,
+            13,
             16,
-            3
+            16
           ],
           "texture": "#casing"
         },
         "west": {
           "uv": [
             0,
-            0,
+            13,
             16,
-            3
+            16
           ],
           "texture": "#casing"
         },
@@ -165,19 +165,19 @@
       "faces": {
         "north": {
           "uv": [
-            0,
-            0,
+            13,
             3,
-            10
+            16,
+            13
           ],
           "texture": "#casing"
         },
         "east": {
           "uv": [
             0,
-            0,
+            3,
             16,
-            10
+            13
           ],
           "texture": "#casing",
           "cullface": "north"
@@ -185,18 +185,18 @@
         "south": {
           "uv": [
             0,
-            0,
             3,
-            10
+            3,
+            13
           ],
           "texture": "#casing"
         },
         "west": {
           "uv": [
             0,
-            0,
+            3,
             16,
-            10
+            13
           ],
           "texture": "#casing"
         },
@@ -236,54 +236,54 @@
         "north": {
           "uv": [
             0,
-            0,
             3,
-            10
+            3,
+            13
           ],
           "texture": "#casing"
         },
         "east": {
           "uv": [
             0,
-            0,
+            3,
             16,
-            10
+            13
           ],
           "texture": "#casing"
         },
         "south": {
           "uv": [
-            0,
-            0,
+            13,
             3,
-            10
+            16,
+            13
           ],
           "texture": "#casing"
         },
         "west": {
           "uv": [
             0,
-            0,
+            3,
             16,
-            10
+            13
           ],
           "texture": "#casing",
           "cullface": "north"
         },
         "up": {
           "uv": [
+            13,
             0,
-            0,
-            3,
+            16,
             16
           ],
           "texture": "#casing"
         },
         "down": {
           "uv": [
+            13,
             0,
-            0,
-            3,
+            16,
             16
           ],
           "texture": "#casing"
@@ -305,10 +305,10 @@
       "faces": {
         "north": {
           "uv": [
-            0,
-            0,
-            10,
-            10
+            3,
+            3,
+            13,
+            13
           ],
           "texture": "#casing",
           "cullface": "north"
@@ -316,44 +316,44 @@
         "east": {
           "uv": [
             0,
-            0,
             3,
-            10
+            3,
+            13
           ],
           "texture": "#casing"
         },
         "south": {
           "uv": [
-            0,
-            0,
-            10,
-            10
+            3,
+            3,
+            13,
+            13
           ],
           "texture": "#casing"
         },
         "west": {
           "uv": [
-            0,
-            0,
+            13,
             3,
-            10
+            16,
+            13
           ],
           "texture": "#casing"
         },
         "up": {
           "uv": [
-            0,
-            0,
-            10,
-            3
+            3,
+            13,
+            13,
+            16
           ],
           "texture": "#casing"
         },
         "down": {
           "uv": [
+            3,
             0,
-            0,
-            10,
+            13,
             3
           ],
           "texture": "#casing"

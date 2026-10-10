@@ -188,8 +188,10 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
             payForTick();
             return;
         }
+        // busy must be set while paying, because the drain depends on it; an unpaid tick is not work
         busy = true;
         if (!payForTick()) {
+            busy = false;
             return;
         }
         if (++progress >= ticksPerCrystal()) {
