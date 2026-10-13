@@ -21,6 +21,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
@@ -238,7 +239,28 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
             }
             return false;
         }
+        if (removeCore(state, level, pos)) return true;
+        // A cable-free space has no core to mine when the ray misses its parts.
+        if (coreless(state)) return false;
         return level.isClientSide() ? level.setBlock(pos, fluid.createLegacyBlock(), 11) : level.removeBlock(pos, false);
+    }
+
+    /** Removes only the cable; the same host keeps every mounted part and its contents. */
+    private boolean removeCore(BlockState state, Level level, BlockPos pos) {
+        if (!state.getValue(CORE) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity host) || !host.hasParts()) return false;
+        if (!level.setBlock(pos, state.setValue(CORE, false), Block.UPDATE_ALL)) return false;
+        host.setChanged();
+        if (level instanceof ServerLevel serverLevel) {
+            Networks.invalidate(serverLevel, pos);
+            refreshConnectionsAround(serverLevel, pos);
+            serverLevel.invalidateCapabilities(pos);
+        }
+        return true;
+    }
+
+    @Override
+    public void onBlockExploded(BlockState state, ServerLevel level, BlockPos pos, Explosion explosion) {
+        if (!removeCore(state, level, pos)) super.onBlockExploded(state, level, pos, explosion);
     }
 
     @Override
