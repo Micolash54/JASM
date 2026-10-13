@@ -21,7 +21,7 @@ A rule makes the network craft for you, without you asking. Set them on the Rule
 | Fewer than | when I have fewer than 16 torches, craft 32 |
 | Every | every minute, craft 8 bread |
 
-Pick the item by holding it and clicking. A timer can be no shorter than 10 seconds by default.
+Pick the item by holding it and clicking. A timer can be no shorter than 10 seconds.
 
 <br />
 <br />

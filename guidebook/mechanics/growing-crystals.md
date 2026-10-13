@@ -39,6 +39,14 @@ Data Crystals are the raw material for everything in JASM. You grow them on a bl
 
 <br />
 <br />
+## At a glance (Default values)
+
+| | |
+| --- | --- |
+| Wear chance per bud | 12% |
+
+<br />
+<br />
 ## Step by step
 
 1. Craft a <ItemLink id="crystal_seed" /> and use it on a **Block of Amethyst**. It becomes <ItemLink id="seeded_amethyst" />.
@@ -50,7 +58,7 @@ Data Crystals are the raw material for everything in JASM. You grow them on a bl
 <br />
 ## The seed wears out
 
-Each time a bud grows, the block may wear down one stage: Seeded, Worn, Cracked, then back to a plain Block of Amethyst. By default the chance is 12% for each bud.
+Each time a bud grows, the block may wear down one stage: Seeded, Worn, Cracked, then back to a plain Block of Amethyst.
 
 Mined at any stage, the block gives the Block of Amethyst back and the seed is lost.
 

@@ -26,7 +26,16 @@ An Archive keeps a backup of your wafers. If one is ever lost or destroyed, the 
 | Advanced | 6 | 100,000 FE | 10 FE a tick |
 | Ultimate | 12 | 200,000 FE | 20 FE a tick |
 
-An Archive needs power to link or recover, so give it a cable or a generator next to it. Linking a wafer costs 1,000 FE and a recovery 10,000 FE by default.
+An Archive needs power to link or recover, so give it a cable or a generator next to it.
+
+<br />
+<br />
+## At a glance
+
+| | |
+| --- | --- |
+| Linking a wafer | 1,000 FE |
+| Recovering a wafer | 10,000 FE |
 
 <br />
 <br />

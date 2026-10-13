@@ -20,7 +20,11 @@ item_ids:
 
 Rare versions of the Logic, Memory and Link Chip. Only the [Chip Workshop](chip-workshop.md) makes them: every chip it finishes has a small chance of coming out Advanced.
 
-| Critter | Chance by default |
+<br />
+<br />
+## At a glance (Default values)
+
+| Critter | Chance |
 | --- | --- |
 | Basic Bitling | 2% |
 | Logic, Memory or Link Bitling | 5% |

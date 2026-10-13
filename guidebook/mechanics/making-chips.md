@@ -16,7 +16,7 @@ Nearly every JASM recipe is built from chips. Logic and Memory Chips need nothin
 
 1. Cut a <ItemLink id="data_crystal" /> into a <ItemLink id="blank_chip" /> at a **Stonecutter**.
 2. Cook the Blank Chip. On a **Campfire** it becomes an <ItemLink id="unquenched_logic_chip" />; in a **Blast Furnace**, an <ItemLink id="unquenched_memory_chip" />.
-3. Drop the hot chip in **water**, still or flowing. After 2 seconds (by default) it hisses and becomes a <ItemLink id="logic_chip" /> or a <ItemLink id="memory_chip" />.
+3. Drop the hot chip in **water**, still or flowing. After 2 seconds it hisses and becomes a <ItemLink id="logic_chip" /> or a <ItemLink id="memory_chip" />.
 
 The whole stack cools at once, and no water is used up.
 

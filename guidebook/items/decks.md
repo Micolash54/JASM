@@ -34,9 +34,17 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 
 <br />
 <br />
+## At a glance (Default values)
+
+| | |
+| --- | --- |
+| Power per item moved | 1 FE |
+
+<br />
+<br />
 ## Power
 
-* Moving an item in or out costs 1 FE by default. Browsing is free.
+* Moving an item in or out costs power. Browsing is free.
 * Without charge, a Deck can't move anything.
 * Charge it in a [Combustion Generator](combustion-generators.md) or anything else that charges items.
 
