@@ -41,5 +41,3 @@ Put the critter in the middle of the grid and the rest round it. It keeps its ch
 * Bigger batteries: 50,000 FE for a Basic Bitling, 100,000 for a typed one, 200,000 for a Nibbling and 400,000 for a Byteling.
 * Better odds of a rare Advanced chip.
 * Only a Byteling can build a [Synapse Core](../items/synapse-core.md).
-
-The chip counts are the defaults and the config can change them.

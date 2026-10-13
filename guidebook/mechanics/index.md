@@ -46,3 +46,9 @@ How things work, rather than what things are. The pages follow the order you wil
 
 * [Autocrafting](autocrafting.md)
 * [Crafting rules](crafting-rules.md)
+
+<br />
+<br />
+## Settings
+
+* [Settings](settings.md)
