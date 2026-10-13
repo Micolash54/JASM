@@ -1,18 +1,26 @@
 package dev.micolash.jasm.config;
 
 import dev.micolash.jasm.core.GridEntries;
+import java.util.Locale;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.TranslatableEnum;
 
 /** Client config: each player's own screen choices. */
 public final class JasmClientConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     /** How tall the Deck screen's grid is; every size above the smallest grows with the game window. */
-    public enum DeckSize {
+    public enum DeckSize implements TranslatableEnum {
         SMALL,
         MEDIUM,
         TALL,
-        FULL
+        FULL;
+
+        @Override
+        public Component getTranslatedName() {
+            return Component.translatable("jasm.configuration.deckSize." + name().toLowerCase(Locale.ROOT));
+        }
     }
 
     static {

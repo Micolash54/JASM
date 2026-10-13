@@ -3,12 +3,20 @@ package dev.micolash.jasm.core;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.common.TranslatableEnum;
 
 /** Filtering, sorting and count labels for the Deck grid. Pure, so it can be tested without the game. */
 public final class GridEntries {
-    public enum Sort {
+    /** The config screen shows the translated name, not the code word. */
+    public enum Sort implements TranslatableEnum {
         NAME,
-        AMOUNT
+        AMOUNT;
+
+        @Override
+        public Component getTranslatedName() {
+            return Component.translatable("jasm.configuration.deckSort." + name().toLowerCase(Locale.ROOT));
+        }
     }
 
     /**
