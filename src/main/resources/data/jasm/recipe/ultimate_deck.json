@@ -1,16 +1,15 @@
 {
   "type": "jasm:upgrade",
   "key": {
-    "X": "minecraft:blaze_rod",
-    "R": "minecraft:redstone",
+    "S": "jasm:synapse_core",
+    "E": "minecraft:ender_eye",
     "P": "jasm:elite_deck",
-    "A": "jasm:advanced_logic_chip",
-    "B": "jasm:advanced_link_chip"
+    "R": "minecraft:redstone"
   },
   "pattern": [
-    "XAX",
-    "RPR",
-    "XBX"
+    " S ",
+    "EPE",
+    " R "
   ],
   "source": "jasm:elite_deck",
   "result": {

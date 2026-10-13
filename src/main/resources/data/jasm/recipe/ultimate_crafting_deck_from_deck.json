@@ -1,19 +1,19 @@
 {
   "type": "jasm:upgrade",
   "key": {
-    "R": "minecraft:redstone",
-    "T": "minecraft:crafting_table",
+    "E": "minecraft:ender_eye",
+    "S": "jasm:synapse_core",
     "F": "minecraft:fletching_table",
     "P": "jasm:ultimate_deck",
-    "S": "minecraft:smithing_table",
-    "C": "minecraft:cartography_table",
-    "A": "jasm:advanced_logic_chip",
-    "B": "jasm:advanced_link_chip"
+    "M": "minecraft:smithing_table",
+    "T": "minecraft:crafting_table",
+    "C": "minecraft:comparator",
+    "R": "minecraft:cartography_table"
   },
   "pattern": [
-    "ATB",
-    "FPS",
-    "RCR"
+    "ESE",
+    "FPM",
+    "TCR"
   ],
   "source": "jasm:ultimate_deck",
   "result": {

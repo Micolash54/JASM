@@ -2,14 +2,16 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "I": "minecraft:iron_ingot",
-    "C": "minecraft:copper_ingot",
-    "R": "minecraft:redstone",
-    "H": "minecraft:hopper"
+    "M": "jasm:memory_chip",
+    "L": "jasm:logic_chip",
+    "H": "minecraft:hopper",
+    "N": "jasm:link_chip",
+    "R": "minecraft:redstone"
   },
   "pattern": [
-    "ICI",
-    "RHR",
-    "ICI"
+    "IMI",
+    "LHN",
+    "IRI"
   ],
   "result": {
     "id": "jasm:power_acceptor"

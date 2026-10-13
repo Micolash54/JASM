@@ -1,15 +1,15 @@
 {
   "type": "jasm:upgrade",
   "key": {
-    "X": "minecraft:emerald",
+    "E": "minecraft:emerald",
+    "A": "jasm:advanced_logic_chip",
     "R": "minecraft:redstone",
-    "P": "jasm:advanced_crafting_deck",
-    "A": "jasm:advanced_logic_chip"
+    "P": "jasm:advanced_crafting_deck"
   },
   "pattern": [
-    "XAX",
+    "EAE",
     "RPR",
-    "XRX"
+    "ERE"
   ],
   "source": "jasm:advanced_crafting_deck",
   "result": {

@@ -12,7 +12,7 @@ item_ids:
 
 <ItemImage id="synapse_core" scale="4" />
 
-The key to the two biggest sizes of every wafer. A Byteling builds it in the [Chip Workshop](chip-workshop.md).
+The key to the two biggest sizes of every wafer, and to the Ultimate Deck and Ultimate Crafting Deck. A Byteling builds it in the [Chip Workshop](chip-workshop.md).
 
 | At a glance | |
 | --- | --- |
@@ -27,7 +27,7 @@ Put the four ingredients in the grid in any order.
 <br />
 ## What it unlocks
 
-The 256K and 1M [Capacity Wafers](capacity-wafers.md), the 128 and 256 [Type Wafers](type-wafers.md), the 256K and 1M [Fluid Capacity Wafers](fluid-capacity-wafers.md) and the 64 and 128 [Fluid Type Wafers](fluid-type-wafers.md).
+The 256K and 1M [Capacity Wafers](capacity-wafers.md), the 128 and 256 [Type Wafers](type-wafers.md), the 256K and 1M [Fluid Capacity Wafers](fluid-capacity-wafers.md), the 64 and 128 [Fluid Type Wafers](fluid-type-wafers.md), the [Ultimate Deck](decks.md) and the [Ultimate Crafting Deck](crafting-decks.md).
 
 <br />
 <br />

@@ -2,17 +2,18 @@
   "type": "jasm:upgrade",
   "key": {
     "R": "minecraft:redstone",
-    "T": "minecraft:crafting_table",
+    "K": "jasm:link_chip",
     "F": "minecraft:fletching_table",
     "P": "jasm:advanced_deck",
     "S": "minecraft:smithing_table",
-    "C": "minecraft:cartography_table",
-    "K": "jasm:link_chip"
+    "T": "minecraft:crafting_table",
+    "C": "minecraft:comparator",
+    "A": "minecraft:cartography_table"
   },
   "pattern": [
-    "KTK",
+    "RKR",
     "FPS",
-    "RCR"
+    "TCA"
   ],
   "source": "jasm:advanced_deck",
   "result": {

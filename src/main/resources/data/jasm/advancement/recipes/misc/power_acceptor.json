@@ -7,21 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_redstone": {
+    "has_link_chip": {
       "conditions": {
         "items": [
           {
-            "items": "minecraft:redstone"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_hopper": {
-      "conditions": {
-        "items": [
-          {
-            "items": "minecraft:hopper"
+            "items": "jasm:link_chip"
           }
         ]
       },
@@ -31,8 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_redstone",
-      "has_hopper"
+      "has_link_chip"
     ]
   ],
   "rewards": {

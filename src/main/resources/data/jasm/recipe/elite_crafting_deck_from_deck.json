@@ -2,17 +2,18 @@
   "type": "jasm:upgrade",
   "key": {
     "R": "minecraft:redstone",
-    "T": "minecraft:crafting_table",
+    "A": "jasm:advanced_logic_chip",
     "F": "minecraft:fletching_table",
     "P": "jasm:elite_deck",
     "S": "minecraft:smithing_table",
-    "C": "minecraft:cartography_table",
-    "A": "jasm:advanced_logic_chip"
+    "C": "minecraft:crafting_table",
+    "O": "minecraft:comparator",
+    "T": "minecraft:cartography_table"
   },
   "pattern": [
-    "ATR",
+    "RAR",
     "FPS",
-    "RCR"
+    "COT"
   ],
   "source": "jasm:elite_deck",
   "result": {

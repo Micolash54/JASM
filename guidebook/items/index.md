@@ -32,7 +32,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Nibblings and Bytelings](nibblings-and-bytelings.md): the grown-up stages.
 * [Link Chip](link-chip.md): for the third tier.
 * [Advanced Chips](advanced-chips.md): rare, for the top tier.
-* [Synapse Core](synapse-core.md): unlocks the biggest wafers.
+* [Synapse Core](synapse-core.md): unlocks the biggest wafers and the Ultimate Decks.
 
 <br />
 <br />
