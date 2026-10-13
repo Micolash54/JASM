@@ -2,7 +2,7 @@
   "lines": {
     "26.1": {
       "mc": "26.1.2",
-      "jasm": "0.6.4",
+      "jasm": "0.6.5",
       "pages": [
         "getting-started.html",
         "index.html",
@@ -67,6 +67,7 @@
         "mechanics/networks.html",
         "mechanics/power.html",
         "mechanics/sending-items.html",
+        "mechanics/settings.html",
         "mechanics/training-bitlings.html",
         "mechanics/type-filters.html",
         "mechanics/wafer-filters.html"
