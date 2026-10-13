@@ -17,7 +17,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Seeded Amethyst](seeded-amethyst.md): where Data Crystals grow.
 * [Data Crystal](data-crystal.md): the raw material.
 * [Crystal Dust](crystal-dust.md): what a bud broken early leaves.
-* [Crystal Resonator](crystal-resonator.md): makes crystals grow faster.
+* [Crystal Resonator](crystal-resonator.md): makes crystals and plants grow faster.
 * [Crystal Foundry](crystal-foundry.md): grows crystals in bulk.
 * [Blank Chip](blank-chip.md): cut from a Data Crystal.
 * [Logic and Memory Chips](logic-and-memory-chips.md): the parts of every recipe.

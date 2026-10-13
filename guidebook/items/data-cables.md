@@ -25,9 +25,15 @@ Cables hold no power and have no speed limit. Whatever a generator or Power Inte
 * Water and other fluids can't wash a cable or its ports away.
 * Different players' networks never join.
 * Cables don't count toward the [machine limit](network-brain.md).
-* A cable can carry up to six thin [Access Ports](access-port.md), one on each face.
 
 See [networks](../mechanics/networks.md) for the rules in full.
+
+<br />
+<br />
+## Thin ports
+
+* A cable can carry up to six thin ports, one on each face: [Access Ports](access-port.md), [item ports](item-ports.md), [Storage Ports](storage-port.md) and [Power Interfaces](power-acceptor.md).
+* Breaking the cable leaves its thin ports in place, with what is in them. They stay off the network until you place a cable into the space again.
 
 <br />
 <br />

@@ -18,7 +18,7 @@ Most JASM blocks run on FE.
 
 * [Combustion Generators](../items/combustion-generators.md) burn fuel. They are the simple answer.
 * Other mods, through the [Power Interface](../items/power-acceptor.md). JASM blocks never take power straight from another mod.
-* [Batteries](../items/battery.md) store it for later.
+* [Batteries](../items/battery.md) store it for later, and charge items in their charging slot.
 
 <br />
 <br />
@@ -46,5 +46,3 @@ Most JASM blocks run on FE.
 | Archive | 5, 10 or 20 FE a tick by tier |
 
 Decks and Bitlings have their own batteries. Moving an item through a Deck costs 1 FE.
-
-All of these are the defaults, and the config can change them.

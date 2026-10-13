@@ -21,9 +21,9 @@ A network can only hold so many machines. The [Network Brain](../items/network-b
 * Encoding Terminals, Recipe Racks and Crafting Servers.
 * Access Ports and every other port.
 * Archives.
-* Chip Workshops, Crystal Foundries, Crystal Resonators and Bitling Stations.
+* Chip Workshops, Crystal Foundries and Bitling Stations.
 
-Cables, generators, Creative Batteries, brains and chambers don't count. Neither do the two bays.
+Cables, generators, Creative Batteries, brains and chambers don't count. Neither do the two bays and the Crystal Resonator.
 
 A row of five Archives side by side is a network of five.
 

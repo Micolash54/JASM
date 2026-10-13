@@ -40,7 +40,7 @@ Fluids work too. Several machines share the work.
 ## Two shapes
 
 * **Full block:** also takes items from any face, even without a crafting job. It has an eight-slot buffer. Ordinary items go to the owner's paired Deck, or to another paired Deck you pick in the port. Items wait if the Deck is full.
-* **Thin:** a cable attachment, up to six on one cable, one per face. It can also sit straight on a machine with no cable. It stays off the network until you place a cable into its space.
+* **Thin:** a cable attachment, up to six on one cable, one per face. It can also sit straight on a machine with no cable. It stays off the network until you place a cable into its space, and it stays in place if the cable is broken.
 
 Convert one into the other in a crafting grid. Both recipes are below.
 
@@ -51,6 +51,7 @@ Convert one into the other in a crafting grid. Both recipes are below.
 * A thin port serves and accepts items only through its outward face, including from pipes and hoppers while idle.
 * Blocking mode waits to send new ingredients while the machine still holds some for this recipe.
 * Add a [Power Upgrade](power-upgrade.md) to supply FE to the machine it faces.
+* Five upgrade slots take up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md). A paused port moves nothing and shows Paused, and crafting jobs wait for it.
 * It uses 2 FE a tick and counts toward the [machine limit](network-brain.md).
 
 <br />

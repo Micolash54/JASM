@@ -12,25 +12,39 @@ item_ids:
 
 <BlockImage id="battery" scale="3.5" />
 
-A Battery stores FE. It keeps the machines it touches, and the machines on any [Data Cable](data-cables.md) network it touches, topped up, so a [generator](combustion-generators.md) can run dry for a while and the machines keep going.
+A Battery stores FE. It connects to adjacent machines or to a JASM network via [Data Cables](data-cables.md). Multiple batteries connect with each other to form a multiblock, granting increasing amounts of storage.
 
-| At a glance | |
+<br />
+<br />
+## At a glance (Default values)
+
+| | |
 | --- | --- |
 | Holds | 2,000,000 FE each block |
-| Size bonus | 2% more room in every block for each block in a joined battery, by default |
-| Largest | 64 blocks by default |
+| Size bonus | 2% more FE for every battery in a multiblock |
+| Largest multiblock size | 64 blocks |
 
 <br />
 <br />
-## Good to know
+## Joining up
 
-* Batteries that touch each other are one battery and share their power. Its screen shows the charge, the blocks and the power going in and out in FE/t.
-* A [generator](combustion-generators.md) or a [Power Interface](power-acceptor.md) charges it.
-* A battery has one charging slot for any item that holds FE, the same from every block. It charges from the battery's power, faster the more blocks the battery has. Hoppers can put items in and take them out once full. Breaking the block that keeps the item drops it; joining two batteries that each hold one drops one of them.
-* A Power Interface set to **Output only** gives a Battery's power to other mods' blocks.
-* A block that would join a battery past the largest size can't be placed. A bigger battery keeps working and keeps its power.
-* Settings allow 1–256 blocks and a 0–100% capacity bonus per block. A lone block has no bonus. Lowering the size limit keeps existing batteries together; lowering the bonus keeps their stored power, even above the new capacity.
+* Batteries that touch each other join as one battery and share their power.
+* Larger multiblock sizes grant increasing power storage bonuses.
+* A block that would join a battery past the largest size can't be placed.
+
+<br />
+<br />
+## Charging slot
+
+* A battery has one charging slot. It takes any item that holds FE and charges it from the battery's power.
+* A bigger battery charges faster, and never faster than it has power.
+
+<br />
+<br />
+## Breaking
+
 * A broken Battery keeps its charge in the item.
+* Breaking a block trims the rest of the battery to its new, smaller capacity. Power above it is lost. The block you mined keeps its own share.
 
 <br />
 <br />

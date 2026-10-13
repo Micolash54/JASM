@@ -24,6 +24,7 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 | --- | --- |
 | Speed | 2 seconds, down to a quarter of a second with 4 [Speed Upgrades](speed-upgrade.md) |
 | Cost | 20 FE for each block, fluid or stack |
+| Upgrades | five slots: up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md) |
 | Holds | 10,000 FE and 16 buckets |
 
 <br />
@@ -33,9 +34,8 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 * Its Input / Output key opens sides for items and fluids separately, each Input or closed. An [Output Port](item-ports.md), hopper or pipe fills it through a side set to Input. Every side starts closed.
 * It runs on cable power and doesn't take up a place on the machine limit.
 * Speed Upgrades raise the power per placement or thrown stack as well as the speed. Four upgrades cost eight times the power for each action.
-* With a [Redstone Upgrade](redstone-upgrade.md) it can work once for each redstone pulse.
-* In drop mode items land just in front of the bay. When a solid block is in front, they appear on top of it or beside it instead.
-* In drop mode it pauses while 32 entities are near, so it can't flood a spot with items.
+* With a [Redstone Upgrade](redstone-upgrade.md) it can run only while powered or unpowered, or work once for each redstone pulse.
+* In drop mode items land just in front of the bay, or on top of or beside a solid block there. It pauses while 32 entities are near, so it can't flood a spot with items.
 * You can add [filters](../mechanics/type-filters.md) to decide what it may or may not place/drop. Works for items and fluids.
 
 Its opposite is the [Demolition Bay](demolition-bay.md).

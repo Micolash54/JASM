@@ -17,13 +17,14 @@ item_ids:
   <Block id="jasm:crystal_resonator" x="1" y="0" z="0" />
 </GameScene>
 
-A powered Crystal Resonator makes the <ItemLink id="seeded_amethyst" /> next to it grow faster.
+A powered Crystal Resonator makes the plants and budding blocks next to it grow faster, <ItemLink id="seeded_amethyst" /> included.
 
 * It runs on power like any other machine, from a [Data Cable](data-cables.md) network or a generator next to it. It uses 10 FE each tick by default.
-* Every Seeded Amethyst touching it gets one extra growth attempt every 0.75 seconds (15 ticks) by default.
+* Everything touching it that can grow gets one extra growth attempt every 0.75 seconds (15 ticks) by default.
+* It works on Seeded Amethyst, budding blocks, crops, saplings, bamboo, sugar cane, vines, kelp, sweet berries, nether wart and cocoa.
 * Several Resonators add up.
-* Each extra growth has a 6% chance by default of wearing the block down, half the natural 12%. A seed gives more crystals in total.
-* It counts toward a network's machine limit. See [the Network Brain](network-brain.md).
+* On Seeded Amethyst, each extra growth has a 6% chance by default of wearing the block down, half the natural 12%. A seed gives more crystals in total.
+* It doesn't count toward a network's [machine limit](network-brain.md).
 
 <br />
 <br />

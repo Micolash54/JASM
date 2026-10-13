@@ -24,7 +24,7 @@ Put a Bitling in the Chip Workshop and feed it <ItemLink id="blank_chip" />s. It
 | Batch mode | up to 8 chips at once, in 60 seconds |
 | Cost | 2,000 FE from the Bitling's battery for every chip |
 | Input | a 2x2 grid |
-| Upgrades | four slots for [Speed Upgrades](speed-upgrade.md) |
+| Upgrades | five slots: up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md) |
 
 <br />
 <br />
@@ -44,6 +44,8 @@ Put a Bitling in the Chip Workshop and feed it <ItemLink id="blank_chip" />s. It
 The Workshop itself uses no power. Only the critter does. Power from a cable or a generator next to it goes straight into the critter's battery, and each chip takes some out.
 
 With no power at all, the critter keeps going until its battery runs flat, then naps until it is charged again. You can also charge a critter in a [Combustion Generator](combustion-generators.md).
+
+A Redstone Upgrade adds a key under the upgrade slots to pause the Workshop. The critter still charges while it waits, and a half-made chip keeps its progress.
 
 <br />
 <br />
