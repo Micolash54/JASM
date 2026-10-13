@@ -1,12 +1,14 @@
 package dev.micolash.jasm;
 
 import com.mojang.logging.LogUtils;
+import dev.micolash.jasm.compat.curios.CuriosDecks;
 import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Presets;
 import dev.micolash.jasm.config.WorldSettings;
 import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.crystal.Quenching;
+import dev.micolash.jasm.deck.WornDeckKeeper;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmEntities;
@@ -19,6 +21,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
@@ -43,6 +46,11 @@ public final class Jasm {
         JasmRecipes.TYPES.register(modBus);
         JasmTriggers.TRIGGERS.register(modBus);
         Quenching.ATTACHMENTS.register(modBus);
+        WornDeckKeeper.ATTACHMENTS.register(modBus);
+        // The Deck slot, only with Curios installed. Nothing of Curios is loaded otherwise.
+        if (ModList.get().isLoaded("curios")) {
+            CuriosDecks.init(modBus);
+        }
         container.registerConfig(ModConfig.Type.SERVER, JasmConfig.SPEC);
         container.registerConfig(ModConfig.Type.CLIENT, JasmClientConfig.SPEC);
         modBus.addListener((ModConfigEvent.Loading event) -> forgetBrainBalance(event.getConfig()));

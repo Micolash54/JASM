@@ -45,6 +45,8 @@ public final class DeckNetwork {
                         (payload, context) -> pourSlot((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.EmptyWafer.TYPE, DeckPayloads.EmptyWafer.STREAM_CODEC,
                         (payload, context) -> emptyWafer((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.OpenKey.TYPE, DeckPayloads.OpenKey.STREAM_CODEC,
+                        (payload, context) -> openByKey((ServerPlayer) context.player()))
                 .playToClient(DeckPayloads.EmptyProgress.TYPE, DeckPayloads.EmptyProgress.STREAM_CODEC, DeckNetwork::onEmptyProgress)
                 .playToClient(DeckPayloads.Emptied.TYPE, DeckPayloads.Emptied.STREAM_CODEC, DeckNetwork::onEmptied)
                 .playToClient(DeckPayloads.FluidSnapshot.TYPE, DeckPayloads.FluidSnapshot.STREAM_CODEC, DeckNetwork::onFluidSnapshot)
@@ -237,6 +239,22 @@ public final class DeckNetwork {
     private static void finish(ServerPlayer player, DeckMenu menu) {
         menu.broadcastChanges();
         DeckViewTracker.markDirty(menu);
+    }
+
+    /**
+     * The open Deck key: opens the worn Deck, else the first one in the hotbar or inventory, else the one in the
+     * off-hand. Only while no other screen is open. Returns whether a Deck opened.
+     */
+    public static boolean openByKey(ServerPlayer player) {
+        if (player.containerMenu != player.inventoryMenu || player.isSpectator() || !player.isAlive()) {
+            return false;
+        }
+        int slot = DeckItem.keySlot(player);
+        if (slot == -1) {
+            return false;
+        }
+        DeckItem.open(player, slot);
+        return true;
     }
 
     public static @Nullable DeckMenu openMenu(ServerPlayer player, int containerId) {

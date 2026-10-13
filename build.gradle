@@ -57,6 +57,11 @@ repositories {
         url = "https://api.modrinth.com/maven"
         content { includeGroup "maven.modrinth" }
     }
+    // Curios
+    maven {
+        url = "https://maven.theillusivec4.top/"
+        content { includeGroup "top.theillusivec4.curios" }
+    }
     // GuideME and its libraries
     mavenCentral()
 }
@@ -194,6 +199,11 @@ dependencies {
     compileOnly "maven.modrinth:jade:${jade_version}"
     if (providers.gradleProperty('jasmRuntimeJade').map { it.toBoolean() }.getOrElse(true)) {
         localRuntime "maven.modrinth:jade:${jade_version}"
+    }
+    // Curios: compiled against its API only. -PjasmRuntimeCurios=false starts the dev game without it.
+    compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+    if (providers.gradleProperty('jasmRuntimeCurios').map { it.toBoolean() }.getOrElse(true)) {
+        localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
     }
 
     // For more info:

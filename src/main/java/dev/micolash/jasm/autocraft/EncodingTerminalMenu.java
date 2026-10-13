@@ -7,6 +7,7 @@ import dev.micolash.jasm.deck.DeckFluids;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.deck.WornDecks;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
@@ -292,8 +293,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
     }
 
-    /** The Deck in the player's hand, else the first one in their inventory (hotbar first); empty if they carry none. */
-    static ItemStack viewersDeck(Player player) {
+    /** The Deck in the player's hand, else the first one in their inventory (hotbar first), else the worn one; empty if none. */
+    public static ItemStack viewersDeck(Player player) {
         for (ItemStack held : List.of(player.getMainHandItem(), player.getOffhandItem())) {
             if (held.getItem() instanceof DeckItem) {
                 return held;
@@ -305,7 +306,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 return inventory.getItem(i);
             }
         }
-        return ItemStack.EMPTY;
+        int worn = WornDecks.firstDeck(player);
+        return worn < 0 ? ItemStack.EMPTY : WornDecks.get(player, worn);
     }
 
     /** Client side: the Deck's contents as the server sent them. */

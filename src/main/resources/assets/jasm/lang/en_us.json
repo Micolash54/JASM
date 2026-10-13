@@ -1,5 +1,8 @@
 {
   "itemGroup.jasm.main": "JASM",
+  "key.category.jasm.jasm": "JASM",
+  "key.jasm.open_deck": "Open Deck",
+  "curios.identifier.jasm_deck": "Deck",
   "item.jasm.starter_deck": "Starter Deck",
   "item.jasm.basic_deck": "Basic Deck",
   "item.jasm.advanced_deck": "Advanced Deck",

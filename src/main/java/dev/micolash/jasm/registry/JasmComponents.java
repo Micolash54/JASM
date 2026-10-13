@@ -84,6 +84,13 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<UUID>> DECK_ID = COMPONENTS.registerComponentType(
             "deck_id", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
 
+    /**
+     * A mark of its own on a Deck while it is worn. A Deck given back after Curios was taken out gets a new one, so it
+     * can never be mistaken for the copy Curios may still have saved.
+     */
+    public static final Supplier<DataComponentType<UUID>> WORN_MARK = COMPONENTS.registerComponentType(
+            "worn_mark", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
+
     /** The Encoding Terminal a Deck is paired with. */
     public static final Supplier<DataComponentType<UUID>> DECK_NETWORK = COMPONENTS.registerComponentType(
             "deck_network", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));

@@ -55,6 +55,15 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 
 <br />
 <br />
+## Opening and wearing
+
+* Right-click to open the Deck in your hand, or press **B** (Open Deck, under JASM in Controls) to open the worn Deck, else the first one you carry.
+* With Curios installed, a Deck can be worn in the Deck slot. Every kind of Deck fits.
+* A worn Deck counts as carried: crafting results, port deliveries, rules and sending all find it.
+* If Curios is removed later, a worn Deck comes back to your inventory the next time you join, or drops at your feet when it is full.
+
+<br />
+<br />
 ## Upgrading
 
 The old Deck is used up. The new one keeps its wafers and its charge. Advanced and above also come as a [Crafting Deck](crafting-decks.md).

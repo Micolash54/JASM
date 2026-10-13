@@ -124,16 +124,9 @@ public final class Deliveries {
         return members;
     }
 
-    /** Whether {@code player} carries the Deck with identity {@code deckId} and it has a Dimension Upgrade. */
-    static boolean carriesUpgradedDeck(ServerPlayer player, UUID deckId) {
-        var inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (stack.getItem() instanceof DeckItem && deckId.equals(stack.get(JasmComponents.DECK_ID.get()))) {
-                return DeckItem.hasDimensionUpgrade(stack);
-            }
-        }
-        return false;
+    /** Whether {@code player} carries (or wears) the Deck with identity {@code deckId} and it has a Dimension Upgrade. */
+    public static boolean carriesUpgradedDeck(ServerPlayer player, UUID deckId) {
+        return DeckItem.hasDimensionUpgrade(Jobs.findDeck(player, deckId));
     }
 
     /** What stops {@code sender} sending to {@code member} right now, apart from what is in the grid. */

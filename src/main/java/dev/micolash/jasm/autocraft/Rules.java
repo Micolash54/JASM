@@ -56,13 +56,11 @@ public final class Rules {
             return;
         }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            Inventory inventory = player.getInventory();
-            for (int i = 0; i < inventory.getContainerSize(); i++) {
-                ItemStack deck = inventory.getItem(i);
+            DeckItem.forEachCarried(player, deck -> {
                 if (DeckItem.isCrafting(deck) && !of(deck).isEmpty()) {
                     run(player, deck, server.getTickCount());
                 }
-            }
+            });
         }
     }
 

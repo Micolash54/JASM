@@ -1,0 +1,7 @@
+{
+  "size": 1,
+  "order": 30,
+  "icon": "jasm:slot/deck_slot",
+  "add_cosmetic": false,
+  "render_toggle": false
+}

@@ -3,6 +3,7 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.core.BrainBalance;
+import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -103,7 +104,7 @@ public final class NetworkPanel {
     /** The network the Deck in hand is linked to, as the client has it now. */
     private @Nullable UUID linkNow() {
         var player = Minecraft.getInstance().player;
-        return player == null ? null : player.getInventory().getItem(menu.deckSlot()).get(JasmComponents.DECK_NETWORK.get());
+        return player == null ? null : DeckItem.inSlot(player, menu.deckSlot()).get(JasmComponents.DECK_NETWORK.get());
     }
 
     private NetworkViewPayloads.@Nullable View view() {

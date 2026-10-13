@@ -149,19 +149,18 @@ final class JobReturns {
         }
     }
 
-    /** The Deck with this identity in the player's inventory. */
+    /** The Deck with this identity in the player's inventory or worn Deck slot. */
     public static ItemStack findDeck(ServerPlayer player, @Nullable UUID deckId) {
         if (deckId == null) {
             return ItemStack.EMPTY;
         }
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (DeckItem.isDeck(stack) && deckId.equals(stack.get(JasmComponents.DECK_ID.get()))) {
-                return stack;
+        ItemStack[] found = {ItemStack.EMPTY};
+        DeckItem.forEachCarried(player, stack -> {
+            if (found[0].isEmpty() && deckId.equals(stack.get(JasmComponents.DECK_ID.get()))) {
+                found[0] = stack;
             }
-        }
-        return ItemStack.EMPTY;
+        });
+        return found[0];
     }
 
     /** The job is over: the server is free, and its entry goes once its record is safely written. */

@@ -99,6 +99,18 @@ public final class DeckPayloads {
         }
     }
 
+    /** Client → server: the open Deck key was pressed. */
+    public record OpenKey() implements CustomPacketPayload {
+        public static final OpenKey INSTANCE = new OpenKey();
+        public static final Type<OpenKey> TYPE = new Type<>(Jasm.id("deck_open_key"));
+        public static final StreamCodec<ByteBuf, OpenKey> STREAM_CODEC = StreamCodec.unit(INSTANCE);
+
+        @Override
+        public Type<OpenKey> type() {
+            return TYPE;
+        }
+    }
+
     /** Client → server: empty the Crafting Deck's grid onto its wafers, or into the player's inventory. */
     public record ClearGrid(int containerId, boolean toInventory) implements CustomPacketPayload {
         public static final Type<ClearGrid> TYPE = new Type<>(Jasm.id("deck_clear_grid"));

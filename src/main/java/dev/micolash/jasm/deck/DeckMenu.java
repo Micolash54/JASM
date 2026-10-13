@@ -45,7 +45,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Deck's menu: its wafer slots, then the player's inventory (27 slots) and hotbar (9), then on a Crafting Deck
  * the 3×3 grid and its result. The Deck itself stays locked in its slot while open, and the menu closes if that
- * exact Deck leaves the slot.
+ * exact Deck leaves the slot. A Deck worn in the Deck slot (Curios) has no slot in this menu at all.
  *
  * <p>The wafer slots sit in a side panel on the left, up to {@link #SIDE_ROWS} per column; the main panel starts at
  * {@link #mainX()} with the item grid at the top and the inventory at the bottom. A Crafting Deck has a box between
@@ -112,15 +112,19 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Server side. */
     public DeckMenu(int containerId, Inventory inventory, int deckSlot) {
-        this(containerId, inventory, deckSlot, DeckItem.containerSize(inventory.getItem(deckSlot)));
+        this(containerId, inventory, deckSlot, DeckItem.containerSize(DeckItem.inSlot(inventory.player, deckSlot)), ItemStack.EMPTY);
     }
 
-    /** Both sides: the server says how many wafer slots, so the two always build the same slots. */
-    private DeckMenu(int containerId, Inventory inventory, int deckSlot, int waferSlots) {
+    /**
+     * Both sides: the server says how many wafer slots, so the two always build the same slots. {@code sent} is the
+     * worn Deck as the server sent it, used only if the client's copy of the worn slot hasn't caught up yet.
+     */
+    private DeckMenu(int containerId, Inventory inventory, int deckSlot, int waferSlots, ItemStack sent) {
         super(JasmMenus.DECK.get(), containerId);
         this.player = inventory.player;
         this.deckSlot = deckSlot;
-        this.deck = inventory.getItem(deckSlot);
+        ItemStack inSlot = DeckItem.inSlot(player, deckSlot);
+        this.deck = DeckItem.isDeck(inSlot) || !DeckItem.isDeck(sent) ? inSlot : sent;
         this.wafers = new DeckWaferContainer(deck, player, waferSlots);
         this.waferSlots = waferSlots;
         this.pages = new DeckPages(waferSlots);
@@ -192,9 +196,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         layout(MIN_ROWS);
     }
 
-    /** Client side: the server tells which inventory slot holds the Deck. */
+    /** Client side: the server tells which slot holds the Deck (an inventory slot, or the worn one). */
     public static DeckMenu client(int containerId, Inventory inventory, RegistryFriendlyByteBuf data) {
-        return new DeckMenu(containerId, inventory, data.readVarInt(), data.readVarInt());
+        return new DeckMenu(containerId, inventory, data.readVarInt(), data.readVarInt(), ItemStack.OPTIONAL_STREAM_CODEC.decode(data));
     }
 
     private Slot playerSlot(Inventory inventory, int index, int x, int y) {
@@ -355,7 +359,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     public int armorStart() {
         return armorStart;
     }
-    public boolean dimensionAllowed() { return DeckItem.worksIn(player.getInventory().getItem(deckSlot), player.level()); }
+    public boolean dimensionAllowed() { return DeckItem.worksIn(DeckItem.inSlot(player, deckSlot), player.level()); }
 
     public DeckWaferContainer wafers() {
         return wafers;
@@ -385,7 +389,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     @Override
     public boolean stillValid(Player player) {
-        return player.getInventory().getItem(deckSlot) == deck && deck.getItem() instanceof DeckItem;
+        return DeckItem.inSlot(player, deckSlot) == deck && deck.getItem() instanceof DeckItem;
     }
 
     /** The Deck's own slot can't be clicked, and number keys or the off-hand key can't swap it away. */

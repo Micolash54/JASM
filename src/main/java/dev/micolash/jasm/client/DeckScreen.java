@@ -484,7 +484,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     /** The Deck as the client has it now; the slot's stack is replaced whenever the server sends it again. */
     private ItemStack currentDeck() {
-        return minecraft.player.getInventory().getItem(menu.deckSlot());
+        return DeckItem.inSlot(minecraft.player, menu.deckSlot());
     }
 
     private List<CraftRule> rules() {

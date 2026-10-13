@@ -136,9 +136,53 @@ public class DeckItem extends Item implements WaferHolderItem {
         return Math.max(tier.slots(), wafers(deck).highestSlot() + 1);
     }
 
-    /** Opens the Deck in this inventory slot. */
+    /**
+     * Slot number of the first worn Deck slot (Curios). Worn slots count down from here, so they never meet an
+     * inventory slot.
+     */
+    public static final int WORN_SLOT = -100;
+
+    public static int wornSlot(int index) {
+        return WORN_SLOT - index;
+    }
+
+    public static boolean isWornSlot(int slot) {
+        return slot <= WORN_SLOT;
+    }
+
+    /** What sits in a Deck slot number: an inventory slot, or a worn slot. */
+    public static ItemStack inSlot(Player player, int slot) {
+        return isWornSlot(slot) ? WornDecks.get(player, WORN_SLOT - slot) : player.getInventory().getItem(slot);
+    }
+
+    /** Every Deck a player carries: the inventory first, then the worn slot. */
+    public static void forEachCarried(Player player, Consumer<ItemStack> action) {
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            if (isDeck(inventory.getItem(i))) {
+                action.accept(inventory.getItem(i));
+            }
+        }
+        WornDecks.forEach(player, action);
+    }
+
+    /** The slot of the Deck the open key opens: the worn one, else the first in the hotbar or inventory, else the off-hand. */
+    public static int keySlot(Player player) {
+        int worn = WornDecks.firstDeck(player);
+        if (worn >= 0) {
+            return wornSlot(worn);
+        }
+        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
+            if (isDeck(player.getInventory().getItem(i))) {
+                return i;
+            }
+        }
+        return isDeck(player.getInventory().getItem(Inventory.SLOT_OFFHAND)) ? Inventory.SLOT_OFFHAND : -1;
+    }
+
+    /** Opens the Deck in this slot (inventory or worn). */
     public static void open(ServerPlayer player, int slot) {
-        ItemStack deck = player.getInventory().getItem(slot);
+        ItemStack deck = inSlot(player, slot);
         if (!(deck.getItem() instanceof DeckItem)) {
             return;
         }
@@ -148,6 +192,8 @@ public class DeckItem extends Item implements WaferHolderItem {
                 buf -> {
                     buf.writeVarInt(slot);
                     buf.writeVarInt(size);
+                    // The worn slot reaches the client by Curios' own updates; the Deck comes along in case it lags behind.
+                    ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, isWornSlot(slot) ? deck : ItemStack.EMPTY);
                 });
     }
 
@@ -177,6 +223,11 @@ public class DeckItem extends Item implements WaferHolderItem {
     @Override
     public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, @Nullable EquipmentSlot slot) {
         super.inventoryTick(stack, level, owner, slot);
+        forgetStaleLink(stack, level);
+    }
+
+    /** Once a second: a Deck that another Deck replaced at its terminal forgets the link. Also run for worn Decks. */
+    public static void forgetStaleLink(ItemStack stack, ServerLevel level) {
         UUID terminal = stack.get(JasmComponents.DECK_NETWORK.get());
         if (terminal == null || level.getGameTime() % 20 != 0) {
             return;

@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "jasm:starter_deck",
+    "jasm:basic_deck",
+    "jasm:advanced_deck",
+    "jasm:elite_deck",
+    "jasm:ultimate_deck",
+    "jasm:advanced_crafting_deck",
+    "jasm:elite_crafting_deck",
+    "jasm:ultimate_crafting_deck"
+  ]
+}

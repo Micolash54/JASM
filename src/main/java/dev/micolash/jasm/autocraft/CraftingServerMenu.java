@@ -298,7 +298,7 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     }
 
     private boolean carriesDeck(ServerPlayer player) {
-        ItemStack deck = player.getInventory().getItem(deckSlot);
+        ItemStack deck = DeckItem.inSlot(player, deckSlot);
         return deckId != null && DeckItem.isCrafting(deck) && deckId.equals(deck.get(JasmComponents.DECK_ID.get()))
                 && DeckItem.worksIn(deck, player.level()) && DeckItem.worksIn(deck, server.getLevel());
     }

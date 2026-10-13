@@ -6,6 +6,8 @@ import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.OnceCheck;
 import dev.micolash.jasm.core.SerialLayout;
 import dev.micolash.jasm.core.Stamp;
+import dev.micolash.jasm.deck.WornDeckKeeper;
+import dev.micolash.jasm.deck.WornDecks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferIdentity;
@@ -768,7 +770,10 @@ public final class WaferStore {
         return held;
     }
 
-    /** Every wafer that is saved as part of a player's file: inventory, ender chest, and inside Decks in either. */
+    /**
+     * Every wafer that is saved as part of a player's file: inventory, ender chest, and inside Decks in either, in the
+     * worn Deck slot, or waiting to be given back from it.
+     */
     public static void forEachHeldWafer(Player player, Consumer<ItemStack> action) {
         Consumer<ItemStack> visit = stack -> visitWafers(stack, action);
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
@@ -777,6 +782,8 @@ public final class WaferStore {
         for (int i = 0; i < player.getEnderChestInventory().getContainerSize(); i++) {
             visit.accept(player.getEnderChestInventory().getItem(i));
         }
+        WornDecks.forEach(player, visit);
+        WornDeckKeeper.forEachWaiting(player, visit);
     }
 
     /** The serials of every wafer a player carries, for reading ahead. */

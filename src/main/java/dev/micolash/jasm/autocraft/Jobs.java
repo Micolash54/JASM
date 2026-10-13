@@ -112,7 +112,7 @@ public final class Jobs {
         return JobReturns.collect(player, server);
     }
 
-    /** The Deck with this identity in the player's inventory. */
+    /** The Deck with this identity in the player's inventory or worn Deck slot. */
     public static ItemStack findDeck(ServerPlayer player, @Nullable UUID deckId) {
         return JobReturns.findDeck(player, deckId);
     }
