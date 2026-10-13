@@ -19,6 +19,8 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.transfer.PortOperations;
+import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -102,6 +104,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     /** A name the player gave the port; empty for the machines' own names. */
     private String label = "";
     private boolean blockingMode;
+    /** What a Redstone Upgrade in the column does; kept while the upgrade is out, but only followed while it is in. */
+    private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
     private @Nullable UUID destinationDeck;
     private @Nullable UUID pendingLinker;
     private final PortOperations operations = new PortOperations();
@@ -117,6 +121,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_DEFAULT_DECK -> defaultDeck() ? 1 : 0;
                 case AccessPortMenu.DATA_LINKED -> deckLinked() ? 1 : 0;
                 case AccessPortMenu.DATA_BLOCKING -> blockingMode ? 1 : 0;
+                case AccessPortMenu.DATA_PAUSED -> redstonePaused() ? 1 : 0;
+                case AccessPortMenu.DATA_REDSTONE -> redstoneMode.ordinal();
                 default -> 0;
             };
         }
@@ -159,6 +165,27 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         }
     }
 
+    public boolean hasRedstoneUpgrade() {
+        return RedstoneUpgradeItem.elsewhere(this, SPEED_START, INVENTORY_SIZE, -1);
+    }
+
+    public RedstoneMode redstoneMode() {
+        return redstoneMode;
+    }
+
+    public void setRedstoneMode(RedstoneMode mode) {
+        redstoneMode = mode;
+        setChanged();
+    }
+
+    /**
+     * Whether the Redstone Upgrade's mode stops the port now. Ports in one block space read the same signal, each with its
+     * own mode. Only looked at with the upgrade in, so other ports never read the signal.
+     */
+    public boolean redstonePaused() {
+        return level != null && hasRedstoneUpgrade() && !redstoneMode.allows(level.hasNeighborSignal(worldPosition));
+    }
+
     public boolean hasPowerUpgrade() {
         return getItem(POWER_SLOT).is(JasmItems.POWER_UPGRADE.get());
     }
@@ -172,11 +199,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     public int transferBudget() {
-        return level != null && running() && !networkBlocked() ? operations.available(level.getGameTime(), transferRate()) : 0;
+        return level != null && running() && !networkBlocked() && !redstonePaused() ? operations.available(level.getGameTime(), transferRate()) : 0;
     }
 
     public boolean canSendBatch(int count) {
-        return level != null && running() && !networkBlocked() && operations.canSendBatch(level.getGameTime(), transferRate(), count);
+        return level != null && running() && !networkBlocked() && !redstonePaused()
+                && operations.canSendBatch(level.getGameTime(), transferRate(), count);
     }
 
     public void transferred(int count) {
@@ -558,7 +586,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        if (slot >= SPEED_START && slot < INVENTORY_SIZE) return stack.is(JasmItems.SPEED_UPGRADE.get());
+        if (slot >= SPEED_START && slot < INVENTORY_SIZE) {
+            if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) return RedstoneUpgradeItem.fits(this, SPEED_START, INVENTORY_SIZE, slot, stack);
+            return stack.is(JasmItems.SPEED_UPGRADE.get()) && SpeedUpgradeItem.fits(this, SPEED_START, INVENTORY_SIZE, slot, stack);
+        }
         if (slot == POWER_SLOT) return stack.is(JasmItems.POWER_UPGRADE.get());
         if (slot == DECK_IN) return DeckItem.isDeck(stack);
         return slot >= 0 && slot < BUFFER_SLOTS;
@@ -635,6 +666,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.store("locks", SavedLock.CODEC.listOf(), saved);
         output.putString("label", label);
         output.putBoolean("blocking_mode", blockingMode);
+        output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
     }
@@ -648,6 +680,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         input.read("locks", SavedLock.CODEC.listOf()).orElse(List.of()).forEach(l -> locks.put(l.side(), new Lock(l.job(), l.step())));
         label = input.getStringOr("label", "");
         blockingMode = input.getBooleanOr("blocking_mode", false);
+        redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
     }

@@ -91,7 +91,7 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         Container container = new SimpleContainer(BayBlockEntity.SLOTS) {
             @Override
             public boolean canPlaceItem(int slot, ItemStack stack) {
-                return BayBlockEntity.accepts(kind, slot, stack, other -> false);
+                return BayBlockEntity.accepts(kind, this, slot, stack, other -> false);
             }
         };
         return new BayMenu(kind, containerId, inventory, container, new SimpleContainerData(DATA_COUNT), null, pos, filter);

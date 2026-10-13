@@ -12,6 +12,8 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmRecipes;
+import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,6 +29,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.WorldlyContainer;
@@ -65,7 +68,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     public static final int CRITTER = OUTPUT_FIRST + OUTPUT_COUNT;
     /** Older Workshops end at the critter, so these load empty. */
     public static final int UPGRADE_START = CRITTER + 1;
-    public static final int UPGRADES = 4;
+    public static final int UPGRADES = 5;
     public static final int SLOTS = UPGRADE_START + UPGRADES;
     /** What a hopper may look at: everything but the upgrade slots. */
     private static final int[] HOPPER_SLOTS = IntStream.range(0, UPGRADE_START).toArray();
@@ -107,6 +110,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     private int need;
     /** Speed Upgrades in the slots, counted at the start of each tick. */
     private int upgrades;
+    /** What a Redstone Upgrade in the column does; kept while the upgrade is out, but only followed while it is in. */
+    private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -128,7 +133,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
                 case ChipWorkshopMenu.DATA_FLAGS ->
                     (batch ? ChipWorkshopMenu.FLAG_BATCH : 0) | (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
                             | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
-                            | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0);
+                            | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0) | (redstonePaused() ? ChipWorkshopMenu.FLAG_PAUSED : 0);
+                case ChipWorkshopMenu.DATA_REDSTONE -> redstoneMode.ordinal();
                 default -> 0;
             };
         }
@@ -237,8 +243,9 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         }
         lastCritter = bitling;
         feed(critter, bitling);
-        if (stopped) {
-            // A full network still charges the critter, but nothing is made.
+        if (stopped || redstonePaused()) {
+            // A full network or the Redstone Upgrade's mode still lets the critter charge, but nothing is made; an
+            // operation part way through keeps its progress for later.
             return;
         }
         refreshRecipe(level, bitling);
@@ -607,15 +614,39 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         return itemGates;
     }
 
-    /** Players may put anything but a critter in the grid; the critter slot takes only critters, the upgrade slots only Speed Upgrades. */
+    /** Players may put anything but a critter in the grid; the critter slot takes only critters, the upgrade slots only Speed and Redstone Upgrades. */
     public static boolean accepts(int slot, ItemStack stack) {
         if (slot >= GRID_FIRST && slot < GRID_FIRST + GRID_SIZE) {
             return !(stack.getItem() instanceof BitlingItem);
         }
         if (slot >= UPGRADE_START && slot < SLOTS) {
-            return stack.is(JasmItems.SPEED_UPGRADE.get());
+            return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get());
         }
         return slot == CRITTER && stack.getItem() instanceof BitlingItem;
+    }
+
+    /** {@link #accepts(int, ItemStack)}, with no more Speed Upgrades than the limit and one Redstone Upgrade in what {@code container} holds. */
+    public static boolean accepts(Container container, int slot, ItemStack stack) {
+        return accepts(slot, stack) && SpeedUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack)
+                && RedstoneUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
+    }
+
+    public boolean hasRedstoneUpgrade() {
+        return RedstoneUpgradeItem.elsewhere(this, UPGRADE_START, SLOTS, -1);
+    }
+
+    public RedstoneMode redstoneMode() {
+        return redstoneMode;
+    }
+
+    public void setRedstoneMode(RedstoneMode mode) {
+        redstoneMode = mode;
+        setChanged();
+    }
+
+    /** Whether the Redstone Upgrade's mode stops the Workshop now. Only looked at with the upgrade in. */
+    public boolean redstonePaused() {
+        return level != null && hasRedstoneUpgrade() && !redstoneMode.allows(level.hasNeighborSignal(worldPosition));
     }
 
     /** Blank Chips across the grid. */
@@ -679,7 +710,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return accepts(slot, stack);
+        return accepts(this, slot, stack);
     }
 
     @Override
@@ -738,6 +769,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         output.putString("progress_for", progressFor);
         output.putInt("operation_chips", operationChips);
         output.putBoolean("napping", napping);
+        output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
     }
 
     @Override
@@ -760,6 +792,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         progressFor = input.getStringOr("progress_for", "");
         operationChips = Math.max(0, input.getIntOr("operation_chips", 0));
         napping = input.getBooleanOr("napping", false);
+        redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
     }
 
     /** The old input goes to the first grid slot and the critter keeps its place; outputs are packed into the 6 there are now. */

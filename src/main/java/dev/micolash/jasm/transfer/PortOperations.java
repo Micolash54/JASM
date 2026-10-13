@@ -2,7 +2,7 @@ package dev.micolash.jasm.transfer;
 
 /** Item transfer timing and allowance shared by every port. */
 public final class PortOperations {
-    public static final int UPGRADE_SLOTS = 4;
+    public static final int UPGRADE_SLOTS = 5;
     public static final int ACTIVE_INTERVAL = 10;
     public static final int SLEEP_INTERVAL = 20;
     public static final int IDLE_TICKS = 100;
@@ -15,7 +15,7 @@ public final class PortOperations {
     private int used;
 
     public static int itemsPerOperation(int upgrades) {
-        return ITEMS[Math.clamp(upgrades, 0, UPGRADE_SLOTS)];
+        return ITEMS[Math.clamp(upgrades, 0, SpeedUpgradeItem.MAX)];
     }
 
     /** Only a due operation can spend items. Unused allowance normally does not carry over. */

@@ -64,6 +64,7 @@ public final class BatteryGroup {
     private long flowOut;
     private int bonus = -1;
     private int room;
+    private BatteryBlockEntity holder;
 
     private BatteryGroup(List<BatteryBlockEntity> blocks) {
         this.blocks = blocks;
@@ -124,6 +125,7 @@ public final class BatteryGroup {
         for (BatteryBlockEntity block : blocks) {
             known.put(block.getBlockPos(), group);
         }
+        group.settle(level);
         return group;
     }
 
@@ -172,9 +174,32 @@ public final class BatteryGroup {
         return alive;
     }
 
+    /**
+     * Picks the block that keeps the battery's one charging item: the one already holding an item, else the leader. Any
+     * other block still holding one (two batteries joined, or a world saved when every block had a slot) pops it out.
+     */
+    private void settle(ServerLevel level) {
+        holder = null;
+        for (BatteryBlockEntity block : blocks) {
+            if (!block.holdsItem()) continue;
+            if (holder == null) holder = block;
+            else block.popItem(level);
+        }
+        if (holder == null) holder = leader();
+    }
+
+    /** The block that keeps the charging slot's item. */
+    public BatteryBlockEntity holder() {
+        return holder;
+    }
+
     /** The block that runs the battery's tick. */
     BatteryBlockEntity leader() {
         return blocks.getFirst();
+    }
+
+    List<BatteryBlockEntity> blocks() {
+        return blocks;
     }
 
     public int size() {
@@ -297,11 +322,12 @@ public final class BatteryGroup {
 
     /** Spread over the blocks: an equal part each first, then the rest to whoever can still take or give it. */
     private final class Energy implements EnergyHandler {
+        /** Never above the room, even when its blocks hold more (a lowered bonus, or a battery only half loaded). */
         @Override
         public long getAmountAsLong() {
             long total = 0;
             for (BatteryBlockEntity block : blocks) total += block.energy().getAmountAsInt();
-            return total;
+            return Math.min(total, getCapacityAsLong());
         }
 
         @Override

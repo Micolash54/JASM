@@ -26,6 +26,7 @@ A Battery stores FE. It keeps the machines it touches, and the machines on any [
 
 * Batteries that touch each other are one battery and share their power. Its screen shows the charge, the blocks and the power going in and out in FE/t.
 * A [generator](combustion-generators.md) or a [Power Interface](power-acceptor.md) charges it.
+* A battery has one charging slot for any item that holds FE, the same from every block. It charges from the battery's power, faster the more blocks the battery has. Hoppers can put items in and take them out once full. Breaking the block that keeps the item drops it; joining two batteries that each hold one drops one of them.
 * A Power Interface set to **Output only** gives a Battery's power to other mods' blocks.
 * A block that would join a battery past the largest size can't be placed. A bigger battery keeps working and keeps its power.
 * Settings allow 1–256 blocks and a 0–100% capacity bonus per block. A lone block has no bonus. Lowering the size limit keeps existing batteries together; lowering the bonus keeps their stored power, even above the new capacity.

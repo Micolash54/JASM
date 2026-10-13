@@ -5,15 +5,31 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmItems;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 public final class SpeedUpgradeItem extends Item {
+    /** Most Speed Upgrades one machine takes, however many upgrade slots it has. */
+    public static final int MAX = 4;
+
     public SpeedUpgradeItem(Properties properties) { super(properties); }
 
-    /** Speed Upgrades in the slots {@code from} up to (not including) {@code to}. */
+    /** Speed Upgrades in the slots {@code from} up to (not including) {@code to}, counting no more than {@link #MAX}. */
     public static int count(Container container, int from, int to) {
         int count = 0;
         for (int i = from; i < to; i++) if (container.getItem(i).is(JasmItems.SPEED_UPGRADE.get())) count++;
-        return count;
+        return Math.min(count, MAX);
+    }
+
+    /**
+     * Whether {@code stack} may go in {@code slot} as far as the limit goes: a Speed Upgrade goes in an upgrade slot (those
+     * from {@code from} up to {@code to}) only while the others hold fewer than {@link #MAX}. Anything else, or any other
+     * slot, isn't limited here.
+     */
+    public static boolean fits(Container container, int from, int to, int slot, ItemStack stack) {
+        if (slot < from || slot >= to || !stack.is(JasmItems.SPEED_UPGRADE.get())) return true;
+        int others = 0;
+        for (int i = from; i < to; i++) if (i != slot && container.getItem(i).is(JasmItems.SPEED_UPGRADE.get())) others++;
+        return others < MAX;
     }
 
     /**

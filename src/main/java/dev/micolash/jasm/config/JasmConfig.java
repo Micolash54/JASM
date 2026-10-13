@@ -121,6 +121,18 @@ public final class JasmConfig {
             .comment("Extra capacity in each Battery block, in percent per block in the group. A lone block has no bonus. Lowering this keeps stored power, even above the new capacity")
             .defineInRange("batteryCapacityBonus", 2, 0, 100);
 
+    public static final ModConfigSpec.IntValue BATTERY_CHARGE_BASE = BUILDER
+            .comment("FE a tick a Battery's charging slot gives an item, before the size bonus")
+            .defineInRange("batteryChargeBase", 1_000, 0, Integer.MAX_VALUE);
+
+    public static final ModConfigSpec.IntValue BATTERY_CHARGE_PER_BLOCK = BUILDER
+            .comment("Extra FE a tick the charging slot gives for each block in the battery")
+            .defineInRange("batteryChargePerBlock", 250, 0, Integer.MAX_VALUE);
+
+    public static final ModConfigSpec.IntValue BATTERY_CHARGE_MAX = BUILDER
+            .comment("Most FE a tick the charging slot gives, however big the battery. It never gives more than the battery holds")
+            .defineInRange("batteryChargeMax", 20_000, 0, Integer.MAX_VALUE);
+
     static {
         BUILDER.pop().push("autocrafting");
     }

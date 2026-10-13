@@ -7,6 +7,8 @@ import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.stream.IntStream;
 import net.minecraft.core.BlockPos;
@@ -18,6 +20,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -47,7 +50,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     public static final int OUTPUT_COUNT = 9;
     /** Older Foundries have nothing past the outputs, so these load empty. */
     public static final int UPGRADE_START = OUTPUT_FIRST + OUTPUT_COUNT;
-    public static final int UPGRADES = 4;
+    public static final int UPGRADES = 5;
     public static final int SLOTS = UPGRADE_START + UPGRADES;
     public static final int CAPACITY = 50_000;
     /** What a hopper may look at: everything but the upgrade slots. */
@@ -64,6 +67,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     private boolean busy;
     /** Speed Upgrades in the slots, counted at the start of each tick. */
     private int upgrades;
+    /** What a Redstone Upgrade in the column does; kept while the upgrade is out, but only followed while it is in. */
+    private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -78,7 +83,9 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
                 case CrystalFoundryMenu.DATA_SIDES -> sides.packed(MachineSides.Kind.ITEMS);
                 case CrystalFoundryMenu.DATA_FLAGS ->
                     (growing ? CrystalFoundryMenu.FLAG_GROWING : 0) | (running() ? CrystalFoundryMenu.FLAG_POWERED : 0)
-                            | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0);
+                            | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0)
+                            | (redstonePaused() ? CrystalFoundryMenu.FLAG_PAUSED : 0);
+                case CrystalFoundryMenu.DATA_REDSTONE -> redstoneMode.ordinal();
                 default -> 0;
             };
         }
@@ -177,6 +184,11 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     private void tick() {
         upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
         busy = false;
+        if (redstonePaused()) {
+            // Everything waits as it is: the crystal keeps its progress and no new seed is taken.
+            payForTick();
+            return;
+        }
         if (!growing && items.get(INPUT).is(JasmItems.CRYSTAL_SEED.get())) {
             items.get(INPUT).shrink(1);
             growing = true;
@@ -241,6 +253,24 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         return growing;
     }
 
+    public boolean hasRedstoneUpgrade() {
+        return RedstoneUpgradeItem.elsewhere(this, UPGRADE_START, SLOTS, -1);
+    }
+
+    public RedstoneMode redstoneMode() {
+        return redstoneMode;
+    }
+
+    public void setRedstoneMode(RedstoneMode mode) {
+        redstoneMode = mode;
+        setChanged();
+    }
+
+    /** Whether the Redstone Upgrade's mode stops the Foundry now. Only looked at with the upgrade in. */
+    public boolean redstonePaused() {
+        return level != null && hasRedstoneUpgrade() && !redstoneMode.allows(level.hasNeighborSignal(worldPosition));
+    }
+
     /** Crystals made so far from the seed that is growing. */
     public int made() {
         return made;
@@ -269,13 +299,19 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     }
 
     public static boolean accepts(int slot, ItemStack stack) {
-        if (slot >= UPGRADE_START && slot < SLOTS) return stack.is(JasmItems.SPEED_UPGRADE.get());
+        if (slot >= UPGRADE_START && slot < SLOTS) return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get());
         return slot == INPUT && stack.is(JasmItems.CRYSTAL_SEED.get());
+    }
+
+    /** {@link #accepts(int, ItemStack)}, with no more Speed Upgrades than the limit and one Redstone Upgrade in what {@code container} holds. */
+    public static boolean accepts(Container container, int slot, ItemStack stack) {
+        return accepts(slot, stack) && SpeedUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack)
+                && RedstoneUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
     }
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return accepts(slot, stack);
+        return accepts(this, slot, stack);
     }
 
     @Override
@@ -326,6 +362,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         output.putBoolean("growing", growing);
         output.putInt("made", made);
         output.putInt("progress", progress);
+        output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
     }
 
     @Override
@@ -336,6 +373,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         growing = input.getBooleanOr("growing", false);
         made = Math.max(0, input.getIntOr("made", 0));
         progress = Math.max(0, input.getIntOr("progress", 0));
+        redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
     }
 
     /** Hoppers and pipes, where the I/O grid lets them: Crystal Seeds in, Blank Chips out. */

@@ -254,7 +254,7 @@ final class JobRunner {
             AccessPortBlockEntity port = Machines.reach(level, network, at);
             if (port != null) {
                 anyMachine = true;
-                if (port.running() && port.freeFor(at.side(), job.id, stepIndex)) {
+                if (port.running() && !port.redstonePaused() && port.freeFor(at.side(), job.id, stepIndex)) {
                     targets.add(new Target(port, at.side()));
                 }
             }

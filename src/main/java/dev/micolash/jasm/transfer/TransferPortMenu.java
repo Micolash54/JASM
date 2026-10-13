@@ -78,7 +78,8 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     if (!TransferPortBlockEntity.takesUpgrade(kind, stack)) return false;
-                    if (!TransferPortBlockEntity.single(stack)) return true;
+                    if (!TransferPortBlockEntity.single(stack))
+                        return SpeedUpgradeItem.fits(contents, AccessPortBlockEntity.SPEED_START, AccessPortBlockEntity.INVENTORY_SIZE, getContainerSlot(), stack);
                     for (int j = 0; j < PortOperations.UPGRADE_SLOTS; j++) {
                         if (getSlot(j) != this && getSlot(j).getItem().is(stack.getItem())) return false;
                     }

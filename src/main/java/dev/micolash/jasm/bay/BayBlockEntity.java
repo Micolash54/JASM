@@ -27,6 +27,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.entity.player.Inventory;
@@ -49,7 +50,7 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 
 /**
- * What both bays share: a 3×3 grid, one tank, four upgrade slots, a power buffer fed by cables and JASM power sources,
+ * What both bays share: a 3×3 grid, one tank, five upgrade slots, a power buffer fed by cables and JASM power sources,
  * and the work loop. Work comes in cycles; the action happens as a cycle ends, after looking at the front again.
  * A bay with nothing to do sleeps until a block update, a change in its slots or tank, or a redstone change wakes it.
  * Waits that no update announces (power, crowding, claims, an unloaded front) are looked at every half second.
@@ -57,7 +58,7 @@ import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 public abstract class BayBlockEntity extends MachineBlockEntity {
     public static final int GRID = 9;
     public static final int UPGRADE_START = GRID;
-    public static final int UPGRADES = 4;
+    public static final int UPGRADES = 5;
     public static final int SLOTS = GRID + UPGRADES;
     /** Block event: a cycle started; the parameter is its length in ticks, plus {@link #EVENT_SCOOP}. */
     public static final int EVENT_CYCLE = 1;
@@ -461,7 +462,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return accepts(kind(), slot, stack, this::hasOtherRedstone);
+        return accepts(kind(), this, slot, stack, this::hasOtherRedstone);
     }
 
     private boolean hasOtherRedstone(int except) {
@@ -472,13 +473,13 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     }
 
     /**
-     * Grid slots take anything on a Deployment Bay and nothing on a Demolition Bay; upgrade slots take Speed Upgrades
-     * and one Redstone Upgrade.
+     * Grid slots take anything on a Deployment Bay and nothing on a Demolition Bay; upgrade slots take Speed Upgrades,
+     * up to the limit, and one Redstone Upgrade.
      */
-    public static boolean accepts(BayKind kind, int slot, ItemStack stack, IntPredicate otherRedstone) {
+    public static boolean accepts(BayKind kind, Container container, int slot, ItemStack stack, IntPredicate otherRedstone) {
         if (slot < GRID) return kind.takesIn();
         if (slot >= SLOTS) return false;
-        if (stack.is(JasmItems.SPEED_UPGRADE.get())) return true;
+        if (stack.is(JasmItems.SPEED_UPGRADE.get())) return SpeedUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
         return stack.is(JasmItems.REDSTONE_UPGRADE.get()) && !otherRedstone.test(slot);
     }
 

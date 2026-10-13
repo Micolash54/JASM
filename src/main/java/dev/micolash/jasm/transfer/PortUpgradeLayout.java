@@ -2,7 +2,7 @@ package dev.micolash.jasm.transfer;
 
 /**
  * The ports' right-hand column, just past the main panel like the Deck's tabs: the side keys at the top, then a line,
- * then the four upgrade slots one above the other and the power slot under them.
+ * then the five upgrade slots one above the other and the power slot under them.
  */
 public final class PortUpgradeLayout {
     public static final int MAIN_WIDTH = 234;

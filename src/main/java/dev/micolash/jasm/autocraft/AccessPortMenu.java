@@ -10,6 +10,9 @@ import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
+import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
+import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -49,6 +52,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public static final int SLOT_SPEED = SLOT_DECK_OUT + 1;
     public static final int RESET_DECK = 0;
     public static final int TOGGLE_BLOCKING = 1;
+    public static final int CYCLE_REDSTONE = 2;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -57,7 +61,9 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     static final int DATA_DEFAULT_DECK = 4;
     static final int DATA_LINKED = 5;
     static final int DATA_BLOCKING = 6;
-    public static final int DATA_COUNT = 7;
+    static final int DATA_PAUSED = 7;
+    static final int DATA_REDSTONE = 8;
+    public static final int DATA_COUNT = 9;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -136,7 +142,12 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
             addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
                 @Override
-                public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.SPEED_UPGRADE.get()); }
+                public boolean mayPlace(ItemStack stack) {
+                    int from = AccessPortBlockEntity.SPEED_START;
+                    int to = AccessPortBlockEntity.INVENTORY_SIZE;
+                    if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) return RedstoneUpgradeItem.fits(container, from, to, getContainerSlot(), stack);
+                    return stack.is(JasmItems.SPEED_UPGRADE.get()) && SpeedUpgradeItem.fits(container, from, to, getContainerSlot(), stack);
+                }
                 @Override
                 public int getMaxStackSize() { return 1; }
                 @Override
@@ -171,6 +182,10 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         if (id == RESET_DECK) return port.resetDeck(player);
         if (id == TOGGLE_BLOCKING) {
             port.setBlockingMode(!port.blockingMode());
+            return true;
+        }
+        if (id == CYCLE_REDSTONE && port.hasRedstoneUpgrade()) {
+            port.setRedstoneMode(port.redstoneMode().next());
             return true;
         }
         return false;
@@ -257,6 +272,20 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         return data.get(DATA_RUNNING) != 0;
     }
 
+    /** Stopped by its Redstone Upgrade's mode. */
+    public boolean paused() {
+        return data.get(DATA_PAUSED) != 0;
+    }
+
+    public RedstoneMode redstoneMode() {
+        return RedstoneMode.byId(data.get(DATA_REDSTONE));
+    }
+
+    public boolean hasRedstoneUpgrade() {
+        for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) if (getSlot(SLOT_SPEED + i).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return true;
+        return false;
+    }
+
     /** Whether a job has sets in the machine right now. */
     public boolean locked() {
         return data.get(DATA_LOCKED) != 0;
@@ -280,6 +309,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
                     || moveItemStackTo(stack, inventoryStart, hotbarStart, false);
         } else if (stack.is(JasmItems.POWER_UPGRADE.get())) {
             moved = moveItemStackTo(stack, 0, 1, false);
+        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+            moved = moveItemStackTo(stack, SLOT_SPEED, inventoryStart, false);
         } else if (stack.is(JasmItems.SPEED_UPGRADE.get())) {
             moved = false;
             for (int i = 0; i < PortOperations.UPGRADE_SLOTS && !stack.isEmpty(); i++) {

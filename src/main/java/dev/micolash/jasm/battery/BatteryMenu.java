@@ -1,22 +1,31 @@
 package dev.micolash.jasm.battery;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.registry.JasmMenus;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Battery's menu: no slots, only readings of the whole battery the clicked block belongs to. Synced numbers travel as
- * 16-bit words, so each reading goes as four of them.
+ * The Battery's menu: readings of the whole battery the clicked block belongs to, the battery's one charging slot, then
+ * the player's inventory (27 slots) and hotbar (9). Synced numbers travel as 16-bit words, so each reading goes as four of them.
  */
 public class BatteryMenu extends AbstractContainerMenu {
+    private static final Identifier EMPTY_BOLT = Jasm.id("container/empty_bolt");
+    /** The charging slot, centred at the top of the panel. */
+    public static final int SLOT_X = 80;
+    public static final int SLOT_Y = 20;
+    public static final int INVENTORY_Y = 112;
     private static final int WORDS = 4;
     private static final int STORED = 0;
     private static final int CAPACITY = 1;
@@ -29,23 +38,41 @@ public class BatteryMenu extends AbstractContainerMenu {
     private final ContainerData data;
     private final ContainerLevelAccess access;
     private final @Nullable BatteryBlockEntity battery;
+    private final Container slot;
 
     /** Server side. */
-    public BatteryMenu(int containerId, BatteryBlockEntity battery, ContainerLevelAccess access) {
-        super(JasmMenus.BATTERY.get(), containerId);
-        this.battery = battery;
-        this.access = access;
-        this.data = new Readings(battery);
-        addDataSlots(data);
+    public BatteryMenu(int containerId, Inventory inventory, BatteryBlockEntity battery, ContainerLevelAccess access) {
+        this(containerId, inventory, battery, battery.chargingSlot(), access, new Readings(battery));
     }
 
     /** Client side. */
     public BatteryMenu(int containerId, Inventory inventory) {
+        this(containerId, inventory, null, CreativeBatteryMenu.chargingSlot(() -> {}), ContainerLevelAccess.NULL,
+                new SimpleContainerData(DATA_COUNT));
+    }
+
+    private BatteryMenu(int containerId, Inventory inventory, @Nullable BatteryBlockEntity battery, Container slot,
+            ContainerLevelAccess access, ContainerData data) {
         super(JasmMenus.BATTERY.get(), containerId);
-        this.battery = null;
-        this.access = ContainerLevelAccess.NULL;
-        this.data = new SimpleContainerData(DATA_COUNT);
+        this.battery = battery;
+        this.slot = slot;
+        this.access = access;
+        this.data = data;
         addDataSlots(data);
+        addSlot(new ChargingSlot(slot, SLOT_X, SLOT_Y));
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
+            }
+        }
+        for (int column = 0; column < 9; column++) {
+            addSlot(new Slot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+        }
+    }
+
+    /** The item in the charging slot. */
+    public ItemStack charging() {
+        return slot.getItem(0);
     }
 
     private long read(int reading) {
@@ -90,9 +117,53 @@ public class BatteryMenu extends AbstractContainerMenu {
                 && player.distanceToSqr(Vec3.atCenterOf(pos)) <= 64, true);
     }
 
+    /**
+     * Shift-click moves the charging item to the leftmost free hotbar slot, or failing that the first free inventory
+     * slot from the top left; a chargeable item from the inventory goes into the charging slot.
+     */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
-        return ItemStack.EMPTY;
+        Slot clicked = slots.get(index);
+        if (!clicked.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack stack = clicked.getItem();
+        ItemStack before = stack.copy();
+        boolean moved = index == 0
+                ? moveItemStackTo(stack, 28, 37, false) || moveItemStackTo(stack, 1, 28, false)
+                : CreativeBatteryMenu.canCharge(stack) && moveItemStackTo(stack, 0, 1, false);
+        if (!moved) {
+            return ItemStack.EMPTY;
+        }
+        if (stack.isEmpty()) {
+            clicked.setByPlayer(ItemStack.EMPTY);
+        } else {
+            clicked.setChanged();
+        }
+        return before;
+    }
+
+    /** Takes what the battery's slot takes: an item that holds power, and nothing once the clicked block is gone. */
+    private static final class ChargingSlot extends Slot {
+        ChargingSlot(Container container, int x, int y) {
+            super(container, 0, x, y);
+        }
+
+        /** Shows a faint lightning bolt while empty. */
+        @Override
+        public Identifier getNoItemIcon() {
+            return EMPTY_BOLT;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return container.canPlaceItem(0, stack);
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
     }
 
     /** Read from the battery's last tick, so a synced screen costs no extra work. */

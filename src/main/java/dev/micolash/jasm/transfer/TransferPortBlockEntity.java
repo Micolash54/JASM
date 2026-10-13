@@ -55,7 +55,6 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     /** Which face the next operation starts at, so a full port's faces take turns. */
     private int turn;
     private TransferFilters filters = TransferFilters.DEFAULT;
-    private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
     private final PortCrafting crafting = new PortCrafting();
 
     public TransferPortBlockEntity(BlockPos pos, BlockState state, TransferPortKind kind, Direction face) {
@@ -86,9 +85,6 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     public TransferPortKind kind() { return kind; }
     public TransferFilters filters() { return filters; }
     public void setFilters(TransferFilters filters) { this.filters = filters; setChanged(); }
-    public RedstoneMode redstoneMode() { return redstoneMode; }
-    public void setRedstoneMode(RedstoneMode mode) { redstoneMode = mode; setChanged(); }
-    public boolean hasRedstoneUpgrade() { return hasUpgrade(JasmItems.REDSTONE_UPGRADE.get()); }
     /** Output side only: the Crafting and Stock Upgrades do nothing on a port that doesn't export. */
     public boolean hasCraftingUpgrade() { return kind.exports() && hasUpgrade(JasmItems.CRAFTING_UPGRADE.get()); }
     public boolean hasStockUpgrade() { return kind.exports() && hasUpgrade(JasmItems.STOCK_UPGRADE.get()); }
@@ -213,8 +209,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         sendPower();
         processDeckLink();
         if (!(level instanceof ServerLevel world) || !running() || networkBlocked()) return;
-        // Thin ports in one block space read the same signal, each using its own mode.
-        if (hasRedstoneUpgrade() && !redstoneMode.allows(world.hasNeighborSignal(worldPosition))) return;
+        if (redstonePaused()) return;
         int budget = transferBudget();
         // The Crafting Upgrade looks once a second, each port on its own tick.
         boolean craft = hasCraftingUpgrade() && filters.output().hasAllow() && (world.getGameTime() + worldPosition.asLong()) % 20 == 0
@@ -472,18 +467,17 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         output.store("transfer_filters", TransferFilters.CODEC, filters);
-        output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
     }
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         filters = input.read("transfer_filters", TransferFilters.CODEC).orElse(TransferFilters.DEFAULT);
-        redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         // Earlier ports held up to four speed upgrades in the old power slot.
         ItemStack old = getItem(POWER_SLOT);
         if (old.is(JasmItems.SPEED_UPGRADE.get())) {
             for (int i = 0; i < PortOperations.UPGRADE_SLOTS && !old.isEmpty(); i++) {
-                if (getItem(SPEED_START + i).isEmpty()) setItem(SPEED_START + i, old.split(1));
+                int slot = SPEED_START + i;
+                if (getItem(slot).isEmpty() && SpeedUpgradeItem.fits(this, SPEED_START, INVENTORY_SIZE, slot, old)) setItem(slot, old.split(1));
             }
             if (old.isEmpty()) setItem(POWER_SLOT, ItemStack.EMPTY);
         }
@@ -492,13 +486,13 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
         components.set(JasmComponents.TRANSFER_FILTERS.get(), filters);
-        components.set(JasmComponents.REDSTONE_MODE.get(), redstoneMode);
+        components.set(JasmComponents.REDSTONE_MODE.get(), redstoneMode());
     }
     @Override
     protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
         filters = components.getOrDefault(JasmComponents.TRANSFER_FILTERS.get(), TransferFilters.DEFAULT);
-        redstoneMode = components.getOrDefault(JasmComponents.REDSTONE_MODE.get(), RedstoneMode.IGNORE);
+        setRedstoneMode(components.getOrDefault(JasmComponents.REDSTONE_MODE.get(), RedstoneMode.IGNORE));
     }
     @Override
     public void removeComponentsFromTag(ValueOutput output) {

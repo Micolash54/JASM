@@ -4,6 +4,7 @@ import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
+import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.SpeedUpgradeSlot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
@@ -42,6 +43,8 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
 
     public static final int BUTTON_BATCH = 0;
     public static final int BUTTON_ADVANCED = 1;
+    /** The redstone key; the I/O grid's face buttons start well above it. */
+    public static final int BUTTON_REDSTONE = 2;
 
     static final int DATA_PROGRESS = 0;
     static final int DATA_TICKS = 1;
@@ -56,13 +59,15 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     static final int DATA_FLAGS = 10;
     static final int DATA_NEED = 11;
     static final int DATA_SIDES = 12;
-    static final int DATA_COUNT = 13;
+    static final int DATA_REDSTONE = 13;
+    static final int DATA_COUNT = 14;
 
     static final int FLAG_BATCH = 1;
     static final int FLAG_ADVANCED = 2;
     static final int FLAG_NAPPING = 4;
     static final int FLAG_WORKING = 8;
     static final int FLAG_POWERED = 16;
+    static final int FLAG_PAUSED = 32;
 
     /** Menu slot indices: the Workshop's own slots come first, in its container order. */
     private static final int MACHINE_SLOTS = ChipWorkshopBlockEntity.SLOTS;
@@ -86,7 +91,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         this(containerId, inventory, new SimpleContainer(ChipWorkshopBlockEntity.SLOTS) {
             @Override
             public boolean canPlaceItem(int slot, ItemStack stack) {
-                return ChipWorkshopBlockEntity.accepts(slot, stack);
+                return ChipWorkshopBlockEntity.accepts(this, slot, stack);
             }
         }, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null, null);
     }
@@ -175,6 +180,22 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         return flag(FLAG_POWERED);
     }
 
+    /** Stopped by its Redstone Upgrade's mode. */
+    public boolean paused() {
+        return flag(FLAG_PAUSED);
+    }
+
+    public RedstoneMode redstoneMode() {
+        return RedstoneMode.byId(data.get(DATA_REDSTONE));
+    }
+
+    public boolean hasRedstoneUpgrade() {
+        for (int i = 0; i < ChipWorkshopBlockEntity.UPGRADES; i++) {
+            if (getSlot(ChipWorkshopBlockEntity.UPGRADE_START + i).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return true;
+        }
+        return false;
+    }
+
     /** The critter in the slot, as this side sees it. */
     public ItemStack critter() {
         return slots.get(ChipWorkshopBlockEntity.CRITTER).getItem();
@@ -198,6 +219,11 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
             workshop.toggleAdvanced();
             return true;
         }
+        if (id == BUTTON_REDSTONE) {
+            if (!workshop.hasRedstoneUpgrade()) return false;
+            workshop.setRedstoneMode(workshop.redstoneMode().next());
+            return true;
+        }
         return workshop.sides().click(id);
     }
 
@@ -207,7 +233,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     }
 
     /**
-     * Shift-click: a critter to its slot, Speed Upgrades to the upgrade column, anything else to the grid; out of the Workshop
+     * Shift-click: a critter to its slot, Speed and Redstone Upgrades to the upgrade column, anything else to the grid; out of the Workshop
      * to the hotbar, then the inventory.
      */
     @Override
@@ -227,6 +253,8 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
             // Each upgrade slot holds one, and one move fills one empty slot.
             moved = false;
             while (!stack.isEmpty() && moveItemStackTo(stack, ChipWorkshopBlockEntity.UPGRADE_START, MACHINE_SLOTS, false)) moved = true;
+        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+            moved = moveItemStackTo(stack, ChipWorkshopBlockEntity.UPGRADE_START, MACHINE_SLOTS, false);
         } else {
             moved = moveItemStackTo(stack, 0, ChipWorkshopBlockEntity.GRID_SIZE, false);
         }

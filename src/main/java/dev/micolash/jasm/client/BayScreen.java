@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.bay.BayBlockEntity;
 import dev.micolash.jasm.bay.BayKind;
 import dev.micolash.jasm.bay.BayNetwork;
 import dev.micolash.jasm.bay.BayMenu;
@@ -35,8 +36,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A bay's panel: the power in the title row, the grid with the tank beside it, what the bay is doing and how often, Place /
- * Drop or the enchantments, the filter (which folds away), and the upgrade column past the right edge with the redstone key
- * under it.
+ * Drop or the enchantments, the filter (which folds away), and the upgrade column past the right edge with the I/O grid's
+ * key and the redstone key under it. The Demolition Bay's sound key sits beside the help key.
  */
 public class BayScreen extends JasmScreen<BayMenu> {
     private static final int KEY_X = BayMenu.WIDTH;
@@ -51,12 +52,11 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private static final int ENCHANT_HEIGHT = 29;
     // title row, same spot as the rack's
     private static final int POWER_WIDTH = 50;
-    private static final int POWER_X = BayMenu.WIDTH - 8 - HELP_ROOM - POWER_WIDTH;
     private static final int POWER_Y = 6;
     private static final int POWER_HEIGHT = 7;
     private static final int HEIGHT_WITHOUT_ROWS = BayMenu.inventoryY(false, 0) + 58 + 18 + 6;
-    /** The keys under the upgrade slots: the I/O grid's, the Demolition Bay's sound key, then the redstone key. */
-    private static final int KEYS_Y = BayMenu.UPGRADE_Y + 4 * 18 + 4;
+    /** The keys under the upgrade slots: the I/O grid's, then the redstone key. */
+    private static final int KEYS_Y = BayMenu.UPGRADE_Y + BayBlockEntity.UPGRADES * 18 + 4;
     private static final int KEY_STEP = JasmGui.SIDE_KEY_HEIGHT + 2;
     /** The filter's heading, as the editor draws it, and the fold key just after it. */
     private static final int FILTER_LABEL_X = 15;
@@ -105,20 +105,20 @@ public class BayScreen extends JasmScreen<BayMenu> {
         rebuildWidgets();
     }
 
-    /** The sound key on a Demolition Bay, under the I/O key. */
-    private static int soundY() {
+    /** The redstone key goes below the others. */
+    private int redstoneY() {
         return KEYS_Y + KEY_STEP;
     }
 
-    /** The redstone key goes below the others. */
-    private int redstoneY() {
-        return menu.kind() == BayKind.DEMOLITION ? soundY() + KEY_STEP : KEYS_Y + KEY_STEP;
+    /** The power bar ends before the help key, and before the sound key on a Demolition Bay. */
+    private int powerX() {
+        int keys = menu.kind() == BayKind.DEMOLITION ? 2 : 1;
+        return BayMenu.WIDTH - 8 - keys * HELP_ROOM - POWER_WIDTH;
     }
 
     /** The main panel with the upgrade column joined to it, long enough for the keys under the slots. */
     private JasmFrame frame(boolean withRedstone) {
-        int bottom = withRedstone ? redstoneY() + JasmGui.SIDE_KEY_HEIGHT
-                : menu.kind() == BayKind.DEMOLITION ? soundY() + JasmGui.SIDE_KEY_HEIGHT : KEYS_Y + JasmGui.SIDE_KEY_HEIGHT;
+        int bottom = (withRedstone ? redstoneY() : KEYS_Y) + JasmGui.SIDE_KEY_HEIGHT;
         return JasmFrame.rounded(new int[]{0, 0, BayMenu.WIDTH, imageHeight},
                 new int[]{KEY_X - 14, BayMenu.UPGRADE_Y - 4, 38, bottom + 5 - (BayMenu.UPGRADE_Y - 4)});
     }
@@ -138,9 +138,9 @@ public class BayScreen extends JasmScreen<BayMenu> {
         if (menu.kind() == BayKind.DEMOLITION) {
             shownMuted = JasmClientConfig.bayLaserMuted();
             sound = addRenderableWidget(JasmButton.icon(
-                    () -> new JasmButton.Icon(Jasm.id(JasmClientConfig.bayLaserMuted() ? "icon/sound_off" : "icon/sound_on"), 12, 12),
+                    () -> new JasmButton.Icon(Jasm.id(JasmClientConfig.bayLaserMuted() ? "icon/sound_off_small" : "icon/sound_on_small"), 8, 7),
                     soundLabel(), b -> JasmClientConfig.setBayLaserMuted(!JasmClientConfig.bayLaserMuted()),
-                    leftPos + KEY_X, topPos + soundY(), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+                    leftPos + BayMenu.WIDTH - 7 - HELP_ROOM - HELP_SIZE, topPos + titleLabelY - 3, HELP_SIZE, HELP_HEIGHT));
             soundTooltip();
         }
         if (io == null) io = new IoGridWindow(font, true, menu::sides, this::click);
@@ -275,7 +275,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
         dot(graphics, SIDE_X, 20, statusColor(status));
         graphics.text(font, Component.translatable(status.shortKey()), SIDE_X + 8, 19, JasmGui.TEXT, false);
         graphics.text(font, Component.translatable("screen.jasm.bay.every", seconds(menu.cycleTicks())), SIDE_X, 31, JasmGui.SUBTEXT, false);
-        JasmGui.bar(graphics, POWER_X, POWER_Y, POWER_WIDTH, POWER_HEIGHT, menu.capacity() <= 0 ? 0 : menu.energy() / (double) menu.capacity());
+        JasmGui.bar(graphics, powerX(), POWER_Y, POWER_WIDTH, POWER_HEIGHT, menu.capacity() <= 0 ? 0 : menu.energy() / (double) menu.capacity());
         if (menu.kind() == BayKind.DEMOLITION) {
             List<Component> lines = enchantmentLines();
             if (!lines.isEmpty()) {
@@ -339,7 +339,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
                     : Component.translatable("screen.jasm.bay.tank", fluid.getHoverName(), String.format("%,d", menu.fluidAmount()),
                             String.format("%,d", menu.tankCapacity()));
             graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
-        } else if (x >= POWER_X && x < POWER_X + POWER_WIDTH && y >= POWER_Y && y < POWER_Y + POWER_HEIGHT) {
+        } else if (x >= powerX() && x < powerX() + POWER_WIDTH && y >= POWER_Y && y < POWER_Y + POWER_HEIGHT) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.workshop.power_amount",
                     String.format("%,d", menu.energy()), String.format("%,d", menu.capacity())), mouseX, mouseY);
         } else if (x >= SIDE_X && x < SIDE_X + SIDE_WIDTH && y >= 18 && y < 28) {

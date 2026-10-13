@@ -6,6 +6,7 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
+import dev.micolash.jasm.transfer.RedstoneMode;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -23,7 +24,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The port's status, machines and name, its item buffer and the player inventory. A column on the right holds the side
- * keys (Deck Link and blocking mode) above the upgrade slots. The Deck Link key opens a window with the link slots.
+ * keys (Deck Link and blocking mode) above the upgrade slots, and the redstone key under them while a Redstone Upgrade is
+ * in. The Deck Link key opens a window with the link slots.
  */
 public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final int WIDTH = AccessPortMenu.WIDTH;
@@ -48,6 +50,9 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private Button rename;
     private JasmButton blocking;
     private JasmButton link;
+    private JasmButton redstone;
+    private boolean frameRedstone;
+    private @Nullable RedstoneMode shownRedstoneMode;
     private JasmFrame frame;
     private @Nullable DeckLinkWindow linkWindow;
 
@@ -65,7 +70,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     @Override
     protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS));
+        frameRedstone = menu.hasRedstoneUpgrade();
+        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS, frameRedstone));
         addHelp(WIDTH - 7, "items/access-port.md");
         name = new JasmField(font, leftPos + 8, topPos + NAME_Y, WIDTH - 16 - 48, 12, Component.translatable("screen.jasm.port.name"));
         name.setMaxLength(AccessPortMenu.MAX_NAME);
@@ -88,6 +94,40 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                     () -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.RESET_DECK));
         }
         link.setLatched(linkWindow.isOpen());
+        redstone = addRenderableWidget(JasmButton.icon(
+                () -> new JasmButton.Icon(Jasm.id("icon/redstone_" + menu.redstoneMode().getSerializedName()), 12, 12),
+                redstoneLabel(), b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.CYCLE_REDSTONE),
+                leftPos + KEY_X, topPos + PortUpgradeLayout.redstoneY(AccessPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        shownRedstoneMode = null;
+        updateRedstoneButton();
+    }
+
+    private Component redstoneLabel() {
+        return Component.translatable("screen.jasm.transfer.redstone",
+                Component.translatable("screen.jasm.transfer.redstone_" + menu.redstoneMode().getSerializedName()));
+    }
+
+    private void updateRedstoneButton() {
+        boolean installed = menu.hasRedstoneUpgrade();
+        redstone.visible = installed;
+        redstone.active = installed;
+        redstone.setLatched(menu.redstoneMode() != RedstoneMode.IGNORE);
+        if (shownRedstoneMode != menu.redstoneMode()) {
+            shownRedstoneMode = menu.redstoneMode();
+            Component label = redstoneLabel();
+            redstone.setMessage(label);
+            redstone.setTooltip(Tooltip.create(label.copy().append("\n").append(Component.translatable("screen.jasm.bay.redstone_hint"))));
+        }
+        if (frameRedstone != installed) {
+            frameRedstone = installed;
+            frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS, installed));
+        }
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        updateRedstoneButton();
     }
 
     private void toggleLink() {
@@ -229,6 +269,9 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
             state = MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font,
                     WIDTH - 16 - font.width(Component.translatable("screen.jasm.port.status", "")));
             color = JasmGui.BAD;
+        } else if (menu.paused()) {
+            state = Component.translatable("screen.jasm.bay.status.paused");
+            color = JasmGui.WARN;
         } else if (menu.locked()) {
             state = Component.translatable("screen.jasm.port.in_use");
             color = JasmGui.GOOD;

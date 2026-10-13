@@ -1,7 +1,9 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
+import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.workshop.BitlingItem;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopMenu;
@@ -9,6 +11,7 @@ import dev.micolash.jasm.workshop.WorkshopNeed;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
@@ -23,15 +26,19 @@ import org.jspecify.annotations.Nullable;
  * title, the Blank Chip slot and progress in the first column, the output grid in the second, then the player's
  * inventory. The critter's panel hangs off its left side: slot, name, status, a speech bubble, the Byteling's
  * standard/Advanced switch, then its training and battery bars. The upgrade column hangs off the right side with the I/O
- * grid's key under it, as on the bays.
+ * grid's key under it, and the redstone key under that while a Redstone Upgrade is in, as on the bays.
  */
 public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     private JasmFrame frame;
+    private boolean frameRedstone;
+    private JasmButton redstone;
+    private @Nullable RedstoneMode shownRedstoneMode;
     private static final int SIDE = ChipWorkshopMenu.SIDE_WIDTH;
     private static final int MAIN_X = ChipWorkshopMenu.MAIN_X;
     /** The upgrade column and the I/O grid's key hang off the Workshop panel's right side. */
     private static final int KEY_X = MAIN_X + ChipWorkshopMenu.MAIN_WIDTH;
     private static final int KEYS_Y = ChipWorkshopMenu.UPGRADE_Y + ChipWorkshopBlockEntity.UPGRADES * 18 + 4;
+    private static final int REDSTONE_Y = KEYS_Y + JasmGui.SIDE_KEY_HEIGHT + 2;
     private static final int WIDTH = KEY_X + JasmGui.SIDE_KEY_WIDTH + 3;
     /** Both panels are the same height; the critter's holds a speech bubble, a switch and two bars. */
     private static final int SIDE_HEIGHT = 178;
@@ -101,6 +108,34 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
             io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
         }
         addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
+        redstone = addRenderableWidget(JasmButton.icon(
+                () -> new JasmButton.Icon(Jasm.id("icon/redstone_" + menu.redstoneMode().getSerializedName()), 12, 12),
+                redstoneLabel(), b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_REDSTONE),
+                leftPos + KEY_X, topPos + REDSTONE_Y, JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        shownRedstoneMode = null;
+        updateRedstoneButton();
+    }
+
+    private Component redstoneLabel() {
+        return Component.translatable("screen.jasm.transfer.redstone",
+                Component.translatable("screen.jasm.transfer.redstone_" + menu.redstoneMode().getSerializedName()));
+    }
+
+    private void updateRedstoneButton() {
+        boolean installed = menu.hasRedstoneUpgrade();
+        redstone.visible = installed;
+        redstone.active = installed;
+        redstone.setLatched(menu.redstoneMode() != RedstoneMode.IGNORE);
+        if (shownRedstoneMode != menu.redstoneMode()) {
+            shownRedstoneMode = menu.redstoneMode();
+            Component label = redstoneLabel();
+            redstone.setMessage(label);
+            redstone.setTooltip(Tooltip.create(label.copy().append("\n").append(Component.translatable("screen.jasm.bay.redstone_hint"))));
+        }
+        if (frameRedstone != installed) {
+            frameRedstone = installed;
+            frame = null;
+        }
     }
 
     private Component batchLabel() {
@@ -125,6 +160,9 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         if (critter == null) {
             return new Status("empty", JasmGui.MUTED);
         }
+        if (menu.paused()) {
+            return new Status("paused", JasmGui.WARN);
+        }
         if (menu.napping()) {
             // Only a napping critter needs power from outside, to charge up again.
             return menu.powered() ? new Status("napping", JasmGui.WARN) : new Status("no_power", JasmGui.BAD);
@@ -145,6 +183,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     @Override
     protected void containerTick() {
         super.containerTick();
+        updateRedstoneButton();
         BitlingItem critter = critter();
         BitlingKind kind = critter == null ? null : critter.kind();
         boolean working = menu.working();
@@ -188,7 +227,7 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         if (frame == null)
             frame = JasmFrame.rounded(new int[]{0, 0, SIDE, SIDE_HEIGHT}, new int[]{MAIN_X, 0, ChipWorkshopMenu.MAIN_WIDTH, imageHeight},
                     new int[]{KEY_X - 14, ChipWorkshopMenu.UPGRADE_Y - 4, 38,
-                            KEYS_Y + JasmGui.SIDE_KEY_HEIGHT + 5 - (ChipWorkshopMenu.UPGRADE_Y - 4)});
+                            (frameRedstone ? REDSTONE_Y : KEYS_Y) + JasmGui.SIDE_KEY_HEIGHT + 5 - (ChipWorkshopMenu.UPGRADE_Y - 4)});
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, x + slot.x, y + slot.y);
@@ -275,8 +314,9 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
             Component full = MachineStatusText.noPower(menu.containerId, "screen.jasm.workshop.status.no_power", font, SIDE_TEXT_WIDTH - 8);
             graphics.text(font, full, SIDE_PAD + 4, STATUS_Y + 3, status.color(), false);
         } else {
-            Component label = Component.translatable("screen.jasm.workshop.status",
-                    Component.translatable("screen.jasm.workshop.status." + status.key()).withColor(status.color()));
+            // A pause by redstone says so in the bays' short word.
+            String word = status.key().equals("paused") ? "screen.jasm.bay.status_short.paused" : "screen.jasm.workshop.status." + status.key();
+            Component label = Component.translatable("screen.jasm.workshop.status", Component.translatable(word).withColor(status.color()));
             graphics.text(font, label, SIDE_PAD + 4, STATUS_Y + 3, JasmGui.SUBTEXT, false);
         }
         if (critter == null) {
