@@ -52,7 +52,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 ## Network and power
 
 * [Data Cables](data-cables.md): join machines and carry power.
-* [Power Acceptor](power-acceptor.md): moves power between a network and other mods' blocks.
+* [Power Interface](power-acceptor.md): moves power between a network and other mods' blocks.
 * [Combustion Generators](combustion-generators.md): burn fuel for power.
 * [Battery](battery.md): stores power and joins up with its neighbours.
 * [Network Brain](network-brain.md): lifts the machine limit.

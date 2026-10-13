@@ -17,7 +17,7 @@ Most JASM blocks run on FE.
 ## Where it comes from
 
 * [Combustion Generators](../items/combustion-generators.md) burn fuel. They are the simple answer.
-* Other mods, through the [Power Acceptor](../items/power-acceptor.md). JASM blocks never take power straight from another mod.
+* Other mods, through the [Power Interface](../items/power-acceptor.md). JASM blocks never take power straight from another mod.
 * [Batteries](../items/battery.md) store it for later.
 
 <br />
@@ -27,7 +27,7 @@ Most JASM blocks run on FE.
 * A generator pushes power into every block it touches.
 * [Data Cables](../items/data-cables.md) carry it through a network, as fast as it comes in.
 * A machine that touches a generator needs no cable.
-* Machines don't pass power on to each other. Each one needs a cable, a generator or a Power Acceptor touching it.
+* Machines don't pass power on to each other. Each one needs a cable, a generator or a Power Interface touching it.
 
 <br />
 <br />
