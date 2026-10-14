@@ -6,6 +6,7 @@ import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.pool.Material;
 import dev.micolash.jasm.pool.NetworkPool;
@@ -111,12 +112,12 @@ final class JobRunner {
         boolean started = false;
         boolean missingCard = false;
         // A machine that can't be used right now: the job waits for it rather than giving up.
-        PauseReason machineBlocked = PauseReason.NONE;
+        Wait machineBlocked = Wait.NONE;
         ServerPlayer requester = level.getServer().getPlayerList().getPlayer(job.requester);
         ItemStack requesterDeck = requester == null ? ItemStack.EMPTY : JobReturns.findDeck(requester, job.deck);
         boolean dimensionBlocked = !requesterDeck.isEmpty()
                 && (!DeckItem.worksIn(requesterDeck, requester.level()) || !DeckItem.worksIn(requesterDeck, level));
-        if (job.phase == CraftingJob.Phase.CRAFTING && dimensionBlocked) machineBlocked = PauseReason.DIMENSION_UPGRADE;
+        if (job.phase == CraftingJob.Phase.CRAFTING && dimensionBlocked) machineBlocked = Wait.DIMENSION;
         if (job.phase == CraftingJob.Phase.CRAFTING && !dimensionBlocked) {
             int free = server.parallel() - job.running.size() - job.sent.size();
             Map<ItemResource, Long> reserved = reserved(job);
@@ -133,7 +134,7 @@ final class JobRunner {
                     Sending sending = send(level, network, job, i, processing, record, fluids, store, reserved, free);
                     free -= sending.sent();
                     started |= sending.sent() > 0;
-                    if (machineBlocked == PauseReason.NONE) {
+                    if (machineBlocked == Wait.NONE) {
                         machineBlocked = sending.blocked();
                     }
                     continue;
@@ -163,10 +164,11 @@ final class JobRunner {
             server.setChanged();
         }
         boolean idle = job.running.isEmpty() && job.sent.isEmpty();
-        job.pause = job.noRoom ? PauseReason.NO_ROOM : !idle ? PauseReason.NONE : missingCard ? PauseReason.NO_CARD : machineBlocked;
+        PauseReason machineReason = held(job, idle ? machineBlocked : Wait.NONE);
+        job.pause = job.noRoom ? PauseReason.NO_ROOM : !idle ? PauseReason.NONE : missingCard ? PauseReason.NO_CARD : machineReason;
         job.waiting = waiting(level, network, job);
         boolean stepsLeft = job.steps.stream().anyMatch(s -> s.left > 0);
-        if (machineBlocked != PauseReason.NONE) {
+        if (machineBlocked != Wait.NONE) {
             job.stuck = 0;
         }
         if (idle) {
@@ -175,7 +177,7 @@ final class JobRunner {
                 job.phase = CraftingJob.Phase.RETURNING;
                 job.pause = PauseReason.NONE;
                 server.setChanged();
-            } else if (!missingCard && machineBlocked == PauseReason.NONE && !started && ++job.stuck >= STUCK_TICKS) {
+            } else if (!missingCard && machineBlocked == Wait.NONE && !started && ++job.stuck >= STUCK_TICKS) {
                 job.phase = CraftingJob.Phase.RETURNING;
                 job.pause = PauseReason.NONE;
                 server.setChanged();
@@ -227,12 +229,66 @@ final class JobRunner {
 
     // --- machines ---
 
-    /**
-     * How sending went: how many sets went, and, when the ingredients were there but nothing could go, why:
-     * {@link PauseReason#NO_MACHINE} (none of the card's machines can be reached) or {@link PauseReason#MACHINE_BUSY}
-     * (they are taken by another card, full, or their port has no power). {@link PauseReason#NONE} otherwise.
-     */
-    private record Sending(int sent, PauseReason blocked) {}
+    /** Ticks a machine's problem must hold before screens show it, so one refused try never flashes a red line. */
+    static final int SHOW_AFTER = 5;
+
+    /** Why a step's ingredients are there but no set could go, with what screens say about it. */
+    enum Wait {
+        NONE(PauseReason.NONE),
+        /** Normal work: Blocking Mode keeps the next set back until the machine has used the last. Nothing is shown. */
+        WORKING(PauseReason.NONE),
+        /** A port wasn't due to move anything yet, so nothing was learned: what was last found still stands. */
+        UNTRIED(PauseReason.NONE),
+        DIMENSION(PauseReason.DIMENSION_UPGRADE),
+        NO_MATERIAL(PauseReason.NO_MATERIAL),
+        MISSING(PauseReason.NO_MACHINE),
+        UNLOADED(PauseReason.MACHINE_UNLOADED),
+        SIDE(PauseReason.MACHINE_SIDE),
+        PORT_OFF(PauseReason.PORT_OFF),
+        IN_USE(PauseReason.MACHINE_IN_USE),
+        /** Full, or won't take these items: another mod's machine says the same for both. */
+        FULL(PauseReason.MACHINE_BUSY);
+
+        final PauseReason shown;
+
+        Wait(PauseReason shown) {
+            this.shown = shown;
+        }
+
+        /** Normal work anywhere hides the problems: the job isn't stopped. Otherwise the first problem met stands. */
+        Wait and(Wait other) {
+            if (this == WORKING || other == WORKING) return WORKING;
+            if (this == UNTRIED || other == UNTRIED) return UNTRIED;
+            return this != NONE ? this : other;
+        }
+    }
+
+    /** What screens show for the machines this tick: a problem only once it has held for {@link #SHOW_AFTER} ticks. */
+    private static PauseReason held(CraftingJob job, Wait wait) {
+        PauseReason now = wait == Wait.UNTRIED ? job.machineReason : wait.shown;
+        if (now != job.machineReason) {
+            job.machineReason = now;
+            job.machineTicks = 0;
+        } else if (job.machineTicks < SHOW_AFTER) {
+            job.machineTicks++;
+        }
+        return job.machineTicks >= SHOW_AFTER ? now : PauseReason.NONE;
+    }
+
+    /** How sending went: how many sets went, and, when the ingredients were there but nothing could go, why. */
+    private record Sending(int sent, Wait blocked) {}
+
+    /** Why the machine at {@code at} can't be reached: not loaded, gone, or a grid side that lets nothing in. */
+    private static Wait unreachable(ServerLevel level, @Nullable CableNetwork network, Machines.At at) {
+        BlockPos machine = at.port().relative(at.side());
+        if (!level.isLoaded(at.port()) || !level.isLoaded(machine)) {
+            return Wait.UNLOADED;
+        }
+        if (Machines.port(level, network, at.port(), at.side()) == null) {
+            return Wait.MISSING;
+        }
+        return level.getBlockEntity(machine) instanceof MachineBlockEntity grid && grid.opensToPorts() ? Wait.SIDE : Wait.MISSING;
+    }
 
     /** A machine a set can go to right now. */
     private record Target(AccessPortBlockEntity port, Direction side) {
@@ -249,14 +305,18 @@ final class JobRunner {
             WaferRecord record, @Nullable WaferRecord fluids, WaferStore store, Map<ItemResource, Long> reserved, int free) {
         CraftingJob.Step step = job.steps.get(stepIndex);
         List<Target> targets = new ArrayList<>();
-        boolean anyMachine = false;
+        // the first machine that can't be used says why, should none of them take a set
+        Wait problem = card.spots().isEmpty() ? Wait.MISSING : Wait.NONE;
         for (Machines.At at : card.spots()) {
             AccessPortBlockEntity port = Machines.reach(level, network, at);
-            if (port != null) {
-                anyMachine = true;
-                if (port.running() && !port.redstonePaused() && port.freeFor(at.side(), job.id, stepIndex)) {
-                    targets.add(new Target(port, at.side()));
-                }
+            Wait wait = port == null ? unreachable(level, network, at)
+                    : !port.running() || port.networkBlocked() || port.redstonePaused() ? Wait.PORT_OFF
+                    : !port.freeFor(at.side(), job.id, stepIndex) ? Wait.IN_USE
+                    : Wait.NONE;
+            if (wait == Wait.NONE) {
+                targets.add(new Target(port, at.side()));
+            } else if (problem == Wait.NONE) {
+                problem = wait;
             }
         }
         Map<ItemResource, Long> set = new HashMap<>();
@@ -278,7 +338,9 @@ final class JobRunner {
         }
         NetworkPool pool = materialSet.isEmpty() || network == null ? null : NetworkPool.of(level, network);
         int sent = 0;
-        PauseReason blocked = PauseReason.NONE;
+        Wait blocked = Wait.NONE;
+        // what the machines that were tried said
+        Wait tried = Wait.NONE;
         while (sent < free && step.left > 0) {
             boolean enough = set.entrySet().stream()
                     .allMatch(e -> record.count(e.getKey()) - reserved.getOrDefault(e.getKey(), 0L) >= e.getValue())
@@ -289,22 +351,28 @@ final class JobRunner {
             if (!materialSet.isEmpty() && (pool == null || !materialSet.entrySet().stream()
                     .allMatch(e -> pool.materialContents().getOrDefault(e.getKey(), 0L) >= e.getValue()))) {
                 // nothing is held back for a job: it waits for the network's storage to hold the material
-                blocked = sent > 0 ? PauseReason.NONE : PauseReason.NO_MATERIAL;
+                blocked = sent > 0 ? Wait.NONE : Wait.NO_MATERIAL;
                 break;
             }
             if (targets.isEmpty()) {
-                blocked = sent > 0 ? PauseReason.NONE : anyMachine ? PauseReason.MACHINE_BUSY : PauseReason.NO_MACHINE;
+                blocked = sent > 0 ? Wait.NONE : problem.and(tried);
                 break;
             }
             targets.sort(Comparator.comparingLong(t -> out.getOrDefault(t.at(), 0L)));
             Target target = targets.getFirst();
             Machines.Push pushed = Machines.push(target.port(), target.side(), card.usedInputs(), pool);
             if (pushed == Machines.Push.SHORT) {
-                blocked = sent > 0 ? PauseReason.NONE : PauseReason.NO_MATERIAL;
+                blocked = sent > 0 ? Wait.NONE : Wait.NO_MATERIAL;
                 break;
             }
             if (pushed != Machines.Push.SENT) {
-                // Full, or it doesn't take these: try the others, and this one again next tick.
+                // Not now: try the others, and this one again next tick.
+                tried = tried.and(switch (pushed) {
+                    case WAIT -> Wait.UNTRIED;
+                    case BUSY -> Wait.WORKING;
+                    case SHUT -> Wait.SIDE;
+                    default -> Wait.FULL;
+                });
                 targets.remove(target);
                 continue;
             }

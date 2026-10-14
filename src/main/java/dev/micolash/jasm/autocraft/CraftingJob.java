@@ -155,6 +155,18 @@ public final class CraftingJob {
             return new Machines.At(port, side);
         }
 
+        /** How much of the card's main result has come back for this set; extras and byproducts don't count. */
+        long arrived(ProcessingCard card) {
+            ProcessingCard.Amount main = card.main();
+            if (main.isEmpty()) {
+                return 0;
+            }
+            // what the set waits for of that kind started as every output of it, the main one filled first
+            long expected = card.outputs().stream().filter(a -> !a.isEmpty() && main.key().equals(a.key()))
+                    .mapToLong(ProcessingCard.Amount::count).sum();
+            return Math.clamp(expected - wants(main.key()), 0L, main.count());
+        }
+
         /** How many of {@code key} this set still waits for. */
         long wants(GridKey key) {
             return waiting.stream().filter(a -> key.equals(a.key())).mapToLong(ProcessingCard.Amount::count).sum();
@@ -246,6 +258,9 @@ public final class CraftingJob {
     @Nullable Waiting waiting;
     /** Ticks in a row with nothing running and nothing able to start; not saved. */
     int stuck;
+    /** What the machines last said was wrong, and for how many ticks it has held; not saved. */
+    PauseReason machineReason = PauseReason.NONE;
+    int machineTicks;
     /** Each step's card with its live recipe, looked up once; not saved. */
     private final Map<Integer, Optional<CardRecipes.Resolved>> resolved = new HashMap<>();
     /** Which items each step's slots were found to accept; not saved. */
@@ -363,6 +378,8 @@ public final class CraftingJob {
     /** What is crafting right now, one entry per step with crafts running, the final item first and its ingredients after. */
     public List<Now> now() {
         int[] running = new int[steps.size()];
+        // results of sets still out that have already come back
+        long[] arrived = new long[steps.size()];
         Component[] machine = new Component[steps.size()];
         for (Running craft : this.running) {
             if (craft.step < running.length) running[craft.step]++;
@@ -370,6 +387,7 @@ public final class CraftingJob {
         for (Sent set : sent) {
             if (set.step >= running.length) continue;
             running[set.step]++;
+            if (steps.get(set.step).card instanceof ProcessingCard card) arrived[set.step] += set.arrived(card);
             if (machine[set.step] == null && steps.get(set.step).card instanceof ProcessingCard card) {
                 // The name the machine had when the card was written; looking it up in the world each time would cost more.
                 String name = card.machines().stream().filter(m -> m.at().equals(set.at())).map(ProcessingCard.Machine::name)
@@ -382,22 +400,28 @@ public final class CraftingJob {
             if (running[i] == 0) continue;
             Step step = steps.get(i);
             long each = step.card instanceof ProcessingCard card ? card.main().count() : step.card.result().getCount();
-            long made = Math.max(0, step.total - step.left - running[i]);
-            now.add(new Now(ItemResource.of(step.card.result()), made * each, step.total * each, running[i],
+            long made = Math.min(Math.max(0, step.total - step.left - running[i]) * each + arrived[i], step.total * each);
+            now.add(new Now(ItemResource.of(step.card.result()), made, step.total * each, running[i],
                     Optional.ofNullable(machine[i])));
         }
         return now;
     }
 
-    /** How far along, from 0 to 1, by crafts finished. */
+    /** How far along, from 0 to 1, by crafts finished; a set out in a machine counts for the share of its main result back. */
     public float progress() {
         long total = 0;
-        long left = 0;
+        float left = 0;
         for (Step step : steps) {
             total += step.total;
             left += step.left;
         }
-        left += running.size() + sent.size();
-        return total == 0 ? 1F : Math.clamp(1F - left / (float) total, 0F, 1F);
+        left += running.size();
+        for (Sent set : sent) {
+            left += 1;
+            if (set.step < steps.size() && steps.get(set.step).card instanceof ProcessingCard card && card.main().count() > 0) {
+                left -= set.arrived(card) / (float) card.main().count();
+            }
+        }
+        return total == 0 ? 1F : Math.clamp(1F - left / total, 0F, 1F);
     }
 }

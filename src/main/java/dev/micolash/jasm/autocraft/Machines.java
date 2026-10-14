@@ -7,6 +7,8 @@ import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.MachineFace;
+import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.pool.Material;
 import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.pool.NetworkPool;
@@ -119,6 +121,20 @@ public final class Machines {
         return level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
     }
 
+    /**
+     * Whether the block at {@code pos} is a machine with an I/O grid whose {@code side} lets in none of what a set brings.
+     * Set to Output, that face still shows a handler, so asking it alone would read as a full machine.
+     */
+    public static boolean shut(Level level, BlockPos pos, Direction side, boolean items, boolean fluids) {
+        if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof MachineBlockEntity machine) || machine.sides() == null) {
+            return false;
+        }
+        MachineSides sides = machine.sides();
+        MachineFace face = MachineFace.of(machine.frontSide(), side);
+        return items && !sides.mode(MachineSides.Kind.ITEMS, face).in()
+                || fluids && sides.hasFluids() && !sides.mode(MachineSides.Kind.FLUIDS, face).in();
+    }
+
     /** A handler for another mod's materials, with the capability it came from. */
     public record MaterialInlet(BlockCapability<ResourceHandler<Resource>, @Nullable Direction> kind, ResourceHandler<Resource> handler) {}
 
@@ -144,10 +160,16 @@ public final class Machines {
     /** How an attempt to put a set into a machine ended. */
     public enum Push {
         SENT,
-        /** The machine is full, doesn't take it, or is in the way of itself. Nothing moved. */
+        /** The machine is full, or doesn't take these. Nothing moved. */
         REFUSED,
         /** The network's storage holds too little of a material the set needs. Nothing moved. */
-        SHORT
+        SHORT,
+        /** The port isn't due to move anything yet, or is saving up for a big set. Nothing was tried. */
+        WAIT,
+        /** Blocking Mode: the machine still holds ingredients from before. Nothing moved. */
+        BUSY,
+        /** The machine takes nothing of this kind through that side. Nothing moved. */
+        SHUT
     }
 
     /**
@@ -183,18 +205,21 @@ public final class Machines {
             }
         }
         int count = (int) Math.min(shares, Integer.MAX_VALUE);
-        if (!port.canSendBatch(count)) return Push.REFUSED;
+        if (port.getLevel() != null && shut(port.getLevel(), port.getBlockPos().relative(side), side.getOpposite(), items, fluids)) {
+            return Push.SHUT;
+        }
+        if (!port.canSendBatch(count)) return Push.WAIT;
         ResourceHandler<ItemResource> inlet = items ? inlet(port, side) : null;
         ResourceHandler<FluidResource> tank = fluids ? fluidInlet(port, side) : null;
         List<MaterialInlet> vessels = materials && port.getLevel() instanceof ServerLevel level
                 ? materialInlets(level, port.getBlockPos().relative(side), side.getOpposite())
                 : List.of();
         if (items && inlet == null || fluids && tank == null || materials && vessels.isEmpty()) {
-            return Push.REFUSED;
+            return Push.SHUT;
         }
         if (materials && pool == null) return Push.SHORT;
         if (port.blockingMode() && (inlet != null && containsIngredient(inlet, set) || tank != null && containsFluid(tank, set)
-                || materials && containsMaterial(vessels, set))) return Push.REFUSED;
+                || materials && containsMaterial(vessels, set))) return Push.BUSY;
         // what the pool could give, by exact resource: the first resource of each name stands in for the dry run
         Map<MaterialKey, Material> sample = new HashMap<>();
         if (materials) {
