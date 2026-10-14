@@ -726,6 +726,30 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         updateResult(player, null);
     }
 
+    /**
+     * What JEI's "+" can fill the grid from: {@code stored} (the wafers as the screen last heard), the inventory without
+     * the Deck itself, and what is already in the grid, since {@link #fillGrid} puts that back on the wafers first.
+     */
+    public Map<ItemResource, Long> availableForFill(Map<ItemResource, Long> stored) {
+        Map<ItemResource, Long> total = new HashMap<>(stored);
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (!stack.isEmpty() && i != deckSlot) {
+                total.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+            }
+        }
+        if (grid != null) {
+            for (int i = 0; i < DeckGridContainer.SIZE; i++) {
+                ItemStack stack = grid.getItem(i);
+                if (!stack.isEmpty()) {
+                    total.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+                }
+            }
+        }
+        return total;
+    }
+
     private static long inventoryCount(Inventory inventory, ItemResource key) {
         long count = 0;
         for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {

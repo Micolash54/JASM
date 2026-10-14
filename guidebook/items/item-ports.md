@@ -66,7 +66,7 @@ Each direction has its own [filter](../mechanics/type-filters.md). An empty outp
 <br />
 ## Speed
 
-Ports run twice a second while they are busy, and check once a second after five idle seconds. Four slots take [Speed Upgrades](speed-upgrade.md).
+Ports run twice a second while they are busy, and check once a second after five idle seconds. Five upgrade slots take up to four [Speed Upgrades](speed-upgrade.md).
 
 | Upgrades | Items per operation | Items per second |
 | --- | --- | --- |

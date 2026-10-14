@@ -138,10 +138,20 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                 JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT);
         accessButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.access_hint")));
         addRenderableWidget(accessButton);
-        deckSearch = new JasmField(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP - 1, 58, 11, Component.translatable("screen.jasm.deck.search"));
+        // Level with the chosen tab's top, its last row under the sheet's edge like the tab at the back; only the part
+        // above the sheet takes clicks.
+        deckSearch = new JasmField(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP, 58, SHEET_Y - TAB_TOP + 1,
+                Component.translatable("screen.jasm.deck.search")) {
+            @Override
+            public boolean isMouseOver(double mouseX, double mouseY) {
+                return mouseY < topPos + SHEET_Y && super.isMouseOver(mouseX, mouseY);
+            }
+        };
         deckSearch.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         deckSearch.setMaxLength(64);
-        addRenderableWidget(deckSearch);
+        ((JasmField) deckSearch).setSelectAllOnClick();
+        // drawn with the sheet, so the sheet covers its foot
+        addWidget(deckSearch);
         deckList = new TerminalDeckList(menu, font, deckSearch, leftPos + 8, topPos + EncodingTerminalMenu.INVENTORY_Y);
         showDeckTab(showDeck);
     }
@@ -219,6 +229,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         int bw = tabWidth(back);
         graphics.fill(bx, by, bx + bw, top + SHEET_Y + 1, OUTLINE);
         graphics.fill(bx + 1, by + 1, bx + bw - 1, top + SHEET_Y + 1, back == hovered ? JasmGui.SELECTED : WELL);
+        deckSearch.extractRenderState(graphics, mouseX, mouseY, 0);
         JasmGui.panel(graphics, left + SHEET_X, top + SHEET_Y, SHEET_WIDTH, imageHeight - SHEET_Y - 4);
         // The chosen tab: outline, light top and left, shade on the right, and no line where it meets the sheet.
         int cx = left + tabX(chosen);

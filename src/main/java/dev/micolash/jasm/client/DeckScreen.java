@@ -222,6 +222,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         search = new JasmField(font, leftPos + mainX + 5, topPos + 6, 145, 14, Component.translatable("screen.jasm.deck.search"));
         search.setHint(Component.translatable("screen.jasm.deck.search").withStyle(ChatFormatting.DARK_GRAY));
         search.setMaxLength(SEARCH_LENGTH);
+        ((JasmField) search).setSelectAllOnClick();
         search.setValue(query);
         search.setResponder(text -> {
             scrollRow = 0;

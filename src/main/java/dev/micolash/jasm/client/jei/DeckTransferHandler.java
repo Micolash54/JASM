@@ -6,7 +6,6 @@ import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.GridVariants;
 import dev.micolash.jasm.registry.JasmMenus;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,10 +22,8 @@ import mezz.jei.api.recipe.types.IRecipeType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
@@ -36,7 +33,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * JEI's "+" on a crafting recipe fills a Crafting Deck's grid. The screen only says which items each slot may take;
  * the server picks them from the Deck's wafers and the inventory, taking an item with extra data when the recipe wants
- * it plain and no plain copy is there, and checks everything again. When some ingredients
+ * it plain and no plain copy is there, and checks everything again. What is already in the grid counts too, since the
+ * server puts it back on the wafers first. When some ingredients
  * are missing, the rest still go in. Missing ones the network can craft light up blue, the others red, and the "+"
  * turns blue, or orange while anything red is left. Ctrl-click also asks for the blue ones, one request window after
  * another. Only when nothing at all can be had does the "+" refuse.
@@ -84,14 +82,7 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
         if (inputs.size() > 9) {
             return helper.createInternalError();
         }
-        Map<ItemResource, Long> available = new HashMap<>(menu.view().contents());
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && i != menu.deckSlot()) {
-                available.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
-            }
-        }
+        Map<ItemResource, Long> available = menu.availableForFill(menu.view().contents());
         List<List<ItemResource>> wanted = new ArrayList<>();
         List<IRecipeSlotView> missing = new ArrayList<>();
         List<IRecipeSlotView> craftable = new ArrayList<>();

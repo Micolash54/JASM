@@ -16,6 +16,9 @@ public class JasmField extends EditBox {
     private static final Identifier FOCUSED = Jasm.id("field_focused");
     private static final int PAD = 4;
     private float scale = 1F;
+    private boolean selectAllOnClick;
+    // set by a click that selected everything, so the mouse moving before it is let go doesn't undo that
+    private boolean keepSelection;
 
     public JasmField(Font font, int x, int y, int width, int height, Component narration) {
         super(font, x, y, width, height, narration);
@@ -37,6 +40,11 @@ public class JasmField extends EditBox {
         scale = JasmGui.SMALL_TEXT;
     }
 
+    /** For search fields: a click into the field while not typing in it selects all its text, so typing replaces it. */
+    public void setSelectAllOnClick() {
+        selectAllOnClick = true;
+    }
+
     @Override
     public int getInnerWidth() {
         return (int) ((getWidth() - 2 * PAD) / scale);
@@ -44,7 +52,31 @@ public class JasmField extends EditBox {
 
     @Override
     public void onClick(MouseButtonEvent event, boolean doubleClick) {
+        // The screen hands focus to the field only after this click, so a field not yet focused is being clicked into.
+        keepSelection = selectAllOnClick && !isFocused() && !getValue().isEmpty();
+        if (keepSelection) {
+            moveCursorToEnd(false);
+            setHighlightPos(0);
+            return;
+        }
         super.onClick(new MouseButtonEvent(getX() + (event.x() - getX() - PAD) / scale, event.y(), event.buttonInfo()), doubleClick);
+    }
+
+    @Override
+    protected void onDrag(MouseButtonEvent event, double dx, double dy) {
+        if (!keepSelection) super.onDrag(event, dx, dy);
+    }
+
+    @Override
+    public void onRelease(MouseButtonEvent event) {
+        keepSelection = false;
+        super.onRelease(event);
+    }
+
+    @Override
+    public void setFocused(boolean focused) {
+        if (!focused) keepSelection = false;
+        super.setFocused(focused);
     }
 
     @Override
