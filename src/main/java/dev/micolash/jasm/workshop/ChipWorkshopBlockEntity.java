@@ -644,6 +644,12 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         setChanged();
     }
 
+    /** A napping critter with no power coming in, or the Redstone Upgrade's mode: nothing is made. */
+    @Override
+    public boolean halted() {
+        return !running() || redstonePaused();
+    }
+
     /** Whether the Redstone Upgrade's mode stops the Workshop now. Only looked at with the upgrade in. */
     public boolean redstonePaused() {
         return level != null && hasRedstoneUpgrade() && !redstoneMode.allows(level.hasNeighborSignal(worldPosition));

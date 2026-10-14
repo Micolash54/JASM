@@ -253,6 +253,12 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         return growing;
     }
 
+    /** A seed in the chamber with no power to grow it, or the Redstone Upgrade holding everything as it is. */
+    @Override
+    public boolean halted() {
+        return redstonePaused() || growing && !running();
+    }
+
     public boolean hasRedstoneUpgrade() {
         return RedstoneUpgradeItem.elsewhere(this, UPGRADE_START, SLOTS, -1);
     }

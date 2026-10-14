@@ -23,7 +23,8 @@ public enum PauseReason {
     MACHINE_UNLOADED,
     MACHINE_SIDE,
     PORT_OFF,
-    MACHINE_IN_USE;
+    MACHINE_IN_USE,
+    MACHINE_OFF;
 
     private static final PauseReason[] ALL = values();
 

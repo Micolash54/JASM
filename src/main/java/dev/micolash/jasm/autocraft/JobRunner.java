@@ -164,8 +164,8 @@ final class JobRunner {
             server.setChanged();
         }
         boolean idle = job.running.isEmpty() && job.sent.isEmpty();
-        PauseReason machineReason = held(job, idle ? machineBlocked : Wait.NONE);
-        job.pause = job.noRoom ? PauseReason.NO_ROOM : !idle ? PauseReason.NONE : missingCard ? PauseReason.NO_CARD : machineReason;
+        PauseReason machineReason = held(job, idle ? machineBlocked : halted(level, job) ? Wait.HALTED : Wait.NONE);
+        job.pause = job.noRoom ? PauseReason.NO_ROOM : idle && missingCard ? PauseReason.NO_CARD : machineReason;
         job.waiting = waiting(level, network, job);
         boolean stepsLeft = job.steps.stream().anyMatch(s -> s.left > 0);
         if (machineBlocked != Wait.NONE) {
@@ -246,6 +246,8 @@ final class JobRunner {
         SIDE(PauseReason.MACHINE_SIDE),
         PORT_OFF(PauseReason.PORT_OFF),
         IN_USE(PauseReason.MACHINE_IN_USE),
+        /** A set is out in a JASM machine that has no power or is stopped by its Redstone Upgrade. */
+        HALTED(PauseReason.MACHINE_OFF),
         /** Full, or won't take these items: another mod's machine says the same for both. */
         FULL(PauseReason.MACHINE_BUSY);
 
@@ -273,6 +275,17 @@ final class JobRunner {
             job.machineTicks++;
         }
         return job.machineTicks >= SHOW_AFTER ? now : PauseReason.NONE;
+    }
+
+    /** Whether a machine holding one of the job's sets can't work on it: only JASM machines can tell. */
+    private static boolean halted(ServerLevel level, CraftingJob job) {
+        for (CraftingJob.Sent set : job.sent) {
+            BlockPos machine = set.port.relative(set.side);
+            if (level.isLoaded(machine) && level.getBlockEntity(machine) instanceof MachineBlockEntity jasm && jasm.halted()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** How sending went: how many sets went, and, when the ingredients were there but nothing could go, why. */

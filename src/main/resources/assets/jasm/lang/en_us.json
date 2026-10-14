@@ -650,6 +650,7 @@
   "screen.jasm.server.pause.machine_side": "A machine's input side is unreachable",
   "screen.jasm.server.pause.port_off": "An Access Port is unpowered or paused by redstone",
   "screen.jasm.server.pause.machine_in_use": "A machine is in use by another job",
+  "screen.jasm.server.pause.machine_off": "A machine is unpowered or paused by redstone",
   "item.jasm.crystal_seed": "Crystal Seed",
   "item.jasm.data_crystal": "Data Crystal",
   "item.jasm.guide_book": "JASM Guide",

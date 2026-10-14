@@ -261,6 +261,12 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         return status != BayStatus.NO_POWER;
     }
 
+    /** No power, or the Redstone Upgrade's mode keeps it off. Waiting for the next pulse is normal work. */
+    @Override
+    public boolean halted() {
+        return status == BayStatus.NO_POWER || status == BayStatus.PAUSED && redstone != BayRedstone.PULSE;
+    }
+
     public Direction facing() {
         return getBlockState().getValue(BayBlock.FACING);
     }

@@ -198,6 +198,14 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return running;
     }
 
+    /**
+     * Whether the machine has work but can't do it until the player steps in: no power, or its Redstone Upgrade stops
+     * it. Machines a port can feed say so; the rest never do.
+     */
+    public boolean halted() {
+        return false;
+    }
+
     public SimpleEnergyHandler energy() {
         return energy;
     }
