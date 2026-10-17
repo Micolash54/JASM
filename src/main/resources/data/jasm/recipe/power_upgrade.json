@@ -1,14 +1,16 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "GRG",
-    "RCR",
-    "GRG"
+    "GAG",
+    "RPR",
+    "GCG"
   ],
   "key": {
     "G": "minecraft:gold_ingot",
+    "A": "jasm:advanced_link_chip",
     "R": "minecraft:redstone",
-    "C": "jasm:link_chip"
+    "P": "jasm:power_acceptor",
+    "C": "minecraft:comparator"
   },
   "result": {
     "id": "jasm:power_upgrade"
