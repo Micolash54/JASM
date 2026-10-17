@@ -591,6 +591,7 @@
   "screen.jasm.transfer.speed_hint": "Upgrade Slot",
   "item.jasm.power_upgrade": "Power Upgrade",
   "item.jasm.dimension_upgrade": "Dimension Upgrade",
+  "item.jasm.blank_upgrade": "Blank Upgrade",
   "message.jasm.deck.dimension_upgrade": "Dimensional Interference Detected",
   "screen.jasm.server.pause.dimension_upgrade": "Waiting for a Dimension Upgrade",
   "screen.jasm.deck.dimension_slot": "Dimension Upgrade Slot",
