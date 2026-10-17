@@ -54,14 +54,14 @@ public final class JasmTabs {
                 output.accept(JasmItems.ADVANCED_CRAFTING_SERVER);
                 output.accept(JasmItems.ACCESS_PORT);
                 output.accept(JasmItems.THIN_ACCESS_PORT);
-                output.accept(JasmItems.INPUT_PORT);
-                output.accept(JasmItems.OUTPUT_PORT);
-                output.accept(JasmItems.INPUT_OUTPUT_PORT);
-                output.accept(JasmItems.STORAGE_PORT);
                 output.accept(JasmItems.FULL_INPUT_PORT);
+                output.accept(JasmItems.INPUT_PORT);
                 output.accept(JasmItems.FULL_OUTPUT_PORT);
+                output.accept(JasmItems.OUTPUT_PORT);
                 output.accept(JasmItems.FULL_INPUT_OUTPUT_PORT);
+                output.accept(JasmItems.INPUT_OUTPUT_PORT);
                 output.accept(JasmItems.FULL_STORAGE_PORT);
+                output.accept(JasmItems.STORAGE_PORT);
                 output.accept(JasmItems.BLANK_UPGRADE);
                 output.accept(JasmItems.SPEED_UPGRADE);
                 output.accept(JasmItems.REDSTONE_UPGRADE);

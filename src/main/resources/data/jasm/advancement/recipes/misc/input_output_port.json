@@ -7,6 +7,26 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
+    "has_full_input_port": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:full_input_port"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_full_output_port": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:full_output_port"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
     "has_input_port": {
       "conditions": {
         "items": [
@@ -31,6 +51,8 @@
   "requirements": [
     [
       "has_the_recipe",
+      "has_full_input_port",
+      "has_full_output_port",
       "has_input_port",
       "has_output_port"
     ]
