@@ -1,6 +1,7 @@
 {
   "parent": "jasm:item/cable_item_template",
   "textures": {
-    "cable": "jasm:block/data_cable"
+    "casing": "jasm:block/data_cable_casing",
+    "glow": "jasm:block/data_cable_glow"
   }
 }

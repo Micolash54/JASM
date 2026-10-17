@@ -22,8 +22,11 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
@@ -61,6 +64,8 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
         state.acceptors = 0;
         Arrays.fill(state.kinds, null);
         state.cableParts = List.of();
+        state.casing = null;
+        state.glow = null;
         state.breakingPort = null;
         var minecraft = Minecraft.getInstance();
         if (cable.getBlockState().getValue(DataCableBlock.HAS_PORTS)) {
@@ -69,6 +74,7 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
             model.collectParts(minecraft.level, cable.getBlockPos(), cable.getBlockState(),
                     RandomSource.create(cable.getBlockState().getSeed(cable.getBlockPos())), parts);
             state.cableParts = List.copyOf(parts);
+            splitGlow(state);
         }
         if (breakProgress != null && minecraft.level != null) {
             var progresses = minecraft.levelRenderer.destructionProgress.get(cable.getBlockPos().asLong());
@@ -90,8 +96,13 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
 
     @Override
     public void submit(State state, PoseStack poses, SubmitNodeCollector collector, CameraRenderState camera) {
-        if (!state.cableParts.isEmpty()) {
-            collector.submitBlockModel(poses, Sheets.cutoutBlockItemSheet(), state.cableParts, BlockModelRenderState.EMPTY_TINTS,
+        if (state.casing != null) {
+            collector.submitBlockModel(poses, Sheets.cutoutBlockItemSheet(), List.of(state.casing), BlockModelRenderState.EMPTY_TINTS,
+                    state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+        }
+        // The block shader skips the side shading, so the glow looks the same as on a cable without panels.
+        if (state.glow != null) {
+            collector.submitBlockModel(poses, RenderTypes.solidMovingBlock(), List.of(state.glow), BlockModelRenderState.EMPTY_TINTS,
                     state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
         }
         if (state.breakProgress != null && state.breakingPort == null) {
@@ -128,11 +139,52 @@ public class DataCableRenderer implements BlockEntityRenderer<DataCableBlockEnti
         }
     }
 
+    /** Splits the cable's faces into casing and glow (the faces that light themselves). */
+    private static void splitGlow(State state) {
+        if (state.cableParts.isEmpty()) return;
+        var casing = new ArrayList<BakedQuad>();
+        var glow = new ArrayList<BakedQuad>();
+        for (var part : state.cableParts) {
+            for (Direction side : Direction.values()) {
+                for (var quad : part.getQuads(side)) (quad.materialInfo().lightEmission() > 0 ? glow : casing).add(quad);
+            }
+            for (var quad : part.getQuads(null)) (quad.materialInfo().lightEmission() > 0 ? glow : casing).add(quad);
+        }
+        var from = state.cableParts.getFirst();
+        if (!casing.isEmpty()) state.casing = new Quads(casing, from);
+        if (!glow.isEmpty()) state.glow = new Quads(glow, from);
+    }
+
+    private record Quads(List<BakedQuad> quads, BlockStateModelPart from) implements BlockStateModelPart {
+        @Override
+        public List<BakedQuad> getQuads(@Nullable Direction direction) {
+            return direction == null ? quads : List.of();
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public boolean useAmbientOcclusion() {
+            return from.useAmbientOcclusion();
+        }
+
+        @Override
+        public Material.Baked particleMaterial() {
+            return from.particleMaterial();
+        }
+
+        @Override
+        public int materialFlags() {
+            return from.materialFlags();
+        }
+    }
+
     public static class State extends BlockEntityRenderState {
         int ports;
         int acceptors;
         final TransferPortKind[] kinds = new TransferPortKind[6];
         List<BlockStateModelPart> cableParts = List.of();
+        @Nullable BlockStateModelPart casing;
+        @Nullable BlockStateModelPart glow;
         @Nullable Direction breakingPort;
     }
 }
