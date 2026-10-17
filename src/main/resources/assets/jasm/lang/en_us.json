@@ -652,7 +652,7 @@
   "message.jasm.terminal.no_output": "Put what the machine gives back in the column on the right",
   "message.jasm.terminal.no_machine": "None of the chosen machines is on this network",
   "screen.jasm.rack.machine_missing": "Machine missing: none of its Access Ports can be reached",
-  "screen.jasm.server.pause.machine_busy": "A machine is full or won't take these items",
+  "screen.jasm.server.pause.waiting_machine": "Waiting for machine",
   "screen.jasm.server.pause.no_machine": "A machine is missing: check its Access Port",
   "screen.jasm.server.pause.machine_unloaded": "A machine or its Access Port isn't loaded",
   "screen.jasm.server.pause.machine_side": "A machine's input side is unreachable",
