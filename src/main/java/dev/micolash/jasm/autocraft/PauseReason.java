@@ -30,7 +30,13 @@ public enum PauseReason {
 
     /** The text key shown for this reason. */
     public String key() {
+        if (this == MACHINE_BUSY) return "screen.jasm.server.pause.waiting_machine";
         return "screen.jasm.server.pause." + name().toLowerCase(Locale.ROOT);
+    }
+
+    /** A refused input is normal waiting; the player can check the machine if it takes too long. */
+    public boolean warning() {
+        return this == MACHINE_BUSY;
     }
 
     /** The number sent to screens. */

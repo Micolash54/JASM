@@ -242,7 +242,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         if (pause != PauseReason.NONE) {
             List<FormattedCharSequence> lines = font.split(Component.translatable(pause.key()), room);
             for (int i = 0; i < Math.min(2, lines.size()); i++) {
-                graphics.text(font, lines.get(i), tx, LIST_Y + i * 9, JasmGui.BAD, false);
+                graphics.text(font, lines.get(i), tx, LIST_Y + i * 9, pause.warning() ? JasmGui.WARN : JasmGui.BAD, false);
             }
         }
         // What is crafting right now, a row each: how far its step is, and how many run at once or the machine they are in.
