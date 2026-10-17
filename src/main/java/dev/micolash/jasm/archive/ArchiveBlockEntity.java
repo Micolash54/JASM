@@ -187,6 +187,16 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         return ownerId != null && ownerId.equals(player.getUUID()) && MachineAccess.canUse(this, player);
     }
 
+    /** Whether a player besides the owner is trusted on this Archive's network, so a Deck other than theirs could be linked. */
+    public boolean hasOtherPlayers() {
+        ArchiveRecord record = record();
+        if (record == null || !(level instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        return network != null && MachineAccess.hasOtherPlayers(network, record.owner());
+    }
+
     public boolean canBackup(Player player) {
         refreshDeckLink();
         ArchiveRecord record = record();

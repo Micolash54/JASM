@@ -44,6 +44,7 @@ An Archive needs power to link or recover, so give it a cable or a generator nex
 * Put a wafer in the link slot and press **Link**.
 * Shift-right-click with the linked Deck to [back up](../mechanics/backups-and-recovery.md) all its wafers in slot order.
 * To recover a lost wafer, put a blank one of the same kind in the recover slot and press **Recover**.
+* To back up another player's Deck instead of yours, see [Override Link](../mechanics/override-link.md).
 
 The blank wafer has to be the same size or bigger than the one it replaces.
 

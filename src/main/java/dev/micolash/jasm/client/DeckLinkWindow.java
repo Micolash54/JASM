@@ -42,6 +42,8 @@ final class DeckLinkWindow {
     private final LinkWindowCover cover;
     private final JasmButton close;
     private final @Nullable JasmButton reset;
+    private Component title = Component.translatable("screen.jasm.deck_link");
+    private @Nullable JasmButton help;
     private boolean open;
     private int x;
     private int y;
@@ -58,6 +60,18 @@ final class DeckLinkWindow {
         this.cover = cover;
         close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11);
         reset = resetLabel == null ? null : JasmButton.text(resetLabel, b -> onReset.run(), 0, 0, font.width(resetLabel) + 16, RESET_HEIGHT);
+    }
+
+    /** Names the window something other than "Deck Link", as the Archive does. */
+    DeckLinkWindow titled(Component title) {
+        this.title = title;
+        return this;
+    }
+
+    /** Adds a "?" key next to the close key that opens {@code page} of the guide. */
+    DeckLinkWindow withHelp(String page) {
+        help = JasmButton.text(Component.literal("?"), b -> JasmGuide.open(page), 0, 0, 11, 11);
+        return this;
     }
 
     /** "Linked:" and who to, lit up green when {@code lit}; or how to link a Deck when nobody is known. */
@@ -138,10 +152,11 @@ final class DeckLinkWindow {
         if (text.size() > 2) text = text.subList(0, 2);
         lines = Math.max(1, text.size());
         close.setPosition(x + WIDTH - 16, y + 5);
+        if (help != null) help.setPosition(x + WIDTH - 16 - 14, y + 5);
         if (reset != null) reset.setPosition(x + (WIDTH - reset.getWidth()) / 2, y + resetY());
         if (grabX >= 0 || grabbable(mouseX, mouseY)) graphics.requestCursor(CursorTypes.RESIZE_ALL);
         JasmGui.window(graphics, x, y, WIDTH, height());
-        graphics.text(font, Component.translatable("screen.jasm.deck_link"), x + 7, y + 8, JasmGui.TEXT, false);
+        graphics.text(font, title, x + 7, y + 8, JasmGui.TEXT, false);
         JasmGui.divider(graphics, x + 4, y + 21, WIDTH - 8);
         drawSlot(graphics, input, x + IN_X, mouseX, mouseY);
         drawSlot(graphics, output, x + OUT_X, mouseX, mouseY);
@@ -150,6 +165,10 @@ final class DeckLinkWindow {
             graphics.text(font, text.get(i), x + (WIDTH - font.width(text.get(i))) / 2, y + TEXT_Y + i * LINE, JasmGui.SUBTEXT, false);
         }
         close.extractRenderState(graphics, mouseX, mouseY, a);
+        if (help != null) {
+            help.extractRenderState(graphics, mouseX, mouseY, a);
+            if (help.isMouseOver(mouseX, mouseY)) graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.help"), mouseX, mouseY);
+        }
         if (reset != null) reset.extractRenderState(graphics, mouseX, mouseY, a);
     }
 
@@ -171,7 +190,10 @@ final class DeckLinkWindow {
 
     /** True when the click was the window's own; clicks on its slots are left to the screen. */
     boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (close.mouseClicked(event, doubleClick) || reset != null && reset.mouseClicked(event, doubleClick)) return true;
+        if (close.mouseClicked(event, doubleClick) || help != null && help.mouseClicked(event, doubleClick)
+                || reset != null && reset.mouseClicked(event, doubleClick)) {
+            return true;
+        }
         if (overSlot(event.x(), event.y())) return false;
         if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && grabbable(event.x(), event.y())) {
             grabX = (int) event.x() - x;
@@ -182,7 +204,7 @@ final class DeckLinkWindow {
 
     /** Any spot of the window that isn't a key or a slot picks it up. */
     private boolean grabbable(double mx, double my) {
-        return contains(mx, my) && !overSlot(mx, my) && !close.isMouseOver(mx, my) && (reset == null || !reset.isMouseOver(mx, my));
+        return contains(mx, my) && !overSlot(mx, my) && !close.isMouseOver(mx, my) && (help == null || !help.isMouseOver(mx, my)) && (reset == null || !reset.isMouseOver(mx, my));
     }
 
     /** Moves the window with the mouse while it is held, kept on screen. */

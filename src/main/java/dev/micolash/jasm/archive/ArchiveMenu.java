@@ -44,13 +44,13 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
     private static final Identifier EMPTY_BLANK = Jasm.id("container/empty_blank");
     private static final Identifier EMPTY_DECK = Jasm.id("container/empty_deck");
     public static final int RECOVERY_SLOT = 1;
-    public static final int ROW_Y = 120;
+    public static final int ROW_Y = 138;
     public static final int LINK_X = 8;
     public static final int RECOVERY_X = 118;
     public static final int DECK_IN = 2;
     public static final int DECK_OUT = 3;
     public static final int INVENTORY_X = 20;
-    public static final int INVENTORY_Y = 158;
+    public static final int INVENTORY_Y = 176;
     private static final int INVENTORY_START = 4;
     /** How often, in ticks, the server rebuilds the linked list to see whether it changed. */
     private static final int REFRESH_TICKS = 20;
@@ -171,6 +171,14 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
         return (permissions.get(0) & 8) != 0;
     }
 
+    /**
+     * Whether the Override Link window has anything to do: another player is trusted on the network, or the link is
+     * already overridden and the owner may need to reset it.
+     */
+    public boolean canOverrideLink() {
+        return (permissions.get(0) & 16) != 0 || !defaultDeck();
+    }
+
     public LinkWindowCover linkCover() {
         return linkCover;
     }
@@ -236,7 +244,8 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
             ArchiveRecord record = archive.record();
             permissions.set(0, (canBackup() ? 1 : 0) | (canManageDeck() ? 2 : 0)
                     | (record != null && (record.defaultDeck() || record.deckPlayer() != null) ? 4 : 0)
-                    | (record != null && record.defaultDeck() ? 8 : 0));
+                    | (record != null && record.defaultDeck() ? 8 : 0)
+                    | (archive.hasOtherPlayers() ? 16 : 0));
         }
         super.broadcastChanges();
         if (archive != null && player instanceof ServerPlayer serverPlayer) {
