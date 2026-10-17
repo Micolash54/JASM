@@ -127,6 +127,7 @@ final class TerminalDeckList {
         }
         List<Component> lines = new ArrayList<>(itemLines);
         lines.add(Component.translatable("screen.jasm.deck.stored", String.format("%,d", entry.count())).withStyle(ChatFormatting.GRAY));
+        ItemModName.add(lines, lines.size(), entry.key());
         lines.add(Component.translatable("screen.jasm.terminal.deck_pick").withStyle(ChatFormatting.DARK_GRAY));
         return lines;
     }

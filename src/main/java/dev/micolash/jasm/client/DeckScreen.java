@@ -1113,6 +1113,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 lines.add(Component.translatable("screen.jasm.deck.in_chests", String.format("%,d", inChests),
                         String.format("%,d", hovered.count() - inChests)).withStyle(ChatFormatting.GRAY));
             }
+            ItemModName.add(lines, lines.size(), hoveredItem);
             if (menu.view().craftable().contains(hoveredItem)) {
                 lines.add(CraftRequestWindow.hint(tab == Tab.CRAFT));
             }
