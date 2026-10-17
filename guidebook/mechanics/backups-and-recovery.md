@@ -33,6 +33,6 @@ Put a blank wafer of the same kind in the recover slot and press **Recover**. Th
 ## Who can use an Archive
 
 * A standalone Archive works for its owner with no Encoding Terminal. It links the Deck in the owner's hand on the first backup.
-* On a network, it defaults to the network owner. The owner can pick another trusted player's Deck instead.
+* On a network, it defaults to the network owner. The owner can pick another trusted player's Deck instead, with [Override Link](override-link.md).
 * Trusted players can look at the backups.
 * Replace a lost Deck for the same player and the backups stay.

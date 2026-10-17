@@ -64,7 +64,7 @@ public final class ArchiveService {
     }
 
     /** One linked wafer as the Archive screen lists it. {@code readable} is false while its record can't be read. */
-    public record Entry(long serial, String name, long used, long capacity, boolean readable, boolean fluid) {}
+    public record Entry(long serial, String name, long used, long capacity, boolean readable, boolean fluid, int types) {}
 
     /** Overall coverage of the held Deck, including backups made before this action. */
     public record Backup(Result result, int backedUp, int total) {}
@@ -132,7 +132,7 @@ public final class ArchiveService {
             Optional<WaferRecord> record = store.bySerial(serial);
             if (record.isEmpty()) {
                 if (store.isUnreadable(serial)) {
-                    entries.add(new Entry(serial, "", 0, 0, false, false));
+                    entries.add(new Entry(serial, "", 0, 0, false, false, 0));
                 } else {
                     store.state().removeLinked(archive, serial);
                 }
@@ -140,7 +140,7 @@ public final class ArchiveService {
                 store.state().removeLinked(archive, serial);
             } else {
                 WaferRecord r = record.get();
-                entries.add(new Entry(serial, r.lastKnownName(), r.used(), r.capacity(), true, r.isFluid()));
+                entries.add(new Entry(serial, r.lastKnownName(), r.used(), r.capacity(), true, r.isFluid(), r.types()));
             }
         }
         return entries;

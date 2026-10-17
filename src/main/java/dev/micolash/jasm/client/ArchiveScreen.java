@@ -6,8 +6,14 @@ import dev.micolash.jasm.archive.ArchivePayloads;
 import dev.micolash.jasm.archive.ArchiveService;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.network.LinkWindowCover;
+import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.wafer.WaferKind;
 import dev.micolash.jasm.wafer.WaferNumbers;
+import dev.micolash.jasm.wafer.WaferTier;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -18,14 +24,17 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The Archive screen: the linked wafers (pick one to unlink or recover it) above the link and recovery slots. A key on
- * the right opens the Deck Link window. Who else may use it is set at an Encoding Terminal on its network.
+ * the right opens the Override Link window, where the owner picks another player's Deck for this Archive alone. Who
+ * else may use the network is set at an Encoding Terminal.
  */
 public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     private JasmFrame frame;
@@ -41,8 +50,13 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     private static final int LIST_WIDTH = WIDTH - 16 - SCROLL_WIDTH - 2;
     /** Centred between the list and the panel's right edge. */
     private static final int SCROLL_X = LIST_X + LIST_WIDTH + 5;
-    private static final int ROW_HEIGHT = 12;
-    private static final int ROWS = 6;
+    /** Two lines beside a 16 px wafer: its name, then how full it is. */
+    private static final int ROW_HEIGHT = 18;
+    private static final int ROWS = 5;
+    private static final int ICON_X = 2;
+    private static final int TEXT_X = ICON_X + 16 + 4;
+    private static final int OVERRIDE_TIP_WIDTH = 170;
+    private static final String OVERRIDE_PAGE = "mechanics/override-link.md";
     private static final int ENERGY_WIDTH = 60;
     private static final int FEEDBACK_Y = LIST_Y + ROWS * ROW_HEIGHT + 4;
 
@@ -54,6 +68,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     private Button recover;
     private JasmButton linkKey;
     private @Nullable DeckLinkWindow linkWindow;
+    private final Map<WaferTier, ItemStack> waferIcons = new EnumMap<>(WaferTier.class);
 
     public ArchiveScreen(ArchiveMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, HEIGHT);
@@ -82,14 +97,15 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         recover = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.recover"),
                 b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected)),
                 x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
-        Component linkLabel = Component.translatable("screen.jasm.deck_link");
+        Component linkLabel = Component.translatable("screen.jasm.archive.override_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK_ICON, linkLabel, b -> toggleLink(), x + KEY_X, y + JasmGui.sideKeyY(0),
                 JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         linkKey.setTooltip(Tooltip.create(linkLabel));
         if (linkWindow == null) {
             linkWindow = new DeckLinkWindow(font, menu.getSlot(ArchiveMenu.DECK_IN), menu.getSlot(ArchiveMenu.DECK_OUT), menu.linkCover(),
                     Component.translatable("screen.jasm.archive.reset_deck"),
-                    () -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.RESET_DECK)));
+                    () -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.RESET_DECK)))
+                    .titled(linkLabel).withHelp(OVERRIDE_PAGE);
         }
         updateWidgets();
     }
@@ -117,6 +133,11 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         unlink.active = menu.canBackup() && selected >= 0;
         recover.active = menu.canBackup() && selected >= 0 && !menu.waferSlots().getItem(ArchiveMenu.RECOVERY_SLOT).isEmpty();
         linkWindow.setResetActive(menu.canManageDeck() && !menu.defaultDeck());
+        // With nobody else on the network there is no other Deck to link, so the window stays shut.
+        linkKey.active = menu.canOverrideLink();
+        if (!linkKey.active && linkWindow.isOpen()) {
+            linkWindow.close();
+        }
         linkKey.setLatched(linkWindow.isOpen());
     }
 
@@ -190,19 +211,22 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
             ArchiveService.Entry entry = entries.get(scroll + row);
             int ry = y + row * ROW_HEIGHT;
             if (entry.serial() == selected) {
-                graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.SELECTED);
+                graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT - 1, JasmGui.SELECTED);
             } else if (scroll + row == hovered) {
-                graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT, JasmGui.HOVER);
+                graphics.fill(x, ry, x + LIST_WIDTH, ry + ROW_HEIGHT - 1, JasmGui.HOVER);
             }
-            String amount = !entry.readable() ? ""
-                    : entry.fluid() ? GridEntries.abbreviateBuckets(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) + " B"
-                    : GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity());
-            int amountWidth = font.width(amount);
-            String number = WaferNumbers.visibleTo(minecraft.player) ? "#" + entry.serial() + " " : "";
-            String label = number + (entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString());
-            graphics.text(font, font.plainSubstrByWidth(label, LIST_WIDTH - amountWidth - 10), x + 3, ry + 2,
-                    entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
-            graphics.text(font, amount, x + LIST_WIDTH - 3 - amountWidth, ry + 2, JasmGui.TEXT, false);
+            graphics.item(waferIcon(entry), x + ICON_X, ry + 1);
+            int textWidth = LIST_WIDTH - TEXT_X - 3;
+            String label = entry.readable() ? entry.name() : Component.translatable("screen.jasm.archive.unreadable").getString();
+            graphics.text(font, font.plainSubstrByWidth(label, textWidth), x + TEXT_X, ry + 1, entry.readable() ? JasmGui.TEXT : JasmGui.BAD, false);
+            if (entry.readable()) {
+                String amount = entry.fluid() ? GridEntries.abbreviateBuckets(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity()) + " B"
+                        : GridEntries.abbreviate(entry.used()) + " / " + GridEntries.abbreviate(entry.capacity());
+                JasmGui.smallText(graphics, font, Component.literal(amount), x + TEXT_X, ry + 10, JasmGui.SUBTEXT);
+            }
+        }
+        if (hovered >= 0) {
+            rowTooltip(graphics, entries.get(hovered), LIST_WIDTH - TEXT_X - 3, mouseX, mouseY);
         }
         // The last message lies over the bottom of the list for a few seconds.
         Component notice = menu.notices().current(minecraft.level.getGameTime());
@@ -223,10 +247,37 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
                     ? "screen.jasm.archive.link_hint"
                     : "screen.jasm.archive.recover_hint"), mouseX, mouseY);
         }
+        overrideTooltip(graphics, mouseX, mouseY);
         if (linkWindow.isOpen()) {
             graphics.nextStratum();
             linkWindow.draw(graphics, realMouseX, realMouseY, a,
                     DeckLinkWindow.linkedTo(menu.view().linkedPlayer(), menu.getSlot(ArchiveMenu.DECK_OUT).hasItem()));
+        }
+    }
+
+    /** The wafer a row stands for, drawn at full size; a size no tier matches shows the smallest of its kind. */
+    private ItemStack waferIcon(ArchiveService.Entry entry) {
+        WaferKind kind = entry.fluid() ? WaferKind.FLUID : WaferKind.ITEM;
+        WaferTier tier = WaferTier.byLimits(kind, entry.capacity(), entry.types()).orElse(entry.fluid() ? WaferTier.FLUID_BASIC : WaferTier.BASIC);
+        return waferIcons.computeIfAbsent(tier, t -> new ItemStack(JasmItems.wafer(t)));
+    }
+
+    /** The full name when a row cuts it short, and for admins the wafer's number, which the rows no longer show. */
+    private void rowTooltip(GuiGraphicsExtractor graphics, ArchiveService.Entry entry, int nameWidth, int mouseX, int mouseY) {
+        boolean number = WaferNumbers.visibleTo(minecraft.player);
+        boolean cut = entry.readable() && font.width(entry.name()) > nameWidth;
+        if (!number && !cut) return;
+        List<FormattedCharSequence> lines = new ArrayList<>();
+        if (cut) lines.add(Component.literal(entry.name()).getVisualOrderText());
+        if (number) lines.add(Component.translatable("screen.jasm.archive.wafer_number", entry.serial()).withStyle(ChatFormatting.GRAY).getVisualOrderText());
+        graphics.setTooltipForNextFrame(font, lines, mouseX, mouseY);
+    }
+
+    /** Why the Override Link key is dimmed, over it. */
+    private void overrideTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (!linkKey.active && mouseX >= linkKey.getX() && mouseX < linkKey.getX() + linkKey.getWidth()
+                && mouseY >= linkKey.getY() && mouseY < linkKey.getY() + linkKey.getHeight()) {
+            graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.archive.override_alone"), OVERRIDE_TIP_WIDTH), mouseX, mouseY);
         }
     }
 

@@ -62,7 +62,7 @@ A craft started from your Deck takes its ingredients from your own wafers, and t
 <br />
 ## Archives
 
-On a network, an [Archive](../items/archives.md) backs up the owner's Deck. The owner can link a trusted player's paired Deck instead. Only that player can then back up and recover; the other trusted players can look. Picking another player clears the backups. See [backups and recovery](backups-and-recovery.md).
+On a network, an [Archive](../items/archives.md) backs up the owner's Deck. The owner can link a trusted player's paired Deck instead. Only that player can then back up and recover; the other trusted players can look. Picking another player clears the backups. See [Override Link](override-link.md).
 
 <br />
 <br />

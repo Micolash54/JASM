@@ -47,6 +47,7 @@ public final class ArchivePayloads {
             ByteBufCodecs.VAR_LONG, ArchiveService.Entry::capacity,
             ByteBufCodecs.BOOL, ArchiveService.Entry::readable,
             ByteBufCodecs.BOOL, ArchiveService.Entry::fluid,
+            ByteBufCodecs.VAR_INT, ArchiveService.Entry::types,
             ArchiveService.Entry::new);
 
     /** Everything the Archive screen shows. Sent when it opens, after every action, and whenever it changes. */
