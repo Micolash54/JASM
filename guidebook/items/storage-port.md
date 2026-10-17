@@ -43,5 +43,5 @@ Anyone allowed on the network can use it.
 
 A Storage Port is an Access Port with a chest, a Link Chip and purple dye.
 
-<RecipeFor id="storage_port" />
-<RecipeFor id="full_storage_port" />
+<Recipe id="storage_port" />
+<Recipe id="storage_port_from_full" />

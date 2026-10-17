@@ -3,15 +3,15 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jasm:full_storage_port"
+        "recipe": "jasm:input_port_to_full"
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_storage_port": {
+    "has_input_port": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:storage_port"
+            "items": "jasm:input_port"
           }
         ]
       },
@@ -21,12 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_storage_port"
+      "has_input_port"
     ]
   ],
   "rewards": {
     "recipes": [
-      "jasm:full_storage_port"
+      "jasm:input_port_to_full"
     ]
   }
 }

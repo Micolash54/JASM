@@ -94,15 +94,15 @@ An Input or Output Port is an Access Port with a hopper or dropper, a Link Chip 
 
 <Column>
   <Row>
-    <RecipeFor id="input_port" />
-    <RecipeFor id="output_port" />
+    <Recipe id="input_port" />
+    <Recipe id="output_port" />
   </Row>
   <Row>
-    <RecipeFor id="input_output_port" />
+    <Recipe id="input_output_port" />
   </Row>
   <Row>
-    <RecipeFor id="full_input_port" />
-    <RecipeFor id="full_output_port" />
-    <RecipeFor id="full_input_output_port" />
+    <Recipe id="input_port_from_full" />
+    <Recipe id="output_port_from_full" />
+    <Recipe id="input_output_port_from_full" />
   </Row>
 </Column>

@@ -3,15 +3,15 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jasm:full_input_output_port"
+        "recipe": "jasm:output_port_to_full"
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_input_output_port": {
+    "has_output_port": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:input_output_port"
+            "items": "jasm:output_port"
           }
         ]
       },
@@ -21,12 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_input_output_port"
+      "has_output_port"
     ]
   ],
   "rewards": {
     "recipes": [
-      "jasm:full_input_output_port"
+      "jasm:output_port_to_full"
     ]
   }
 }

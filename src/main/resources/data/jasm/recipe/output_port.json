@@ -7,6 +7,6 @@
     "minecraft:red_dye"
   ],
   "result": {
-    "id": "jasm:output_port"
+    "id": "jasm:full_output_port"
   }
 }
