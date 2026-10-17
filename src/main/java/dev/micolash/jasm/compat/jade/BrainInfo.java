@@ -80,14 +80,15 @@ public class BrainInfo implements StreamServerDataProvider<BlockAccessor, BrainI
         @Override
         public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
             decodeFromData(accessor).ifPresent(data -> {
-                if (data.alone()) {
-                    tooltip.add(Component.translatable("jade.jasm.chamber.alone"));
-                    return;
-                }
                 BrainStatus status = BrainStatus.values()[Math.clamp(data.status(), 0, BrainStatus.values().length - 1)];
-                tooltip.add(Component.translatable("screen.jasm.brain.machines", data.count(), BrainBalance.shown(data.limit())));
-                tooltip.add(NetworkBrainMenu.floorsText(data.floors()));
-                tooltip.add(Component.translatable("screen.jasm.brain.status." + status.name().toLowerCase(Locale.ROOT)));
+                for (BrainLines.Line line : BrainLines.shown(data.alone(), status)) {
+                    tooltip.add(switch (line) {
+                        case ALONE -> Component.translatable("jade.jasm.chamber.alone");
+                        case MACHINES -> Component.translatable("screen.jasm.brain.machines", data.count(), BrainBalance.shown(data.limit()));
+                        case FLOORS -> NetworkBrainMenu.floorsText(data.floors());
+                        case STATUS -> Component.translatable("screen.jasm.brain.status." + status.name().toLowerCase(Locale.ROOT));
+                    });
+                }
             });
         }
     }
