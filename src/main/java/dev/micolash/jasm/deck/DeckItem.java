@@ -86,6 +86,11 @@ public class DeckItem extends Item implements WaferHolderItem {
         return deck.getItem() instanceof DeckItem item ? Math.min(energy, item.tier().battery()) : energy;
     }
 
+    /** What the Deck's upgrade slot takes. */
+    public static boolean takesUpgrade(ItemStack stack) {
+        return stack.is(JasmItems.DIMENSION_UPGRADE.get());
+    }
+
     public static boolean hasDimensionUpgrade(ItemStack deck) {
         ItemContainerContents contents = deck.getOrDefault(JasmComponents.DECK_UPGRADE.get(), ItemContainerContents.EMPTY);
         return contents.getSlots() > 0 && contents.getStackInSlot(0).is(JasmItems.DIMENSION_UPGRADE.get());

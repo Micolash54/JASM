@@ -589,6 +589,8 @@
   "jei.jasm.info.stock_upgrade.1": "Allows setting an Output Port's targeted stock.",
   "jei.jasm.info.power_upgrade.1": "The port supplies FE from the network to the machine it faces.",
   "jei.jasm.info.dimension_upgrade.1": "Without it, a Deck and everything linked to it work only in the Overworld.",
+  "tooltip.jasm.upgrade.shift": "%s to show compatible machines",
+  "tooltip.jasm.upgrade.decks": "Decks",
   "screen.jasm.transfer.input_filters": "Input Filters",
   "screen.jasm.transfer.output_filters": "Output Filters",
   "screen.jasm.transfer.rate": "%s items/op · 2 ops/sec",

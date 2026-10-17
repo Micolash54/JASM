@@ -6,7 +6,6 @@ import dev.micolash.jasm.delivery.DeliveryState;
 import dev.micolash.jasm.delivery.DeliveryView;
 import dev.micolash.jasm.delivery.InboxContainer;
 import dev.micolash.jasm.delivery.SendContainer;
-import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
@@ -161,7 +160,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         upgradeSlot = slots.size();
         addSlot(new CoveredSlot(upgrade, 0, mainX() - 21, SIDE_TOP + 15 + sideRows * 18) {
             @Override
-            public boolean mayPlace(ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
+            public boolean mayPlace(ItemStack stack) { return DeckItem.takesUpgrade(stack); }
             @Override
             public int getMaxStackSize() { return 1; }
             @Override
@@ -444,7 +443,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             slot.setChanged();
             return ItemStack.EMPTY;
         }
-        if (stack.is(JasmItems.DIMENSION_UPGRADE.get()) && index >= waferSlots && index < waferSlots + 36) {
+        if (DeckItem.takesUpgrade(stack) && index >= waferSlots && index < waferSlots + 36) {
             moveItemStackTo(stack, upgradeSlot, upgradeSlot + 1, false);
             slot.setChanged();
             return ItemStack.EMPTY;

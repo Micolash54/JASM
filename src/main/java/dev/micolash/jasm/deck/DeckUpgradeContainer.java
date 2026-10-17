@@ -1,7 +1,6 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.registry.JasmComponents;
-import dev.micolash.jasm.registry.JasmItems;
 import java.util.List;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
@@ -35,7 +34,7 @@ final class DeckUpgradeContainer extends SimpleContainer {
     public int getMaxStackSize() { return 1; }
 
     @Override
-    public boolean canPlaceItem(int slot, ItemStack stack) { return stack.is(JasmItems.DIMENSION_UPGRADE.get()); }
+    public boolean canPlaceItem(int slot, ItemStack stack) { return DeckItem.takesUpgrade(stack); }
 
     @Override
     public void setChanged() {
