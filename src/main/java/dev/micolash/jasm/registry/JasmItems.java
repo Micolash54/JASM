@@ -69,6 +69,7 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> FULL_OUTPUT_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.FULL_OUTPUT_PORT);
     public static final DeferredItem<BlockItem> FULL_INPUT_OUTPUT_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.FULL_INPUT_OUTPUT_PORT);
     public static final DeferredItem<BlockItem> FULL_STORAGE_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.FULL_STORAGE_PORT);
+    public static final DeferredItem<Item> BLANK_UPGRADE = ITEMS.registerSimpleItem("blank_upgrade");
     public static final DeferredItem<SpeedUpgradeItem> SPEED_UPGRADE = ITEMS.registerItem("speed_upgrade", SpeedUpgradeItem::new);
     public static final DeferredItem<RedstoneUpgradeItem> REDSTONE_UPGRADE = ITEMS.registerItem("redstone_upgrade", RedstoneUpgradeItem::new);
     public static final DeferredItem<Item> CRAFTING_UPGRADE = ITEMS.registerSimpleItem("crafting_upgrade");

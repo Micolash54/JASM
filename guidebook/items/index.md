@@ -65,6 +65,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Access Port](access-port.md): talks to other machines.
 * [Item ports](item-ports.md): move items and fluids in and out of a Deck.
 * [Storage Port](storage-port.md): lends a chest or tank to the network.
+* [Blank Upgrade](blank-upgrade.md): the base for other upgrades.
 * [Speed Upgrade](speed-upgrade.md), [Redstone Upgrade](redstone-upgrade.md) and [Power Upgrade](power-upgrade.md).
 * [Crafting Upgrade](crafting-upgrade.md) and [Stock Upgrade](stock-upgrade.md): for Output Ports.
 * [Deployment Bay](deployment-bay.md): places blocks and fluids.
