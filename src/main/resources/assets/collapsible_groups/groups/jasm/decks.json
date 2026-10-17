@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "jasm:decks",
+  "name": {
+    "translate": "collapsible_groups.group.jasm.decks",
+    "fallback": "JASM: Decks"
+  },
+  "enabled": true,
+  "filter": {
+    "any": [
+      {
+        "type": "item",
+        "id": "jasm:starter_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:basic_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:advanced_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:elite_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:ultimate_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:advanced_crafting_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:elite_crafting_deck"
+      },
+      {
+        "type": "item",
+        "id": "jasm:ultimate_crafting_deck"
+      }
+    ]
+  }
+}

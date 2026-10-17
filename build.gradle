@@ -62,6 +62,11 @@ repositories {
         url = "https://maven.theillusivec4.top/"
         content { includeGroup "top.theillusivec4.curios" }
     }
+    // Collapsible Groups (CurseForge only)
+    maven {
+        url = "https://cursemaven.com"
+        content { includeGroup "curse.maven" }
+    }
     // GuideME and its libraries
     mavenCentral()
 }
@@ -204,6 +209,12 @@ dependencies {
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
     if (providers.gradleProperty('jasmRuntimeCurios').map { it.toBoolean() }.getOrElse(true)) {
         localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+    }
+
+    // Collapsible Groups: JASM only ships group files for it, so nothing is compiled against it.
+    // -PjasmRuntimeCollapsibleGroups=false starts the dev game without it.
+    if (providers.gradleProperty('jasmRuntimeCollapsibleGroups').map { it.toBoolean() }.getOrElse(true)) {
+        localRuntime "curse.maven:collapsible-groups-1495382:${collapsible_groups_file}"
     }
 
     // For more info:

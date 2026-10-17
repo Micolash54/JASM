@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "jasm:item_wafers",
+  "name": {
+    "translate": "collapsible_groups.group.jasm.item_wafers",
+    "fallback": "JASM: Item Wafers"
+  },
+  "enabled": true,
+  "filter": {
+    "any": [
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_basic"
+      },
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_1k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_4k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_16k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_64k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_256k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:capacity_wafer_1m"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_4"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_8"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_16"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_32"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_64"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_128"
+      },
+      {
+        "type": "item",
+        "id": "jasm:type_wafer_256"
+      }
+    ]
+  }
+}

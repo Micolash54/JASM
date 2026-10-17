@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "id": "jasm:fluid_wafers",
+  "name": {
+    "translate": "collapsible_groups.group.jasm.fluid_wafers",
+    "fallback": "JASM: Fluid Wafers"
+  },
+  "enabled": true,
+  "filter": {
+    "any": [
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_basic"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_1k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_4k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_16k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_64k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_256k"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_capacity_wafer_1m"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_2"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_4"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_8"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_16"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_32"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_64"
+      },
+      {
+        "type": "item",
+        "id": "jasm:fluid_type_wafer_128"
+      }
+    ]
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "jasm:bitlings",
+  "name": {
+    "translate": "collapsible_groups.group.jasm.bitlings",
+    "fallback": "JASM: Bitlings"
+  },
+  "enabled": true,
+  "filter": {
+    "any": [
+      {
+        "type": "item",
+        "id": "jasm:basic_bitling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:link_bitling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:link_nibbling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:link_byteling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:logic_bitling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:logic_nibbling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:logic_byteling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:memory_bitling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:memory_nibbling"
+      },
+      {
+        "type": "item",
+        "id": "jasm:memory_byteling"
+      }
+    ]
+  }
+}

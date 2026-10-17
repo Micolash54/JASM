@@ -1,0 +1,16 @@
+{
+  "loaders": [
+    "neoforge"
+  ],
+  "category": {
+    "translate": "collapsible_groups.category.jasm",
+    "fallback": "JASM"
+  },
+  "requirement": {
+    "any": [
+      {
+        "mod": "jasm"
+      }
+    ]
+  }
+}

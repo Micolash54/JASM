@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "jasm:ports",
+  "name": {
+    "translate": "collapsible_groups.group.jasm.ports",
+    "fallback": "JASM: Ports"
+  },
+  "enabled": true,
+  "filter": {
+    "any": [
+      {
+        "type": "item",
+        "id": "jasm:access_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:thin_access_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:input_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:output_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:input_output_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:storage_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:full_input_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:full_output_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:full_input_output_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:full_storage_port"
+      },
+      {
+        "type": "item",
+        "id": "jasm:power_acceptor"
+      },
+      {
+        "type": "item",
+        "id": "jasm:thin_power_acceptor"
+      }
+    ]
+  }
+}
