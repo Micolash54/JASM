@@ -12,7 +12,10 @@ item_ids:
 
 <ItemImage id="blank_upgrade" scale="4" />
 
-An upgrade with nothing on it yet. It goes into the recipes of the other upgrades.
+An upgrade with nothing on it yet. It is the base of the other upgrades.
+
+* The [Speed](speed-upgrade.md), [Redstone](redstone-upgrade.md), [Power](power-upgrade.md), [Crafting](crafting-upgrade.md) and [Stock](stock-upgrade.md) Upgrades are each crafted from one.
+* The [Dimension Upgrade](dimension-upgrade.md) is crafted from a Redstone Upgrade.
 
 <br />
 <br />
