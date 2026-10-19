@@ -2,7 +2,7 @@
   "lines": {
     "26.1": {
       "mc": "26.1.2",
-      "jasm": "0.6.6",
+      "jasm": "0.6.7",
       "pages": [
         "getting-started.html",
         "index.html",
@@ -14,6 +14,7 @@
         "items/bitling-station.html",
         "items/bitlings.html",
         "items/blank-chip.html",
+        "items/blank-upgrade.html",
         "items/capacity-wafers.html",
         "items/chip-workshop.html",
         "items/combustion-generators.html",
@@ -65,6 +66,7 @@
         "mechanics/index.html",
         "mechanics/making-chips.html",
         "mechanics/networks.html",
+        "mechanics/override-link.html",
         "mechanics/power.html",
         "mechanics/sending-items.html",
         "mechanics/settings.html",
