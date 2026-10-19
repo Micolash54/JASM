@@ -2,13 +2,13 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "GBG",
-    "BCB",
+    "BLB",
     "GBG"
   ],
   "key": {
     "G": "minecraft:gold_ingot",
     "B": "minecraft:barrel",
-    "C": "jasm:link_chip"
+    "L": "jasm:blank_upgrade"
   },
   "result": {
     "id": "jasm:stock_upgrade"

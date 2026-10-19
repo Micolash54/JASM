@@ -1,14 +1,15 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "GIG",
+    "III",
     "ICI",
-    "GIG"
+    "GOG"
   ],
   "key": {
-    "G": "minecraft:gold_ingot",
     "I": "minecraft:iron_ingot",
-    "C": "jasm:link_chip"
+    "C": "jasm:link_chip",
+    "G": "minecraft:gold_ingot",
+    "O": "minecraft:comparator"
   },
   "result": {
     "id": "jasm:blank_upgrade"

@@ -2,13 +2,13 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "GSG",
-    "SCS",
+    "SBS",
     "GSG"
   ],
   "key": {
     "G": "minecraft:gold_ingot",
     "S": "minecraft:sugar",
-    "C": "jasm:link_chip"
+    "B": "jasm:blank_upgrade"
   },
   "result": {
     "id": "jasm:speed_upgrade"

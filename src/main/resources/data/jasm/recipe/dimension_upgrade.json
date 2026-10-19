@@ -1,15 +1,14 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "MEL",
-    "EAE",
-    "LEM"
+    "ESE",
+    "SRS",
+    "ESE"
   ],
   "key": {
-    "M": "jasm:advanced_memory_chip",
-    "L": "jasm:advanced_logic_chip",
-    "A": "jasm:advanced_link_chip",
-    "E": "minecraft:ender_eye"
+    "E": "minecraft:ender_eye",
+    "S": "jasm:synapse_core",
+    "R": "jasm:redstone_upgrade"
   },
   "result": {
     "id": "jasm:dimension_upgrade"
