@@ -2,7 +2,7 @@
   "lines": {
     "26.1": {
       "mc": "26.1.2",
-      "jasm": "0.6.7",
+      "jasm": "0.6.8",
       "pages": [
         "getting-started.html",
         "index.html",
