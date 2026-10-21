@@ -38,9 +38,13 @@ import org.jspecify.annotations.Nullable;
 
 /** Ordered item filters and the ghost input for adding one, shared by wafers and inventory ports. */
 class ItemFilterEditor {
-    static final int WIDTH = 332;
+    static final int WIDTH = 290;
     /** The width the controls were first laid out for; the port editors measure how much narrower they are from it. */
     private static final int BASE_WIDTH = 300;
+    /** How far a movable window's drop shadow reaches past its right and bottom edges. */
+    private static final int SHADOW = 3;
+    /** The room a window keeps to the screen's right and bottom edges when it opens, shadow included. */
+    private static final int OPEN_SPARE = 4;
     private final int height;
     private final int listY;
     private final int editorWidth;
@@ -141,12 +145,13 @@ class ItemFilterEditor {
         confirm = place(JasmButton.icon(() -> CHECK, label("add"), b -> add(), 0, 0, 17, 17), 274 - shrink, slotY - 1);
         confirm.setTooltip(Tooltip.create(label("add")));
         // The wafer window has room for a Void key between the On key and the arrows.
-        int controlsX = compact ? 10 : 159;
+        int controlsX = compact ? 10 : editorWidth - 173;
         // Allow and On use the smaller text, so a row's keys and its Stock field fit on one line.
         int toggleWidth = Math.max(Math.max(JasmGui.smallWidth(font, label("allow")), JasmGui.smallWidth(font, label("deny"))),
                 Math.max(JasmGui.smallWidth(font, label("on")), JasmGui.smallWidth(font, label("off")))) + 10;
         int actionWidth = toggleWidth;
         int enabledWidth = toggleWidth;
+        int voidWidth = Math.max(toggleWidth, JasmGui.smallWidth(font, label("void")) + 10);
         int arrowsX = compact ? editorWidth - 60 : controlsX + 102;
         stockX = arrowsX - 6 - STOCK_WIDTH;
         for (int row = 0; row < rows; row++) {
@@ -157,8 +162,8 @@ class ItemFilterEditor {
             rowButtons[row][1] = place(JasmButton.smallText(Component.empty(), b -> change(visible, 1), 0, 0, enabledWidth, SMALL_KEY),
                     controlsX + actionWidth + 2, py + SMALL_DROP);
             if (!compact) {
-                rowButtons[row][5] = place(JasmButton.text(Component.empty(), b -> change(visible, 5), 0, 0, 30, 17),
-                        controlsX + actionWidth + 2 + enabledWidth + 2, py);
+                rowButtons[row][5] = place(JasmButton.smallText(Component.empty(), b -> change(visible, 5), 0, 0, voidWidth, SMALL_KEY),
+                        controlsX + actionWidth + 2 + enabledWidth + 2, py + SMALL_DROP);
                 rowButtons[row][5].setTooltip(Tooltip.create(label("void_tip")));
             }
             rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 17), arrowsX, py);
@@ -224,8 +229,14 @@ class ItemFilterEditor {
     }
     Rect2i slotArea() { return new Rect2i(x + 8, y + slotY, 16, 16); }
     ItemStack ghost() { return tagChoices.isEmpty() && !text.getValue().isEmpty() ? icon(candidate()) : ghost; }
-    void fit(int width, int screenHeight) {
-        if (movable) { x = Math.clamp(x, 0, Math.max(0, width - WIDTH)); y = Math.clamp(y, 0, Math.max(0, screenHeight - height)); }
+    /** Keeps the whole window on screen, its shadow too. */
+    void fit(int width, int screenHeight) { fit(width, screenHeight, 0); }
+
+    private void fit(int width, int screenHeight, int spare) {
+        if (movable) {
+            x = Math.clamp(x, 0, Math.max(0, width - WIDTH - SHADOW - spare));
+            y = Math.clamp(y, 0, Math.max(0, screenHeight - height - SHADOW - spare));
+        }
         layout();
     }
 
@@ -249,7 +260,7 @@ class ItemFilterEditor {
         addStock.setValue("");
         x = left;
         y = top;
-        fit(width, screenHeight);
+        fit(width, screenHeight, OPEN_SPARE);
         update();
     }
 

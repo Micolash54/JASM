@@ -33,7 +33,7 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     public static final int UPGRADE_X = WIDTH + 2;
     public static final int UPGRADE_Y = 29;
     public static final int INVENTORY_X = (WIDTH - 162) / 2;
-    public static final int FILTER_Y = 76;
+    public static final int FILTER_Y = 74;
     // a short game window gets fewer
     public static final int FILTER_ROWS = 2;
     public static final int BUTTON_REDSTONE = 0;
@@ -81,7 +81,7 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
 
     /** Where the player's inventory starts: under a filter of {@code rows} rows, or under its heading while it is folded away. */
     public static int inventoryY(boolean collapsed, int rows) {
-        return collapsed ? FILTER_Y + 29 : FILTER_Y + TransferPortMenu.filterHeight(rows) + 15;
+        return collapsed ? FILTER_Y + 29 : FILTER_Y + TransferPortMenu.filterHeight(rows) + 13;
     }
 
     /** Client side. */
