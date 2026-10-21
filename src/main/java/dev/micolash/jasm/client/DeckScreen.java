@@ -64,6 +64,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private static final int SMALL_ROWS = 6;
     /** Fewest grid rows, for a game window too short to hold the usual six. */
     private static final int LEAST_ROWS = 3;
+    /** From this GUI scale up, a Crafting Deck may drop to two rows: its taller box would overflow a small window at three. */
+    private static final int FEWER_ROWS_FROM_SCALE = 4;
+    private static final int CRAFTING_LEAST_ROWS = 2;
     /** Room kept free above and below the screen at the largest size. */
     private static final int MARGIN = 16;
     /** The Rules tab lists taller rows, two lines of text each: five fit where the grid shows six. */
@@ -176,7 +179,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
      */
     private int rowsFor(JasmClientConfig.DeckSize size) {
         int fixed = menu.screenHeight() - menu.rows() * 18;
-        int small = Math.clamp((height - fixed) / 18, LEAST_ROWS, SMALL_ROWS);
+        int least = menu.isCrafting() && minecraft.getWindow().getGuiScale() >= FEWER_ROWS_FROM_SCALE ? CRAFTING_LEAST_ROWS : LEAST_ROWS;
+        int small = Math.clamp((height - fixed) / 18, least, SMALL_ROWS);
         int most = Math.max(small, (height - 2 * MARGIN - fixed) / 18);
         return small + (most - small) * size.ordinal() / (JasmClientConfig.DeckSize.values().length - 1);
     }
