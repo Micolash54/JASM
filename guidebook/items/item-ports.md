@@ -36,7 +36,7 @@ Ports move items and fluids between the network and the blocks next to them.
 | --- | --- |
 | Input Port | pulls into a linked [Deck](decks.md) |
 | Output Port | pushes out of the Deck |
-| Input Output Port | both, with output first |
+| Two-Way Port | both, with output first |
 
 <br />
 <br />
@@ -46,13 +46,13 @@ Ports move items and fluids between the network and the blocks next to them.
   <IsometricCamera yaw="20" pitch="30" />
   <Block id="jasm:full_input_port" x="0" y="0" z="0" p:east="machine" p:west="link" />
   <Block id="minecraft:chest" x="1" y="0" z="0" />
-  <Block id="jasm:data_cable" x="-1" y="0" z="0" />
+  <Block id="jasm:data_cable" x="-1" y="0" z="0" p:east="true" />
 </GameScene>
 
 * **Thin:** sits on a [Data Cable](data-cables.md) face and works on the block in front of it.
 * **Block:** joins the network like a machine and works on every block it touches, with one set of filters and one speed shared between them.
 * On a JASM machine, a block port only moves what that face's I/O setting allows.
-* A block Input or Input Output Port also takes items pushed into it by hoppers, pipes or machines.
+* A block Input or Two-Way Port also takes items pushed into it by hoppers, pipes or machines.
 
 Convert one shape into the other in a crafting grid.
 
@@ -84,7 +84,7 @@ Fluids share that speed with items.
 
 * A [Power Upgrade](power-upgrade.md) makes the port supply FE to the machine it faces.
 * A [Redstone Upgrade](redstone-upgrade.md) makes it follow a redstone signal.
-* On Output and Input Output Ports, a [Crafting Upgrade](crafting-upgrade.md) crafts what the port sends and a [Stock Upgrade](stock-upgrade.md) keeps a block stocked to a number.
+* On Output and Two-Way Ports, a [Crafting Upgrade](crafting-upgrade.md) crafts what the port sends and a [Stock Upgrade](stock-upgrade.md) keeps a block stocked to a number.
 
 <br />
 <br />
