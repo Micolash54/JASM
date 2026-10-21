@@ -79,14 +79,28 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
         return (world, pos, shown, entity) -> DataCableBlockEntity.serverTick(world, pos, shown, (DataCableBlockEntity) entity);
     }
 
+    private static final VoxelShape[] PORT_SHAPES = new VoxelShape[6];
+    static {
+        for (Direction side : Direction.values()) {
+            // The plate, the disc and the neck, drawn for the north side.
+            PORT_SHAPES[side.ordinal()] = Shapes.or(facing(side, 2, 5, 0, 14, 11, 1), facing(side, 3, 3, 0, 13, 13, 1),
+                    facing(side, 5, 2, 0, 11, 14, 1), facing(side, 3, 3, 1, 13, 13, 3), facing(side, 5, 5, 3, 11, 11, 5));
+        }
+    }
+
     public static VoxelShape portShape(Direction side) {
+        return PORT_SHAPES[side.ordinal()];
+    }
+
+    /** A box drawn for the north side (low z), turned to face {@code side}. */
+    private static VoxelShape facing(Direction side, double x1, double y1, double z1, double x2, double y2, double z2) {
         return switch (side) {
-            case NORTH -> Shapes.or(Block.box(4, 4, 0, 12, 12, 2), Block.box(5, 5, 2, 11, 11, 5));
-            case SOUTH -> Shapes.or(Block.box(4, 4, 14, 12, 12, 16), Block.box(5, 5, 11, 11, 11, 14));
-            case WEST -> Shapes.or(Block.box(0, 4, 4, 2, 12, 12), Block.box(2, 5, 5, 5, 11, 11));
-            case EAST -> Shapes.or(Block.box(14, 4, 4, 16, 12, 12), Block.box(11, 5, 5, 14, 11, 11));
-            case DOWN -> Shapes.or(Block.box(4, 0, 4, 12, 2, 12), Block.box(5, 2, 5, 11, 5, 11));
-            case UP -> Shapes.or(Block.box(4, 14, 4, 12, 16, 12), Block.box(5, 11, 5, 11, 14, 11));
+            case NORTH -> Block.box(x1, y1, z1, x2, y2, z2);
+            case SOUTH -> Block.box(16 - x2, y1, 16 - z2, 16 - x1, y2, 16 - z1);
+            case WEST -> Block.box(z1, y1, 16 - x2, z2, y2, 16 - x1);
+            case EAST -> Block.box(16 - z2, y1, x1, 16 - z1, y2, x2);
+            case DOWN -> Block.box(x1, z1, 16 - y2, x2, z2, 16 - y1);
+            case UP -> Block.box(x1, 16 - z2, y1, x2, 16 - z1, y2);
         };
     }
 
