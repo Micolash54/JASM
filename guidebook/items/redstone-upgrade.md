@@ -18,7 +18,7 @@ Lets redstone switch a machine on and off. Put it in one of the machine's upgrad
 <br />
 ## Machines that take it
 
-* Input, Output and Input Output [item ports](item-ports.md), thin or block.
+* Input, Output and Two-Way [item ports](item-ports.md), thin or block.
 * [Access Ports](access-port.md), thin or block.
 * The [Crystal Foundry](crystal-foundry.md).
 * The [Chip Workshop](chip-workshop.md).

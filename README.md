@@ -24,7 +24,7 @@ Everything is explained in the [JASM guide](https://micolash54.github.io/JASM/),
 - **Backups.** An Archive keeps a copy of your wafers and can rebuild one onto a blank chip if you lose it. [Backups and recovery](https://micolash54.github.io/JASM/26.1/mechanics/backups-and-recovery.html)
 - **Autocrafting.** Write recipes onto cards and ask your Crafting Deck for anything; the parts get crafted first. Furnaces and modded machines join in through Access Ports, fluids included, and crafting rules keep your stock topped up. [Autocrafting](https://micolash54.github.io/JASM/26.1/mechanics/autocrafting.html)
 - **Networks.** Cables carry power and link your machines. A network runs 4 machines on its own; past that it needs a Network Brain, and a tower of brain floors lets it grow much bigger. [Networks](https://micolash54.github.io/JASM/26.1/mechanics/networks.html)
-- **Ports and Bays.** Input and Output Ports move things between chests and your Deck, and a Storage Port lets the whole network use a chest or tank. Bays place and break blocks for you.
+- **Ports and Bays.** Input, Output and Two-Way Ports move things between chests and your Deck, and a Storage Port lets the whole network use a chest or tank. Bays place and break blocks for you.
 - **Bitlings** grow from Basic Bitlings into Nibblings and Bytelings as they work, and the best wafers need what only a Byteling can make. [Befriending Bitlings](https://micolash54.github.io/JASM/26.1/mechanics/befriending-bitlings.html)
 - **Playing with friends.** Everyone on a network gets their own Deck and their own stuff, shares the recipes, and can send items to each other. [Co-op play](https://micolash54.github.io/JASM/26.1/mechanics/co-op-play.html)
 
