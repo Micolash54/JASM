@@ -54,7 +54,9 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private static final int POWER_WIDTH = 50;
     private static final int POWER_Y = 6;
     private static final int POWER_HEIGHT = 7;
-    private static final int HEIGHT_WITHOUT_ROWS = BayMenu.inventoryY(false, 0) + 58 + 18 + 6;
+    /** From the top of the inventory to the panel's bottom edge: its three rows and the hotbar, then a margin. */
+    private static final int INVENTORY_BOTTOM = 58 + 18 + 4;
+    private static final int HEIGHT_WITHOUT_ROWS = BayMenu.inventoryY(false, 0) + INVENTORY_BOTTOM;
     /** The keys under the upgrade slots: the I/O grid's, then the redstone key. */
     private static final int KEYS_Y = BayMenu.UPGRADE_Y + BayBlockEntity.UPGRADES * 18 + 4;
     private static final int KEY_STEP = JasmGui.SIDE_KEY_HEIGHT + 2;
@@ -96,7 +98,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
         filterRows = Math.clamp((height - HEIGHT_WITHOUT_ROWS) / TransferPortMenu.FILTER_ROW, 1, BayMenu.FILTER_ROWS);
         int inventoryY = BayMenu.inventoryY(collapsed(), filterRows);
         menu.layout(collapsed(), filterRows);
-        imageHeight = inventoryY + 58 + 18 + 6;
+        imageHeight = inventoryY + INVENTORY_BOTTOM;
         inventoryLabelY = inventoryY - 11;
     }
 
