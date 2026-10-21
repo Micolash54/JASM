@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.deck.NetworkViewPayloads;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -60,6 +61,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     public static final int BUTTON_CANCEL = 0;
     public static final int BUTTON_COLLECT = 1;
     public static final int BUTTON_BACK = 2;
+    /** Lights up the machines the job is waiting on. */
+    public static final int BUTTON_FIND = 3;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -331,6 +334,13 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         }
         if (id == BUTTON_BACK && carriesDeck(serverPlayer)) {
             DeckItem.open(serverPlayer, deckSlot);
+            return true;
+        }
+        if (id == BUTTON_FIND) {
+            List<BlockPos> machines = server.job() == null || server.getLevel() == null ? List.of() : server.job().machines();
+            if (!machines.isEmpty() && serverPlayer.connection.hasChannel(NetworkViewPayloads.Glow.TYPE)) {
+                PacketDistributor.sendToPlayer(serverPlayer, new NetworkViewPayloads.Glow(machines, server.getLevel().dimension()));
+            }
             return true;
         }
         return false;

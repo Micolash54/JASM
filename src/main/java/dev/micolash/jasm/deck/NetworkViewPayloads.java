@@ -101,13 +101,24 @@ public final class NetworkViewPayloads {
         }
     }
 
-    /** Server → client: outline this block for a while, through walls. */
-    public record Glow(BlockPos pos, ResourceKey<Level> dimension) implements CustomPacketPayload {
+    /** Most blocks lit at once. */
+    public static final int MAX_GLOW = 64;
+
+    /** Server → client: outline these blocks for a while, through walls. */
+    public record Glow(List<BlockPos> positions, ResourceKey<Level> dimension) implements CustomPacketPayload {
         public static final Type<Glow> TYPE = new Type<>(Jasm.id("network_glow"));
         public static final StreamCodec<ByteBuf, Glow> STREAM_CODEC = StreamCodec.composite(
-                BlockPos.STREAM_CODEC, Glow::pos,
+                BlockPos.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_GLOW)), Glow::positions,
                 ResourceKey.streamCodec(Registries.DIMENSION), Glow::dimension,
                 Glow::new);
+
+        public Glow {
+            positions = List.copyOf(positions.subList(0, Math.min(positions.size(), MAX_GLOW)));
+        }
+
+        public static Glow of(BlockPos pos, ResourceKey<Level> dimension) {
+            return new Glow(List.of(pos.immutable()), dimension);
+        }
 
         @Override
         public Type<Glow> type() {

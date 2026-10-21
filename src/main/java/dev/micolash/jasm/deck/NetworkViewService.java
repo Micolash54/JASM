@@ -106,7 +106,7 @@ public final class NetworkViewService {
             return false;
         }
         if (player.connection.hasChannel(NetworkViewPayloads.Glow.TYPE)) {
-            PacketDistributor.sendToPlayer(player, new NetworkViewPayloads.Glow(payload.pos().immutable(), level.dimension()));
+            PacketDistributor.sendToPlayer(player, NetworkViewPayloads.Glow.of(payload.pos(), level.dimension()));
         }
         return true;
     }

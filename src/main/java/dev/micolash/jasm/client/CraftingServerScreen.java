@@ -1,5 +1,6 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -28,7 +30,10 @@ import net.minecraft.world.item.ItemStack;
 public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int MAIN_X = CraftingServerMenu.MAIN_X;
     private static final int MAIN_WIDTH = CraftingServerMenu.MAIN_WIDTH;
-    private static final int WIDTH = MAIN_X + MAIN_WIDTH;
+    /** The key on the right of the main panel starts where it ends. */
+    private static final int KEY_X = MAIN_X + MAIN_WIDTH;
+    private static final int WIDTH = KEY_X + JasmGui.SIDE_KEY_WIDTH + 3;
+    private static final JasmButton.Icon FIND_ICON = new JasmButton.Icon(Jasm.id("icon/find_machine"), 11, 11);
     private static final int HEIGHT = CraftingServerMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 50;
     private static final int BAR_X = MAIN_X + MAIN_WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
@@ -55,6 +60,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private Button cancel;
     private Button collect;
     private Button back;
+    private JasmButton find;
     private JasmFrame frame;
     private int scroll;
     private boolean draggingHandle;
@@ -80,6 +86,11 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         collect = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.server.collect"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_COLLECT),
                 leftPos + PANEL_X + PANEL_W - 44, y, 44, 17));
+        Component findLabel = Component.translatable("screen.jasm.server.highlight");
+        find = addRenderableWidget(JasmButton.icon(() -> FIND_ICON, findLabel,
+                b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_FIND),
+                leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        find.setTooltip(Tooltip.create(findLabel));
     }
 
     @Override
@@ -89,7 +100,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int y = topPos;
         if (frame == null)
             frame = JasmFrame.rounded(new int[]{0, 0, CraftingServerMenu.SIDE_WIDTH, menu.sideHeight()},
-                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight});
+                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight}, JasmGui.sideStrip(KEY_X, 1));
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             if (slot.index != menu.shownSlot()) {
@@ -113,6 +124,8 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         cancel.active = menu.canControlJob() && phase == CraftingJob.Phase.CRAFTING;
         collect.active = menu.canControlJob() && phase == CraftingJob.Phase.RETURNING;
         back.visible = menu.opensFromDeck();
+        // Lit while a set of the job is out in a machine.
+        find.active = phase == CraftingJob.Phase.CRAFTING && menu.waiting() != null;
         super.extractContents(graphics, mouseX, mouseY, a);
         // The last message (collected, cancelling...) over the bottom of the job panel for a few seconds.
         Component notice = menu.notices().current(minecraft.level.getGameTime());

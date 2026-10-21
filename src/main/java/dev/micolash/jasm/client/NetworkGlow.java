@@ -2,6 +2,7 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gizmos.GizmoStyle;
@@ -15,14 +16,17 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlersEvent;
 import org.jspecify.annotations.Nullable;
 
-/** Outlines the block picked on the Deck's Network tab for ten seconds, seen through walls. A new pick replaces the old. */
+/**
+ * Outlines the blocks picked on the Deck's Network tab, or a job's machines on a Crafting Server's screen, for ten seconds,
+ * seen through walls. A new pick replaces the old.
+ */
 @EventBusSubscriber(modid = Jasm.MODID, value = Dist.CLIENT)
 public final class NetworkGlow {
     private static final int TICKS = 200;
     private static final float PADDING = 0.02F;
     private static final float WIDTH = 3F;
 
-    private static @Nullable BlockPos pos;
+    private static List<BlockPos> positions = List.of();
     private static @Nullable ResourceKey<Level> dimension;
     private static long until;
 
@@ -40,7 +44,7 @@ public final class NetworkGlow {
         if (minecraft.level == null || !minecraft.level.dimension().equals(glow.dimension())) {
             return;
         }
-        pos = glow.pos();
+        positions = glow.positions();
         dimension = glow.dimension();
         until = minecraft.level.getGameTime() + TICKS;
     }
@@ -48,15 +52,17 @@ public final class NetworkGlow {
     @SubscribeEvent
     static void onTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (pos == null) {
+        if (positions.isEmpty()) {
             return;
         }
         if (minecraft.level == null || !minecraft.level.dimension().equals(dimension) || minecraft.level.getGameTime() >= until) {
-            pos = null;
+            positions = List.of();
             return;
         }
         try (var ignored = minecraft.collectPerTickGizmos()) {
-            Gizmos.cuboid(pos, PADDING, GizmoStyle.stroke(0xFF000000 | JasmGui.ACCENT, WIDTH)).setAlwaysOnTop();
+            for (BlockPos pos : positions) {
+                Gizmos.cuboid(pos, PADDING, GizmoStyle.stroke(0xFF000000 | JasmGui.ACCENT, WIDTH)).setAlwaysOnTop();
+            }
         }
     }
 }

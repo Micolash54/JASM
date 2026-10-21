@@ -407,6 +407,16 @@ public final class CraftingJob {
         return now;
     }
 
+    /** Where the machines are that the job has sets waiting in now, to light them up; empty when none is out. */
+    public List<BlockPos> machines() {
+        List<BlockPos> found = new ArrayList<>();
+        for (Sent set : sent) {
+            BlockPos at = set.port.relative(set.side);
+            if (!set.done() && !found.contains(at)) found.add(at);
+        }
+        return found;
+    }
+
     /** How far along, from 0 to 1, by crafts finished; a set out in a machine counts for the share of its main result back. */
     public float progress() {
         long total = 0;
