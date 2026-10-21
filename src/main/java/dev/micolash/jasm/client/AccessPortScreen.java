@@ -57,8 +57,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private @Nullable DeckLinkWindow linkWindow;
 
     public AccessPortScreen(AccessPortMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, menu.inventoryY() + 84);
-        inventoryLabelY = menu.inventoryY() - 10;
+        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, PortLayout.current().height());
         inventoryLabelX = (WIDTH - 162) / 2;
     }
 
@@ -69,6 +68,11 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
 
     @Override
     protected void init() {
+        // Level with the other ports: the extra room at the bottom stays empty panel.
+        PortLayout layout = PortLayout.current();
+        imageHeight = layout.height();
+        inventoryLabelY = layout.inventoryY() - 10;
+        menu.layout(layout.inventoryY());
         super.init();
         frameRedstone = menu.hasRedstoneUpgrade();
         frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS, frameRedstone));

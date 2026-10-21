@@ -12,8 +12,10 @@ import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -52,6 +54,10 @@ class ItemFilterEditor {
     private final int rowHeight;
     private final boolean compact;
     private final int rows;
+    /** The list's height in pixels. A list that isn't a whole number of rows tall shows its last row cut off. */
+    private final int listHeight;
+    /** How many rows show whole; the list scrolls so every rule can sit in one of them. */
+    private final int fullRows;
     private final int slotY;
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final JasmButton.Icon UP = new JasmButton.Icon(Jasm.id("icon/arrow_up"), 5, 3);
@@ -69,6 +75,8 @@ class ItemFilterEditor {
     private final int textWidth;
     private final List<Placed> buttons = new ArrayList<>();
     private final Button[][] rowButtons;
+    /** The keys of the rows, which only work inside the list. */
+    private final Set<Button> rowKeys = new HashSet<>();
     private final Button modeButton;
     private final Button action;
     private final Button confirm;
@@ -110,14 +118,21 @@ class ItemFilterEditor {
     }
 
     ItemFilterEditor(Font font, int rows, boolean movable, Supplier<ItemStack> carried, int editorWidth) {
+        this(font, rows, 0, movable, carried, editorWidth);
+    }
+
+    /** {@code listHeight} 0 means {@code rows} whole rows; otherwise the list is that tall and the last of its {@code rows} may be cut. */
+    ItemFilterEditor(Font font, int rows, int listHeight, boolean movable, Supplier<ItemStack> carried, int editorWidth) {
         this.rows = rows;
         this.movable = movable;
         this.carried = carried;
         this.editorWidth = editorWidth;
         this.compact = !movable;
         this.rowHeight = compact ? TransferPortMenu.FILTER_ROW : 24;
+        this.listHeight = listHeight > 0 ? listHeight : rows * rowHeight;
+        this.fullRows = this.listHeight / rowHeight;
         this.listY = movable ? 37 : 16;
-        this.slotY = movable ? 168 - (4 - rows) * rowHeight : listY + rows * rowHeight + 28;
+        this.slotY = movable ? 168 - (4 - rows) * rowHeight : listY + this.listHeight + 28;
         this.height = slotY + (movable ? 24 : 20);
         int shrink = BASE_WIDTH - editorWidth;
         this.rowButtons = new Button[rows][6];
@@ -169,6 +184,7 @@ class ItemFilterEditor {
             rowButtons[row][2] = place(JasmButton.icon(() -> UP, label("up"), b -> change(visible, 2), 0, 0, 13, 17), arrowsX, py);
             rowButtons[row][3] = place(JasmButton.icon(() -> DOWN, label("down"), b -> change(visible, 3), 0, 0, 13, 17), arrowsX + 15, py);
             rowButtons[row][4] = place(JasmButton.icon(() -> CLOSE, label("remove"), b -> change(visible, 4), 0, 0, 13, 17), arrowsX + 30, py);
+            for (Button key : rowButtons[row]) if (key != null) rowKeys.add(key);
         }
     }
 
@@ -280,8 +296,11 @@ class ItemFilterEditor {
         save.accept(settings);
         update();
     }
-    private int visibleRows() { return tagChoices.isEmpty() ? rows : rows * rowHeight / TAG_ROW_HEIGHT; }
-    private int maxScroll() { return Math.max(0, (tagChoices.isEmpty() ? draft.rules().size() : tagChoices.size()) - visibleRows()); }
+    private int visibleRows() { return tagChoices.isEmpty() ? rows : listHeight / TAG_ROW_HEIGHT; }
+    private int wholeRows() { return tagChoices.isEmpty() ? fullRows : listHeight / TAG_ROW_HEIGHT; }
+    private boolean cutOff() { return listHeight % rowHeight != 0; }
+    private int listBottom() { return y + listY + listHeight; }
+    private int maxScroll() { return Math.max(0, (tagChoices.isEmpty() ? draft.rules().size() : tagChoices.size()) - wholeRows()); }
     private int offset() { return tagChoices.isEmpty() ? scroll : tagScroll; }
     private Filter candidate() { return new Filter(mode, text.getValue(), allow, true); }
     private void update() {
@@ -344,7 +363,7 @@ class ItemFilterEditor {
         if (stockFocus == addStock) commitStock();
         addStock.setValue("");
         send(new WaferSettings(rules));
-        scroll = Math.max(0, rules.size() - rows);
+        scroll = Math.max(0, rules.size() - fullRows);
         ghost = ItemStack.EMPTY;
         text.setValue("");
         allow = true;
@@ -434,7 +453,9 @@ class ItemFilterEditor {
         } else {
             graphics.text(font, heading(), x + 7, y + 3, JasmGui.SUBTEXT, false);
         }
-        JasmGui.inset(graphics, x + 7, y + listY - 1, editorWidth - (movable ? 30 : 20), rows * rowHeight + 2);
+        JasmGui.inset(graphics, x + 7, y + listY - 1, editorWidth - (movable ? 30 : 20), listHeight + 2);
+        // A row cut off at the bottom is clipped by the list, never drawn over the panel's edge.
+        if (cutOff()) graphics.enableScissor(x + 8, y + listY, x + editorWidth - (movable ? 23 : 13), listBottom());
         int displayedRowHeight = tagChoices.isEmpty() ? rowHeight : TAG_ROW_HEIGHT;
         for (int row = 0; row < visibleRows(); row++) {
             int at = offset() + row;
@@ -443,7 +464,7 @@ class ItemFilterEditor {
                 if (at >= draft.rules().size()) break;
                 Filter rule = draft.rules().get(at);
                 int rowRight = x + editorWidth - (movable ? 23 : 13);
-                if (mx >= x + 8 && mx < rowRight && my >= py && my < py + rowHeight) graphics.fill(x + 8, py, rowRight, py + rowHeight, JasmGui.HOVER);
+                if (mx >= x + 8 && mx < rowRight && my >= py && my < py + rowHeight && my < listBottom()) graphics.fill(x + 8, py, rowRight, py + rowHeight, JasmGui.HOVER);
                 smallItem(graphics, icon(rule), x + 10, py + (compact ? 1 : 5));
                 // A row with a Stock number shows it on its icon, the way the Deck shows counts.
                 if (compact && stock() && rule.allow() && rule.stock() > 0)
@@ -477,16 +498,20 @@ class ItemFilterEditor {
                         x + 11, py + (TAG_ROW_HEIGHT - font.lineHeight) / 2, JasmGui.TEXT, false);
             }
         }
-        int travel = rows * rowHeight - 15;
-        JasmGui.scrollBar(graphics, x + scrollX(), y + listY - 1, 8, rows * rowHeight + 2,
+        // The row keys and Stock fields are part of the rows, so the cut clips them too.
+        int keyMy = my < listBottom() ? my : -1000;
+        for (Placed placed : buttons) if (placed.button().visible && rowKeys.contains(placed.button())) placed.button().extractRenderState(graphics, mx, keyMy, a);
+        for (EditBox field : stockFields) if (field.visible) field.extractRenderState(graphics, mx, keyMy, a);
+        if (cutOff()) graphics.disableScissor();
+        int travel = listHeight - 15;
+        JasmGui.scrollBar(graphics, x + scrollX(), y + listY - 1, 8, listHeight + 2,
                 maxScroll() == 0 ? 0 : Math.round(travel * offset() / (float) maxScroll()), 15, maxScroll() > 0);
         JasmGui.slot(graphics, x + 8, y + slotY);
         ItemStack preview = ghost();
         if (!preview.isEmpty()) graphics.item(preview, x + 8, y + slotY);
         if (!preview.isEmpty() && slotArea().contains(mx, my)) graphics.setTooltipForNextFrame(font, preview.getHoverName(), mx, my);
         text.extractRenderState(graphics, mx, my, a);
-        for (Placed placed : buttons) if (placed.button().visible) placed.button().extractRenderState(graphics, mx, my, a);
-        for (EditBox field : stockFields) if (field.visible) field.extractRenderState(graphics, mx, my, a);
+        for (Placed placed : buttons) if (placed.button().visible && !rowKeys.contains(placed.button())) placed.button().extractRenderState(graphics, mx, my, a);
         if (addStock.visible) {
             graphics.text(font, label("stock"), addStock.getX(), y + slotY - 9, JasmGui.SUBTEXT, false);
             addStock.extractRenderState(graphics, mx, my, a);
@@ -501,7 +526,7 @@ class ItemFilterEditor {
         EditBox hit = addStock.visible && addStock.isMouseOver(event.x(), event.y()) ? addStock : null;
         int hitRule = -1;
         for (int row = 0; row < rows && hit == null; row++) {
-            if (stockFields[row].visible && stockFields[row].isMouseOver(event.x(), event.y())) {
+            if (stockFields[row].visible && event.y() < listBottom() && stockFields[row].isMouseOver(event.x(), event.y())) {
                 hit = stockFields[row];
                 hitRule = scroll + row;
             }
@@ -513,14 +538,18 @@ class ItemFilterEditor {
         }
         // Clicking away confirms a Stock number.
         commitStock();
-        for (Placed placed : buttons) if (placed.button().visible && placed.button().mouseClicked(event, doubleClick)) return true;
+        for (Placed placed : buttons) {
+            // The part of a cut-off row's keys that hangs below the list is not there to click.
+            if (rowKeys.contains(placed.button()) && event.y() >= listBottom()) continue;
+            if (placed.button().visible && placed.button().mouseClicked(event, doubleClick)) return true;
+        }
         if (slotArea().contains((int) event.x(), (int) event.y())) { setItem(carried.get(), event.hasShiftDown()); return true; }
-        if (event.x() >= x + scrollX() && event.y() >= y + listY && event.y() < y + listY + rows * rowHeight) {
+        if (event.x() >= x + scrollX() && event.y() >= y + listY && event.y() < listBottom()) {
             draggingScroll = true;
             scrollTo(event.y());
             return true;
         }
-        if (!tagChoices.isEmpty() && event.y() >= y + listY && event.y() < y + listY + rows * rowHeight) {
+        if (!tagChoices.isEmpty() && event.y() >= y + listY && event.y() < listBottom()) {
             int row = (int) (event.y() - y - listY) / TAG_ROW_HEIGHT;
             int at = tagScroll + row;
             if (row < visibleRows() && at < tagChoices.size()) {
@@ -544,12 +573,12 @@ class ItemFilterEditor {
     private boolean grabbable(double mx, double my) {
         if (!movable || !contains(mx, my) || text.isMouseOver(mx, my) || slotArea().contains((int) mx, (int) my)) return false;
         for (Placed placed : buttons) if (placed.button().visible && placed.button().isMouseOver(mx, my)) return false;
-        return my < y + listY - 1 || my >= y + listY + rows * rowHeight + 1;
+        return my < y + listY - 1 || my >= listBottom() + 1;
     }
     private int scrollX() { return editorWidth - (movable ? 18 : 10); }
 
     private void scrollTo(double my) {
-        int value = Math.clamp(Math.round((float) (my - y - listY - 7) / (rows * rowHeight - 15) * maxScroll()), 0, maxScroll());
+        int value = Math.clamp(Math.round((float) (my - y - listY - 7) / (listHeight - 15) * maxScroll()), 0, maxScroll());
         if (tagChoices.isEmpty()) scroll = value;
         else tagScroll = value;
     }

@@ -146,13 +146,20 @@ public final class TransferPortMenu extends AbstractContainerMenu implements Mac
     /** One row of a filter list in a port's panel, and the top of the first list. */
     public static final int FILTER_ROW = 35;
     public static final int FILTER_TOP = 24;
-    /** A filter list's whole height: header, its rows, then the line with the slot and the field. */
-    public static int filterHeight(int rows) { return 16 + rows * FILTER_ROW + 48; }
-    /** A port that does both shows one list at a time, a row tall; the others show their one list two rows tall. */
-    public int inventoryY() {
-        return FILTER_TOP + filterHeight(kind == TransferPortKind.INPUT_OUTPUT ? 1 : 2) + 12;
+    /** A filter list's whole height: header, a list {@code listPixels} tall, then the line with the slot and the field. */
+    public static int filterFrame(int listPixels) { return 16 + listPixels + 48; }
+    public static int filterHeight(int rows) { return filterFrame(rows * FILTER_ROW); }
+    /** Where the inventory sits as the server builds it; the screen moves it to fit the player's GUI scale. */
+    public static final int INVENTORY_Y = FILTER_TOP + filterHeight(2) + 12;
+    public int inventoryY() { return INVENTORY_Y; }
+
+    /** Only on the player's screen, the server never looks at where slots sit. */
+    public void layout(int inventoryY) {
+        for (int i = 0; i < 36; i++) {
+            Slot slot = slots.get(INVENTORY_START + i);
+            slot.y = i < 27 ? inventoryY + i / 9 * 18 : inventoryY + 58;
+        }
     }
-    public int height() { return inventoryY() + 84; }
     public boolean defaultDeck() { return data.get(4) != 0; }
     public boolean linked() { return data.get(5) != 0; }
     public boolean running() { return data.get(2) != 0; }

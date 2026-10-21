@@ -21,7 +21,7 @@ public final class StoragePortMenu extends AbstractContainerMenu implements Mach
     public static final int FILTER_TOP = TransferPortMenu.FILTER_TOP;
     /** The access button and the priority field, on the line of the filter's label. */
     public static final int CONTROLS_TOP = FILTER_TOP - 1;
-    public static final int INVENTORY_Y = FILTER_TOP + TransferPortMenu.filterHeight(2) + 12;
+    public static final int INVENTORY_Y = TransferPortMenu.INVENTORY_Y;
     private final @Nullable StoragePortBlockEntity port;
     private StorageSettings settings;
 
@@ -41,7 +41,14 @@ public final class StoragePortMenu extends AbstractContainerMenu implements Mach
         for (int col = 0; col < 9; col++) addSlot(new Slot(inventory, col, ix + col * 18, INVENTORY_Y + 58));
     }
     public StorageSettings settings() { return port == null ? settings : port.settings(); }
-    public int height() { return INVENTORY_Y + 84; }
+
+    /** Only on the player's screen, the server never looks at where slots sit. */
+    public void layout(int inventoryY) {
+        for (int i = 0; i < 36; i++) {
+            Slot slot = slots.get(i);
+            slot.y = i < 27 ? inventoryY + i / 9 * 18 : inventoryY + 58;
+        }
+    }
     public boolean configure(StorageSettings wanted) {
         WaferSettings previous = settings().filter();
         if (wanted.filter().rules().stream().anyMatch(rule -> !rule.valid()

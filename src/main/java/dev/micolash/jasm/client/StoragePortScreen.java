@@ -27,19 +27,24 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
     private JasmButton access;
     private JasmField priority;
     private JasmFrame frame;
+    private PortLayout layout;
 
     public StoragePortScreen(StoragePortMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, StoragePortMenu.WIDTH, menu.height());
+        super(menu, inventory, title, StoragePortMenu.WIDTH, PortLayout.current().height());
         inventoryLabelX = (StoragePortMenu.WIDTH - 162) / 2;
-        inventoryLabelY = StoragePortMenu.INVENTORY_Y - 11;
     }
 
     @Override
     protected void init() {
+        // The height follows the GUI scale, so it is settled again whenever the screen is rebuilt.
+        layout = PortLayout.current();
+        imageHeight = layout.height();
+        inventoryLabelY = layout.inventoryY() - 11;
+        menu.layout(layout.inventoryY());
         super.init();
         frame = JasmFrame.rounded(new int[]{0, 0, StoragePortMenu.WIDTH, imageHeight});
         addHelp(StoragePortMenu.WIDTH - 7, "items/storage-port.md");
-        editor = new ItemFilterEditor(font, 2, false, menu::getCarried, StoragePortMenu.WIDTH - 16);
+        editor = new ItemFilterEditor(font, 2, layout.listHeight(), false, menu::getCarried, StoragePortMenu.WIDTH - 16);
         editor.setSave(filter -> send(new StorageSettings(filter, menu.settings().access(), menu.settings().priority())));
         editor.open(menu.settings().filter(), Component.translatable("screen.jasm.storage.filter"), Component.empty(),
                 ItemStack.EMPTY, leftPos + 8, topPos + StoragePortMenu.FILTER_TOP, width, height);

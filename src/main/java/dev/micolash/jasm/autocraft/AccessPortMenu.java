@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
 public class AccessPortMenu extends AbstractContainerMenu implements MachineView {
     public static final int MAX_NAME = 32;
     public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
-    /** Keeps the screen 240 tall, which any game window holds at its default GUI scale. */
+    /** Where the inventory sits as the server builds it; the screen moves it to match the other ports' height. */
     public static final int INVENTORY_Y = 156;
     /** Side keys in the right-hand column: the Deck Link and blocking mode. */
     public static final int SIDE_KEYS = 2;
@@ -165,6 +165,14 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     }
 
     public int inventoryY() { return INVENTORY_Y; }
+
+    /** Only on the player's screen, the server never looks at where slots sit. */
+    public void layout(int inventoryY) {
+        for (int i = 0; i < 36; i++) {
+            Slot slot = slots.get(inventoryStart + i);
+            slot.y = i < 27 ? inventoryY + i / 9 * 18 : inventoryY + 58;
+        }
+    }
     public LinkWindowCover linkCover() { return linkCover; }
     public boolean defaultDeck() { return data.get(DATA_DEFAULT_DECK) != 0; }
     public boolean deckLinked() { return data.get(DATA_LINKED) != 0; }

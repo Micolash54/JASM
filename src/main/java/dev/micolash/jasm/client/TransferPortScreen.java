@@ -49,10 +49,10 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     private @Nullable RedstoneMode shownRedstoneMode;
     private @Nullable DeckLinkWindow linkWindow;
     private JasmFrame frame;
+    private PortLayout layout;
     public TransferPortScreen(TransferPortMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, menu.height());
+        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, PortLayout.current().height());
         inventoryLabelX = (TransferPortMenu.WIDTH - 162) / 2;
-        inventoryLabelY = menu.inventoryY() - 11;
     }
     @Override
     protected LinkWindowCover linkCover() {
@@ -61,18 +61,21 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
 
     @Override
     protected void init() {
+        // The height follows the GUI scale, so it is settled again whenever the screen is rebuilt.
+        layout = PortLayout.current();
+        imageHeight = layout.height();
+        inventoryLabelY = layout.inventoryY() - 11;
+        menu.layout(layout.inventoryY());
         super.init();
         addHelp(TransferPortMenu.WIDTH - 7, "items/item-ports.md");
         frameRedstone = menu.hasRedstoneUpgrade();
         frame = JasmFrame.rounded(new int[]{0, 0, TransferPortMenu.WIDTH, imageHeight},
                 PortUpgradeLayout.column(TransferPortMenu.SIDE_KEYS, frameRedstone));
         editors.clear();
-        boolean combined = menu.kind() == TransferPortKind.INPUT_OUTPUT;
-        int rows = combined ? 1 : 2;
-        if (menu.kind().exports()) createEditor(true, rows);
-        if (menu.kind().imports()) createEditor(false, rows);
+        if (menu.kind().exports()) createEditor(true);
+        if (menu.kind().imports()) createEditor(false);
         active = editors;
-        if (combined) createTabs();
+        if (menu.kind() == TransferPortKind.INPUT_OUTPUT) createTabs();
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         link = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
@@ -141,8 +144,8 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         linkWindow.toggle(leftPos + KEY_X, topPos);
         link.setLatched(linkWindow.isOpen());
     }
-    private void createEditor(boolean output, int rows) {
-        var editor = new ItemFilterEditor(font, rows, false, menu::getCarried, TransferPortMenu.WIDTH - 16);
+    private void createEditor(boolean output) {
+        var editor = new ItemFilterEditor(font, 2, layout.listHeight(), false, menu::getCarried, TransferPortMenu.WIDTH - 16);
         if (output) editor.setStock(menu::hasStockUpgrade);
         editor.setSave(settings -> {
             menu.configure(output, settings);
