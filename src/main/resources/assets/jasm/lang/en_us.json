@@ -603,6 +603,8 @@
   "tooltip.jasm.upgrade.decks": "Decks",
   "screen.jasm.transfer.input_filters": "Input Filters",
   "screen.jasm.transfer.output_filters": "Output Filters",
+  "screen.jasm.transfer.tab_output": "Output",
+  "screen.jasm.transfer.tab_input": "Input",
   "screen.jasm.transfer.rate": "%s items/op · 2 ops/sec",
   "screen.jasm.transfer.speed_hint": "Upgrade Slot",
   "item.jasm.power_upgrade": "Power Upgrade",

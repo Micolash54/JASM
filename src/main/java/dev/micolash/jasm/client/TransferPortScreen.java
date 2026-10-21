@@ -26,13 +26,23 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Independent input/output filter editors above the inventory. A column on the right holds the Deck Link key above the
- * upgrade slots; the key opens a window with the link slots.
+ * The input and output filter editors above the inventory. A Two-Way Port shows one at a time, picked by two buttons on
+ * the heading line. A column on the right holds the Deck Link key above the upgrade slots; the key opens a window with
+ * the link slots.
  */
 public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     private static final int KEY_X = PortUpgradeLayout.KEY_X;
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
+    /** Where the Output and Input buttons end, and the least width each takes. */
+    private static final int TABS_RIGHT = 224;
+    private static final int TAB_WIDTH = 52;
+    /** Whether a Two-Way Port shows its Output list; kept while the game runs. */
+    private static boolean showOutput = true;
     private final List<ItemFilterEditor> editors = new ArrayList<>();
+    /** The editors that show and take clicks: all of them, or the chosen one on a Two-Way Port. */
+    private List<ItemFilterEditor> active = List.of();
+    private @Nullable JasmButton outputTab;
+    private @Nullable JasmButton inputTab;
     private JasmButton link;
     private JasmButton redstone;
     private boolean frameRedstone;
@@ -59,8 +69,10 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         editors.clear();
         boolean combined = menu.kind() == TransferPortKind.INPUT_OUTPUT;
         int rows = combined ? 1 : 2;
-        if (menu.kind().exports()) createEditor(true, rows, TransferPortMenu.FILTER_TOP);
-        if (menu.kind().imports()) createEditor(false, rows, combined ? TransferPortMenu.secondFilterTop() : TransferPortMenu.FILTER_TOP);
+        if (menu.kind().exports()) createEditor(true, rows);
+        if (menu.kind().imports()) createEditor(false, rows);
+        active = editors;
+        if (combined) createTabs();
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         link = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
@@ -77,6 +89,27 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
                 leftPos + KEY_X, topPos + PortUpgradeLayout.redstoneY(TransferPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         shownRedstoneMode = null;
         updateRedstoneButton();
+    }
+    /** Output and Input, side by side and the same width, ending where the list's scroll bar ends. */
+    private void createTabs() {
+        Component output = Component.translatable("screen.jasm.transfer.tab_output");
+        Component input = Component.translatable("screen.jasm.transfer.tab_input");
+        int width = Math.max(TAB_WIDTH, Math.max(font.width(output), font.width(input)) + 10);
+        int y = topPos + TransferPortMenu.FILTER_TOP - 1;
+        outputTab = addRenderableWidget(JasmButton.text(output, b -> showList(true), leftPos + TABS_RIGHT - 2 * width - 2, y, width, 14));
+        inputTab = addRenderableWidget(JasmButton.text(input, b -> showList(false), leftPos + TABS_RIGHT - width, y, width, 14));
+        showList(showOutput);
+    }
+    /** Both lists keep their rules; this only picks which one shows. */
+    private void showList(boolean output) {
+        showOutput = output;
+        editors.forEach(ItemFilterEditor::unfocus);
+        active = List.of(editors.get(output ? 0 : 1));
+        outputTab.setLatched(output);
+        inputTab.setLatched(!output);
+    }
+    private boolean overTabs(double x, double y) {
+        return outputTab != null && (outputTab.isMouseOver(x, y) || inputTab.isMouseOver(x, y));
     }
     private Component redstoneLabel() {
         return Component.translatable("screen.jasm.transfer.redstone",
@@ -108,7 +141,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         linkWindow.toggle(leftPos + KEY_X, topPos);
         link.setLatched(linkWindow.isOpen());
     }
-    private void createEditor(boolean output, int rows, int top) {
+    private void createEditor(boolean output, int rows) {
         var editor = new ItemFilterEditor(font, rows, false, menu::getCarried, TransferPortMenu.WIDTH - 16);
         if (output) editor.setStock(menu::hasStockUpgrade);
         editor.setSave(settings -> {
@@ -117,7 +150,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         });
         editor.open(output ? menu.filters().output() : menu.filters().input(),
                 Component.translatable(output ? "screen.jasm.transfer.output_filters" : "screen.jasm.transfer.input_filters"), Component.empty(),
-                ItemStack.EMPTY, leftPos + 8, topPos + top, width, height);
+                ItemStack.EMPTY, leftPos + 8, topPos + TransferPortMenu.FILTER_TOP, width, height);
         editors.add(editor);
     }
     /** Where the Deck Link window is, while it is open, so JEI's item list stays clear of it. */
@@ -134,17 +167,15 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     protected boolean hasClickedOutside(double x, double y, int left, int top) {
         return !linkWindow.contains(x, y) && super.hasClickedOutside(x, y, left, top);
     }
-    public List<Rect2i> filterSlots() { return editors.stream().map(ItemFilterEditor::slotArea).toList(); }
-    public void setFilterMaterial(int index, net.minecraft.resources.Identifier id) { if (index >= 0 && index < editors.size()) editors.get(index).setMaterial(id); }
-    public void setFilterItem(int index, Item item) { if (index >= 0 && index < editors.size()) editors.get(index).setItem(new ItemStack(item), false); }
+    /** The drop spots of the lists on show; a Two-Way Port has just the chosen one. */
+    public List<Rect2i> filterSlots() { return active.stream().map(ItemFilterEditor::slotArea).toList(); }
+    public void setFilterMaterial(int index, net.minecraft.resources.Identifier id) { if (index >= 0 && index < active.size()) active.get(index).setMaterial(id); }
+    public void setFilterItem(int index, Item item) { if (index >= 0 && index < active.size()) active.get(index).setItem(new ItemStack(item), false); }
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mx, int my, float a) {
         super.extractBackground(graphics, mx, my, a);
         frame.draw(graphics, leftPos, topPos);
         JasmGui.divider(graphics, leftPos + KEY_X, topPos + PortUpgradeLayout.dividerY(TransferPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH);
-        if (menu.kind() == TransferPortKind.INPUT_OUTPUT) {
-            JasmGui.divider(graphics, leftPos + 8, topPos + TransferPortMenu.secondFilterTop() - 5, TransferPortMenu.WIDTH - 16);
-        }
         // The Deck Link window draws its own two slots.
         for (var slot : menu.slots) {
             if (slot.isActive() && slot.index != TransferPortMenu.LINK_IN && slot.index != TransferPortMenu.LINK_OUT) {
@@ -168,7 +199,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         super.extractContents(graphics, mx, my, a);
         linkWindow.setResetActive(menu.canReset());
         graphics.nextStratum();
-        for (var editor : editors) editor.draw(graphics, mx, my, a, width, height);
+        for (var editor : active) editor.draw(graphics, mx, my, a, width, height);
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
             if (hoveredSlot == menu.getSlot(i))
                 graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.transfer.speed_hint"), mx, my);
@@ -186,10 +217,13 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
         if (linkWindow.contains(event.x(), event.y())) {
             return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
         }
-        for (var editor : editors) {
-            if (editor.contains(event.x(), event.y())) {
-                for (var other : editors) if (other != editor) other.unfocus();
-                return editor.mouseClicked(event, doubleClick);
+        // The two buttons lie over the editor's top edge, so they take their own clicks first.
+        if (!overTabs(event.x(), event.y())) {
+            for (var editor : active) {
+                if (editor.contains(event.x(), event.y())) {
+                    for (var other : editors) if (other != editor) other.unfocus();
+                    return editor.mouseClicked(event, doubleClick);
+                }
             }
         }
         editors.forEach(ItemFilterEditor::unfocus);
@@ -198,19 +232,19 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
         if (linkWindow.mouseDragged(event, width, height)) return true;
-        for (var editor : editors) if (editor.mouseDragged(event, width, height)) return true;
+        for (var editor : active) if (editor.mouseDragged(event, width, height)) return true;
         return super.mouseDragged(event, dx, dy);
     }
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         boolean handled = linkWindow.mouseReleased();
-        for (var editor : editors) handled |= editor.mouseReleased(event);
+        for (var editor : active) handled |= editor.mouseReleased(event);
         return handled || super.mouseReleased(event);
     }
     @Override
     public boolean mouseScrolled(double x, double y, double sx, double sy) {
         if (linkWindow.contains(x, y)) return true;
-        for (var editor : editors) if (editor.contains(x, y)) return editor.mouseScrolled(sy);
+        for (var editor : active) if (editor.contains(x, y)) return editor.mouseScrolled(sy);
         return super.mouseScrolled(x, y, sx, sy);
     }
     @Override
@@ -220,12 +254,12 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
             link.setLatched(false);
             return true;
         }
-        for (var editor : editors) if (editor.keyPressed(event)) return true;
+        for (var editor : active) if (editor.keyPressed(event)) return true;
         return super.keyPressed(event);
     }
     @Override
     public boolean charTyped(CharacterEvent event) {
-        for (var editor : editors) if (editor.charTyped(event)) return true;
+        for (var editor : active) if (editor.charTyped(event)) return true;
         return super.charTyped(event);
     }
 }

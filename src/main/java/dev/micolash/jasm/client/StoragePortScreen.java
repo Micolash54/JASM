@@ -20,6 +20,9 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /** A Storage Port's filter, what the network may do with the block in front of it, and its priority. */
 public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
+    private static final int PRIORITY_WIDTH = 40;
+    /** Right edge of the filter list's scroll bar, across the screen. */
+    private static final int CONTROLS_RIGHT = 224;
     private ItemFilterEditor editor;
     private JasmButton access;
     private JasmField priority;
@@ -43,12 +46,14 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
         // Wide enough for the longest of the three labels, so none is cut off.
         int accessWidth = 0;
         for (StorageAccess mode : StorageAccess.values()) accessWidth = Math.max(accessWidth, font.width(accessLabel(mode)) + 12);
+        // Both sit on the filter label's line, ending where the list's scroll bar ends.
+        int priorityX = leftPos + CONTROLS_RIGHT - PRIORITY_WIDTH;
         access = addRenderableWidget(JasmButton.text(accessLabel(menu.settings().access()), b -> {
             send(new StorageSettings(menu.settings().filter(), menu.settings().access().next(), menu.settings().priority()));
             access.setMessage(accessLabel(menu.settings().access()));
-        }, leftPos + 8, topPos + StoragePortMenu.CONTROLS_TOP, accessWidth, 14));
+        }, priorityX - 4 - accessWidth, topPos + StoragePortMenu.CONTROLS_TOP, accessWidth, 14));
         access.setTooltip(Tooltip.create(Component.translatable("screen.jasm.storage.access_hint")));
-        priority = addRenderableWidget(new JasmField(font, leftPos + 8 + accessWidth + 4, topPos + StoragePortMenu.CONTROLS_TOP, 40, 14,
+        priority = addRenderableWidget(new JasmField(font, priorityX, topPos + StoragePortMenu.CONTROLS_TOP, PRIORITY_WIDTH, 14,
                 Component.translatable("screen.jasm.storage.priority")));
         priority.setFilter(text -> text.matches("-?\\d{0,3}"));
         priority.setValue(Integer.toString(menu.settings().priority()));
@@ -93,7 +98,9 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (editor.contains(event.x(), event.y())) return editor.mouseClicked(event, doubleClick);
+        // The two controls lie over the editor's top edge, so they take their own clicks first.
+        boolean onControls = access.isMouseOver(event.x(), event.y()) || priority.isMouseOver(event.x(), event.y());
+        if (!onControls && editor.contains(event.x(), event.y())) return editor.mouseClicked(event, doubleClick);
         editor.unfocus();
         return super.mouseClicked(event, doubleClick);
     }

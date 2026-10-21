@@ -19,9 +19,9 @@ import org.jspecify.annotations.Nullable;
 public final class StoragePortMenu extends AbstractContainerMenu implements MachineView {
     public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
     public static final int FILTER_TOP = TransferPortMenu.FILTER_TOP;
-    /** Below the filter list: the access button and the priority field. */
-    public static final int CONTROLS_TOP = FILTER_TOP + TransferPortMenu.filterHeight(2) + 4;
-    public static final int INVENTORY_Y = CONTROLS_TOP + 30;
+    /** The access button and the priority field, on the line of the filter's label. */
+    public static final int CONTROLS_TOP = FILTER_TOP - 1;
+    public static final int INVENTORY_Y = FILTER_TOP + TransferPortMenu.filterHeight(2) + 12;
     private final @Nullable StoragePortBlockEntity port;
     private StorageSettings settings;
 

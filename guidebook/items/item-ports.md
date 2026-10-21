@@ -60,7 +60,7 @@ Convert one shape into the other in a crafting grid.
 <br />
 ## Filters
 
-Each direction has its own [filter](../mechanics/type-filters.md). An empty output filter sends nothing.
+Each direction has its own [filter](../mechanics/type-filters.md). An empty output filter sends nothing. A Two-Way Port shows one at a time: the Output and Input buttons switch between them.
 
 <br />
 <br />
