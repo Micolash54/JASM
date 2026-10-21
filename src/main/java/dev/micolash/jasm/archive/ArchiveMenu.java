@@ -147,6 +147,16 @@ public class ArchiveMenu extends AbstractContainerMenu implements Notices.Board,
         }
     }
 
+    /** Only on the player's screen, the server never looks at where slots sit. {@code drop} is how far the slots move up. */
+    public void layout(int drop) {
+        slots.get(LINK_SLOT).y = ROW_Y - drop;
+        slots.get(RECOVERY_SLOT).y = ROW_Y - drop;
+        for (int i = 0; i < 36; i++) {
+            Slot slot = slots.get(INVENTORY_START + i);
+            slot.y = (i < 27 ? INVENTORY_Y + i / 9 * 18 : INVENTORY_Y + 58) - drop;
+        }
+    }
+
     public ArchiveTier tier() {
         return tier;
     }

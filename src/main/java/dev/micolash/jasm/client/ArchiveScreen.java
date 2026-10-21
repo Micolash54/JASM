@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -42,7 +43,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     /** The Deck Link key, in a strip just past the main panel's right edge. */
     private static final int KEY_X = WIDTH;
     private static final JasmButton.Icon LINK_ICON = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
-    private static final int HEIGHT = ArchiveMenu.INVENTORY_Y + 58 + 18 + 6;
+    private static final int FULL_HEIGHT = ArchiveMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int LIST_X = 8;
     private static final int LIST_Y = 32;
     private static final int SCROLL_WIDTH = 8;
@@ -52,14 +53,19 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     private static final int SCROLL_X = LIST_X + LIST_WIDTH + 5;
     /** Two lines beside a 16 px wafer: its name, then how full it is. */
     private static final int ROW_HEIGHT = 18;
-    private static final int ROWS = 5;
+    private static final int FULL_ROWS = 5;
+    /** From this GUI scale up the list shows one row fewer, so the screen fits a maximised 1080p window. */
+    private static final int SHORT_FROM_SCALE = 4;
+    private static final int SHORT_ROWS = 4;
     private static final int ICON_X = 2;
     private static final int TEXT_X = ICON_X + 16 + 4;
     private static final int OVERRIDE_TIP_WIDTH = 170;
     private static final String OVERRIDE_PAGE = "mechanics/override-link.md";
     private static final int ENERGY_WIDTH = 60;
-    private static final int FEEDBACK_Y = LIST_Y + ROWS * ROW_HEIGHT + 4;
 
+    /** How many rows of the list show; settled again whenever the screen is built. */
+    private int rows = rowsNow();
+    private int feedbackY;
     private long selected = -1;
     private int scroll;
     private boolean draggingHandle;
@@ -71,9 +77,17 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     private final Map<WaferTier, ItemStack> waferIcons = new EnumMap<>(WaferTier.class);
 
     public ArchiveScreen(ArchiveMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, HEIGHT);
-        this.inventoryLabelY = ArchiveMenu.INVENTORY_Y - 10;
+        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, heightFor(rowsNow()));
         this.inventoryLabelX = ArchiveMenu.INVENTORY_X;
+    }
+
+    /** Four rows at GUI scale 4 and up (Auto counts as the number it picked), five below that. */
+    private static int rowsNow() {
+        return Minecraft.getInstance().getWindow().getGuiScale() >= SHORT_FROM_SCALE ? SHORT_ROWS : FULL_ROWS;
+    }
+
+    private static int heightFor(int rows) {
+        return FULL_HEIGHT - (FULL_ROWS - rows) * ROW_HEIGHT;
     }
 
     @Override
@@ -83,20 +97,28 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
 
     @Override
     protected void init() {
+        // The height follows the GUI scale, so it is settled again whenever the screen is rebuilt.
+        rows = rowsNow();
+        imageHeight = heightFor(rows);
+        int drop = (FULL_ROWS - rows) * ROW_HEIGHT;
+        inventoryLabelY = ArchiveMenu.INVENTORY_Y - 10 - drop;
+        feedbackY = LIST_Y + rows * ROW_HEIGHT + 4;
+        menu.layout(drop);
+        scroll = Math.min(scroll, maxScroll());
         super.init();
-        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, JasmGui.sideStrip(KEY_X, 1));
+        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, JasmGui.sideStrip(KEY_X, 1));
         addHelp(WIDTH - 7, "items/archives.md");
         int x = leftPos;
         int y = topPos;
         link = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.link"),
                 b -> send(ArchivePayloads.Request.of(menu.containerId, ArchivePayloads.Action.LINK)),
-                x + ArchiveMenu.LINK_X + 20, y + ArchiveMenu.ROW_Y - 1, 34, 18));
+                x + ArchiveMenu.LINK_X + 20, y + ArchiveMenu.ROW_Y - drop - 1, 34, 18));
         unlink = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.unlink"),
                 b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.UNLINK, selected)),
-                x + ArchiveMenu.LINK_X + 56, y + ArchiveMenu.ROW_Y - 1, 44, 18));
+                x + ArchiveMenu.LINK_X + 56, y + ArchiveMenu.ROW_Y - drop - 1, 44, 18));
         recover = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.archive.recover"),
                 b -> send(new ArchivePayloads.Request(menu.containerId, ArchivePayloads.Action.RECOVER, selected)),
-                x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
+                x + ArchiveMenu.RECOVERY_X + 20, y + ArchiveMenu.ROW_Y - drop - 1, WIDTH - 8 - ArchiveMenu.RECOVERY_X - 20, 18));
         Component linkLabel = Component.translatable("screen.jasm.archive.override_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK_ICON, linkLabel, b -> toggleLink(), x + KEY_X, y + JasmGui.sideKeyY(0),
                 JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
@@ -142,7 +164,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     }
 
     private int maxScroll() {
-        return Math.max(0, menu.view().entries().size() - ROWS);
+        return Math.max(0, menu.view().entries().size() - rows);
     }
 
     // --- drawing ---
@@ -157,7 +179,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         for (Slot slot : menu.slots) {
             if (slot.index != ArchiveMenu.DECK_IN && slot.index != ArchiveMenu.DECK_OUT) JasmGui.slot(graphics, x + slot.x, y + slot.y);
         }
-        JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_WIDTH + 2, ROWS * ROW_HEIGHT + 2);
+        JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_WIDTH + 2, rows * ROW_HEIGHT + 2);
 
         drawScrollBar(graphics, x, y);
 
@@ -171,7 +193,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     }
 
     private int trackHeight() {
-        return ROWS * ROW_HEIGHT;
+        return rows * ROW_HEIGHT;
     }
 
     private int handleOffset() {
@@ -207,7 +229,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         if (entries.isEmpty()) {
             graphics.text(font, Component.translatable("screen.jasm.archive.none"), x + 3, y + 2, JasmGui.MUTED, false);
         }
-        for (int row = 0; row < ROWS && scroll + row < entries.size(); row++) {
+        for (int row = 0; row < rows && scroll + row < entries.size(); row++) {
             ArchiveService.Entry entry = entries.get(scroll + row);
             int ry = y + row * ROW_HEIGHT;
             if (entry.serial() == selected) {
@@ -232,7 +254,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         Component notice = menu.notices().current(minecraft.level.getGameTime());
         if (notice != null) {
             graphics.nextStratum();
-            JasmGui.notice(graphics, font, notice, menu.notices().ok(), x, y + ROWS * ROW_HEIGHT, LIST_WIDTH);
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), x, y + rows * ROW_HEIGHT, LIST_WIDTH);
         }
         if (mouseX >= leftPos + WIDTH - 8 - HELP_ROOM - ENERGY_WIDTH && mouseX < leftPos + WIDTH - 8 - HELP_ROOM && mouseY >= topPos + 6 && mouseY < topPos + 13) {
             graphics.setTooltipForNextFrame(font, List.of(
@@ -288,7 +310,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
         Component header = Component.translatable("screen.jasm.archive.linked", menu.view().entries().size(), menu.tier().registrations());
         graphics.text(font, header, LIST_X, 20, JasmGui.SUBTEXT, false);
         if (menu.view().energy() == 0 || ClientNetworkStatus.full(menu.containerId) != null) {
-            graphics.text(font, MachineStatusText.noPower(menu.containerId, "screen.jasm.archive.no_power"), LIST_X, FEEDBACK_Y, JasmGui.BAD, false);
+            graphics.text(font, MachineStatusText.noPower(menu.containerId, "screen.jasm.archive.no_power"), LIST_X, feedbackY, JasmGui.BAD, false);
         }
     }
 
@@ -325,7 +347,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     private int rowAt(double mouseX, double mouseY) {
         double rx = mouseX - leftPos - LIST_X;
         double ry = mouseY - topPos - LIST_Y;
-        if (rx < 0 || rx >= LIST_WIDTH || ry < 0 || ry >= ROWS * ROW_HEIGHT) {
+        if (rx < 0 || rx >= LIST_WIDTH || ry < 0 || ry >= rows * ROW_HEIGHT) {
             return -1;
         }
         int row = scroll + (int) (ry / ROW_HEIGHT);
@@ -381,7 +403,7 @@ public class ArchiveScreen extends JasmScreen<ArchiveMenu> {
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         double rx = x - leftPos - LIST_X;
         double ry = y - topPos - LIST_Y;
-        if (!linkWindow.contains(x, y) && rx >= 0 && rx < SCROLL_X + SCROLL_WIDTH - LIST_X && ry >= 0 && ry < ROWS * ROW_HEIGHT) {
+        if (!linkWindow.contains(x, y) && rx >= 0 && rx < SCROLL_X + SCROLL_WIDTH - LIST_X && ry >= 0 && ry < rows * ROW_HEIGHT) {
             scroll = Math.max(0, Math.min(maxScroll(), scroll - (int) Math.signum(scrollY)));
             return true;
         }
