@@ -56,3 +56,5 @@ JASM is licensed under [CC BY-NC-SA 4.0](LICENSE): you may share it and make you
 - You are permitted to use JASM in modpacks, videos and streams, including ones that earn platform rewards.
 - You may modify JASM, as long as you credit it and release your version under the same license.
 - Selling JASM or a version of it, or putting it behind a paywall, is not allowed.
+
+![A JASM storage base](screenshots/description_shot.png)
