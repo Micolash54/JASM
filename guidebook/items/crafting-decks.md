@@ -28,6 +28,16 @@ A [Deck](decks.md) with a 3x3 crafting grid. Ingredients come straight from its 
 
 <br />
 <br />
+## As a bucket
+
+* Right-click a fluid on the Items tab with nothing in hand to pick it, and again to unpick it. A small bucket marks the picked fluid in the grid, and the Deck shows a drop of it in its corner.
+* Sneak + right-click a block to place a bucket of the picked fluid from the Deck's [fluid wafers](fluid-capacity-wafers.md) or its network. It follows the vanilla bucket's rules: water fills waterloggable blocks and boils away in the Nether.
+* Sneak + right-click a fluid source to collect a bucket of it. No pick is needed.
+* When nothing moves, a red line says why the next time you open the Deck: out of that fluid, no room for it, or not enough charge.
+* Only Crafting Decks work as a bucket. Sneak + right-click on an Archive still backs up the Deck instead.
+
+<br />
+<br />
 ## Getting one
 
 Craft a Deck of the same tier, or upgrade from the Crafting Deck below it. Either way it keeps its wafers, its charge and whatever is in its grid.

@@ -48,6 +48,7 @@ Every size is made from three wafers of the size below. They are used up, and th
 * The Deck's grid shows items and fluids together. A button shows only one kind.
 * Right-click the grid with a full bucket, or shift-right-click it in your inventory, to pour it in.
 * Click a fluid with an empty bucket to fill it.
+* A [Crafting Deck](crafting-decks.md) can also place and collect fluids in the world, like a bucket.
 * Input and Output Ports move fluids too. See [item ports](item-ports.md).
 
 <br />
