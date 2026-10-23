@@ -17,6 +17,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.ByIdMap;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.util.TriState;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -31,6 +33,10 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.neoforged.neoforge.common.CommonHooks;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import java.util.function.IntFunction;
 import org.jspecify.annotations.Nullable;
@@ -48,7 +54,8 @@ public final class DeckBucket {
     public enum Reason implements StringRepresentable {
         OUT_OF_FLUID("out_of_fluid", "message.jasm.deck.bucket.out_of"),
         NO_CHARGE("no_charge", "message.jasm.deck.no_power"),
-        NO_ROOM("no_room", "message.jasm.deck.bucket.no_room");
+        NO_ROOM("no_room", "message.jasm.deck.bucket.no_room"),
+        NOT_ALLOWED("not_allowed", "message.jasm.deck.bucket.not_allowed");
 
         public static final Codec<Reason> CODEC = StringRepresentable.fromEnum(Reason::values);
         private static final IntFunction<Reason> BY_ID = ByIdMap.continuous(Enum::ordinal, values(), ByIdMap.OutOfBoundsStrategy.ZERO);
@@ -152,15 +159,39 @@ public final class DeckBucket {
         return player.level().mayInteract(player, pos) && player.mayUseItemAt(pos.relative(direction), direction, deck);
     }
 
+    /**
+     * Asks claim and protection mods about the block the Deck works on, through the same right-click event a bucket's
+     * click fires. A vanilla bucket gets a second check from claim mods that know it by its item; the Deck isn't one,
+     * so the click on the exact block is what they can stop.
+     */
+    private static boolean clickAllowed(ServerPlayer player, ItemStack deck, BlockHitResult hit) {
+        InteractionHand hand = player.getItemInHand(InteractionHand.OFF_HAND) == deck ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+        PlayerInteractEvent.RightClickBlock event = CommonHooks.onRightClickBlock(player, hand, hit.getBlockPos(), hit);
+        return !event.isCanceled() && event.getUseItem() != TriState.FALSE;
+    }
+
+    /**
+     * Asks the same for the spot the fluid would fill, as for any block a player puts down. Asked before anything
+     * changes, so the spot still holds what is there now.
+     */
+    private static boolean placeAllowed(ServerPlayer player, BlockPos placePos, Direction face) {
+        BlockSnapshot spot = BlockSnapshot.create(player.level().dimension(), player.level(), placePos);
+        return !EventHooks.onBlockPlace(player, spot, face);
+    }
+
     /** Stores a bucket of the source at {@code hit}. Takes nothing unless storage and charge cover the whole bucket. */
     public static void collect(ServerPlayer player, ItemStack deck, BlockHitResult hit) {
         Level level = player.level();
         BlockPos pos = hit.getBlockPos();
-        if (!collectable(level, pos) || !allowed(player, deck, hit)) {
+        if (!collectable(level, pos)) {
             return;
         }
         FluidState fluidState = level.getFluidState(pos);
         FluidResource key = FluidResource.of(fluidState.getType());
+        if (!allowed(player, deck, hit) || !clickAllowed(player, deck, hit)) {
+            miss(deck, Reason.NOT_ALLOWED, key);
+            return;
+        }
         var storage = DeckStorage.checked(WaferStore.get(level.getServer()), deck, player);
         if (DeckStorage.affordableFluid(deck) < BUCKET) {
             miss(deck, Reason.NO_CHARGE, key);
@@ -191,7 +222,11 @@ public final class DeckBucket {
         Level level = player.level();
         FluidResource key = picked(deck);
         BucketItem bucket = bucketFor(key);
-        if (bucket == null || !allowed(player, deck, hit)) {
+        if (bucket == null) {
+            return;
+        }
+        if (!allowed(player, deck, hit)) {
+            miss(deck, Reason.NOT_ALLOWED, key);
             return;
         }
         Fluid fluid = key.getFluid();
@@ -199,6 +234,12 @@ public final class DeckBucket {
         BlockState clicked = level.getBlockState(pos);
         BlockPos placePos = fluid == Fluids.WATER && holdsLiquid(level, pos, clicked, fluid) ? pos : pos.relative(hit.getDirection());
         if (!canHold(level, placePos, fluid) && !canHold(level, pos.relative(hit.getDirection()), fluid)) {
+            return;
+        }
+        // Claim mods get their say before anything moves: on the clicked block, and on the spot the fluid would fill,
+        // which can sit across a claim border from it.
+        if (!clickAllowed(player, deck, hit) || !placeAllowed(player, placePos, hit.getDirection())) {
+            miss(deck, Reason.NOT_ALLOWED, key);
             return;
         }
         var storage = DeckStorage.checked(WaferStore.get(level.getServer()), deck, player);

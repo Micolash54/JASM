@@ -262,6 +262,7 @@
   "screen.jasm.deck.bucket_unpick": "Picked for the bucket: right-click to unpick",
   "message.jasm.deck.bucket.out_of": "Out of %s",
   "message.jasm.deck.bucket.no_room": "No room for %s",
+  "message.jasm.deck.bucket.not_allowed": "Can't use that here",
   "message.jasm.deck.bucket.cant_place": "%s can't be placed in the world",
   "screen.jasm.deck.material_view_only": "Moves through Transfer Ports.",
   "screen.jasm.deck.usage_fluid": "%s / %s B",
