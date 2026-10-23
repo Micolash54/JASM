@@ -1,9 +1,11 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.storage.WaferStore;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.Slot;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -41,6 +43,8 @@ public final class DeckNetwork {
                         (payload, context) -> fillGrid((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.FluidAction.TYPE, DeckPayloads.FluidAction.STREAM_CODEC,
                         (payload, context) -> fluidAction((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.PickFluid.TYPE, DeckPayloads.PickFluid.STREAM_CODEC,
+                        (payload, context) -> pickFluid((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.PourSlot.TYPE, DeckPayloads.PourSlot.STREAM_CODEC,
                         (payload, context) -> pourSlot((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.EmptyWafer.TYPE, DeckPayloads.EmptyWafer.STREAM_CODEC,
@@ -199,6 +203,24 @@ public final class DeckNetwork {
         };
         finish(player, menu);
         return moved;
+    }
+
+    /**
+     * Picks a fluid for a Crafting Deck's bucket, or unpicks it. A fluid with no bucket of its own can't be placed in
+     * the world, so it isn't picked. Returns whether the pick changed.
+     */
+    public static boolean pickFluid(ServerPlayer player, DeckPayloads.PickFluid payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !menu.isCrafting() || payload.key().isEmpty() || !allow(player)) {
+            return false;
+        }
+        if (DeckBucket.bucketFor(payload.key()) == null) {
+            Notices.bad(player, Component.translatable("message.jasm.deck.bucket.cant_place", payload.key().getHoverName()));
+            return false;
+        }
+        DeckBucket.togglePick(menu.deck(), payload.key());
+        finish(player, menu);
+        return true;
     }
 
     /** Changes one wafer's routing settings. The settings clean themselves up; the slot must hold a usable wafer. */

@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmEntities;
 import dev.micolash.jasm.registry.JasmItems;
@@ -44,6 +45,10 @@ public final class JasmClient {
     @SubscribeEvent
     static void registerItemDecorations(RegisterItemDecorationsEvent event) {
         event.register(JasmItems.FILLED_RECIPE_CARD.get(), new FluidCardDecorator());
+        BucketDropDecorator drop = new BucketDropDecorator();
+        for (DeckTier tier : DeckTier.values()) {
+            if (tier.hasCraftingDeck()) event.register(JasmItems.craftingDeck(tier), drop);
+        }
     }
 
     @SubscribeEvent

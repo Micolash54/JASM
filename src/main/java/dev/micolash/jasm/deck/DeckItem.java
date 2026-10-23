@@ -31,6 +31,7 @@ import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -126,10 +127,16 @@ public class DeckItem extends Item implements WaferHolderItem {
         return InteractionResult.SUCCESS;
     }
 
-    /** Opens the Deck. Its wafers are activated first, so copies elsewhere stop working. */
+    /**
+     * Opens the Deck. Its wafers are activated first, so copies elsewhere stop working. Sneaking with a Crafting Deck,
+     * it works as a bucket instead when aimed at a fluid source, or at a block with a fluid picked.
+     */
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         if (player instanceof ServerPlayer serverPlayer) {
+            if (crafting && player.isSecondaryUseActive() && DeckBucket.use(serverPlayer, player.getItemInHand(hand))) {
+                return InteractionResult.SUCCESS;
+            }
             open(serverPlayer, hand == InteractionHand.MAIN_HAND ? player.getInventory().getSelectedSlot() : Inventory.SLOT_OFFHAND);
         }
         return InteractionResult.SUCCESS;
@@ -200,6 +207,7 @@ public class DeckItem extends Item implements WaferHolderItem {
                     // The worn slot reaches the client by Curios' own updates; the Deck comes along in case it lags behind.
                     ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, isWornSlot(slot) ? deck : ItemStack.EMPTY);
                 });
+        DeckBucket.tellMiss(player, deck);
     }
 
     @Override
@@ -258,5 +266,13 @@ public class DeckItem extends Item implements WaferHolderItem {
         boolean linked = stack.has(JasmComponents.DECK_NETWORK.get());
         builder.accept(Component.translatable(linked ? "tooltip.jasm.deck.linked" : "tooltip.jasm.deck.not_linked")
                 .withStyle(linked ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
+        FluidResource bucket = crafting ? DeckBucket.picked(stack) : FluidResource.EMPTY;
+        if (!bucket.isEmpty()) {
+            builder.accept(Component.translatable("tooltip.jasm.deck.bucket", bucket.getHoverName()).withColor(PICKED_COLOR));
+            builder.accept(Component.translatable("tooltip.jasm.deck.bucket_hint").withStyle(ChatFormatting.DARK_GRAY));
+        }
     }
+
+    /** The lavender the screens use for their accent. */
+    private static final int PICKED_COLOR = 0xB4BEFE;
 }

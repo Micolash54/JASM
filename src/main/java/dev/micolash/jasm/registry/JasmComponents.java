@@ -8,6 +8,7 @@ import dev.micolash.jasm.autocraft.RecipeCard;
 import dev.micolash.jasm.bay.BayRedstone;
 import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.deck.DeckBucket;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
@@ -94,6 +95,14 @@ public final class JasmComponents {
     /** The Encoding Terminal a Deck is paired with. */
     public static final Supplier<DataComponentType<UUID>> DECK_NETWORK = COMPONENTS.registerComponentType(
             "deck_network", b -> b.persistent(UUIDUtil.CODEC).networkSynchronized(UUIDUtil.STREAM_CODEC));
+
+    /** The fluid a Crafting Deck places when used as a bucket. */
+    public static final Supplier<DataComponentType<FluidResource>> DECK_BUCKET = COMPONENTS.registerComponentType(
+            "deck_bucket", b -> b.persistent(FluidResource.CODEC).networkSynchronized(FluidResource.STREAM_CODEC));
+
+    /** Why the Crafting Deck's last use as a bucket did nothing; shown and cleared when the Deck next opens. */
+    public static final Supplier<DataComponentType<DeckBucket.Miss>> DECK_BUCKET_MISS = COMPONENTS.registerComponentType(
+            "deck_bucket_miss", b -> b.persistent(DeckBucket.Miss.CODEC).networkSynchronized(DeckBucket.Miss.STREAM_CODEC));
 
     /** A Crafting Deck's rules. */
     public static final Supplier<DataComponentType<List<CraftRule>>> DECK_RULES = COMPONENTS.registerComponentType(

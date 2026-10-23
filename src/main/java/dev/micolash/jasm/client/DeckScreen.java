@@ -11,6 +11,7 @@ import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.SearchQuery;
+import dev.micolash.jasm.deck.DeckBucket;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
@@ -99,6 +100,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private static final int OVERFLOW_LINE = 0xFF45475A;
     private static final Identifier CRAFT_ARROW = Jasm.id("icon/craft_arrow_wide");
     private static final Identifier CRAFTABLE = Jasm.id("icon/craftable");
+    private static final Identifier BUCKET_PICKED = Jasm.id("icon/bucket_picked");
     /** Behind what a Storage Port holds, in the Deck's grid: a mauve wash. */
     private static final int PORT_BACK = 0xB0A06CD5;
     /** A fluid in the grid is a little smaller than an item, so the wash behind it shows. */
@@ -1012,6 +1014,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             return;
         }
         GridEntries.Entry<GridKey> hovered = entryAt(mouseX, mouseY);
+        FluidResource picked = menu.isCrafting() ? DeckBucket.picked(currentDeck()) : FluidResource.EMPTY;
         for (int row = 0; row < rows; row++) {
             for (int column = 0; column < COLUMNS; column++) {
                 int index = (scrollRow + row) * COLUMNS + column;
@@ -1044,6 +1047,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                     } else if (menu.view().craftable().contains(marker(entry.key().fluid()))) {
                         graphics.nextStratum();
                         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CRAFTABLE, sx + 10, sy, 6, 6);
+                    }
+                    if (tab != Tab.CRAFT && entry.key().fluid().equals(picked)) {
+                        // The Crafting Deck's bucket fluid: a small bucket on the cell's top-left corner.
+                        graphics.nextStratum();
+                        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BUCKET_PICKED, sx - 1, sy - 1, 10, 10);
                     }
                     if (entry == hovered) {
                         graphics.fill(sx, sy, sx + 16, sy + 16, JasmGui.HOVER);
@@ -1103,6 +1111,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             }
             if (tab != Tab.CRAFT) {
                 lines.add(Component.translatable("screen.jasm.deck.fluid_hint").withStyle(ChatFormatting.DARK_GRAY));
+            }
+            if (tab == Tab.ITEMS && menu.isCrafting()) {
+                boolean isPicked = hovered.key().fluid().equals(DeckBucket.picked(currentDeck()));
+                lines.add(Component.translatable(isPicked ? "screen.jasm.deck.bucket_unpick" : "screen.jasm.deck.bucket_pick")
+                        .withStyle(ChatFormatting.DARK_GRAY));
             }
             if (menu.view().craftable().contains(marker(hovered.key().fluid()))) {
                 lines.add(CraftRequestWindow.hint(tab == Tab.CRAFT));
@@ -1330,6 +1343,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                     return true;
                 }
                 if (menu.getCarried().isEmpty()) {
+                    // Right-click with nothing held: a Crafting Deck picks this fluid for its bucket, or unpicks it.
+                    if (menu.isCrafting()) {
+                        ClientPacketDistributor.sendToServer(new DeckPayloads.PickFluid(menu.containerId, entry.key().fluid()));
+                    }
                     return true;
                 }
             }

@@ -352,6 +352,20 @@ public final class DeckPayloads {
         }
     }
 
+    /** Right-click on a fluid in a Crafting Deck's list: picks it for the bucket, or unpicks it. */
+    public record PickFluid(int containerId, FluidResource key) implements CustomPacketPayload {
+        public static final Type<PickFluid> TYPE = new Type<>(Jasm.id("deck_pick_fluid"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PickFluid> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PickFluid::containerId,
+                FluidResource.STREAM_CODEC, PickFluid::key,
+                PickFluid::new);
+
+        @Override
+        public Type<PickFluid> type() {
+            return TYPE;
+        }
+    }
+
     public record FluidAction(int containerId, FluidResource key, FluidMode mode) implements CustomPacketPayload {
         public static final Type<FluidAction> TYPE = new Type<>(Jasm.id("deck_fluid_action"));
         public static final StreamCodec<RegistryFriendlyByteBuf, FluidAction> STREAM_CODEC = StreamCodec.composite(
