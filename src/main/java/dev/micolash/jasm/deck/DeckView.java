@@ -32,6 +32,9 @@ public final class DeckView {
     private List<CraftPayloads.JobView> jobs = List.of();
     private CraftPayloads.@Nullable Answer answer;
     private int answerVersion;
+    private @Nullable ItemResource mostTarget;
+    private long most;
+    private int mostVersion;
     private Map<UUID, String> stalled = Map.of();
     /** The last "Empty into other wafers" result, until the wafer window closes. */
     private DeckPayloads.@Nullable Emptied emptied;
@@ -156,6 +159,26 @@ public final class DeckView {
     public void applyAnswer(CraftPayloads.Answer answer) {
         this.answer = answer;
         answerVersion++;
+    }
+
+    /** The server's answer to the Max key: the most of {@code target} that can be made right now, 0 when none. */
+    public void applyMost(ItemResource target, long amount) {
+        mostTarget = target;
+        most = amount;
+        mostVersion++;
+    }
+
+    public @Nullable ItemResource mostTarget() {
+        return mostTarget;
+    }
+
+    public long most() {
+        return most;
+    }
+
+    /** Goes up with every answer to the Max key. */
+    public int mostVersion() {
+        return mostVersion;
     }
 
     public int network() {

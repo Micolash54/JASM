@@ -46,6 +46,10 @@ import org.jspecify.annotations.Nullable;
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class CraftNetwork {
     private static final int STATUS_EVERY = 20;
+    /** Ticks between two plans for one player. */
+    public static final int PLAN_EVERY = 4;
+    /** How long the Max key's search may take before it settles for its best so far. */
+    static final long MOST_BUDGET_NANOS = 20_000_000L;
     private static final Map<DeckMenu, CraftPayloads.Status> SENT = new WeakHashMap<>();
 
     private CraftNetwork() {}
@@ -55,6 +59,8 @@ public final class CraftNetwork {
         event.registrar("1")
                 .playToServer(CraftPayloads.Ask.TYPE, CraftPayloads.Ask.STREAM_CODEC,
                         (payload, context) -> ask((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.AskMost.TYPE, CraftPayloads.AskMost.STREAM_CODEC,
+                        (payload, context) -> most((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.Start.TYPE, CraftPayloads.Start.STREAM_CODEC,
                         (payload, context) -> start((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.Cancel.TYPE, CraftPayloads.Cancel.STREAM_CODEC,
@@ -79,7 +85,8 @@ public final class CraftNetwork {
                 .playToClient(CraftPayloads.ServerNow.TYPE, CraftPayloads.ServerNow.STREAM_CODEC, CraftNetwork::onServerNow)
                 .playToClient(CraftPayloads.TrustView.TYPE, CraftPayloads.TrustView.STREAM_CODEC, CraftNetwork::onTrustView)
                 .playToClient(CraftPayloads.Status.TYPE, CraftPayloads.Status.STREAM_CODEC, CraftNetwork::onStatus)
-                .playToClient(CraftPayloads.Answer.TYPE, CraftPayloads.Answer.STREAM_CODEC, CraftNetwork::onAnswer);
+                .playToClient(CraftPayloads.Answer.TYPE, CraftPayloads.Answer.STREAM_CODEC, CraftNetwork::onAnswer)
+                .playToClient(CraftPayloads.Most.TYPE, CraftPayloads.Most.STREAM_CODEC, CraftNetwork::onMost);
     }
 
     // --- server ---
@@ -92,17 +99,24 @@ public final class CraftNetwork {
         return null;
     }
 
-    public static void ask(ServerPlayer player, CraftPayloads.Ask payload) {
-        DeckMenu menu = craftingMenu(player, payload.containerId());
+    /** Planning is expensive, so a player gets at most a few plans a second: true (and counted) when one may run now. */
+    private static boolean mayPlan(ServerPlayer player) {
         long now = player.level().getServer().getTickCount();
         Map<UUID, Long> asked = JasmServerData.of(player.level().getServer()).planAsked;
-        // Planning is expensive, so a player gets at most a few plans a second.
         Long last = asked.get(player.getUUID());
         // The tick count starts again with each world, so an older time than now is from a world left earlier.
-        if (menu == null || payload.target().isEmpty() || last != null && now >= last && now - last < 4) {
-            return;
+        if (last != null && now >= last && now - last < PLAN_EVERY) {
+            return false;
         }
         asked.put(player.getUUID(), now);
+        return true;
+    }
+
+    public static void ask(ServerPlayer player, CraftPayloads.Ask payload) {
+        DeckMenu menu = craftingMenu(player, payload.containerId());
+        if (menu == null || payload.target().isEmpty() || !mayPlan(player)) {
+            return;
+        }
         Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null),
                 payload.tree());
         CraftPlanner.Plan<GridKey> plan = preview.plan();
@@ -116,6 +130,26 @@ public final class CraftNetwork {
                 plan.made(), preview.problem() == null ? "" : preview.problem(), entries(plan.taken()), entries(plan.missing()),
                 limit(crafts), servers.subList(0, Math.min(64, servers.size())), preview.chosen(),
                 payload.tree() ? Optional.of(treeView(plan.tree())) : Optional.empty(), plan.rounds()));
+    }
+
+    /**
+     * The Max key: the most the Deck's storage can make of the item right now, within the request limit and the biggest
+     * server. It counts as one plan against the same limit as {@link #ask}; a search that runs long stops at its best so far.
+     */
+    public static void most(ServerPlayer player, CraftPayloads.AskMost payload) {
+        long most = mostFor(player, payload);
+        if (most >= 0) {
+            PacketDistributor.sendToPlayer(player, new CraftPayloads.Most(payload.containerId(), payload.target(), most));
+        }
+    }
+
+    /** The answer {@link #most} sends, or -1 when the ask is turned away (no open Crafting Deck, or too soon after the last plan). */
+    public static long mostFor(ServerPlayer player, CraftPayloads.AskMost payload) {
+        DeckMenu menu = craftingMenu(player, payload.containerId());
+        if (menu == null || payload.target().isEmpty() || !mayPlan(player)) {
+            return -1;
+        }
+        return Jobs.most(player, menu.deck(), payload.target(), JasmConfig.MAX_REQUEST.getAsInt(), MOST_BUDGET_NANOS);
     }
 
     public static void start(ServerPlayer player, CraftPayloads.Start payload) {
@@ -442,6 +476,13 @@ public final class CraftNetwork {
         DeckView view = view(context, payload.containerId());
         if (view != null) {
             view.applyCraftStatus(payload.network(), Set.copyOf(payload.craftable()), payload.jobs(), payload.stalled());
+        }
+    }
+
+    private static void onMost(CraftPayloads.Most payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.applyMost(payload.target(), payload.amount());
         }
     }
 

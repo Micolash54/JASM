@@ -357,6 +357,8 @@
   "screen.jasm.craft.amount_fluid": "Buckets",
   "screen.jasm.craft.next_server": "Next",
   "screen.jasm.craft.start": "Craft",
+  "screen.jasm.craft.max": "Max craft",
+  "screen.jasm.craft.max_hint": "Fills in the most you can make with what is in storage now",
   "screen.jasm.craft.working": "Working it out...",
   "screen.jasm.craft.makes_title": "Makes:",
   "screen.jasm.craft.takes": "Takes:",

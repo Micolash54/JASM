@@ -70,6 +70,14 @@ public final class Jobs {
     }
 
     /**
+     * The most of {@code target} the Deck's storage can make right now, up to {@code cap}, that fits the biggest crafting
+     * server; 0 when not even one can. Fluids count in buckets. Gives its best so far after {@code budget} nanoseconds.
+     */
+    public static long most(ServerPlayer player, ItemStack deck, ItemResource target, long cap, long budget) {
+        return JobPlanning.most(player, deck, target, cap, budget);
+    }
+
+    /**
      * Starts a request: plans it again (the screen is never trusted), takes every ingredient from the Deck's wafers
      * at once, and gives the job to the chosen server. Returns null when it started, or the message saying why not.
      */

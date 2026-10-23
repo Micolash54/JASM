@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.CraftNetwork;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.core.GridEntries;
@@ -16,6 +17,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -42,6 +44,13 @@ final class CraftRequestWindow {
     private static final int SCROLL_WIDTH = 10;
     private static final int HANDLE_HEIGHT = 15;
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
+    private static final JasmButton.Icon MAX = new JasmButton.Icon(Jasm.id("icon/max_craft"), 7, 7);
+    /** Ticks between two asks from this window: a little more than the server's own limit, so none is turned away. */
+    private static final int ASK_GAP = CraftNetwork.PLAN_EVERY + 1;
+    /** Ticks to wait for the Max answer before giving up on it. */
+    private static final int MOST_WAIT = 40;
+    /** The amount box takes 7 digits. */
+    private static final long MOST_SHOWN = 9_999_999;
     /** Kept while the game is open: the list or the tree, as the player last chose. */
     private static boolean treeMode;
 
@@ -63,6 +72,15 @@ final class CraftRequestWindow {
     private boolean draggingHandle;
     /** Ticks until the server is asked again, after the amount changed; 0 when nothing is waiting. */
     private int askIn;
+    /** Ticks the window has been ticking, and the tick it last asked the server something. */
+    private int ticks;
+    private int askedAt = -ASK_GAP;
+    /** Max was pressed and its ask waits for the gap to pass. */
+    private boolean mostWanted;
+    /** Max was asked at this tick; -1 when no answer is awaited. */
+    private int mostAskedAt = -1;
+    /** The Deck's Max answers counted when Max was asked: a higher count is the answer. */
+    private int mostSeen;
 
     /** A button and where it sits: from the window's left (or right) edge, and from its top (or bottom, when negative). */
     private record Placed(Button button, int x, int y, boolean fromRight) {}
@@ -79,6 +97,12 @@ final class CraftRequestWindow {
         place(JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11), 16, 5, true);
         place(JasmButton.text(Component.literal("-"), b -> step(-1), 0, 0, 15, 17), 58, 24, false);
         place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 15, 17), 127, 24, false);
+        // Max sits right of the plus, the same size, with the same gap.
+        Component maxName = Component.translatable("screen.jasm.craft.max");
+        Button max = JasmButton.icon(() -> MAX, maxName, b -> askMost(), 0, 0, 15, 17);
+        max.setTooltip(Tooltip.create(Component.empty().append(maxName).append("\n")
+                .append(Component.translatable("screen.jasm.craft.max_hint").withStyle(ChatFormatting.GRAY))));
+        place(max, 144, 24, false);
         next = place(JasmButton.text(Component.translatable("screen.jasm.craft.next_server"), b -> nextServer(), 0, 0, 34, 17), 41, 42, true);
         craft = place(JasmButton.text(Component.translatable("screen.jasm.craft.start"), b -> start(), 0, 0, 44, 17), 51, -23, true);
         view = place(JasmButton.text(viewLabel(), b -> toggleView(), 0, 0, 30, 17), 37, 24, true);
@@ -122,12 +146,59 @@ final class CraftRequestWindow {
         scroll = 0;
         amount.setValue(String.valueOf(Math.max(1, count)));
         amount.setFocused(true);
+        forgetMost();
         ask();
     }
 
     void close() {
         target = null;
         amount.setFocused(false);
+        forgetMost();
+    }
+
+    /** The player changed the amount, or the window moved on: a Max answer still on its way no longer applies. */
+    private void forgetMost() {
+        mostWanted = false;
+        mostAskedAt = -1;
+    }
+
+    /** Max: asks the server for the most it can make; the answer fills in the amount, and Craft is still the player's to press. */
+    private void askMost() {
+        if (target == null) {
+            return;
+        }
+        // The answer changes the amount, which asks for the plan again: a plan asked now would only be replaced.
+        askIn = 0;
+        mostWanted = true;
+        sendMostWhenFree();
+    }
+
+    private void sendMostWhenFree() {
+        if (!mostWanted || target == null || ticks - askedAt < ASK_GAP) {
+            return;
+        }
+        mostWanted = false;
+        askedAt = ticks;
+        mostAskedAt = ticks;
+        mostSeen = menu.view().mostVersion();
+        ClientPacketDistributor.sendToServer(new CraftPayloads.AskMost(menu.containerId, target));
+    }
+
+    /** Fills in the Max answer once it is here: the most that can be made, or 1 to show what is missing. */
+    private void takeMost() {
+        if (mostAskedAt < 0) {
+            return;
+        }
+        if (menu.view().mostVersion() == mostSeen) {
+            if (ticks - mostAskedAt > MOST_WAIT) {
+                mostAskedAt = -1;
+            }
+            return;
+        }
+        mostAskedAt = -1;
+        if (target != null && target.equals(menu.view().mostTarget())) {
+            amount.setValue(String.valueOf(Math.clamp(menu.view().most(), 1, MOST_SHOWN)));
+        }
     }
 
     boolean contains(double mouseX, double mouseY) {
@@ -148,11 +219,15 @@ final class CraftRequestWindow {
 
     /** Minus and plus: 1 at a time, 16 with shift held. */
     private void step(int sign) {
+        forgetMost();
         long by = Minecraft.getInstance().hasShiftDown() ? 16 : 1;
         amount.setValue(String.valueOf(Math.max(1, amount() + sign * by)));
     }
 
     void tick() {
+        ticks++;
+        sendMostWhenFree();
+        takeMost();
         if (askIn > 0 && --askIn == 0) {
             ask();
         }
@@ -160,6 +235,7 @@ final class CraftRequestWindow {
 
     private void ask() {
         if (target != null) {
+            askedAt = ticks;
             ClientPacketDistributor.sendToServer(new CraftPayloads.Ask(menu.containerId, target, amount(), Optional.ofNullable(wanted), treeMode));
         }
     }
@@ -429,6 +505,7 @@ final class CraftRequestWindow {
             return true;
         }
         if (amount.isFocused()) {
+            forgetMost();
             amount.keyPressed(event);
             return true;
         }
@@ -440,7 +517,11 @@ final class CraftRequestWindow {
         if (!amount.isFocused()) {
             return false;
         }
-        return !Character.isDigit(event.codepoint()) || amount.charTyped(event);
+        if (!Character.isDigit(event.codepoint())) {
+            return true;
+        }
+        forgetMost();
+        return amount.charTyped(event);
     }
 
     static Component hint(boolean craftTab) {

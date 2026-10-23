@@ -194,6 +194,35 @@ public final class CraftPayloads {
         }
     }
 
+    /** Client → server: what is the most of {@code target} storage can make right now? */
+    public record AskMost(int containerId, ItemResource target) implements CustomPacketPayload {
+        public static final Type<AskMost> TYPE = new Type<>(Jasm.id("craft_ask_most"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AskMost> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, AskMost::containerId,
+                ItemResource.STREAM_CODEC, AskMost::target,
+                AskMost::new);
+
+        @Override
+        public Type<AskMost> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server → client: the most of {@code target} that can be made; 0 when not even one. Fluids in buckets. */
+    public record Most(int containerId, ItemResource target, long amount) implements CustomPacketPayload {
+        public static final Type<Most> TYPE = new Type<>(Jasm.id("craft_most"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Most> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Most::containerId,
+                ItemResource.STREAM_CODEC, Most::target,
+                ByteBufCodecs.VAR_LONG, Most::amount,
+                Most::new);
+
+        @Override
+        public Type<Most> type() {
+            return TYPE;
+        }
+    }
+
     /** Client → server: start the request (planned again on the server). */
     public record Start(int containerId, ItemResource target, long amount, Optional<BlockPos> server) implements CustomPacketPayload {
         public static final Type<Start> TYPE = new Type<>(Jasm.id("craft_start"));

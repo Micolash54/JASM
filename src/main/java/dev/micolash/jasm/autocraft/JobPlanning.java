@@ -4,6 +4,7 @@ import dev.micolash.jasm.autocraft.Jobs.Preview;
 import dev.micolash.jasm.autocraft.Jobs.ServerOption;
 import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.core.MaxCraft;
 import dev.micolash.jasm.deck.DeckFluidStorage;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -106,36 +107,43 @@ final class JobPlanning {
         return preview(player, deck, target, amount, wanted, false);
     }
 
-    /** As above; with {@code tree} the plan also records which craft feeds which. */
-    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
-            boolean tree) {
-        CraftPlanner.Plan<GridKey> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
-        if (!DeckItem.isCrafting(deck)) {
-            return new Preview(empty, List.of(), -1, "message.jasm.craft.not_crafting_deck");
+    /** What every plan for a Deck starts from: its network, what its storage holds, and the cards it may use. */
+    private record Setup(CableNetwork network, Map<GridKey, Long> stock, CardBook book) {}
+
+    /** The setup, or the message saying why the Deck can't plan anything: exactly one of the two is set. */
+    private record Prepared(@Nullable Setup setup, @Nullable String problem) {
+        static Prepared refused(String problem) {
+            return new Prepared(null, problem);
         }
-        if (!DeckItem.worksIn(deck, player.level())) return new Preview(empty, List.of(), -1, "message.jasm.deck.dimension_upgrade");
+    }
+
+    /** Checks the Deck can ask its network for crafts, and reads its storage and cards once. */
+    private static Prepared prepare(ServerPlayer player, ItemStack deck) {
+        if (!DeckItem.isCrafting(deck)) {
+            return Prepared.refused("message.jasm.craft.not_crafting_deck");
+        }
+        if (!DeckItem.worksIn(deck, player.level())) return Prepared.refused("message.jasm.deck.dimension_upgrade");
         EncodingTerminalBlockEntity terminal = terminalOf(player.level().getServer(), deck);
         if (terminal == null) {
-            return new Preview(empty, List.of(), -1, deck.has(JasmComponents.DECK_NETWORK.get())
+            return Prepared.refused(deck.has(JasmComponents.DECK_NETWORK.get())
                     ? "message.jasm.craft.network_unreachable"
                     : "message.jasm.craft.not_paired");
         }
         if (!AutocraftState.get(player.level().getServer()).isPaired(terminal.terminalId(), player.getUUID(),
                 deck.get(JasmComponents.DECK_ID.get()))) {
-            return new Preview(empty, List.of(), -1, "message.jasm.craft.no_access");
+            return Prepared.refused("message.jasm.craft.no_access");
         }
         if (!MachineAccess.canUse(terminal, player)) {
-            return new Preview(empty, List.of(), -1, "message.jasm.craft.no_access");
+            return Prepared.refused("message.jasm.craft.no_access");
         }
         if (!terminal.running()) {
-            return new Preview(empty, List.of(), -1,
-                    terminal.stopped() ? "message.jasm.craft.network_full" : "message.jasm.craft.network_unreachable");
+            return Prepared.refused(terminal.stopped() ? "message.jasm.craft.network_full" : "message.jasm.craft.network_unreachable");
         }
         ServerLevel level = (ServerLevel) terminal.getLevel();
-        if (!DeckItem.worksIn(deck, level)) return new Preview(empty, List.of(), -1, "message.jasm.deck.dimension_upgrade");
+        if (!DeckItem.worksIn(deck, level)) return Prepared.refused("message.jasm.deck.dimension_upgrade");
         CableNetwork network = Networks.at(level, terminal.getBlockPos());
         if (network == null) {
-            return new Preview(empty, List.of(), -1, "message.jasm.craft.network_unreachable");
+            return Prepared.refused("message.jasm.craft.network_unreachable");
         }
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
@@ -149,10 +157,64 @@ final class JobPlanning {
             materialPool.materialContents().forEach((key, units) -> stock.put(new GridKey.Material(key), units));
         }
         CardBook book = new CardBook(level, cards(network, player), items.keySet(), card -> reachable(level, network, card));
-        FluidResource fluidTarget = FluidMarkerItem.fluidOf(target.toStack(1));
-        GridKey goal = fluidTarget != null ? new GridKey.Fluid(fluidTarget) : new GridKey.Item(target);
+        return new Prepared(new Setup(network, stock, book), null);
+    }
+
+    /** What the planner is asked to make: the item, or the fluid a marker item stands for. */
+    private static GridKey goal(ItemResource target) {
+        FluidResource fluid = FluidMarkerItem.fluidOf(target.toStack(1));
+        return fluid != null ? new GridKey.Fluid(fluid) : new GridKey.Item(target);
+    }
+
+    /** A fluid is asked for in buckets: the planner counts it in millibuckets. */
+    private static long unit(GridKey goal) {
+        return goal instanceof GridKey.Fluid ? FluidAmounts.PER_BUCKET : 1;
+    }
+
+    /** Most memory of any server the player may use; none at all puts no limit on the plan's size. */
+    private static long biggestServer(CableNetwork network, ServerPlayer player) {
+        long biggest = -1;
+        for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
+            if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
+                biggest = Math.max(biggest, server.memory());
+            }
+        }
+        return biggest < 0 ? Long.MAX_VALUE : biggest;
+    }
+
+    /**
+     * The most of {@code target} the Deck's storage can make right now, up to {@code cap}, that fits the biggest
+     * crafting server: 0 when not even one can be made, or the Deck can't plan at all. Fluids count in buckets.
+     * Storage and the cards are read once; the search gives its best so far after {@code budget} nanoseconds.
+     */
+    public static long most(ServerPlayer player, ItemStack deck, ItemResource target, long cap, long budget) {
+        Prepared prepared = prepare(player, deck);
+        Setup setup = prepared.setup();
+        if (setup == null) {
+            return 0;
+        }
+        GridKey goal = goal(target);
+        long unit = unit(goal);
+        // the preview asks for at most this many buckets
+        long limit = unit > 1 ? Math.min(cap, Integer.MAX_VALUE) : cap;
+        return MaxCraft.most(goal, limit, unit, setup.stock(), setup.book(), biggestServer(setup.network(), player), budget, System::nanoTime);
+    }
+
+    /** As above; with {@code tree} the plan also records which craft feeds which. */
+    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
+            boolean tree) {
+        CraftPlanner.Plan<GridKey> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
+        Prepared prepared = prepare(player, deck);
+        Setup setup = prepared.setup();
+        if (setup == null) {
+            return new Preview(empty, List.of(), -1, prepared.problem());
+        }
+        CableNetwork network = setup.network();
+        Map<GridKey, Long> stock = setup.stock();
+        CardBook book = setup.book();
+        GridKey goal = goal(target);
         // A fluid is asked for in buckets.
-        long units = fluidTarget != null ? Math.multiplyExact(Math.min(amount, Integer.MAX_VALUE), (long) FluidAmounts.PER_BUCKET) : amount;
+        long units = unit(goal) > 1 ? Math.multiplyExact(Math.min(amount, Integer.MAX_VALUE), unit(goal)) : amount;
         CraftPlanner.Plan<GridKey> plan = CraftPlanner.plan(goal, Math.max(1, units), stock, book, tree);
         List<ServerOption> servers = new ArrayList<>();
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
