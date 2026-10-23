@@ -6,6 +6,7 @@ import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -48,22 +49,60 @@ public final class CraftingJob {
         }
     }
 
-    /** One card and how many crafts of it are left. */
+    /** Some of one item a step may still use. */
+    record Use(ItemResource item, long count) {
+        static final Codec<Use> CODEC = RecordCodecBuilder.create(i -> i.group(
+                ItemResource.CODEC.fieldOf("item").forGetter(Use::item),
+                Codec.LONG.fieldOf("count").forGetter(Use::count))
+                .apply(i, Use::new));
+    }
+
+    /**
+     * One card, how many crafts of it are left, and the items the plan gave it that it has yet to use. A step keeps to
+     * its share, so an item one step takes in place of its card's own never goes missing for another. Jobs saved
+     * before this have no share and pick from what the job holds, as they always did.
+     */
     public static final class Step {
         static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Card.CODEC.fieldOf("card").forGetter(s -> s.card),
                 Codec.LONG.fieldOf("left").forGetter(s -> s.left),
-                Codec.LONG.fieldOf("total").forGetter(s -> s.total))
-                .apply(i, Step::new));
+                Codec.LONG.fieldOf("total").forGetter(s -> s.total),
+                Use.CODEC.listOf().optionalFieldOf("uses").forGetter(s -> Optional.ofNullable(s.uses).map(Step::list)))
+                .apply(i, (card, left, total, uses) -> new Step(card, left, total, uses.map(Step::map).orElse(null))));
 
         final Card card;
         long left;
         final long total;
+        /** What is left of the plan's share, by item; null for a job planned before shares were kept. */
+        final @Nullable Map<ItemResource, Long> uses;
 
-        Step(Card card, long left, long total) {
+        Step(Card card, long left, long total, @Nullable Map<ItemResource, Long> uses) {
             this.card = card;
             this.left = left;
             this.total = total;
+            this.uses = uses;
+        }
+
+        private static List<Use> list(Map<ItemResource, Long> uses) {
+            return uses.entrySet().stream().filter(e -> e.getValue() > 0).map(e -> new Use(e.getKey(), e.getValue())).toList();
+        }
+
+        private static Map<ItemResource, Long> map(List<Use> uses) {
+            Map<ItemResource, Long> map = new LinkedHashMap<>();
+            uses.forEach(use -> map.merge(use.item(), use.count(), Long::sum));
+            return map;
+        }
+
+        /** How much of {@code key} is left of the step's share; 0 for a job planned before shares were kept. */
+        long share(ItemResource key) {
+            return uses == null ? 0 : uses.getOrDefault(key, 0L);
+        }
+
+        /** Counts {@code amount} of {@code key} as used, or as given back when negative. */
+        void use(ItemResource key, long amount) {
+            if (uses != null && (amount < 0 || uses.containsKey(key))) {
+                uses.merge(key, -amount, (a, b) -> Math.max(0, a + b));
+            }
         }
 
         public Card card() {
@@ -265,6 +304,10 @@ public final class CraftingJob {
     private final Map<Integer, Optional<CardRecipes.Resolved>> resolved = new HashMap<>();
     /** Which items each step's slots were found to accept; not saved. */
     private final Map<SlotKey, Boolean> accepted = new HashMap<>();
+    /** Each step's cooking recipe, once found; not saved. */
+    private final Map<Integer, CookingRecipes.Cooking> cooking = new HashMap<>();
+    /** When to look again for a step's cooking recipe that couldn't be found; not saved. */
+    private final Map<Integer, Long> cookingRetry = new HashMap<>();
 
     private record SlotKey(int step, int slot, ItemResource key) {}
 
@@ -317,8 +360,37 @@ public final class CraftingJob {
         return accepted.computeIfAbsent(new SlotKey(step, slot, key), k -> card.accepts(level, slot, key));
     }
 
+    /**
+     * Step {@code index}'s cooking recipe, if its card goes into vanilla cooking blocks. Looked up once a second until
+     * it is found (a machine may stand in an unloaded spot for a while), then kept for the rest of the job.
+     */
+    CookingRecipes.@Nullable Cooking cooking(ServerLevel level, int index) {
+        CookingRecipes.Cooking known = cooking.get(index);
+        long now = level.getGameTime();
+        if (known == null && steps.get(index).card instanceof ProcessingCard card && now >= cookingRetry.getOrDefault(index, 0L)) {
+            known = CookingRecipes.of(level, card);
+            if (known != null) {
+                cooking.put(index, known);
+            } else {
+                cookingRetry.put(index, now + 20);
+            }
+        }
+        return known;
+    }
+
+    /** Whether the cooking slot of step {@code step}'s card takes {@code key}; remembered for the rest of the job. */
+    boolean cooks(ServerLevel level, int step, CookingRecipes.Cooking recipe, ItemResource key) {
+        return accepted.computeIfAbsent(new SlotKey(step, -1, key), k -> recipe.accepts(level, key));
+    }
+
+    /** A step with no share: it picks from what the job holds, as steps did before shares were kept. */
     static Step step(Card card, long crafts) {
-        return new Step(card, crafts, crafts);
+        return new Step(card, crafts, crafts, null);
+    }
+
+    /** A step of a new job; {@code uses} is every item the plan gave it. */
+    static Step step(Card card, long crafts, Map<ItemResource, Long> uses) {
+        return new Step(card, crafts, crafts, new LinkedHashMap<>(uses));
     }
 
     public UUID id() {

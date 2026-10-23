@@ -148,6 +148,7 @@ final class JobRunner {
                     inputs.forEach(key -> {
                         if (!key.isEmpty()) {
                             reserved.merge(key, 1L, Long::sum);
+                            step.use(key, 1);
                         }
                     });
                     job.running.add(new CraftingJob.Running(i, JasmConfig.CRAFT_TICKS.getAsInt(), inputs));
@@ -210,7 +211,9 @@ final class JobRunner {
             boolean present = needed.entrySet().stream().allMatch(e -> record.count(e.getKey()) >= e.getValue());
             if (card == null || !present || !card.makes(level, inputs)) {
                 // Something changed underneath (a crash rewound the items, or the recipe changed): try that craft again later.
-                job.steps.get(craft.step).left++;
+                CraftingJob.Step step = job.steps.get(craft.step);
+                step.left++;
+                needed.forEach((key, n) -> step.use(key, -n));
                 continue;
             }
             CraftingInput input = CraftingInput.of(3, 3, inputs);
@@ -332,7 +335,6 @@ final class JobRunner {
                 problem = wait;
             }
         }
-        Map<ItemResource, Long> set = new HashMap<>();
         Map<FluidResource, Long> fluidSet = new HashMap<>();
         Map<MaterialKey, Long> materialSet = new HashMap<>();
         for (ProcessingCard.Amount input : card.usedInputs()) {
@@ -340,8 +342,6 @@ final class JobRunner {
                 materialSet.merge(input.material(), (long) input.count(), Long::sum);
             } else if (input.isFluid()) {
                 fluidSet.merge(input.fluid(), (long) input.count(), Long::sum);
-            } else {
-                set.merge(input.item(), (long) input.count(), Long::sum);
             }
         }
         List<ProcessingCard.Amount> expected = card.outputs().stream().filter(a -> !a.isEmpty()).toList();
@@ -355,11 +355,22 @@ final class JobRunner {
         // what the machines that were tried said
         Wait tried = Wait.NONE;
         while (sent < free && step.left > 0) {
-            boolean enough = set.entrySet().stream()
-                    .allMatch(e -> record.count(e.getKey()) - reserved.getOrDefault(e.getKey(), 0L) >= e.getValue())
+            Choice choice = chooseSet(level, job, stepIndex, card, record, reserved);
+            boolean enough = choice.set() != null
                     && fluidSet.entrySet().stream().allMatch(e -> fluids != null && fluids.countFluid(e.getKey()) >= e.getValue());
             if (!enough) {
+                if (choice.unchecked() && sent == 0) {
+                    // The items planned in place of the card's own can't be checked against the machine now: wait for it.
+                    blocked = problem != Wait.NONE ? problem : Wait.MISSING;
+                }
                 break;
+            }
+            List<ProcessingCard.Amount> chosen = choice.set();
+            Map<ItemResource, Long> set = new HashMap<>();
+            for (ProcessingCard.Amount input : chosen) {
+                if (!input.isFluid() && !input.isMaterial()) {
+                    set.merge(input.item(), (long) input.count(), Long::sum);
+                }
             }
             if (!materialSet.isEmpty() && (pool == null || !materialSet.entrySet().stream()
                     .allMatch(e -> pool.materialContents().getOrDefault(e.getKey(), 0L) >= e.getValue()))) {
@@ -373,7 +384,7 @@ final class JobRunner {
             }
             targets.sort(Comparator.comparingLong(t -> out.getOrDefault(t.at(), 0L)));
             Target target = targets.getFirst();
-            Machines.Push pushed = Machines.push(target.port(), target.side(), card.usedInputs(), pool);
+            Machines.Push pushed = Machines.push(target.port(), target.side(), chosen, pool);
             if (pushed == Machines.Push.SHORT) {
                 blocked = sent > 0 ? Wait.NONE : Wait.NO_MATERIAL;
                 break;
@@ -389,7 +400,10 @@ final class JobRunner {
                 targets.remove(target);
                 continue;
             }
-            set.forEach((key, n) -> store.extract(record, key, n, false, null));
+            set.forEach((key, n) -> {
+                store.extract(record, key, n, false, null);
+                step.use(key, n);
+            });
             fluidSet.forEach((key, n) -> store.extractFluid(fluids, key, n, false, null));
             job.sent.add(new CraftingJob.Sent(stepIndex, target.port().getBlockPos(), target.side(), expected, level.getGameTime()));
             out.merge(target.at(), 1L, Long::sum);
@@ -398,6 +412,72 @@ final class JobRunner {
             sent++;
         }
         return new Sending(sent, blocked);
+    }
+
+    /**
+     * One set's items, or null when the job holds too little; {@code unchecked} when planned items could have filled
+     * it but the machines can't be looked at now to make sure they cook them.
+     */
+    private record Choice(@Nullable List<ProcessingCard.Amount> set, boolean unchecked) {}
+
+    /**
+     * The items for one set of a processing card from what the job holds. Each item slot takes the card's own item
+     * while the step's share of it lasts, then another item from the share that the card's cooking recipe cooks the
+     * same, then the card's own item again. A slot gets one kind of item per set. Fluids and materials are as written,
+     * and a job planned before shares were kept takes exactly what the card says.
+     */
+    static Choice chooseSet(ServerLevel level, CraftingJob job, int stepIndex, ProcessingCard card, WaferRecord record,
+            Map<ItemResource, Long> reserved) {
+        CraftingJob.Step step = job.steps.get(stepIndex);
+        List<ProcessingCard.Amount> inputs = card.usedInputs();
+        List<ProcessingCard.Amount> chosen = new ArrayList<>(inputs.size());
+        Map<ItemResource, Long> using = new HashMap<>();
+        boolean unchecked = false;
+        // the card's own items: what the plan gave besides them can only be stand-ins for the cooking slot
+        Set<ItemResource> written = new HashSet<>();
+        inputs.forEach(input -> written.add(input.item()));
+        for (int i = 0; i < inputs.size(); i++) {
+            ProcessingCard.Amount input = inputs.get(i);
+            if (input.isFluid() || input.isMaterial()) {
+                chosen.add(input);
+                continue;
+            }
+            long n = input.count();
+            ItemResource own = input.item();
+            ItemResource pick = own;
+            if (step.uses != null && (left(step, using, own) < n || free(record, reserved, using, own) < n)) {
+                List<ItemResource> others = new ArrayList<>();
+                for (ItemResource key : step.uses.keySet()) {
+                    if (!written.contains(key) && left(step, using, key) >= n && free(record, reserved, using, key) >= n) {
+                        others.add(key);
+                    }
+                }
+                if (!others.isEmpty()) {
+                    CookingRecipes.Cooking cooking = job.cooking(level, stepIndex);
+                    if (cooking == null) {
+                        unchecked = true;
+                    } else if (cooking.slot() == i) {
+                        pick = others.stream().filter(key -> job.cooks(level, stepIndex, cooking, key)).findFirst().orElse(own);
+                    }
+                }
+            }
+            if (free(record, reserved, using, pick) < n) {
+                return new Choice(null, unchecked);
+            }
+            using.merge(pick, n, Long::sum);
+            chosen.add(pick.equals(own) ? input : ProcessingCard.Amount.of(pick, (int) n));
+        }
+        return new Choice(chosen, false);
+    }
+
+    /** What is left of the step's share of {@code key} once this set's other slots have had theirs. */
+    private static long left(CraftingJob.Step step, Map<ItemResource, Long> using, ItemResource key) {
+        return step.share(key) - using.getOrDefault(key, 0L);
+    }
+
+    /** How many of {@code key} the job holds that no running craft and no other slot of this set has claimed. */
+    private static long free(WaferRecord record, Map<ItemResource, Long> reserved, Map<ItemResource, Long> using, ItemResource key) {
+        return record.count(key) - reserved.getOrDefault(key, 0L) - using.getOrDefault(key, 0L);
     }
 
     /**
@@ -640,9 +720,14 @@ final class JobRunner {
         return reserved;
     }
 
-    /** One item for each slot of the card from what the job holds, the most plentiful first; null if a slot has nothing. */
+    /**
+     * One item for each slot of the card from what the job holds; null if a slot has nothing. A slot takes from the
+     * step's share first: the encoded item, then whichever other planned item it accepts there is most of. Past the
+     * share (and in a job planned before shares were kept) it takes whatever it accepts there is most of.
+     */
     static @Nullable List<ItemResource> chooseInputs(ServerLevel level, CraftingJob job, int step, CardRecipes.Resolved card,
             WaferRecord record, Map<ItemResource, Long> reserved) {
+        CraftingJob.Step planned = job.steps.get(step);
         List<ItemResource> inputs = new ArrayList<>();
         Map<ItemResource, Long> using = new HashMap<>();
         for (int slot = 0; slot < 9; slot++) {
@@ -651,12 +736,29 @@ final class JobRunner {
                 continue;
             }
             ItemResource best = null;
-            long bestFree = 0;
-            for (Map.Entry<ItemResource, Long> held : record.contents().entrySet()) {
-                long free = held.getValue() - reserved.getOrDefault(held.getKey(), 0L) - using.getOrDefault(held.getKey(), 0L);
-                if (free > bestFree && job.accepts(level, step, card, slot, held.getKey())) {
-                    best = held.getKey();
-                    bestFree = free;
+            if (planned.uses != null) {
+                ItemResource own = ItemResource.of(card.encoded(slot));
+                if (left(planned, using, own) > 0 && free(record, reserved, using, own) > 0) {
+                    best = own;
+                } else {
+                    long bestFree = 0;
+                    for (ItemResource key : planned.uses.keySet()) {
+                        long free = free(record, reserved, using, key);
+                        if (left(planned, using, key) > 0 && free > bestFree && job.accepts(level, step, card, slot, key)) {
+                            best = key;
+                            bestFree = free;
+                        }
+                    }
+                }
+            }
+            if (best == null) {
+                long bestFree = 0;
+                for (Map.Entry<ItemResource, Long> held : record.contents().entrySet()) {
+                    long free = held.getValue() - reserved.getOrDefault(held.getKey(), 0L) - using.getOrDefault(held.getKey(), 0L);
+                    if (free > bestFree && job.accepts(level, step, card, slot, held.getKey())) {
+                        best = held.getKey();
+                        bestFree = free;
+                    }
                 }
             }
             if (best == null) {

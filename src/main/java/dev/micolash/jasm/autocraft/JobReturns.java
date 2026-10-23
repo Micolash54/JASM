@@ -61,10 +61,11 @@ final class JobReturns {
                     if (!card.encoded(slot).isEmpty() && job.accepts(level, stepIndex, card, slot, target)) perCraft++;
                 }
             }
-            if (perCraft > 0) {
-                if (step.left > (Long.MAX_VALUE - needed) / perCraft) return Long.MAX_VALUE;
-                needed += step.left * perCraft;
-            }
+            if (perCraft > 0 && step.left > (Long.MAX_VALUE - needed) / perCraft) return Long.MAX_VALUE;
+            // a step may also have been given the item in place of its card's own
+            long keep = Math.max(step.left * perCraft, step.card instanceof ProcessingCard ? step.share(target) : 0);
+            if (keep > Long.MAX_VALUE - needed) return Long.MAX_VALUE;
+            needed += keep;
         }
         return needed;
     }

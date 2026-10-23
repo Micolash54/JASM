@@ -282,7 +282,12 @@ final class JobPlanning {
         }
         List<CraftingJob.Step> steps = new ArrayList<>();
         for (CraftPlanner.Step<GridKey> step : preview.plan().steps()) {
-            steps.add(CraftingJob.step(((CardBook.Entry) step.pattern()).card(), step.crafts()));
+            // Each step keeps to the items planned for it; fluids and materials are always the card's own.
+            Map<ItemResource, Long> uses = new LinkedHashMap<>();
+            step.uses().forEach((key, n) -> {
+                if (key instanceof GridKey.Item item) uses.merge(item.resource(), n, Long::sum);
+            });
+            steps.add(CraftingJob.step(((CardBook.Entry) step.pattern()).card(), step.crafts(), uses));
         }
         UUID id = UUID.randomUUID();
         CraftingJob job = CraftingJob.start(id, record.serial(), record.id(), player.getUUID(), player.getPlainTextName(), deckId,

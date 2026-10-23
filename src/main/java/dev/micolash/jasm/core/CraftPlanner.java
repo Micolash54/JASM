@@ -2,6 +2,7 @@ package dev.micolash.jasm.core;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -18,7 +19,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The requested item is always crafted, never taken from storage. Its ingredients come from storage first, then
  * from leftovers of earlier crafts in the same job, and are crafted only when neither has enough. A slot that accepts
- * several items takes them in order of how many there are.
+ * several items takes the encoded one first, then the others in order of how many there are.
  */
 public final class CraftPlanner<K> {
     /** A recipe: what one craft makes, what each slot accepts, and what it leaves behind (empty buckets). */
@@ -37,6 +38,14 @@ public final class CraftPlanner<K> {
 
         /** Left behind by one craft, besides the output. */
         Map<K, Long> remainders();
+
+        /**
+         * Whether one craft may mix the items a slot accepts. When not (a machine slot that holds one kind), each craft
+         * gets all its share of a slot as one item.
+         */
+        default boolean mixes() {
+            return true;
+        }
     }
 
     /** Which patterns make an item; the first is used. */
@@ -49,8 +58,15 @@ public final class CraftPlanner<K> {
         }
     }
 
-    /** One pattern to run {@code crafts} times. Steps are listed ingredients first. */
-    public record Step<K>(Pattern<K> pattern, long crafts) {}
+    /**
+     * One pattern to run {@code crafts} times, and every item it was planned to use over all of them, made in the job
+     * or taken from storage. Steps are listed ingredients first.
+     */
+    public record Step<K>(Pattern<K> pattern, long crafts, Map<K, Long> uses) {
+        public Step(Pattern<K> pattern, long crafts) {
+            this(pattern, crafts, Map.of());
+        }
+    }
 
     /** One craft taking from a box: another step, or storage or the missing list. Only one of {@code from} and {@code kind} is used. */
     private record Taking<K>(Pattern<K> consumer, @Nullable Pattern<K> from, @Nullable Kind kind, @Nullable K key) {}
@@ -127,6 +143,8 @@ public final class CraftPlanner<K> {
     private final @Nullable List<Taking<K>> takings;
     /** The step that last made each item, or left it behind: where an item reused from leftovers came from. */
     private final Map<K, Pattern<K>> madeBy = new HashMap<>();
+    /** What each pattern was given, so a job can keep each step to its own share. */
+    private final Map<Pattern<K>, Map<K, Long>> uses = new HashMap<>();
     private long size;
     private boolean tooComplex;
 
@@ -168,7 +186,12 @@ public final class CraftPlanner<K> {
         for (Map.Entry<K, Long> entry : planner.taken.entrySet()) {
             takenTotal = saturatingAdd(takenTotal, book.space(entry.getKey(), entry.getValue()));
         }
-        return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(planner.steps), saturatingAdd(takenTotal, planner.size), made,
+        List<Step<K>> steps = new ArrayList<>();
+        for (Step<K> step : planner.steps) {
+            Map<K, Long> used = planner.uses.get(step.pattern());
+            steps.add(new Step<>(step.pattern(), step.crafts(), used == null ? Map.of() : Collections.unmodifiableMap(used)));
+        }
+        return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(steps), saturatingAdd(takenTotal, planner.size), made,
                 planner.tooComplex ? Tree.empty() : planner.tree(pattern));
     }
 
@@ -187,6 +210,7 @@ public final class CraftPlanner<K> {
         Map<List<K>, K> extraKeys = new HashMap<>();
         for (Map.Entry<List<K>, Long> group : groups.entrySet()) {
             long needed = saturatingMul(crafts, group.getValue());
+            long unit = pattern.mixes() ? 1 : group.getValue();
             K key = crafts > 1 ? group.getKey().stream().filter(pattern.remainders()::containsKey).findFirst().orElse(null) : null;
             if (key != null) {
                 long back = pattern.remainders().get(key);
@@ -196,6 +220,7 @@ public final class CraftPlanner<K> {
                     long once = Math.min(needed, saturatingAdd(firstCraft, later));
                     reused.merge(key, needed - once, Long::sum);
                     needed = once;
+                    unit = 1;
                     long extra = saturatingMul(Math.min(crafts, lanes) - 1, Math.min(back, group.getValue()));
                     if (extra > 0) {
                         extras.put(group.getKey(), extra);
@@ -203,14 +228,14 @@ public final class CraftPlanner<K> {
                     }
                 }
             }
-            supply(group.getKey(), needed, depth, pattern);
+            supply(group.getKey(), needed, unit, depth, pattern);
             if (tooComplex) {
                 return;
             }
         }
         // Only once every slot has what it needs, so an extra copy never takes what another slot required.
         for (Map.Entry<List<K>, Long> extra : extras.entrySet()) {
-            long lent = useAvailable(extra.getKey(), extra.getValue(), pattern);
+            long lent = useAvailable(extra.getKey(), extra.getValue(), 1, pattern);
             // They come back after the step like the first copy.
             reused.merge(extraKeys.get(extra.getKey()), -lent, Long::sum);
         }
@@ -245,12 +270,15 @@ public final class CraftPlanner<K> {
         steps.add(new Step<>(pattern, crafts));
     }
 
-    /** {@code needed} items for slots that take {@code options}, from any of them, for the craft {@code consumer}. */
-    private void supply(List<K> options, long needed, int depth, Pattern<K> consumer) {
+    /**
+     * {@code needed} items for slots that take {@code options}, from any of them, for the craft {@code consumer}; each
+     * item in lots of {@code unit} (one craft's share, when a craft can't mix them).
+     */
+    private void supply(List<K> options, long needed, long unit, int depth, Pattern<K> consumer) {
         if (options.isEmpty()) {
             return;
         }
-        needed -= useAvailable(options, needed, consumer);
+        needed -= useAvailable(options, needed, unit, consumer);
         if (needed <= 0) {
             return;
         }
@@ -258,6 +286,7 @@ public final class CraftPlanner<K> {
             List<Pattern<K>> patterns = book.patternsFor(option);
             if (!patterns.isEmpty()) {
                 craft(option, patterns.getFirst(), needed, depth, consumer);
+                uses.computeIfAbsent(consumer, k -> new LinkedHashMap<>()).merge(option, needed, Long::sum);
                 return;
             }
         }
@@ -265,16 +294,25 @@ public final class CraftPlanner<K> {
         take(new Taking<>(consumer, null, Kind.MISSING, options.getFirst()));
     }
 
-    /** Takes up to {@code amount} of what is already there for {@code options}, most plentiful first; ties keep the encoded order. Returns how many. */
-    private long useAvailable(List<K> options, long amount, Pattern<K> consumer) {
-        List<K> byAmount = new ArrayList<>(options);
+    /**
+     * Takes up to {@code amount} of what is already there for {@code options}: the encoded item first, then the others,
+     * most plentiful first (ties keep the encoded order). With options to choose from, each is taken in whole lots of
+     * {@code unit}. Returns how many.
+     */
+    private long useAvailable(List<K> options, long amount, long unit, Pattern<K> consumer) {
+        List<K> byAmount = new ArrayList<>(options.subList(1, options.size()));
         byAmount.sort(Comparator.comparingLong((K k) -> available(k)).reversed());
+        byAmount.addFirst(options.getFirst());
+        long lot = options.size() > 1 ? Math.max(1, unit) : 1;
         long got = 0;
         for (K option : byAmount) {
             if (got >= amount) {
                 break;
             }
-            got += use(option, amount - got, consumer);
+            long want = Math.min(amount - got, available(option)) / lot * lot;
+            if (want > 0) {
+                got += use(option, want, consumer);
+            }
         }
         return got;
     }
@@ -314,6 +352,9 @@ public final class CraftPlanner<K> {
             stock.merge(key, -fromStock, Long::sum);
             taken.merge(key, fromStock, Long::sum);
             take(new Taking<>(consumer, null, Kind.STORAGE, key));
+        }
+        if (fromSpare + fromStock > 0) {
+            uses.computeIfAbsent(consumer, k -> new LinkedHashMap<>()).merge(key, fromSpare + fromStock, Long::sum);
         }
         return fromSpare + fromStock;
     }

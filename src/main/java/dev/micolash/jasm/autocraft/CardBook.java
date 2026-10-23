@@ -23,7 +23,8 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 /**
  * The cards a network knows, as the planner sees them. Each slot of a crafting card accepts its encoded item and any
  * other item that is stored or can be crafted, as long as the recipe still matches with it there. A processing card
- * takes exactly the items and fluids written on it, and only counts while one of its machines can be reached.
+ * takes the items and fluids written on it, and only counts while one of its machines can be reached; when its
+ * machines are vanilla cooking blocks, the slot the recipe cooks also takes whatever else that recipe cooks the same.
  */
 public final class CardBook implements CraftPlanner.Book<GridKey> {
     /** A pattern made from a card. */
@@ -71,7 +72,7 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
             add(new CardPattern(level, r, candidates));
         }
         for (ProcessingCard p : processing) {
-            add(new ProcessingPattern(p));
+            add(new ProcessingPattern(level, p, candidates));
         }
         unreachable.removeAll(byOutput.keySet());
     }
@@ -177,17 +178,36 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         }
     }
 
-    /** One processing card as a planner pattern: its first output is what it makes, the others come along. */
+    /**
+     * One processing card as a planner pattern: its first output is what it makes, the others come along. A machine
+     * slot holds one kind of item, so a set never mixes the items its slot accepts.
+     */
     public static final class ProcessingPattern implements Entry {
         private final ProcessingCard card;
         private final List<List<GridKey>> slots = new ArrayList<>();
         private final List<Long> amounts = new ArrayList<>();
         private final Map<GridKey, Long> extras = new LinkedHashMap<>();
 
-        ProcessingPattern(ProcessingCard card) {
+        /** {@code candidates} are the items worth trying in the slot a cooking recipe fills. */
+        ProcessingPattern(ServerLevel level, ProcessingCard card, Collection<ItemResource> candidates) {
             this.card = card;
-            for (ProcessingCard.Amount input : card.usedInputs()) {
-                slots.add(List.of(input.key()));
+            CookingRecipes.Cooking cooking = CookingRecipes.of(level, card);
+            List<ProcessingCard.Amount> inputs = card.usedInputs();
+            for (int i = 0; i < inputs.size(); i++) {
+                ProcessingCard.Amount input = inputs.get(i);
+                List<GridKey> options = new ArrayList<>();
+                options.add(input.key());
+                if (cooking != null && cooking.slot() == i) {
+                    for (ItemResource candidate : candidates) {
+                        GridKey key = new GridKey.Item(candidate);
+                        // an item written in another slot stays that slot's, so a job never mistakes one for the other
+                        boolean written = inputs.stream().anyMatch(other -> candidate.equals(other.item()));
+                        if (!written && !options.contains(key) && cooking.accepts(level, candidate)) {
+                            options.add(key);
+                        }
+                    }
+                }
+                slots.add(List.copyOf(options));
                 amounts.add((long) input.count());
             }
             for (ProcessingCard.Amount extra : card.extras()) {
@@ -223,6 +243,11 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         @Override
         public Map<GridKey, Long> remainders() {
             return extras;
+        }
+
+        @Override
+        public boolean mixes() {
+            return false;
         }
     }
 }
