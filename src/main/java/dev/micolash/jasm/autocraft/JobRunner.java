@@ -121,6 +121,7 @@ final class JobRunner {
         if (job.phase == CraftingJob.Phase.CRAFTING && !dimensionBlocked) {
             int free = server.parallel() - job.running.size() - job.sent.size();
             Map<ItemResource, Long> reserved = reserved(job);
+            Map<ItemResource, Long> seeds = seeds(level, job);
             for (int i = 0; i < job.steps.size() && free > 0; i++) {
                 CraftingJob.Step step = job.steps.get(i);
                 if (step.left <= 0) {
@@ -130,8 +131,9 @@ final class JobRunner {
                     missingCard = true;
                     continue;
                 }
+                Map<ItemResource, Long> keep = keepFor(level, job, i, seeds);
                 if (step.card instanceof ProcessingCard processing) {
-                    Sending sending = send(level, network, job, i, processing, record, fluids, store, reserved, free);
+                    Sending sending = send(level, network, job, i, processing, record, fluids, store, reserved, keep, free);
                     free -= sending.sent();
                     started |= sending.sent() > 0;
                     if (machineBlocked == Wait.NONE) {
@@ -141,7 +143,7 @@ final class JobRunner {
                 }
                 CardRecipes.Resolved card = job.resolved(level, i);
                 while (free > 0 && step.left > 0 && card != null) {
-                    List<ItemResource> inputs = chooseInputs(level, job, i, card, record, reserved);
+                    List<ItemResource> inputs = chooseInputs(level, job, i, card, record, reserved, keep);
                     if (inputs == null) {
                         break;
                     }
@@ -318,7 +320,8 @@ final class JobRunner {
      * the fewest sets out, while there are free Processor slots and ingredients.
      */
     static Sending send(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, int stepIndex, ProcessingCard card,
-            WaferRecord record, @Nullable WaferRecord fluids, WaferStore store, Map<ItemResource, Long> reserved, int free) {
+            WaferRecord record, @Nullable WaferRecord fluids, WaferStore store, Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep,
+            int free) {
         CraftingJob.Step step = job.steps.get(stepIndex);
         List<Target> targets = new ArrayList<>();
         // the first machine that can't be used says why, should none of them take a set
@@ -355,7 +358,7 @@ final class JobRunner {
         // what the machines that were tried said
         Wait tried = Wait.NONE;
         while (sent < free && step.left > 0) {
-            Choice choice = chooseSet(level, job, stepIndex, card, record, reserved);
+            Choice choice = chooseSet(level, job, stepIndex, card, record, reserved, keep);
             boolean enough = choice.set() != null
                     && fluidSet.entrySet().stream().allMatch(e -> fluids != null && fluids.countFluid(e.getKey()) >= e.getValue());
             if (!enough) {
@@ -427,7 +430,7 @@ final class JobRunner {
      * and a job planned before shares were kept takes exactly what the card says.
      */
     static Choice chooseSet(ServerLevel level, CraftingJob job, int stepIndex, ProcessingCard card, WaferRecord record,
-            Map<ItemResource, Long> reserved) {
+            Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep) {
         CraftingJob.Step step = job.steps.get(stepIndex);
         List<ProcessingCard.Amount> inputs = card.usedInputs();
         List<ProcessingCard.Amount> chosen = new ArrayList<>(inputs.size());
@@ -445,10 +448,10 @@ final class JobRunner {
             long n = input.count();
             ItemResource own = input.item();
             ItemResource pick = own;
-            if (step.uses != null && (left(step, using, own) < n || free(record, reserved, using, own) < n)) {
+            if (step.uses != null && (left(step, using, own) < n || free(record, reserved, keep, using,own) < n)) {
                 List<ItemResource> others = new ArrayList<>();
                 for (ItemResource key : step.uses.keySet()) {
-                    if (!written.contains(key) && left(step, using, key) >= n && free(record, reserved, using, key) >= n) {
+                    if (!written.contains(key) && left(step, using, key) >= n && free(record, reserved, keep, using,key) >= n) {
                         others.add(key);
                     }
                 }
@@ -461,7 +464,7 @@ final class JobRunner {
                     }
                 }
             }
-            if (free(record, reserved, using, pick) < n) {
+            if (free(record, reserved, keep, using,pick) < n) {
                 return new Choice(null, unchecked);
             }
             using.merge(pick, n, Long::sum);
@@ -475,9 +478,39 @@ final class JobRunner {
         return step.share(key) - using.getOrDefault(key, 0L);
     }
 
-    /** How many of {@code key} the job holds that no running craft and no other slot of this set has claimed. */
-    private static long free(WaferRecord record, Map<ItemResource, Long> reserved, Map<ItemResource, Long> using, ItemResource key) {
-        return record.count(key) - reserved.getOrDefault(key, 0L) - using.getOrDefault(key, 0L);
+    /**
+     * How many of {@code key} the job holds that no running craft and no other slot of this set has claimed, past what
+     * the step must leave alone ({@code keep}: the seeds of other steps that copy an item from itself).
+     */
+    private static long free(WaferRecord record, Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep, Map<ItemResource, Long> using,
+            ItemResource key) {
+        return record.count(key) - reserved.getOrDefault(key, 0L) - keep.getOrDefault(key, 0L) - using.getOrDefault(key, 0L);
+    }
+
+    /**
+     * The seed each step that copies an item from itself needs for its next craft, while it has crafts left. Other steps
+     * leave those copies alone, so the copying never runs out of copies to start from.
+     */
+    static Map<ItemResource, Long> seeds(ServerLevel level, CraftingJob job) {
+        Map<ItemResource, Long> seeds = new HashMap<>();
+        for (int i = 0; i < job.steps.size(); i++) {
+            CraftingJob.Growing growing = job.steps.get(i).left > 0 ? job.growing(level, i) : null;
+            if (growing != null) {
+                seeds.merge(growing.item(), growing.perCraft(), Long::sum);
+            }
+        }
+        return seeds;
+    }
+
+    /** What step {@code index} must leave alone: every seed but the one it grows from itself. */
+    static Map<ItemResource, Long> keepFor(ServerLevel level, CraftingJob job, int index, Map<ItemResource, Long> seeds) {
+        CraftingJob.Growing own = seeds.isEmpty() ? null : job.growing(level, index);
+        if (own == null || !seeds.containsKey(own.item())) {
+            return seeds;
+        }
+        Map<ItemResource, Long> keep = new HashMap<>(seeds);
+        keep.remove(own.item());
+        return keep;
     }
 
     /**
@@ -726,7 +759,7 @@ final class JobRunner {
      * share (and in a job planned before shares were kept) it takes whatever it accepts there is most of.
      */
     static @Nullable List<ItemResource> chooseInputs(ServerLevel level, CraftingJob job, int step, CardRecipes.Resolved card,
-            WaferRecord record, Map<ItemResource, Long> reserved) {
+            WaferRecord record, Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep) {
         CraftingJob.Step planned = job.steps.get(step);
         List<ItemResource> inputs = new ArrayList<>();
         Map<ItemResource, Long> using = new HashMap<>();
@@ -738,12 +771,12 @@ final class JobRunner {
             ItemResource best = null;
             if (planned.uses != null) {
                 ItemResource own = ItemResource.of(card.encoded(slot));
-                if (left(planned, using, own) > 0 && free(record, reserved, using, own) > 0) {
+                if (left(planned, using, own) > 0 && free(record, reserved, keep, using,own) > 0) {
                     best = own;
                 } else {
                     long bestFree = 0;
                     for (ItemResource key : planned.uses.keySet()) {
-                        long free = free(record, reserved, using, key);
+                        long free = free(record, reserved, keep, using,key);
                         if (left(planned, using, key) > 0 && free > bestFree && job.accepts(level, step, card, slot, key)) {
                             best = key;
                             bestFree = free;
@@ -754,7 +787,7 @@ final class JobRunner {
             if (best == null) {
                 long bestFree = 0;
                 for (Map.Entry<ItemResource, Long> held : record.contents().entrySet()) {
-                    long free = held.getValue() - reserved.getOrDefault(held.getKey(), 0L) - using.getOrDefault(held.getKey(), 0L);
+                    long free = free(record, reserved, keep, using, held.getKey());
                     if (free > bestFree && job.accepts(level, step, card, slot, held.getKey())) {
                         best = held.getKey();
                         bestFree = free;

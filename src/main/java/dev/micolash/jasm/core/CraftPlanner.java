@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
@@ -20,6 +21,10 @@ import org.jspecify.annotations.Nullable;
  * <p>The requested item is always crafted, never taken from storage. Its ingredients come from storage first, then
  * from leftovers of earlier crafts in the same job, and are crafted only when neither has enough. A slot that accepts
  * several items takes the encoded one first, then the others in order of how many there are.
+ *
+ * <p>A pattern whose own item in a slot is also what it makes (a smithing template copied with diamonds) grows: it
+ * needs a seed, the copies one craft takes, which the job holds back for itself and gives back at the end. Each craft
+ * then adds what it makes beyond what it took. Storage always keeps a seed of such an item: other crafts never take it.
  */
 public final class CraftPlanner<K> {
     /** A recipe: what one craft makes, what each slot accepts, and what it leaves behind (empty buckets). */
@@ -56,17 +61,31 @@ public final class CraftPlanner<K> {
         default long space(K key, long amount) {
             return amount;
         }
+
+        /** Whether copies of {@code key} may be made from copies of itself. */
+        default boolean grows(K key) {
+            return true;
+        }
     }
 
     /**
      * One pattern to run {@code crafts} times, and every item it was planned to use over all of them, made in the job
-     * or taken from storage. Steps are listed ingredients first.
+     * or taken from storage. Steps are listed ingredients first. {@code made} is what the step adds: for a growing
+     * pattern only what it makes beyond what it takes. {@code rounds} is how many rounds a growing pattern needs, each
+     * starting only with copies already made; 0 for any other.
      */
-    public record Step<K>(Pattern<K> pattern, long crafts, Map<K, Long> uses) {
+    public record Step<K>(Pattern<K> pattern, long crafts, Map<K, Long> uses, long made, long rounds) {
         public Step(Pattern<K> pattern, long crafts) {
             this(pattern, crafts, Map.of());
         }
+
+        public Step(Pattern<K> pattern, long crafts, Map<K, Long> uses) {
+            this(pattern, crafts, uses, saturatingMul(crafts, pattern.outputCount()), 0);
+        }
     }
+
+    /** A growing pattern: how many copies of its own item one craft takes, and how many it gains. */
+    private record Growth(long seed, long gain) {}
 
     /** One craft taking from a box: another step, or storage or the missing list. Only one of {@code from} and {@code kind} is used. */
     private record Taking<K>(Pattern<K> consumer, @Nullable Pattern<K> from, @Nullable Kind kind, @Nullable K key) {}
@@ -78,7 +97,11 @@ public final class CraftPlanner<K> {
         /** Nothing makes the requested item. */
         NO_PATTERN,
         /** Deeper or larger than the limits allow, or an item needs itself. */
-        TOO_COMPLEX
+        TOO_COMPLEX,
+        /** A pattern that takes its own item makes no more of it than it takes. */
+        NO_GAIN,
+        /** A pattern that takes its own item has no copy to start from, and nothing else makes one. */
+        NO_SEED
     }
 
     /**
@@ -92,6 +115,15 @@ public final class CraftPlanner<K> {
 
         public boolean ok() {
             return problem == Problem.NONE;
+        }
+
+        /** Rounds the growing steps need, added up; 0 when none grows. */
+        public long rounds() {
+            long rounds = 0;
+            for (Step<K> step : steps) {
+                rounds = saturatingAdd(rounds, step.rounds());
+            }
+            return rounds;
         }
     }
 
@@ -145,8 +177,16 @@ public final class CraftPlanner<K> {
     private final Map<K, Pattern<K>> madeBy = new HashMap<>();
     /** What each pattern was given, so a job can keep each step to its own share. */
     private final Map<Pattern<K>, Map<K, Long>> uses = new HashMap<>();
+    /** Copies a growing item's step starts from, held back by the job and given back at its end. */
+    private final Map<K, Long> held = new HashMap<>();
+    /** How many of those copies the job made itself, with another pattern. */
+    private final Map<K, Long> seedsMade = new HashMap<>();
+    /** The pattern used for each item, once worked out; empty when none can be used. */
+    private final Map<K, Optional<Pattern<K>>> mains = new HashMap<>();
     private long size;
     private boolean tooComplex;
+    private boolean noGain;
+    private boolean noSeed;
 
     private CraftPlanner(Book<K> book, Map<K, Long> stock, boolean record, long lanes) {
         this.book = book;
@@ -175,13 +215,37 @@ public final class CraftPlanner<K> {
         if (patterns.isEmpty() || amount <= 0) {
             return new Plan<>(Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
         }
-        Pattern<K> pattern = patterns.getFirst();
-        long crafts = ceilDiv(amount, pattern.outputCount());
-        planner.making.push(target);
-        planner.run(pattern, crafts, 1);
-        planner.making.pop();
-        long made = crafts * pattern.outputCount();
-        Problem problem = planner.tooComplex ? Problem.TOO_COMPLEX : planner.missing.isEmpty() ? Problem.NONE : Problem.MISSING;
+        Pattern<K> pattern = planner.main(target);
+        if (pattern == null) {
+            return new Plan<>(planner.unusable(target), Map.of(), Map.of(), List.of(), 0, 0);
+        }
+        Growth growth = planner.growth(pattern);
+        Pattern<K> root = pattern;
+        long made;
+        if (growth == null) {
+            long crafts = ceilDiv(amount, pattern.outputCount());
+            planner.making.push(target);
+            planner.run(pattern, crafts, 1);
+            planner.making.pop();
+            made = saturatingMul(crafts, pattern.outputCount());
+        } else {
+            // Asked for N, the job makes N more than there were: a seed it had to make counts toward them.
+            planner.hold(target, growth.seed(), 1, pattern);
+            long seedMade = planner.seedsMade.getOrDefault(target, 0L);
+            long crafts = ceilDiv(Math.max(0, amount - seedMade), growth.gain());
+            if (crafts > 0 && !planner.tooComplex) {
+                planner.making.push(target);
+                planner.run(pattern, crafts, 1);
+                planner.making.pop();
+            } else if (!planner.steps.isEmpty()) {
+                root = planner.steps.getLast().pattern();
+            }
+            made = saturatingAdd(seedMade, saturatingMul(crafts, growth.gain()));
+        }
+        Problem problem = planner.tooComplex ? Problem.TOO_COMPLEX
+                : planner.noGain ? Problem.NO_GAIN
+                : planner.noSeed ? Problem.NO_SEED
+                : planner.missing.isEmpty() ? Problem.NONE : Problem.MISSING;
         long takenTotal = 0;
         for (Map.Entry<K, Long> entry : planner.taken.entrySet()) {
             takenTotal = saturatingAdd(takenTotal, book.space(entry.getKey(), entry.getValue()));
@@ -189,19 +253,160 @@ public final class CraftPlanner<K> {
         List<Step<K>> steps = new ArrayList<>();
         for (Step<K> step : planner.steps) {
             Map<K, Long> used = planner.uses.get(step.pattern());
-            steps.add(new Step<>(step.pattern(), step.crafts(), used == null ? Map.of() : Collections.unmodifiableMap(used)));
+            Map<K, Long> share = used == null ? Map.of() : Collections.unmodifiableMap(used);
+            Growth grows = planner.growth(step.pattern());
+            steps.add(grows == null ? new Step<>(step.pattern(), step.crafts(), share)
+                    : new Step<>(step.pattern(), step.crafts(), share, saturatingMul(step.crafts(), grows.gain()),
+                            rounds(grows, step.crafts())));
         }
         return new Plan<>(problem, planner.taken, planner.missing, List.copyOf(steps), saturatingAdd(takenTotal, planner.size), made,
-                planner.tooComplex ? Tree.empty() : planner.tree(pattern));
+                planner.tooComplex ? Tree.empty() : planner.tree(root));
+    }
+
+    /** The most rounds worked out one by one; a step past it says this many. */
+    static final long MAX_ROUNDS = 1_000_000;
+
+    /**
+     * Rounds {@code crafts} of a growing pattern need, starting from one seed: each round runs as many crafts as the
+     * copies already there allow, and what they make joins the next round.
+     */
+    private static long rounds(Growth growth, long crafts) {
+        long copies = growth.seed();
+        long left = crafts;
+        long rounds = 0;
+        while (left > 0 && rounds < MAX_ROUNDS) {
+            long now = Math.min(left, copies / growth.seed());
+            left -= now;
+            copies = saturatingAdd(copies, saturatingMul(now, growth.gain()));
+            rounds++;
+        }
+        return rounds;
+    }
+
+    /**
+     * The pattern used to make {@code key}: the first one, skipping those that take {@code key} itself but can't gain
+     * from it. Null when none is left.
+     */
+    private @Nullable Pattern<K> main(K key) {
+        return mains.computeIfAbsent(key, k -> {
+            for (Pattern<K> pattern : book.patternsFor(k)) {
+                Growth self = selfTaking(pattern);
+                if (self == null || self.gain() > 0) {
+                    return Optional.of(pattern);
+                }
+            }
+            return Optional.empty();
+        }).orElse(null);
+    }
+
+    /** Why the patterns for {@code key} can't be used, when {@link #main} found none. */
+    private Problem unusable(K key) {
+        for (Pattern<K> pattern : book.patternsFor(key)) {
+            Growth self = selfTaking(pattern);
+            if (self != null && self.gain() <= 0) {
+                return Problem.NO_GAIN;
+            }
+        }
+        return book.patternsFor(key).isEmpty() ? Problem.NO_PATTERN : Problem.TOO_COMPLEX;
+    }
+
+    /**
+     * How a pattern grows, or null when it doesn't: no slot's own item is what it makes, or the book says what it makes
+     * can't grow (such a pattern takes its own item from storage like any other ingredient).
+     */
+    private @Nullable Growth growth(Pattern<K> pattern) {
+        return book.grows(pattern.output()) ? selfTaking(pattern) : null;
+    }
+
+    /** How many of what a pattern makes its own slots take, and how many it gains; null when they take none. */
+    private @Nullable Growth selfTaking(Pattern<K> pattern) {
+        K output = pattern.output();
+        long takes = 0;
+        List<List<K>> slots = pattern.slots();
+        for (int i = 0; i < slots.size(); i++) {
+            if (!slots.get(i).isEmpty() && slots.get(i).getFirst().equals(output)) {
+                takes = saturatingAdd(takes, pattern.amount(i));
+            }
+        }
+        if (takes <= 0) {
+            return null;
+        }
+        long gives = saturatingAdd(pattern.outputCount(), pattern.remainders().getOrDefault(output, 0L));
+        return new Growth(takes, gives - takes);
+    }
+
+    /** A pattern with no slot taking what it makes, to make the first copies of {@code key}; null when there is none. */
+    private @Nullable Pattern<K> seedPattern(K key) {
+        for (Pattern<K> pattern : book.patternsFor(key)) {
+            if (selfTaking(pattern) == null) {
+                return pattern;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Holds back {@code seed} copies of {@code key} for the growing pattern {@code grower}: from this job's leftovers,
+     * then storage, then made with another pattern. With none of those, the plan has no seed and the copies are missing.
+     */
+    private void hold(K key, long seed, int depth, Pattern<K> grower) {
+        long want = seed - held.getOrDefault(key, 0L);
+        if (want <= 0) {
+            return;
+        }
+        long fromSpare = Math.min(want, spare.getOrDefault(key, 0L));
+        if (fromSpare > 0) {
+            spare.merge(key, -fromSpare, Long::sum);
+            Pattern<K> maker = madeBy.get(key);
+            if (maker != null) {
+                take(new Taking<>(grower, maker, null, null));
+            }
+        }
+        long fromStock = Math.min(want - fromSpare, stock.getOrDefault(key, 0L));
+        if (fromStock > 0) {
+            stock.merge(key, -fromStock, Long::sum);
+            taken.merge(key, fromStock, Long::sum);
+            take(new Taking<>(grower, null, Kind.STORAGE, key));
+        }
+        held.merge(key, fromSpare + fromStock, Long::sum);
+        long lacking = want - fromSpare - fromStock;
+        if (lacking <= 0) {
+            return;
+        }
+        Pattern<K> other = seedPattern(key);
+        if (other == null) {
+            noSeed = true;
+            missing.merge(key, lacking, Long::sum);
+            take(new Taking<>(grower, null, Kind.MISSING, key));
+            return;
+        }
+        // craft() puts only what is over among the leftovers: the copies asked for are the seed.
+        craft(key, other, lacking, depth, grower);
+        held.merge(key, lacking, Long::sum);
+        seedsMade.merge(key, lacking, Long::sum);
     }
 
     /** Gathers the ingredients for {@code crafts} of {@code pattern}, then adds the step. */
     private void run(Pattern<K> pattern, long crafts, int depth) {
+        K output = pattern.output();
+        Growth growth = growth(pattern);
         // Slots that take the same items are supplied together, so their ingredients are crafted in one go.
         Map<List<K>, Long> groups = new LinkedHashMap<>();
         List<List<K>> slots = pattern.slots();
         for (int i = 0; i < slots.size(); i++) {
-            groups.merge(slots.get(i), pattern.amount(i), Long::sum);
+            List<K> options = slots.get(i);
+            if (growth != null && !options.isEmpty() && options.getFirst().equals(output)) {
+                // fed by the seed and the copies the step makes itself
+                continue;
+            }
+            if (options.size() > 1 && options.contains(output)) {
+                // what a pattern makes never stands in for another item in its own slots
+                options = options.stream().filter(k -> !k.equals(output)).toList();
+            }
+            groups.merge(options, pattern.amount(i), Long::sum);
+        }
+        if (growth != null) {
+            uses.computeIfAbsent(pattern, k -> new LinkedHashMap<>()).merge(output, saturatingMul(crafts, growth.seed()), Long::sum);
         }
         // What each craft hands back is used again by the next one, so a mold that returns is needed once, not every time.
         Map<K, Long> reused = new HashMap<>();
@@ -243,9 +448,14 @@ public final class CraftPlanner<K> {
         if (tooComplex) {
             return;
         }
-        size = saturatingAdd(size, book.space(pattern.output(), saturatingMul(crafts, pattern.outputCount())));
-        madeBy.put(pattern.output(), pattern);
+        // A growing step only ever holds its seed and what it gained: the copies it takes are made again.
+        size = saturatingAdd(size, book.space(output, saturatingMul(crafts, growth == null ? pattern.outputCount() : growth.gain())));
+        madeBy.put(output, pattern);
         for (Map.Entry<K, Long> left : pattern.remainders().entrySet()) {
+            if (growth != null && left.getKey().equals(output)) {
+                // counted in what it gains
+                continue;
+            }
             long amount = Math.max(0, saturatingMul(crafts, left.getValue()) - reused.getOrDefault(left.getKey(), 0L));
             size = saturatingAdd(size, book.space(left.getKey(), amount));
             spare.merge(left.getKey(), amount, Long::sum);
@@ -283,11 +493,19 @@ public final class CraftPlanner<K> {
             return;
         }
         for (K option : options) {
-            List<Pattern<K>> patterns = book.patternsFor(option);
-            if (!patterns.isEmpty()) {
-                craft(option, patterns.getFirst(), needed, depth, consumer);
+            Pattern<K> pattern = main(option);
+            if (pattern != null) {
+                craft(option, pattern, needed, depth, consumer);
                 uses.computeIfAbsent(consumer, k -> new LinkedHashMap<>()).merge(option, needed, Long::sum);
                 return;
+            }
+        }
+        for (K option : options) {
+            if (!book.patternsFor(option).isEmpty()) {
+                // patterns there are, but none can be used: say why
+                Problem why = unusable(option);
+                noGain |= why == Problem.NO_GAIN;
+                tooComplex |= why == Problem.TOO_COMPLEX;
             }
         }
         missing.merge(options.getFirst(), needed, Long::sum);
@@ -322,19 +540,42 @@ public final class CraftPlanner<K> {
             tooComplex = true;
             return;
         }
-        long crafts = ceilDiv(needed, pattern.outputCount());
+        Growth growth = growth(pattern);
+        long each = pattern.outputCount();
+        if (growth != null) {
+            hold(key, growth.seed(), depth, pattern);
+            if (tooComplex) {
+                return;
+            }
+            each = growth.gain();
+        }
+        long crafts = ceilDiv(needed, each);
         making.push(key);
         run(pattern, crafts, depth + 1);
         making.pop();
         take(new Taking<>(consumer, pattern, null, null));
-        long extra = saturatingMul(crafts, pattern.outputCount()) - needed;
+        long extra = saturatingMul(crafts, each) - needed;
         if (extra > 0) {
             spare.merge(key, extra, Long::sum);
         }
     }
 
     private long available(K key) {
-        return spare.getOrDefault(key, 0L) + stock.getOrDefault(key, 0L);
+        return spare.getOrDefault(key, 0L) + usableStock(key);
+    }
+
+    /**
+     * What other crafts may take of {@code key} from storage: all of it, but a seed of an item that grows, until the
+     * job holds a seed of its own.
+     */
+    private long usableStock(K key) {
+        long stored = stock.getOrDefault(key, 0L);
+        if (stored <= 0 || held.containsKey(key)) {
+            return Math.max(0, stored);
+        }
+        Pattern<K> pattern = main(key);
+        Growth growth = pattern == null ? null : growth(pattern);
+        return growth == null ? stored : Math.max(0, stored - growth.seed());
     }
 
     /** Takes up to {@code amount}: leftovers from this job first, then storage. Returns how many. */
@@ -347,7 +588,7 @@ public final class CraftPlanner<K> {
                 take(new Taking<>(consumer, maker, null, null));
             }
         }
-        long fromStock = Math.min(amount - fromSpare, stock.getOrDefault(key, 0L));
+        long fromStock = Math.min(amount - fromSpare, usableStock(key));
         if (fromStock > 0) {
             stock.merge(key, -fromStock, Long::sum);
             taken.merge(key, fromStock, Long::sum);
@@ -374,7 +615,9 @@ public final class CraftPlanner<K> {
         Map<Pattern<K>, Integer> stepBox = new HashMap<>();
         for (Step<K> step : steps) {
             stepBox.put(step.pattern(), boxes.size());
-            boxes.add(new Box<>(Kind.CRAFT, step.pattern().output(), saturatingMul(step.crafts(), step.pattern().outputCount()), step.crafts()));
+            Growth growth = growth(step.pattern());
+            long each = growth == null ? step.pattern().outputCount() : growth.gain();
+            boxes.add(new Box<>(Kind.CRAFT, step.pattern().output(), saturatingMul(step.crafts(), each), step.crafts()));
         }
         Map<K, Integer> storageBox = new HashMap<>();
         for (Map.Entry<K, Long> entry : taken.entrySet()) {

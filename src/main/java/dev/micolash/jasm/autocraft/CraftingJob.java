@@ -22,6 +22,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
@@ -309,7 +310,38 @@ public final class CraftingJob {
     /** When to look again for a step's cooking recipe that couldn't be found; not saved. */
     private final Map<Integer, Long> cookingRetry = new HashMap<>();
 
+    /** Which item each step makes from copies of itself, if any; not saved. */
+    private final Map<Integer, Optional<Growing>> growing = new HashMap<>();
+
     private record SlotKey(int step, int slot, ItemResource key) {}
+
+    /** An item a step makes from copies of itself, and how many of them one craft takes. */
+    record Growing(ItemResource item, long perCraft) {}
+
+    /**
+     * The item step {@code index}'s card makes that its own slots also take (a template copied with diamonds), with how
+     * many one craft takes; null when it takes none. Found once for the rest of the job.
+     */
+    @Nullable Growing growing(ServerLevel level, int index) {
+        return growing.computeIfAbsent(index, i -> {
+            Card card = steps.get(i).card;
+            if (card instanceof ProcessingCard processing) {
+                ProcessingCard.Amount main = processing.main();
+                if (main.isEmpty() || main.isFluid() || main.isMaterial()) return Optional.empty();
+                long takes = processing.usedInputs().stream().filter(a -> !a.isFluid() && !a.isMaterial() && main.item().equals(a.item()))
+                        .mapToLong(ProcessingCard.Amount::count).sum();
+                return takes > 0 ? Optional.of(new Growing(main.item(), takes)) : Optional.empty();
+            }
+            CardRecipes.Resolved recipe = resolved(level, i);
+            if (recipe == null) return Optional.empty();
+            long takes = 0;
+            for (int slot = 0; slot < 9; slot++) {
+                ItemStack encoded = recipe.encoded(slot);
+                if (!encoded.isEmpty() && ItemResource.of(encoded).equals(recipe.outputKey())) takes++;
+            }
+            return takes > 0 ? Optional.of(new Growing(recipe.outputKey(), takes)) : Optional.empty();
+        }).orElse(null);
+    }
 
     private CraftingJob(UUID id, long serial, UUID recordId, UUID requester, String requesterName, Optional<UUID> deck,
             Optional<ItemStackTemplate> target, long amount, List<Step> steps, List<Running> running, List<Sent> sent, Phase phase,

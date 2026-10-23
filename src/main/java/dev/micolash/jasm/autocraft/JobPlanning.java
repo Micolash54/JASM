@@ -183,6 +183,8 @@ final class JobPlanning {
                     ? "message.jasm.craft.machine_missing"
                     : "message.jasm.craft.missing";
             case TOO_COMPLEX -> "message.jasm.craft.too_complex";
+            case NO_GAIN -> "message.jasm.craft.no_gain";
+            case NO_SEED -> "message.jasm.craft.no_seed";
             case NONE -> servers.isEmpty()
                     ? "message.jasm.craft.no_server"
                     : chosen < 0

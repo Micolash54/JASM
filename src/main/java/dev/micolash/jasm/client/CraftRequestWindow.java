@@ -308,6 +308,11 @@ final class CraftRequestWindow {
             for (int i = 0; i < Math.min(3, wrapped.size()); i++) {
                 graphics.text(font, wrapped.get(i), x + 7, top + i * 9, JasmGui.BAD, false);
             }
+        } else if (answer != null && answer.rounds() > 0) {
+            // An item copied from itself: each round can only use the copies made before it.
+            Component rounds = answer.rounds() == 1 ? Component.translatable("screen.jasm.craft.rounds_one")
+                    : Component.translatable("screen.jasm.craft.rounds", answer.rounds());
+            graphics.text(font, trim(rounds.getString(), width - 64), x + 7, y + height - 40, JasmGui.SUBTEXT, false);
         }
         if (!hovered.isEmpty()) {
             graphics.setTooltipForNextFrame(font, hovered.getHoverName(), mouseX, mouseY);

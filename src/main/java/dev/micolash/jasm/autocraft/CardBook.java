@@ -97,6 +97,12 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         return key instanceof GridKey.Fluid || key instanceof GridKey.Material ? (amount + FluidAmounts.PER_BUCKET - 1) / FluidAmounts.PER_BUCKET : amount;
     }
 
+    /** Only items grow from copies of themselves: a job holds back no fluid or material as a seed. */
+    @Override
+    public boolean grows(GridKey key) {
+        return key instanceof GridKey.Item;
+    }
+
     /** Every item and fluid some card makes. */
     public Set<GridKey> outputs() {
         return byOutput.keySet();

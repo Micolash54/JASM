@@ -152,9 +152,13 @@ public final class CraftPayloads {
         }
     }
 
-    /** Server → client: the answer. {@code problem} is a message key, empty when the request can start. */
+    /**
+     * Server → client: the answer. {@code problem} is a message key, empty when the request can start. {@code rounds}
+     * is how many rounds of copying an item from itself take; 0 when nothing does.
+     */
     public record Answer(int containerId, ItemResource target, long amount, long made, String problem, List<DeckPayloads.Entry> taken,
-            List<DeckPayloads.Entry> missing, List<DeckPayloads.Entry> crafts, List<ServerView> servers, int chosen, Optional<TreeView> tree) implements CustomPacketPayload {
+            List<DeckPayloads.Entry> missing, List<DeckPayloads.Entry> crafts, List<ServerView> servers, int chosen, Optional<TreeView> tree,
+            long rounds) implements CustomPacketPayload {
         public static final Type<Answer> TYPE = new Type<>(Jasm.id("craft_answer"));
         private static final StreamCodec<RegistryFriendlyByteBuf, List<DeckPayloads.Entry>> ENTRIES = DeckPayloads.Entry.STREAM_CODEC
                 .apply(ByteBufCodecs.list(MAX_LIST));
@@ -164,7 +168,7 @@ public final class CraftPayloads {
                 return new Answer(buf.readVarInt(), ItemResource.STREAM_CODEC.decode(buf), buf.readVarLong(), buf.readVarLong(), buf.readUtf(),
                         ENTRIES.decode(buf), ENTRIES.decode(buf), ENTRIES.decode(buf),
                         ServerView.STREAM_CODEC.apply(ByteBufCodecs.list(64)).decode(buf), buf.readVarInt(),
-                        ByteBufCodecs.optional(TreeView.STREAM_CODEC).decode(buf));
+                        ByteBufCodecs.optional(TreeView.STREAM_CODEC).decode(buf), buf.readVarLong());
             }
 
             @Override
@@ -180,6 +184,7 @@ public final class CraftPayloads {
                 ServerView.STREAM_CODEC.apply(ByteBufCodecs.list(64)).encode(buf, answer.servers);
                 buf.writeVarInt(answer.chosen);
                 ByteBufCodecs.optional(TreeView.STREAM_CODEC).encode(buf, answer.tree);
+                buf.writeVarLong(answer.rounds);
             }
         };
 

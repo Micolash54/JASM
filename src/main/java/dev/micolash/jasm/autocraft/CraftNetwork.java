@@ -108,14 +108,14 @@ public final class CraftNetwork {
         CraftPlanner.Plan<GridKey> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
         for (CraftPlanner.Step<GridKey> step : plan.steps()) {
-            crafts.add(entry(step.pattern().output(), step.crafts() * step.pattern().outputCount()));
+            crafts.add(entry(step.pattern().output(), step.made()));
         }
         List<CraftPayloads.ServerView> servers = preview.servers().stream()
                 .map(o -> new CraftPayloads.ServerView(o.pos(), o.memory(), o.parallel(), o.busy(), o.fits())).toList();
         PacketDistributor.sendToPlayer(player, new CraftPayloads.Answer(payload.containerId(), payload.target(), clamp(payload.amount()),
                 plan.made(), preview.problem() == null ? "" : preview.problem(), entries(plan.taken()), entries(plan.missing()),
                 limit(crafts), servers.subList(0, Math.min(64, servers.size())), preview.chosen(),
-                payload.tree() ? Optional.of(treeView(plan.tree())) : Optional.empty()));
+                payload.tree() ? Optional.of(treeView(plan.tree())) : Optional.empty(), plan.rounds()));
     }
 
     public static void start(ServerPlayer player, CraftPayloads.Start payload) {
