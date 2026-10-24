@@ -6,11 +6,13 @@ import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -305,10 +307,12 @@ public final class CraftingJob {
     private final Map<Integer, Optional<CardRecipes.Resolved>> resolved = new HashMap<>();
     /** Which items each step's slots were found to accept; not saved. */
     private final Map<SlotKey, Boolean> accepted = new HashMap<>();
-    /** Each step's cooking recipe, once found; not saved. */
-    private final Map<Integer, CookingRecipes.Cooking> cooking = new HashMap<>();
-    /** When to look again for a step's cooking recipe that couldn't be found; not saved. */
-    private final Map<Integer, Long> cookingRetry = new HashMap<>();
+    /** Each step's machine recipe, once found; not saved. */
+    private final Map<Integer, MachineRecipes.Match> machineRecipes = new HashMap<>();
+    /** When to look again for a step's machine recipe that couldn't be found; not saved. */
+    private final Map<Integer, Long> machineRetry = new HashMap<>();
+    /** Steps a machine turned a planned item away from; not saved. */
+    private final Set<Integer> turnedAway = new HashSet<>();
 
     /** Which item each step makes from copies of itself, if any; not saved. */
     private final Map<Integer, Optional<Growing>> growing = new HashMap<>();
@@ -393,26 +397,40 @@ public final class CraftingJob {
     }
 
     /**
-     * Step {@code index}'s cooking recipe, if its card goes into vanilla cooking blocks. Looked up once a second until
-     * it is found (a machine may stand in an unloaded spot for a while), then kept for the rest of the job.
+     * Step {@code index}'s machine recipe, if its card is a processing card whose recipe JASM knows. Looked up once a
+     * second until it is found (a machine may stand in an unloaded spot for a while), then kept for the rest of the job.
      */
-    CookingRecipes.@Nullable Cooking cooking(ServerLevel level, int index) {
-        CookingRecipes.Cooking known = cooking.get(index);
+    MachineRecipes.@Nullable Match machineRecipe(ServerLevel level, int index) {
+        MachineRecipes.Match known = machineRecipes.get(index);
         long now = level.getGameTime();
-        if (known == null && steps.get(index).card instanceof ProcessingCard card && now >= cookingRetry.getOrDefault(index, 0L)) {
-            known = CookingRecipes.of(level, card);
+        if (known == null && steps.get(index).card instanceof ProcessingCard card && now >= machineRetry.getOrDefault(index, 0L)) {
+            known = MachineRecipes.of(level, card);
             if (known != null) {
-                cooking.put(index, known);
+                machineRecipes.put(index, known);
             } else {
-                cookingRetry.put(index, now + 20);
+                machineRetry.put(index, now + 20);
             }
         }
         return known;
     }
 
-    /** Whether the cooking slot of step {@code step}'s card takes {@code key}; remembered for the rest of the job. */
-    boolean cooks(ServerLevel level, int step, CookingRecipes.Cooking recipe, ItemResource key) {
-        return accepted.computeIfAbsent(new SlotKey(step, -1, key), k -> recipe.accepts(level, key));
+    /**
+     * Whether used input slot {@code slot} of step {@code step}'s processing card takes {@code key} in place of its own
+     * item; remembered for the rest of the job.
+     */
+    boolean takes(ServerLevel level, int step, MachineRecipes.Match recipe, int slot, ItemResource key) {
+        return accepted.computeIfAbsent(new SlotKey(step, -1 - slot, key), k -> recipe.accepts(level, slot, key));
+    }
+
+    /** A machine turned {@code key} away from used input slot {@code slot} of step {@code step}: it isn't tried there again. */
+    void refuse(int step, int slot, ItemResource key) {
+        accepted.put(new SlotKey(step, -1 - slot, key), false);
+        turnedAway.add(step);
+    }
+
+    /** Whether a machine turned away an item planned for step {@code step}. */
+    boolean turnedAway(int step) {
+        return turnedAway.contains(step);
     }
 
     /** A step with no share: it picks from what the job holds, as steps did before shares were kept. */

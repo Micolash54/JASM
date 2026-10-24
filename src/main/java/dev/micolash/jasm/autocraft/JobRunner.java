@@ -357,6 +357,7 @@ final class JobRunner {
         Wait blocked = Wait.NONE;
         // what the machines that were tried said
         Wait tried = Wait.NONE;
+        boolean refusedHere = false;
         while (sent < free && step.left > 0) {
             Choice choice = chooseSet(level, job, stepIndex, card, record, reserved, keep);
             boolean enough = choice.set() != null
@@ -365,6 +366,9 @@ final class JobRunner {
                 if (choice.unchecked() && sent == 0) {
                     // The items planned in place of the card's own can't be checked against the machine now: wait for it.
                     blocked = problem != Wait.NONE ? problem : Wait.MISSING;
+                } else if ((refusedHere || job.turnedAway(stepIndex)) && sent == 0) {
+                    // The machine wouldn't take what is left: shown as any machine that refuses a set.
+                    blocked = Wait.FULL;
                 }
                 break;
             }
@@ -392,6 +396,11 @@ final class JobRunner {
                 blocked = sent > 0 ? Wait.NONE : Wait.NO_MATERIAL;
                 break;
             }
+            if (pushed == Machines.Push.REFUSED && turnedAway(job, stepIndex, card, chosen, target)) {
+                // The machine never takes an item planned in place of the card's own: choose the set again without it.
+                refusedHere = true;
+                continue;
+            }
             if (pushed != Machines.Push.SENT) {
                 // Not now: try the others, and this one again next tick.
                 tried = tried.and(switch (pushed) {
@@ -418,16 +427,37 @@ final class JobRunner {
     }
 
     /**
+     * After a machine refused a set: each item in it that stands in for the card's own and that the machine turns away
+     * for good is marked refused for the rest of the job, so the next set is chosen without it. Returns whether any was.
+     */
+    private static boolean turnedAway(CraftingJob job, int stepIndex, ProcessingCard card, List<ProcessingCard.Amount> chosen, Target target) {
+        List<ProcessingCard.Amount> own = card.usedInputs();
+        boolean any = false;
+        for (int i = 0; i < own.size(); i++) {
+            ProcessingCard.Amount written = own.get(i);
+            ProcessingCard.Amount sent = chosen.get(i);
+            if (written.isFluid() || written.isMaterial() || sent.item().equals(written.item())) {
+                continue;
+            }
+            if (Machines.turnsAway(target.port(), target.side(), written, sent)) {
+                job.refuse(stepIndex, i, sent.item());
+                any = true;
+            }
+        }
+        return any;
+    }
+
+    /**
      * One set's items, or null when the job holds too little; {@code unchecked} when planned items could have filled
-     * it but the machines can't be looked at now to make sure they cook them.
+     * it but the machines can't be looked at now to make sure they take them.
      */
     private record Choice(@Nullable List<ProcessingCard.Amount> set, boolean unchecked) {}
 
     /**
      * The items for one set of a processing card from what the job holds. Each item slot takes the card's own item
-     * while the step's share of it lasts, then another item from the share that the card's cooking recipe cooks the
-     * same, then the card's own item again. A slot gets one kind of item per set. Fluids and materials are as written,
-     * and a job planned before shares were kept takes exactly what the card says.
+     * while the step's share of it lasts, then another item from the share that the machines' recipe takes there (and
+     * no machine has turned away), then the card's own item again. A slot gets one kind of item per set. Fluids and
+     * materials are as written, and a job planned before shares were kept takes exactly what the card says.
      */
     static Choice chooseSet(ServerLevel level, CraftingJob job, int stepIndex, ProcessingCard card, WaferRecord record,
             Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep) {
@@ -436,7 +466,7 @@ final class JobRunner {
         List<ProcessingCard.Amount> chosen = new ArrayList<>(inputs.size());
         Map<ItemResource, Long> using = new HashMap<>();
         boolean unchecked = false;
-        // the card's own items: what the plan gave besides them can only be stand-ins for the cooking slot
+        // the card's own items: what the plan gave besides them can only be stand-ins in the slots the recipe opens
         Set<ItemResource> written = new HashSet<>();
         inputs.forEach(input -> written.add(input.item()));
         for (int i = 0; i < inputs.size(); i++) {
@@ -456,11 +486,12 @@ final class JobRunner {
                     }
                 }
                 if (!others.isEmpty()) {
-                    CookingRecipes.Cooking cooking = job.cooking(level, stepIndex);
-                    if (cooking == null) {
+                    MachineRecipes.Match recipe = job.machineRecipe(level, stepIndex);
+                    if (recipe == null) {
                         unchecked = true;
-                    } else if (cooking.slot() == i) {
-                        pick = others.stream().filter(key -> job.cooks(level, stepIndex, cooking, key)).findFirst().orElse(own);
+                    } else if (recipe.opens(i)) {
+                        int slot = i;
+                        pick = others.stream().filter(key -> job.takes(level, stepIndex, recipe, slot, key)).findFirst().orElse(own);
                     }
                 }
             }

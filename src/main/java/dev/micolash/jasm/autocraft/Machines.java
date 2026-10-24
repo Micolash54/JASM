@@ -112,6 +112,40 @@ public final class Machines {
         return level.getBlockEntity(pos) instanceof Container container ? VanillaContainerWrapper.of(container) : null;
     }
 
+    /**
+     * Whether the machine on the port's {@code side} turns {@code other} away for good where the card's {@code own} item
+     * would go in: none of its slots may ever hold {@code other} though one may hold {@code own}, or it stands empty and
+     * would take {@code own} but not {@code other}. A machine that is only busy with something else turns nothing away.
+     */
+    public static boolean turnsAway(AccessPortBlockEntity port, Direction side, ProcessingCard.Amount own, ProcessingCard.Amount other) {
+        ResourceHandler<ItemResource> inlet = inlet(port, side);
+        if (inlet == null || own.item().isEmpty() || other.item().isEmpty()) {
+            return false;
+        }
+        boolean ownFits = false;
+        boolean otherFits = false;
+        boolean empty = true;
+        for (int i = 0; i < inlet.size(); i++) {
+            ownFits |= inlet.isValid(i, own.item());
+            otherFits |= inlet.isValid(i, other.item());
+            empty &= inlet.getResource(i).isEmpty() || inlet.getAmountAsLong(i) <= 0;
+        }
+        if (ownFits && !otherFits) {
+            return true;
+        }
+        if (!empty) {
+            return false;
+        }
+        try (Transaction tx = Transaction.openRoot()) {
+            if (inlet.insert(own.item(), own.count(), tx) != own.count()) {
+                return false;
+            }
+        }
+        try (Transaction tx = Transaction.openRoot()) {
+            return inlet.insert(other.item(), other.count(), tx) != other.count();
+        }
+    }
+
     /** Where fluids go into the block at {@code pos} through its {@code side}, or null if it takes none. */
     public static @Nullable ResourceHandler<FluidResource> fluidInlet(Level level, BlockPos pos, Direction side) {
         if (!level.isLoaded(pos) || level.getBlockEntity(pos) instanceof MachineBlockEntity machine && !machine.opensToPorts()

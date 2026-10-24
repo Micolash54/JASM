@@ -23,8 +23,8 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 /**
  * The cards a network knows, as the planner sees them. Each slot of a crafting card accepts its encoded item and any
  * other item that is stored or can be crafted, as long as the recipe still matches with it there. A processing card
- * takes the items and fluids written on it, and only counts while one of its machines can be reached; when its
- * machines are vanilla cooking blocks, the slot the recipe cooks also takes whatever else that recipe cooks the same.
+ * takes the items and fluids written on it, and only counts while one of its machines can be reached; when JASM finds
+ * the machines' real recipe for it, each item slot also takes whatever else that recipe takes there.
  */
 public final class CardBook implements CraftPlanner.Book<GridKey> {
     /** A pattern made from a card. */
@@ -194,21 +194,21 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         private final List<Long> amounts = new ArrayList<>();
         private final Map<GridKey, Long> extras = new LinkedHashMap<>();
 
-        /** {@code candidates} are the items worth trying in the slot a cooking recipe fills. */
+        /** {@code candidates} are the items worth trying in the slots the machines' recipe opens. */
         ProcessingPattern(ServerLevel level, ProcessingCard card, Collection<ItemResource> candidates) {
             this.card = card;
-            CookingRecipes.Cooking cooking = CookingRecipes.of(level, card);
+            MachineRecipes.Match recipe = MachineRecipes.of(level, card);
             List<ProcessingCard.Amount> inputs = card.usedInputs();
             for (int i = 0; i < inputs.size(); i++) {
                 ProcessingCard.Amount input = inputs.get(i);
                 List<GridKey> options = new ArrayList<>();
                 options.add(input.key());
-                if (cooking != null && cooking.slot() == i) {
+                if (recipe != null && recipe.opens(i)) {
                     for (ItemResource candidate : candidates) {
                         GridKey key = new GridKey.Item(candidate);
                         // an item written in another slot stays that slot's, so a job never mistakes one for the other
                         boolean written = inputs.stream().anyMatch(other -> candidate.equals(other.item()));
-                        if (!written && !options.contains(key) && cooking.accepts(level, candidate)) {
+                        if (!written && !options.contains(key) && recipe.accepts(level, i, candidate)) {
                             options.add(key);
                         }
                     }
