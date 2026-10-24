@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
+import dev.micolash.jasm.crafting.RecipeChoices;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
@@ -21,10 +22,12 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.SimpleContainer;
@@ -34,6 +37,8 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -98,6 +103,13 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     /** What the ghost grid makes right now, shown next to it. */
     private final SimpleContainer preview = new SimpleContainer(1);
     private int previewState = STATE_NONE;
+    /** The recipe the player picked when several fit the grid; saved. Null: the first that fits. */
+    private @Nullable ResourceKey<Recipe<?>> picked;
+    /** What fits the grid now, and the one in use (-1 for none). Not saved: worked out with the preview. */
+    private List<RecipeChoices.Choice> choices = List.of();
+    private int chosen = -1;
+    /** While the grid changes in one go (a card loaded back, the clear key, a recipe viewer), it is worked out once at the end. */
+    private boolean filling;
     /** The preview is worked out on the first tick after loading, once recipes can be looked up. */
     private boolean previewReady;
     /** Whether this block has told the list of terminals where it stands since it was placed or loaded. */
@@ -460,8 +472,70 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
 
     private void ghostChanged() {
         setChanged();
-        if (level instanceof ServerLevel serverLevel) {
+        if (!filling && level instanceof ServerLevel serverLevel) {
             updatePreview(serverLevel);
+        }
+    }
+
+    /** Changes the grid in one go and works the preview out once at the end. */
+    private void fill(Runnable change) {
+        boolean was = filling;
+        filling = true;
+        try {
+            change.run();
+        } finally {
+            filling = was;
+        }
+        ghostChanged();
+    }
+
+    /** Empties the grid and the outputs (the clear key). */
+    public void clearGrid() {
+        fill(() -> {
+            for (int i = 0; i < AMOUNTS; i++) {
+                setProcessingSlot(i, ItemStack.EMPTY, 0);
+            }
+        });
+    }
+
+    /**
+     * Fills the grid from a recipe viewer, one example per slot. {@code recipe} is the recipe it showed: it becomes the
+     * pick, so the card is written for exactly that recipe.
+     */
+    public void fillGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
+        fill(() -> {
+            for (int i = 0; i < 9; i++) {
+                ItemStack stack = i < items.size() ? items.get(i) : ItemStack.EMPTY;
+                ghost.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+            }
+            if (recipe != null && level instanceof ServerLevel serverLevel
+                    && serverLevel.getServer().getRecipeManager().recipeMap().byKey(recipe) != null) {
+                picked = recipe;
+            }
+        });
+    }
+
+    /** What fits the grid now, in the game's order; empty in processing mode. */
+    public List<RecipeChoices.Choice> choices() {
+        return choices;
+    }
+
+    /** The recipe the player picked, or null for the first that fits. */
+    public @Nullable ResourceKey<Recipe<?>> picked() {
+        return picked;
+    }
+
+    /** Which of {@link #choices()} the preview shows and the card gets, or -1. */
+    public int chosen() {
+        return chosen;
+    }
+
+    /** The player picked another result. Ignored unless it fits the grid now. */
+    public void pick(ServerLevel level, ResourceKey<Recipe<?>> id) {
+        if (!processing() && RecipeChoices.indexOf(choices, id) >= 0) {
+            picked = id;
+            setChanged();
+            updatePreview(level);
         }
     }
 
@@ -469,18 +543,26 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public void updatePreview(ServerLevel level) {
         previewReady = true;
         if (processing()) {
+            choices = List.of();
+            chosen = -1;
             preview.setItem(0, ItemStack.EMPTY);
             previewState = !ghost.isEmpty() && !outputs.isEmpty() ? STATE_PROCESSING : STATE_NONE;
             return;
         }
         List<ItemStack> grid = new ArrayList<>();
         for (int i = 0; i < 9; i++) {
-            grid.add(ghost.getItem(i));
+            grid.add(ghost.getItem(i).isEmpty() ? ItemStack.EMPTY : ghost.getItem(i).copyWithCount(1));
         }
-        CardRecipes.Encoding encoding = CardRecipes.encode(level, grid);
-        if (encoding instanceof CardRecipes.Encoding.Card(Card found) && found instanceof RecipeCard card) {
-            preview.setItem(0, card.result());
-            previewState = card.shapeless() ? STATE_SHAPELESS : STATE_SHAPED;
+        choices = RecipeChoices.of(level, CraftingInput.of(3, 3, grid));
+        if (picked != null && !RecipeChoices.keeps(choices, picked, ghost.isEmpty())) {
+            picked = null;
+            setChanged();
+        }
+        chosen = RecipeChoices.chosen(choices, picked);
+        if (chosen >= 0) {
+            RecipeChoices.Choice choice = choices.get(chosen);
+            preview.setItem(0, choice.result().copy());
+            previewState = CardRecipes.shapeless(choice.recipe().value()) ? STATE_SHAPELESS : STATE_SHAPED;
         } else {
             preview.setItem(0, ItemStack.EMPTY);
             previewState = STATE_NONE;
@@ -510,7 +592,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             for (int i = 0; i < 9; i++) {
                 grid.add(ghost.getItem(i));
             }
-            encoding = CardRecipes.encode(level, grid);
+            encoding = CardRecipes.encode(level, grid, picked);
         }
         if (encoding instanceof CardRecipes.Encoding.Refused(String messageKey)) {
             return messageKey;
@@ -540,11 +622,15 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         }
         Card found = Card.of(stack);
         if (found instanceof RecipeCard card) {
-            selected.clear();
-            List<ItemStack> inputs = card.inputs();
-            for (int i = 0; i < 9; i++) {
-                ghost.setItem(i, inputs.get(i).isEmpty() ? ItemStack.EMPTY : inputs.get(i).copyWithCount(1));
-            }
+            // The card's own recipe comes back as the pick, so writing it again keeps the result it had.
+            fill(() -> {
+                selected.clear();
+                picked = card.recipe();
+                List<ItemStack> inputs = card.inputs();
+                for (int i = 0; i < 9; i++) {
+                    ghost.setItem(i, inputs.get(i).isEmpty() ? ItemStack.EMPTY : inputs.get(i).copyWithCount(1));
+                }
+            });
         } else if (found instanceof ProcessingCard card) {
             selected.clear();
             selected.addAll(card.spots());
@@ -617,6 +703,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
         output.storeNullable("pending_pairer", UUIDUtil.CODEC, pendingPairer);
         output.store("trust", TrustList.CODEC, trust);
+        output.storeNullable("picked_recipe", ResourceKey.codec(Registries.RECIPE), picked);
     }
 
     @Override
@@ -645,6 +732,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         terminalId = input.read("terminal", UUIDUtil.CODEC).orElse(null);
         pendingPairer = input.read("pending_pairer", UUIDUtil.CODEC).orElse(null);
         trust = input.read("trust", TrustList.CODEC).orElse(TrustList.EMPTY);
+        picked = input.read("picked_recipe", ResourceKey.codec(Registries.RECIPE)).orElse(null);
     }
 
     /** The mined item keeps its identity and trust list, as well as its charge. */

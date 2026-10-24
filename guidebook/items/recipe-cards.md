@@ -19,8 +19,9 @@ A Recipe Card holds one recipe for autocrafting. Write it at an [Encoding Termin
 * A **filled** card shows what it makes, and what it takes.
 * A card can hold a crafting recipe, or a processing recipe for a machine behind an [Access Port](access-port.md).
 * A filled card on its own in a crafting grid turns back into an empty one.
+* A card only ever crafts its own recipe. If that recipe is removed or changed (a mod or datapack), the tooltip says **Recipe missing** and the card doesn't craft.
 
-The tooltip tells you whether a card is shaped or shapeless, what goes in, and what comes back.
+The tooltip tells you which mod the result comes from, whether a card is shaped or shapeless, what goes in, and what comes back.
 
 <br />
 <br />

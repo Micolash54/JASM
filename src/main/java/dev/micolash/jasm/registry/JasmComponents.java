@@ -25,7 +25,9 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 
@@ -48,6 +50,10 @@ public final class JasmComponents {
     /** What sits in a Crafting Deck's 3×3 grid, saved with the Deck so a crash never loses it. */
     public static final Supplier<DataComponentType<ItemContainerContents>> DECK_GRID = COMPONENTS.registerComponentType(
             "deck_grid", b -> b.persistent(ItemContainerContents.CODEC).networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
+    /** The recipe the player picked for the Crafting Deck's grid, when more than one fits. Gone once the grid changes to something else. */
+    public static final Supplier<DataComponentType<ResourceKey<Recipe<?>>>> DECK_GRID_RECIPE = COMPONENTS.registerComponentType(
+            "deck_grid_recipe", b -> b.persistent(ResourceKey.codec(Registries.RECIPE)).networkSynchronized(ResourceKey.streamCodec(Registries.RECIPE)));
 
     /** What waits in a Deck's Deck to Deck send grid. */
     public static final Supplier<DataComponentType<ItemContainerContents>> DECK_SEND = COMPONENTS.registerComponentType(

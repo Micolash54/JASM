@@ -162,6 +162,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     /** The Deck to Deck window: kept while the screen is open, so it stays where it was dragged. */
     private @Nullable DeckSendWindow sendWindow;
     private JasmButton sendButton;
+    /** The recipe picker above the result on a Crafting Deck; null on other Decks. */
+    private @Nullable RecipePicker picker;
     private @Nullable JasmButton searchSyncButton;
     private @Nullable JasmButton pageBack;
     private @Nullable JasmButton pageNext;
@@ -312,6 +314,11 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                     b -> ClientPacketDistributor.sendToServer(new DeckPayloads.ClearGrid(menu.containerId, true)), keysX, gridTop + 38, 14, 14);
             toInventory.setTooltip(Tooltip.create(Component.translatable("screen.jasm.deck.grid_to_inventory")));
             addRenderableWidget(toInventory);
+            // Above the result, level with the up key: shown only when more than one recipe fits the grid.
+            picker = new RecipePicker(menu.pickerView(), menu.containerId, pickerKeyX(), gridTop, 14, resultX(), resultY());
+            addRenderableWidget(picker.key());
+        } else {
+            picker = null;
         }
         // Deck to Deck is the last key of the column on every Deck.
         if (sendWindow == null) sendWindow = new DeckSendWindow(menu, font);
@@ -937,10 +944,15 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         }
         sendWindow.sync(leftPos, topPos);
         sendButton.setLatched(sendWindow.isOpen());
+        if (picker != null) {
+            picker.moveTo(pickerKeyX(), topPos + menu.craftY() + 12, resultX(), resultY());
+            picker.update(menu.dimensionAllowed() && menu.getSlot(menu.resultSlot()).isActive());
+        }
         // Under the settings or request window nothing lights up or shows a tooltip; the Deck to Deck window's slots do.
         boolean overWindow = sendWindow.hidesMouse(realMouseX, realMouseY)
                 || !sendWindow.contains(realMouseX, realMouseY) && (inWindow(realMouseX, realMouseY) || craftWindow.contains(realMouseX, realMouseY)
-                        || ruleWindow.contains(realMouseX, realMouseY) || jobsWindow.contains(realMouseX, realMouseY));
+                        || ruleWindow.contains(realMouseX, realMouseY) || jobsWindow.contains(realMouseX, realMouseY)
+                        || picker != null && picker.contains(realMouseX, realMouseY));
         int mouseX = overWindow ? -1000 : realMouseX;
         int mouseY = overWindow ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
@@ -953,6 +965,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         }
         drawGrid(graphics, mouseX, mouseY);
         chargeTooltip(graphics, mouseX, mouseY);
+        if (picker != null) {
+            picker.draw(graphics, font, realMouseX, realMouseY);
+        }
         // The last message lies over the bottom of the grid for a few seconds, under any open window.
         Component notice = menu.notices().current(minecraft.level.getGameTime());
         if (notice != null) {
@@ -986,6 +1001,19 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             graphics.nextStratum();
             sendWindow.draw(graphics, realMouseX, realMouseY, a, minecraft.level.getGameTime());
         }
+    }
+
+    /** The result slot's item corner on the screen, and the picker key centred over it. */
+    private int resultX() {
+        return leftPos + menu.getSlot(menu.resultSlot()).x;
+    }
+
+    private int resultY() {
+        return topPos + menu.getSlot(menu.resultSlot()).y;
+    }
+
+    private int pickerKeyX() {
+        return resultX() + 1;
     }
 
     private void drawGrid(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -1258,6 +1286,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         // (whichever tab is open), so nothing there is touched.
         if (inWindow(event.x(), event.y())) {
             return filterWindow.mouseClicked(event, doubleClick);
+        }
+        if (picker != null && picker.mouseClicked(event.x(), event.y())) {
+            return true;
         }
         // The Network tab holds no items: a click there picks a block to light up, or presses the list/tree key.
         if (tab == Tab.NETWORK && inGrid(event.x(), event.y())) {

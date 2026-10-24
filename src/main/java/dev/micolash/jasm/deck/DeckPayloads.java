@@ -2,13 +2,17 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.crafting.PickerPayloads;
 import dev.micolash.jasm.storage.WaferSettings;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
@@ -132,13 +136,20 @@ public final class DeckPayloads {
      * Client → server: fill the Crafting Deck's grid for a recipe. For each of the 9 slots, the items it may hold;
      * {@code max} fills as many sets as fit.
      */
-    public record FillGrid(int containerId, List<List<ItemResource>> slots, boolean max) implements CustomPacketPayload {
+    public record FillGrid(int containerId, List<List<ItemResource>> slots, boolean max, Optional<ResourceKey<Recipe<?>>> recipe)
+            implements CustomPacketPayload {
         public static final Type<FillGrid> TYPE = new Type<>(Jasm.id("deck_fill_grid"));
         public static final StreamCodec<RegistryFriendlyByteBuf, FillGrid> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, FillGrid::containerId,
                 ItemResource.STREAM_CODEC.apply(ByteBufCodecs.list(MAX_OPTIONS)).apply(ByteBufCodecs.list(9)), FillGrid::slots,
                 ByteBufCodecs.BOOL, FillGrid::max,
+                ByteBufCodecs.optional(PickerPayloads.RECIPE_KEY), FillGrid::recipe,
                 FillGrid::new);
+
+        /** Without a recipe: nothing is picked. */
+        public FillGrid(int containerId, List<List<ItemResource>> slots, boolean max) {
+            this(containerId, slots, max, Optional.empty());
+        }
 
         @Override
         public Type<FillGrid> type() {

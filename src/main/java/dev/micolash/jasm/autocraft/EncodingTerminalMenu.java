@@ -3,6 +3,7 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.ContainerWords;
+import dev.micolash.jasm.crafting.RecipePicking;
 import dev.micolash.jasm.deck.DeckFluids;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
@@ -31,6 +32,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -44,6 +46,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
@@ -52,7 +55,7 @@ import org.jspecify.annotations.Nullable;
  * The Encoding Terminal's menu: card in and out, the pairing slot, the 3×3 ghost grid and what it makes, then the
  * player's inventory (27) and hotbar (9). Ghost slots copy what is clicked into them and never take the item.
  */
-public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board, MachineView {
+public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board, MachineView, RecipePicking {
     public static final int GRID_X = 54;
     public static final int GRID_Y = 18;
     public static final int PREVIEW_X = 136;
@@ -142,6 +145,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private final ContainerLevelAccess access;
     private final @Nullable EncodingTerminalBlockEntity terminal;
     private final Player player;
+    /** Server side: what this screen last heard of the picker. */
+    private final RecipePicking.Sync pickerSync = new RecipePicking.Sync();
+    /** Client side: the results the server listed for the picker. */
+    private final RecipePicking.View pickerView = new RecipePicking.View();
     /** Server side: whether the trust list was sent to this screen yet. */
     private boolean trustSent;
     /** Client side: what the server said about trust. */
@@ -242,6 +249,33 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         return terminal;
     }
 
+    @Override
+    public RecipePicking.View pickerView() {
+        return pickerView;
+    }
+
+    @Override
+    public void pickRecipe(ServerPlayer player, ResourceKey<Recipe<?>> id) {
+        if (terminal != null) {
+            terminal.pick(player.level(), id);
+        }
+    }
+
+    /** Fills the crafting grid from a recipe viewer; {@code recipe} becomes the pick. Processing mode fills slot by slot. */
+    public void fillGhostGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
+        if (terminal != null && !processing()) {
+            List<ItemStack> clean = new ArrayList<>();
+            for (ItemStack stack : items) {
+                clean.add(FluidMarkerItem.isMarker(stack) || MaterialMarkerItem.isMarker(stack) ? ItemStack.EMPTY : stack);
+            }
+            terminal.fillGrid(clean, recipe);
+            return;
+        }
+        for (int i = 0; i < 9; i++) {
+            setGhost(i, i < items.size() ? items.get(i) : ItemStack.EMPTY);
+        }
+    }
+
     /**
      * The trust list goes to the screen with the first update after opening; the machine list then, whenever the
      * choice changes, and once a second if the ports changed.
@@ -252,6 +286,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         if (terminal == null || !(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
+        pickerSync.send(serverPlayer, containerId, terminal.choices(), terminal.chosen());
         if (!trustSent) {
             trustSent = true;
             TerminalAccess.send(serverPlayer, this, terminal);
@@ -530,9 +565,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 return true;
             }
             case BUTTON_CLEAR -> {
-                for (int i = 0; i < EncodingTerminalBlockEntity.AMOUNTS; i++) {
-                    terminal.setProcessingSlot(i, ItemStack.EMPTY, 0);
-                }
+                terminal.clearGrid();
                 return true;
             }
             case BUTTON_CRAFTING_SERVER -> {

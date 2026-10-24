@@ -1,17 +1,20 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.core.ModNameLine;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /**
@@ -40,6 +43,7 @@ public class RecipeCardItem extends Item {
     private static void crafting(RecipeCard card, Consumer<Component> builder) {
         ItemStack result = card.result();
         builder.accept(Component.translatable("tooltip.jasm.card.makes", result.getCount(), result.getHoverName()).withStyle(ChatFormatting.GRAY));
+        builder.accept(modLine(result));
         builder.accept(Component.translatable(card.shapeless() ? "tooltip.jasm.card.shapeless" : "tooltip.jasm.card.shaped")
                 .withStyle(card.shapeless() ? ChatFormatting.AQUA : ChatFormatting.GOLD));
         Map<Item, Integer> counts = new LinkedHashMap<>();
@@ -54,11 +58,21 @@ public class RecipeCardItem extends Item {
                 Component.translatable("tooltip.jasm.card.input", n, names.get(item)).withStyle(ChatFormatting.DARK_GRAY)));
     }
 
+    /** The mod the result comes from, so two cards making a "Tin Ingot" can be told apart. */
+    private static Component modLine(ItemStack result) {
+        String namespace = ModNameLine.namespaceOf(BuiltInRegistries.ITEM.getKey(result.getItem()).toString());
+        String name = ModList.get().getModContainerById(namespace).map(mod -> mod.getModInfo().getDisplayName()).orElse(namespace);
+        return Component.literal(name).withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
+    }
+
     private static void processing(ProcessingCard card, Consumer<Component> builder) {
         ProcessingCard.Amount main = card.main();
         if (!main.isEmpty()) {
             builder.accept(Component.translatable(main.isFluid() || main.isMaterial() ? "tooltip.jasm.card.makes_fluid" : "tooltip.jasm.card.makes", main.label(),
                     main.stack().getHoverName()).withStyle(ChatFormatting.GRAY));
+            if (!main.isFluid() && !main.isMaterial()) {
+                builder.accept(modLine(main.stack()));
+            }
         }
         for (ProcessingCard.Amount extra : card.extras()) {
             builder.accept(Component.translatable(extra.isFluid() || extra.isMaterial() ? "tooltip.jasm.card.also_fluid" : "tooltip.jasm.card.also", extra.label(),

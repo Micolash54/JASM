@@ -122,7 +122,7 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
             return helper.createUserErrorForMissingSlots(Component.translatable("jei.jasm.transfer.missing"), missing);
         }
         if (doTransfer) {
-            ClientPacketDistributor.sendToServer(new DeckPayloads.FillGrid(menu.containerId, wanted, maxTransfer));
+            ClientPacketDistributor.sendToServer(new DeckPayloads.FillGrid(menu.containerId, wanted, maxTransfer, Optional.of(recipe.id())));
             if (!toCraft.isEmpty() && Minecraft.getInstance().hasControlDown()) {
                 DeckScreen.queueCrafts(menu.containerId, toCraft.entrySet().stream()
                         .map(e -> new DeckScreen.QueuedCraft(e.getKey(), e.getValue())).toList());

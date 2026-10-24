@@ -255,9 +255,7 @@ public final class CraftNetwork {
             return false;
         }
         if (payload.slot() < 0) {
-            for (int i = 0; i < 9; i++) {
-                menu.setGhost(i, i < payload.items().size() ? payload.items().get(i) : ItemStack.EMPTY);
-            }
+            menu.fillGhostGrid(payload.items(), payload.recipe().orElse(null));
         } else if (payload.slot() < EncodingTerminalBlockEntity.AMOUNTS && !payload.items().isEmpty()) {
             menu.setGhost(payload.slot(), payload.items().getFirst());
         }

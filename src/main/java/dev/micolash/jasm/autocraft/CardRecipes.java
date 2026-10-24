@@ -1,20 +1,22 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.crafting.RecipeChoices;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.display.ShapelessCraftingRecipeDisplay;
+import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -29,8 +31,16 @@ public final class CardRecipes {
         record Refused(String messageKey) implements Encoding {}
     }
 
-    /** The card for this grid (one item per slot), or why there is none. */
+    /** The card for this grid (one item per slot), or why there is none. With several recipes, the first that fits. */
     public static Encoding encode(ServerLevel level, List<ItemStack> grid) {
+        return encode(level, grid, null);
+    }
+
+    /**
+     * The card for this grid, for recipe {@code picked} when the player chose one of several that fit. Without a pick,
+     * or when it no longer fits, the first that fits, as a crafting table would choose.
+     */
+    public static Encoding encode(ServerLevel level, List<ItemStack> grid, @Nullable ResourceKey<Recipe<?>> picked) {
         List<ItemStack> single = new ArrayList<>();
         for (ItemStack stack : grid) {
             single.add(stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
@@ -39,38 +49,52 @@ public final class CardRecipes {
             return new Encoding.Refused("message.jasm.terminal.empty_grid");
         }
         CraftingInput input = CraftingInput.of(3, 3, single);
-        Optional<RecipeHolder<CraftingRecipe>> recipe = level.getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level);
-        if (recipe.isEmpty()) {
+        List<RecipeChoices.Choice> choices = RecipeChoices.of(level, input);
+        int at = RecipeChoices.chosen(choices, picked);
+        if (at < 0) {
             return new Encoding.Refused("message.jasm.terminal.no_recipe");
         }
-        ItemStack output = recipe.get().value().assemble(input);
-        if (output.isEmpty()) {
-            return new Encoding.Refused("message.jasm.terminal.no_recipe");
-        }
-        boolean shapeless = recipe.get().value().display().stream().anyMatch(d -> d instanceof ShapelessCraftingRecipeDisplay);
-        return new Encoding.Card(new RecipeCard(recipe.get().id(), ItemContainerContents.fromItems(single),
-                ItemStackTemplate.fromNonEmptyStack(output), shapeless));
+        RecipeChoices.Choice choice = choices.get(at);
+        return new Encoding.Card(new RecipeCard(choice.id(), ItemContainerContents.fromItems(single),
+                ItemStackTemplate.fromNonEmptyStack(choice.result()), shapeless(choice.recipe().value())));
+    }
+
+    /** Whether the recipe book shows {@code recipe} as shapeless. */
+    public static boolean shapeless(CraftingRecipe recipe) {
+        return recipe.display().stream().anyMatch(d -> d instanceof ShapelessCraftingRecipeDisplay);
     }
 
     /**
      * A card the server can craft with: its recipe still exists and still makes the same thing from the encoded grid.
-     * Null when the recipe is gone or changed (a datapack or a mod removed it).
+     * Null when the recipe is gone or changed (a datapack or a mod removed it). Never another recipe in its place.
      */
     public static @Nullable Resolved resolve(ServerLevel level, RecipeCard card) {
-        Optional<RecipeHolder<?>> holder = level.getServer().getRecipeManager().byKey(card.recipe());
-        if (holder.isEmpty() || !(holder.get().value() instanceof CraftingRecipe recipe)) {
+        RecipeHolder<?> holder = level.getServer().getRecipeManager().recipeMap().byKey(card.recipe());
+        CraftingRecipe recipe = holder != null && holder.value() instanceof CraftingRecipe crafting ? crafting : null;
+        List<ItemStack> inputs = card.inputs();
+        ItemStack made = made(recipe, card, inputs, level);
+        return made == null ? null : new Resolved(card, recipe, inputs, made);
+    }
+
+    /**
+     * Whether {@code holder}, the card's recipe as this game knows it (null if it knows none), still makes the card's
+     * result from the card's grid. The card's tooltip says "Recipe missing" when it doesn't.
+     */
+    public static boolean works(@Nullable RecipeHolder<?> holder, RecipeCard card, Level level) {
+        CraftingRecipe recipe = holder != null && holder.value() instanceof CraftingRecipe crafting ? crafting : null;
+        return made(recipe, card, card.inputs(), level) != null;
+    }
+
+    private static @Nullable ItemStack made(@Nullable CraftingRecipe recipe, RecipeCard card, List<ItemStack> inputs, Level level) {
+        if (recipe == null) {
             return null;
         }
-        List<ItemStack> inputs = card.inputs();
         CraftingInput input = CraftingInput.of(3, 3, inputs);
         if (!recipe.matches(input, level)) {
             return null;
         }
         ItemStack made = recipe.assemble(input);
-        if (!ItemStack.isSameItemSameComponents(made, card.result())) {
-            return null;
-        }
-        return new Resolved(card, recipe, inputs, made);
+        return ItemStack.isSameItemSameComponents(made, card.result()) && made.getCount() == card.result().getCount() ? made : null;
     }
 
     /** A card with its live recipe. */

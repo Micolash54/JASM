@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.crafting.PickerPayloads;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.network.TrustList;
 import java.util.HashMap;
@@ -16,7 +17,9 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /** Messages between a Crafting Deck's screen and the server about autocrafting. */
@@ -303,13 +306,19 @@ public final class CraftPayloads {
     }
 
     /** Client → server: set the open Encoding Terminal's ghost grid (JEI); slots 9-11 are the processing outputs. {@code slot} -1 sets all nine. */
-    public record Ghost(int containerId, int slot, List<ItemStack> items) implements CustomPacketPayload {
+    public record Ghost(int containerId, int slot, List<ItemStack> items, Optional<ResourceKey<Recipe<?>>> recipe) implements CustomPacketPayload {
         public static final Type<Ghost> TYPE = new Type<>(Jasm.id("terminal_ghost"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Ghost> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Ghost::containerId,
                 ByteBufCodecs.VAR_INT, Ghost::slot,
                 ItemStack.OPTIONAL_STREAM_CODEC.apply(ByteBufCodecs.list(9)), Ghost::items,
+                ByteBufCodecs.optional(PickerPayloads.RECIPE_KEY), Ghost::recipe,
                 Ghost::new);
+
+        /** Without a recipe: nothing is picked. */
+        public Ghost(int containerId, int slot, List<ItemStack> items) {
+            this(containerId, slot, items, Optional.empty());
+        }
 
         @Override
         public Type<Ghost> type() {

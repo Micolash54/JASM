@@ -55,6 +55,8 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private TrustWindow trustWindow;
     private JasmButton accessButton;
     private JasmButton encodeButton;
+    /** Picks between several recipes that fit the grid. */
+    private RecipePicker picker;
     private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final Identifier ARROW_DOWN = Jasm.id("icon/craft_arrow");
@@ -132,6 +134,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                 leftPos + EncodingTerminalMenu.GRID_X + 3 * 18 + 2, topPos + EncodingTerminalMenu.GRID_Y - 1, 11, 11);
         clear.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.clear")));
         addRenderableWidget(clear);
+        // Above the result, level with the clear key: shown only when more than one recipe fits the grid.
+        picker = new RecipePicker(menu.pickerView(), menu.containerId, leftPos + EncodingTerminalMenu.PREVIEW_X + 2,
+                topPos + EncodingTerminalMenu.GRID_Y - 1, 11, leftPos + EncodingTerminalMenu.PREVIEW_X, topPos + EncodingTerminalMenu.PREVIEW_Y);
+        addRenderableWidget(picker.key());
         trustWindow = new TrustWindow(menu, font);
         accessButton = JasmButton.icon(() -> ACCESS, Component.translatable("screen.jasm.terminal.access"),
                 b -> trustWindow.toggle(leftPos + 8, topPos + 14), leftPos + KEY_X, topPos + JasmGui.sideKeyY(1),
@@ -417,6 +423,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (trustWindow.contains(event.x(), event.y())) {
             return trustWindow.mouseClicked(event, doubleClick);
         }
+        if (picker.mouseClicked(event.x(), event.y())) {
+            return true;
+        }
         if (onScrollBar(event.x(), event.y()) && maxScroll() > 0) {
             draggingHandle = true;
             scrollToMouse(event.y());
@@ -653,8 +662,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         accessButton.setLatched(trustWindow.isOpen());
         linkWindow.sync(leftPos, topPos);
         linkKey.setLatched(linkWindow.isOpen());
+        picker.update(!menu.processing());
         // Under the windows nothing lights up or shows a tooltip, except the Deck Link window's own slots.
-        boolean over = trustWindow.contains(realMouseX, realMouseY) || linkWindow.hidesMouse(realMouseX, realMouseY);
+        boolean over = trustWindow.contains(realMouseX, realMouseY) || linkWindow.hidesMouse(realMouseX, realMouseY)
+                || picker.contains(realMouseX, realMouseY);
         int mouseX = over ? -1000 : realMouseX;
         int mouseY = over ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
@@ -688,6 +699,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                         Optional.empty(), mouseX, mouseY);
             }
         }
+        picker.draw(graphics, font, realMouseX, realMouseY);
         if (trustWindow.isOpen()) {
             graphics.nextStratum();
             trustWindow.draw(graphics, realMouseX, realMouseY, a);

@@ -68,7 +68,7 @@ final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTe
                 grid.add(input.getDisplayedItemStack().or(() -> input.getItemStacks().findFirst()).map(s -> s.copyWithCount(1))
                         .orElse(ItemStack.EMPTY));
             }
-            ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(menu.containerId, -1, grid));
+            ClientPacketDistributor.sendToServer(new CraftPayloads.Ghost(menu.containerId, -1, grid, Optional.of(recipe.id())));
         }
         return null;
     }

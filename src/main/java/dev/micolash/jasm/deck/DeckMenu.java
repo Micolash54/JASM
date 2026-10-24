@@ -2,10 +2,13 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.crafting.RecipeChoices;
+import dev.micolash.jasm.crafting.RecipePicking;
 import dev.micolash.jasm.delivery.DeliveryState;
 import dev.micolash.jasm.delivery.DeliveryView;
 import dev.micolash.jasm.delivery.InboxContainer;
 import dev.micolash.jasm.delivery.SendContainer;
+import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
@@ -15,10 +18,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -28,16 +31,18 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
-import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.ResultSlot;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeMap;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -53,7 +58,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Last come the Deck to Deck window's slots: the send grid and the inbox. The screen moves them with the window;
  * while it is open, the Deck's own slots under it stop taking clicks.
  */
-public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
+public class DeckMenu extends AbstractContainerMenu implements Notices.Board, RecipePicking {
     private static final Identifier EMPTY_WAFER = Jasm.id("container/empty_wafer");
     /** Width of the main panel. */
     public static final int MAIN_WIDTH = 204;
@@ -84,7 +89,17 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
     /** Client side only: the wafer page shown. */
     private int wafersPage;
     private final @Nullable DeckGridContainer grid;
-    private final ResultContainer result = new ResultContainer();
+    private final DeckResultContainer result = new DeckResultContainer();
+    /** Server side: every recipe that fits the grid, and the one in use (-1 for none). */
+    private List<RecipeChoices.Choice> choices = List.of();
+    private int chosen = -1;
+    /** Server side: the recipes that fit, worked out once per grid (crafting a stack refills the same items each time). */
+    private List<RecipeChoices.Choice> allChoices = List.of();
+    private @Nullable List<ItemStack> choicesFor;
+    private @Nullable RecipeMap choicesFrom;
+    private final RecipePicking.Sync pickerSync = new RecipePicking.Sync();
+    /** Client side: the results the server listed for the picker. */
+    private final RecipePicking.View pickerView = new RecipePicking.View();
     /** First grid slot and the result slot in {@link #slots}; -1 on a normal Deck. */
     private final int gridStart;
     private final int resultSlot;
@@ -149,7 +164,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             resultSlot = slots.size();
             addSlot(new GridResultSlot(player, grid, result, x + 172, 0));
             if (player instanceof ServerPlayer serverPlayer) {
-                result.setItem(0, craft(serverPlayer, null));
+                result.setItem(0, craft(serverPlayer));
             }
         } else {
             grid = null;
@@ -521,36 +536,93 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             if (dimensionAllowed()) {
                 DeckStorage.activate(WaferStore.get(serverPlayer.level().getServer()), deck, serverPlayer);
             }
-            if (grid != null) updateResult(serverPlayer, null);
+            if (grid != null) updateResult(serverPlayer);
             DeckViewTracker.markDirty(this);
         }
         if (container == grid && !placing && player instanceof ServerPlayer serverPlayer) {
-            updateResult(serverPlayer, null);
+            updateResult(serverPlayer);
         }
     }
 
-    private void updateResult(ServerPlayer player, @Nullable RecipeHolder<CraftingRecipe> hint) {
-        ItemStack made = craft(player, hint);
+    private void updateResult(ServerPlayer player) {
+        ItemStack made = craft(player);
         result.setItem(0, made);
         setRemoteSlot(resultSlot, made);
         player.connection.send(new ClientboundContainerSetSlotPacket(containerId, incrementStateId(), resultSlot, made));
     }
 
-    /** What the grid makes, as a crafting table would work it out. */
-    private ItemStack craft(ServerPlayer player, @Nullable RecipeHolder<CraftingRecipe> hint) {
+    /**
+     * What the grid makes: the recipe the player picked while it still fits, else the first that fits, as a crafting
+     * table would choose. The pick is forgotten once the grid fits only other recipes, or is emptied.
+     */
+    private ItemStack craft(ServerPlayer player) {
         if (grid == null || !dimensionAllowed()) {
+            choices = List.of();
+            chosen = -1;
             return ItemStack.EMPTY;
         }
         ServerLevel level = player.level();
-        CraftingInput input = grid.asCraftInput();
-        Optional<RecipeHolder<CraftingRecipe>> recipe = level.getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, input, level, hint);
-        if (recipe.isPresent() && result.setRecipeUsed(player, recipe.get())) {
-            ItemStack made = recipe.get().value().assemble(input);
-            if (made.isItemEnabled(level.enabledFeatures())) {
-                return made;
+        refreshChoices(player, level, grid.asCraftInput());
+        ResourceKey<Recipe<?>> picked = deck.get(JasmComponents.DECK_GRID_RECIPE.get());
+        if (picked != null && !RecipeChoices.keeps(choices, picked, grid.isEmpty())) {
+            deck.remove(JasmComponents.DECK_GRID_RECIPE.get());
+            picked = null;
+        }
+        chosen = RecipeChoices.chosen(choices, picked);
+        if (chosen < 0) {
+            return ItemStack.EMPTY;
+        }
+        RecipeChoices.Choice choice = choices.get(chosen);
+        result.setRecipeUsed(choice.recipe());
+        return choice.result().copy();
+    }
+
+    /** The recipes that fit, looked up again only when the grid holds other items or the recipes were reloaded. */
+    private void refreshChoices(ServerPlayer player, ServerLevel level, CraftingInput input) {
+        RecipeMap recipes = level.getServer().getRecipeManager().recipeMap();
+        List<ItemStack> now = new ArrayList<>(DeckGridContainer.SIZE);
+        for (int i = 0; i < DeckGridContainer.SIZE; i++) {
+            ItemStack there = grid.getItem(i);
+            now.add(there.isEmpty() ? ItemStack.EMPTY : there.copyWithCount(1));
+        }
+        if (choicesFrom != recipes || choicesFor == null || !sameItems(choicesFor, now)) {
+            allChoices = RecipeChoices.of(level, input);
+            choicesFor = now;
+            choicesFrom = recipes;
+        }
+        // With limited crafting on, only recipes the player has unlocked, as at a crafting table.
+        choices = level.getGameRules().get(GameRules.LIMITED_CRAFTING)
+                ? allChoices.stream().filter(c -> c.recipe().value().isSpecial() || player.getRecipeBook().contains(c.id())).toList()
+                : allChoices;
+    }
+
+    private static boolean sameItems(List<ItemStack> a, List<ItemStack> b) {
+        for (int i = 0; i < a.size(); i++) {
+            if (!ItemStack.isSameItemSameComponents(a.get(i), b.get(i))) {
+                return false;
             }
         }
-        return ItemStack.EMPTY;
+        return true;
+    }
+
+    @Override
+    public RecipePicking.View pickerView() {
+        return pickerView;
+    }
+
+    /** Server side: every recipe that fits the grid now, in the game's order. */
+    public List<RecipeChoices.Choice> pickerChoices() {
+        return choices;
+    }
+
+    /** The player picked another result: kept on the Deck with the grid. */
+    @Override
+    public void pickRecipe(ServerPlayer player, ResourceKey<Recipe<?>> id) {
+        if (grid == null || !dimensionAllowed() || RecipeChoices.indexOf(choices, id) < 0) {
+            return;
+        }
+        deck.set(JasmComponents.DECK_GRID_RECIPE.get(), id);
+        updateResult(player);
     }
 
     /** Stores {@code stack} on the wafers, shrinking it by what fit. */
@@ -578,7 +650,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         placing = false;
-        updateResult(player, null);
+        updateResult(player);
     }
 
     /** Puts everything in the grid back on the wafers. What doesn't fit stays in the grid. */
@@ -613,7 +685,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         placing = false;
-        updateResult(player, null);
+        updateResult(player);
     }
 
     /** Moves everything in the grid into the player's inventory. What doesn't fit stays in the grid. */
@@ -630,7 +702,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             grid.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack);
         }
         placing = false;
-        updateResult(player, null);
+        updateResult(player);
     }
 
     /**
@@ -641,6 +713,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
      * recipe the player can only partly pay for still places what they have.
      */
     public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max) {
+        fillGrid(player, wanted, max, null);
+    }
+
+    /** As above, and {@code recipe} (the one the viewer showed) becomes the grid's pick, so its result is the one made. */
+    public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max, @Nullable ResourceKey<Recipe<?>> recipe) {
         if (grid == null || !dimensionAllowed() || wanted.size() > DeckGridContainer.SIZE) {
             return;
         }
@@ -722,7 +799,10 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             }
         }
         placing = false;
-        updateResult(player, null);
+        if (recipe != null && player.level().getServer().getRecipeManager().recipeMap().byKey(recipe) != null) {
+            deck.set(JasmComponents.DECK_GRID_RECIPE.get(), recipe);
+        }
+        updateResult(player);
     }
 
     /**
@@ -789,6 +869,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
             send.flush();
             if (grid != null) {
                 grid.flush();
+                if (player instanceof ServerPlayer serverPlayer) {
+                    pickerSync.send(serverPlayer, containerId, choices, chosen);
+                }
             }
         }
         super.broadcastChanges();
@@ -912,8 +995,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
 
     /** Taking the result refills the grid from the wafers. */
     private final class GridResultSlot extends ResultSlot {
-        GridResultSlot(Player player, DeckGridContainer grid, ResultContainer result, int x, int y) {
+        private final DeckGridContainer craftGrid;
+
+        GridResultSlot(Player player, DeckGridContainer grid, DeckResultContainer result, int x, int y) {
             super(player, grid, result, 0, x, y);
+            this.craftGrid = grid;
         }
 
         @Override
@@ -928,11 +1014,54 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board {
         public void onTake(Player player, ItemStack carried) {
             List<ItemStack> before = new ArrayList<>();
             for (int i = 0; i < DeckGridContainer.SIZE; i++) {
-                before.add(grid.getItem(i).copy());
+                before.add(craftGrid.getItem(i).copy());
             }
-            super.onTake(player, carried);
+            RecipeHolder<CraftingRecipe> used = chosen >= 0 && chosen < choices.size() ? choices.get(chosen).recipe() : null;
+            // The grid empties slot by slot here; the result is worked out once, when the refill is done.
+            placing = true;
+            try {
+                take(player, carried, used);
+            } finally {
+                placing = false;
+            }
             if (player instanceof ServerPlayer serverPlayer) {
                 refill(serverPlayer, before);
+            }
+        }
+
+        /**
+         * One craft out of the grid, as the crafting table does it, except that what stays behind (an empty bucket,
+         * say) comes from the recipe that really made the result, which may be the player's pick rather than the first.
+         */
+        private void take(Player player, ItemStack carried, @Nullable RecipeHolder<CraftingRecipe> used) {
+            checkTakeAchievements(carried);
+            CraftingInput.Positioned positioned = craftGrid.asPositionedCraftInput();
+            CraftingInput input = positioned.input();
+            CommonHooks.setCraftingPlayer(player);
+            List<ItemStack> remaining = used != null && player.level() instanceof ServerLevel
+                    ? used.value().getRemainingItems(input)
+                    : CraftingRecipe.defaultCraftingReminder(input);
+            CommonHooks.setCraftingPlayer(null);
+            for (int y = 0; y < input.height(); y++) {
+                for (int x = 0; x < input.width(); x++) {
+                    int slot = x + positioned.left() + (y + positioned.top()) * craftGrid.getWidth();
+                    ItemStack there = craftGrid.getItem(slot);
+                    ItemStack left = remaining.get(x + y * input.width());
+                    if (!there.isEmpty()) {
+                        craftGrid.removeItem(slot, 1);
+                        there = craftGrid.getItem(slot);
+                    }
+                    if (!left.isEmpty()) {
+                        if (there.isEmpty()) {
+                            craftGrid.setItem(slot, left);
+                        } else if (ItemStack.isSameItemSameComponents(there, left)) {
+                            left.grow(there.getCount());
+                            craftGrid.setItem(slot, left);
+                        } else if (!player.getInventory().add(left)) {
+                            player.drop(left, false);
+                        }
+                    }
+                }
             }
         }
     }

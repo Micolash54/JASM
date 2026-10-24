@@ -21,7 +21,8 @@ item_ids:
 A [Deck](decks.md) with a 3x3 crafting grid. Ingredients come straight from its wafers, and the grid refills itself after every craft.
 
 * Shift-click the result to craft as many as fit in your inventory.
-* With JEI installed, its "+" fills the grid from your wafers and inventory, and fills what it can when something is missing. Missing ingredients the network can craft show in blue; Ctrl-click asks for them.
+* When more than one recipe fits the grid, a key above the result opens a row of every result: click one to make it the result. The pick stays until the grid fits something else.
+* With JEI installed, its "+" fills the grid from your wafers and inventory, and fills what it can when something is missing. It also picks JEI's own recipe. Missing ingredients the network can craft show in blue; Ctrl-click asks for them.
 * When you close it, the grid goes back into the wafers.
 * It is also how you ask for [autocrafting](../mechanics/autocrafting.md), and where you set [crafting rules](../mechanics/crafting-rules.md).
 * Only Advanced, Elite and Ultimate Decks come in this form.

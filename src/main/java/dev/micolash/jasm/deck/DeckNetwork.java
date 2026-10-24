@@ -253,7 +253,7 @@ public final class DeckNetwork {
         if (menu == null || !menu.isCrafting() || !menu.dimensionAllowed() || !allow(player)) {
             return false;
         }
-        menu.fillGrid(player, payload.slots(), payload.max());
+        menu.fillGrid(player, payload.slots(), payload.max(), payload.recipe().orElse(null));
         finish(player, menu);
         return true;
     }
