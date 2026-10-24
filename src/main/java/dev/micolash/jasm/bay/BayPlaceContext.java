@@ -20,7 +20,7 @@ final class BayPlaceContext extends BlockPlaceContext {
         super(level, player, InteractionHand.MAIN_HAND, stack, aimAt(pos, look));
     }
 
-    private static BlockHitResult aimAt(BlockPos front, Direction look) {
+    static BlockHitResult aimAt(BlockPos front, Direction look) {
         Direction face = look.getOpposite();
         return new BlockHitResult(Vec3.atCenterOf(front).relative(face, 0.5), face, front, false);
     }

@@ -74,6 +74,7 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         if (scoopable(state, fluid)) {
             if (passes(fluid.getType())) {
                 if (!level.mayInteract(fakePlayer(level), front)) return Plan.idle(BayStatus.NOT_ALLOWED);
+                if (claimWaiting(level, front)) return Plan.idle(BayStatus.CLAIMED);
                 return roomForBucket(fluid.getType()) ? Plan.scoop(JasmConfig.DEMOLITION_SCOOP_COST.getAsInt())
                         : Plan.idle(BayStatus.TANK_FULL);
             }
@@ -99,6 +100,10 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             if (!roomForBucket(fluid.getType())) return BayStatus.TANK_FULL;
             int cost = JasmConfig.DEMOLITION_SCOOP_COST.getAsInt();
             if (!canPay(cost)) return BayStatus.NO_POWER;
+            // Claim mods get their say before anything moves, as for a player's bucket on that source.
+            if (claimWaiting(level, front) || !clickAllowed(level, player, front, new ItemStack(Items.BUCKET))) {
+                return BayStatus.CLAIMED;
+            }
             // The bay's own tank: only what ports and pipes see refuses fluid.
             if (FluidUtil.tryPickupFluid(tank, player, level, front, (TransactionContext) null).isEmpty()) return BayStatus.SLEEPING;
             pay(cost);

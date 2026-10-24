@@ -2,7 +2,10 @@ package dev.micolash.jasm.bay;
 
 import java.util.Locale;
 
-/** What a bay's panel says. Those that no block update announces are looked at again every half second. */
+/**
+ * What a bay's panel says. Those that no block update announces are looked at again every half second. Players' games
+ * get it in four bits, so sixteen at most.
+ */
 public enum BayStatus {
     WORKING(false),
     SLEEPING(false),
@@ -20,7 +23,12 @@ public enum BayStatus {
     /** The world turned bays off; they keep what they hold and wait. */
     TURNED_OFF(false),
     /** The filter says no. A new block, a grid change or a new filter wakes it */
-    FILTERED(false);
+    FILTERED(false),
+    /**
+     * A claim mod refused a fluid or an item use on the front. Looked at every half second, but the claim mod is only
+     * asked again after a while.
+     */
+    CLAIMED(true);
 
     private final boolean recheck;
 

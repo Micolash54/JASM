@@ -27,8 +27,10 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.TriState;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.Containers;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -40,20 +42,27 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidStacksResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
+import org.jspecify.annotations.Nullable;
 
 /**
  * What both bays share: a 3×3 grid, one tank, five upgrade slots, a power buffer fed by cables and JASM power sources,
  * and the work loop. Work comes in cycles; the action happens as a cycle ends, after looking at the front again.
  * A bay with nothing to do sleeps until a block update, a change in its slots or tank, or a redstone change wakes it.
- * Waits that no update announces (power, crowding, claims, an unloaded front) are looked at every half second.
+ * Waits that no update announces (power, crowding, claims, an unloaded front) are looked at every half second. A spot
+ * a claim mod refused isn't asked about again for a few seconds, so a bay facing a claim costs neither side much.
  */
 public abstract class BayBlockEntity extends MachineBlockEntity {
     public static final int GRID = 9;
@@ -65,6 +74,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     /** Set in the cycle event when the Demolition Bay scoops a fluid rather than breaking a block. */
     private static final int EVENT_SCOOP = 1 << 16;
     private static final UUID NOBODY = UUID.fromString("5a5f9a1e-7c1b-4a8e-9a39-2f3c1e0b6d11");
+    /** How long a refused spot waits before claim mods are asked about it again: five seconds. */
+    private static final int CLAIM_RETRY_TICKS = 100;
 
     protected NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     protected final FluidStacksResourceHandler tank;
@@ -82,6 +93,9 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     private boolean wake = true;
     private boolean signal;
     private boolean signalKnown;
+    /** The spot claim mods last refused, and the game time they may be asked again. Not saved; a reload asks once more. */
+    private @Nullable BlockPos claimRefused;
+    private long claimRetryAt;
 
     // Client side only: what the renderer draws.
     private long clientCycleStart = Long.MIN_VALUE;
@@ -309,6 +323,45 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         float pitch = look == Direction.DOWN ? 90F : look == Direction.UP ? -90F : 0F;
         player.snapTo(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5, worldPosition.getZ() + 0.5, yaw, pitch);
         return player;
+    }
+
+    // --- claims ---
+
+    /** Claim mods refused {@code pos} a moment ago, and aren't asked about it again until the wait is over. */
+    protected boolean claimWaiting(ServerLevel level, BlockPos pos) {
+        return pos.equals(claimRefused) && level.getGameTime() < claimRetryAt;
+    }
+
+    /**
+     * Asks claim and protection mods whether the owner may right-click {@code pos} holding {@code held}, through the
+     * same event a player's click fires. Claim mods that judge by the item in hand, such as a bucket, see it too.
+     */
+    protected boolean clickAllowed(ServerLevel level, FakePlayer player, BlockPos pos, ItemStack held) {
+        player.setItemInHand(InteractionHand.MAIN_HAND, held);
+        try {
+            BlockHitResult aim = BayPlaceContext.aimAt(pos, facing());
+            PlayerInteractEvent.RightClickBlock event = CommonHooks.onRightClickBlock(player, InteractionHand.MAIN_HAND, pos, aim);
+            return remember(level, pos, !event.isCanceled() && event.getUseItem() != TriState.FALSE);
+        } finally {
+            player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        }
+    }
+
+    /**
+     * Asks the same for a block appearing at {@code pos}, put against the bay's face, as for any block a player puts
+     * down. Asked before anything changes, so the spot still holds what is there now.
+     */
+    protected boolean placeAllowed(ServerLevel level, FakePlayer player, BlockPos pos) {
+        BlockSnapshot spot = BlockSnapshot.create(level.dimension(), level, pos);
+        return remember(level, pos, !EventHooks.onBlockPlace(player, spot, facing()));
+    }
+
+    private boolean remember(ServerLevel level, BlockPos pos, boolean allowed) {
+        if (!allowed) {
+            claimRefused = pos.immutable();
+            claimRetryAt = level.getGameTime() + CLAIM_RETRY_TICKS;
+        }
+        return allowed;
     }
 
     // --- upgrades and redstone ---

@@ -302,7 +302,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
         return switch (status) {
             case WORKING -> JasmGui.GOOD;
             case SLEEPING -> JasmGui.MUTED;
-            case NO_POWER, NOT_ALLOWED -> JasmGui.BAD;
+            case NO_POWER, NOT_ALLOWED, CLAIMED -> JasmGui.BAD;
             default -> JasmGui.WARN;
         };
     }

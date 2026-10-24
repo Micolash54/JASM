@@ -13,6 +13,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.LiquidBlockContainer;
 import net.minecraft.world.level.block.state.BlockState;
@@ -45,12 +46,17 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
     @Override
     protected Plan plan(ServerLevel level, BlockPos front) {
         boolean anyItem = false;
+        boolean anyBlock = false;
         boolean refused = false;
         for (int slot = 0; slot < GRID; slot++) {
             ItemStack stack = items.get(slot);
             if (stack.isEmpty()) continue;
-            if (passes(stack)) anyItem = true;
-            else refused = true;
+            if (passes(stack)) {
+                anyItem = true;
+                anyBlock |= stack.getItem() instanceof BlockItem;
+            } else {
+                refused = true;
+            }
         }
         boolean fluid = mode == DeployMode.PLACE && tank.getAmountAsLong(0) >= FluidAmounts.PER_BUCKET;
         boolean anyFluid = fluid && passes(tank.getResource(0).getFluid());
@@ -64,6 +70,8 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         // A player or mob in the way: a block can't go there, but a fluid still can.
         if (anyItem && !anyFluid && standsInFront(level, front)) return Plan.idle(BayStatus.OBSTRUCTED);
         if (!level.mayInteract(fakePlayer(level), front)) return Plan.idle(BayStatus.NOT_ALLOWED);
+        // Fluids and item uses wait after a claim mod refused them; blocks ask for themselves each time.
+        if (!anyBlock && claimWaiting(level, front)) return Plan.idle(BayStatus.CLAIMED);
         return Plan.work(JasmConfig.DEPLOYMENT_COST.getAsInt());
     }
 
@@ -90,27 +98,47 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
             return BayStatus.SLEEPING;
         }
         FakePlayer player = fakePlayer(level);
+        boolean claimed = false;
         for (int slot = 0; slot < GRID; slot++) {
-            if (!items.get(slot).isEmpty() && passes(items.get(slot)) && placeFrom(level, player, front, slot)) {
+            ItemStack stack = items.get(slot);
+            if (stack.isEmpty() || !passes(stack)) continue;
+            // Placing a block asks claim mods by itself. Other uses (spawn eggs, bone meal) ask first, as a player's
+            // click does.
+            boolean asks = !(stack.getItem() instanceof BlockItem);
+            if (asks && (claimWaiting(level, front) || !clickAllowed(level, player, front, stack.copy()))) {
+                claimed = true;
+                continue;
+            }
+            if (placeFrom(level, player, front, slot)) {
                 pay(plan.cost());
                 return BayStatus.WORKING;
             }
         }
-        if (placeFluid(level, player, front)) {
+        BayStatus fluid = placeFluid(level, player, front);
+        if (fluid == BayStatus.WORKING) {
             pay(plan.cost());
             return BayStatus.WORKING;
         }
+        if (claimed || fluid == BayStatus.CLAIMED) return BayStatus.CLAIMED;
         return standsInFront(level, front) ? BayStatus.OBSTRUCTED : BayStatus.NOTHING_TO_PLACE;
     }
 
-    /** One bucket from the tank as a source block, by vanilla's bucket rules (Nether water boils away, slabs get waterlogged). */
-    private boolean placeFluid(ServerLevel level, FakePlayer player, BlockPos front) {
+    /**
+     * One bucket from the tank as a source block, by vanilla's bucket rules (Nether water boils away, slabs get
+     * waterlogged). WORKING if it was poured, CLAIMED if a claim mod said no, NOTHING_TO_PLACE otherwise.
+     */
+    private BayStatus placeFluid(ServerLevel level, FakePlayer player, BlockPos front) {
         FluidResource fluid = tank.getResource(0);
         if (fluid.isEmpty() || tank.getAmountAsLong(0) < FluidAmounts.PER_BUCKET || !fluid.isComponentsPatchEmpty()
-                || !passes(fluid.getFluid())) return false;
+                || !passes(fluid.getFluid())) return BayStatus.NOTHING_TO_PLACE;
         // Water is replaceable by water: never pour onto a source of the same fluid.
-        if (level.getFluidState(front).isSourceOfType(fluid.getFluid())) return false;
-        return !FluidUtil.tryPlaceFluid(tank, player, level, front, true, null).isEmpty();
+        if (level.getFluidState(front).isSourceOfType(fluid.getFluid())) return BayStatus.NOTHING_TO_PLACE;
+        // Claim mods get their say before anything moves: on the front, as for a player's bucket, and on the spot the
+        // fluid fills.
+        if (claimWaiting(level, front) || !clickAllowed(level, player, front, new ItemStack(fluid.getFluid().getBucket()))
+                || !placeAllowed(level, player, front)) return BayStatus.CLAIMED;
+        boolean poured = !FluidUtil.tryPlaceFluid(tank, player, level, front, true, null).isEmpty();
+        return poured ? BayStatus.WORKING : BayStatus.NOTHING_TO_PLACE;
     }
 
     private static boolean standsInFront(ServerLevel level, BlockPos front) {
