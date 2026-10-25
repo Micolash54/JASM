@@ -22,7 +22,7 @@ Everything is explained in the [JASM guide](https://micolash54.github.io/JASM/),
 
 - **Wafers and Decks.** Wafers hold items or fluids, from a few stacks up to a million. A Deck reads several at once and you can search everything from one screen. [How storage works](https://micolash54.github.io/JASM/26.1/mechanics/how-storage-works.html)
 - **Backups.** An Archive keeps a copy of your wafers and can rebuild one onto a blank chip if you lose it. [Backups and recovery](https://micolash54.github.io/JASM/26.1/mechanics/backups-and-recovery.html)
-- **Autocrafting.** Write recipes onto cards and ask your Crafting Deck for anything; the parts get crafted first. Furnaces and modded machines join in through Access Ports, fluids included, and crafting rules keep your stock topped up. [Autocrafting](https://micolash54.github.io/JASM/26.1/mechanics/autocrafting.html)
+- **Autocrafting.** Write recipes onto cards and ask your Crafting Deck for anything; the parts get crafted first. Furnaces and modded machines join in through Access Ports, fluids included, and crafting rules keep your stock topped up. For picky machines, an Advanced Encoder sets which side each ingredient goes in. [Autocrafting](https://micolash54.github.io/JASM/26.1/mechanics/autocrafting.html)
 - **Networks.** Cables carry power and link your machines. A network runs 4 machines on its own; past that it needs a Network Brain, and a tower of brain floors lets it grow much bigger. [Networks](https://micolash54.github.io/JASM/26.1/mechanics/networks.html)
 - **Ports and Bays.** Input, Output and Two-Way Ports move things between chests and your Deck, and a Storage Port lets the whole network use a chest or tank. Bays place and break blocks for you.
 - **Bitlings** grow from Basic Bitlings into Nibblings and Bytelings as they work, and the best wafers need what only a Byteling can make. [Befriending Bitlings](https://micolash54.github.io/JASM/26.1/mechanics/befriending-bitlings.html)
@@ -36,7 +36,7 @@ Everything is explained in the [JASM guide](https://micolash54.github.io/JASM/),
 
 Optional:
 
-- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) 29.37.0.99 or newer: all recipes and info pages, recipe keys in the Deck's grid, the Deck's search can follow JEI's, and JEI's "+" fills the Crafting Deck and the Network Encoder. On the Crafting Deck it fills what it can, and Ctrl-click asks for what the network can craft.
+- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) 29.37.0.99 or newer: all recipes and info pages, recipe keys in the Deck's grid, the Deck's search can follow JEI's, and JEI's "+" fills the Crafting Deck and both encoders. On the Crafting Deck it fills what it can, and Ctrl-click asks for what the network can craft.
 - [Jade](https://www.curseforge.com/minecraft/mc-mods/jade) 26.1.10+neoforge or newer shows what's going on inside JASM blocks when you look at them.
 - [Curios](https://www.curseforge.com/minecraft/mc-mods/curios) 15.0.0+26.1.2 or newer adds a slot for wearing a Deck.
 - [Collapsible Groups](https://www.curseforge.com/minecraft/mc-mods/collapsible-groups) 2.0.0-beta3 or newer folds JASM's ports, wafers, Decks and Bitlings into groups in the item list.

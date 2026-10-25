@@ -2,15 +2,16 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "P": "minecraft:paper",
-    "R": "minecraft:redstone",
-    "A": "minecraft:amethyst_shard"
+    "L": "jasm:logic_chip",
+    "A": "minecraft:amethyst_shard",
+    "R": "minecraft:redstone"
   },
   "pattern": [
-    "PRP",
-    "PAP"
+    "PLP",
+    "PAP",
+    "PRP"
   ],
   "result": {
-    "id": "jasm:recipe_card",
-    "count": 4
+    "id": "jasm:recipe_card"
   }
 }

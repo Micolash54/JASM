@@ -15,7 +15,7 @@ item_ids:
 
 A Recipe Card holds one recipe for autocrafting. Write it at a [Network Encoder](encoding-terminal.md), then store it in a [Recipe Rack](recipe-rack.md).
 
-* An **empty** card has nothing on it. One craft makes 4.
+* An **empty** card has nothing on it. The recipe with an Advanced Logic Chip makes 4.
 * A **filled** card shows what it makes, and what it takes.
 * A card can hold a crafting recipe, or a processing recipe for a machine behind an [Access Port](access-port.md).
 * A filled card on its own in a crafting grid turns back into an empty one.
@@ -25,6 +25,6 @@ The tooltip tells you which mod the result comes from, whether a card is shaped 
 
 <br />
 <br />
-## Recipe
+## Recipes
 
-<RecipeFor id="recipe_card" />
+<RecipesFor id="recipe_card" />
