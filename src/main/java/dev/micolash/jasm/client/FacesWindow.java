@@ -30,9 +30,9 @@ final class FacesWindow {
     static final int KEY_Y = 26;
     static final int KEY_SIZE = 17;
     static final int KEY_PITCH = 19;
-    private static final Identifier KEY = Jasm.id("button");
-    private static final Identifier KEY_LIT = Jasm.id("button_highlighted");
-    private static final Identifier KEY_DOWN = Jasm.id("button_pressed");
+    private static final Identifier[] KEY = keySprites(Jasm.id("button"), "");
+    private static final Identifier[] KEY_LIT = keySprites(Jasm.id("button_highlighted"), "_highlighted");
+    private static final Identifier[] KEY_DOWN = keySprites(Jasm.id("button_pressed"), "_pressed");
     private static final int OUTLINE = 0xFF11111B;
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     /** The legend: three faces a row, then Default on a line of its own. */
@@ -157,22 +157,30 @@ final class FacesWindow {
     }
 
     /**
-     * One face key: the key with its face in the face's colour and the letter on it; Default keeps the plain key. The
-     * picked one is pushed in with a lavender rim.
+     * One face key, drawn like any JASM button (normal, lit when hovered, pushed in when picked) from a copy of the
+     * button sprites in the face's own colour. Default keeps the plain dark button. The label sits in the middle of the
+     * top face, above the lip, and drops with the face when the key is pushed in. The picked one gets a lavender rim.
      */
     static void key(GuiGraphicsExtractor graphics, InputFace face, int x, int y, boolean picked, boolean hovered) {
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, picked ? KEY_DOWN : hovered ? KEY_LIT : KEY, x, y, KEY_SIZE, KEY_SIZE);
-        int dy = picked ? 2 : 0;
-        if (face != InputFace.DEFAULT) {
-            graphics.fill(x + 2, y + 2 + dy, x + KEY_SIZE - 2, y + KEY_SIZE - 4 + dy, face.color());
-        }
+        int i = face.ordinal();
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, picked ? KEY_DOWN[i] : hovered ? KEY_LIT[i] : KEY[i], x, y, KEY_SIZE, KEY_SIZE);
         var font = net.minecraft.client.Minecraft.getInstance().font;
         String letter = String.valueOf(face.letter());
-        graphics.text(font, letter, x + (KEY_SIZE - font.width(letter) + 1) / 2, y + (KEY_SIZE - 8) / 2 - 1 + dy,
+        graphics.text(font, letter, x + (KEY_SIZE - font.width(letter) + 1) / 2, y + (KEY_SIZE - 7) / 2 + (picked ? 1 : -1),
                 face == InputFace.DEFAULT ? JasmGui.TEXT : OUTLINE, false);
         if (picked) {
             JasmGui.rim(graphics, x - 1, y + 1, KEY_SIZE + 2, KEY_SIZE, JasmGui.ACCENT);
         }
+    }
+
+    /** One sprite per face: the plain button's for Default, the coloured copy under {@code face_key/} for the others. */
+    private static Identifier[] keySprites(Identifier plain, String suffix) {
+        InputFace[] faces = InputFace.values();
+        Identifier[] out = new Identifier[faces.length];
+        for (InputFace face : faces) {
+            out[face.ordinal()] = face == InputFace.DEFAULT ? plain : Jasm.id("face_key/" + face.getSerializedName() + suffix);
+        }
+        return out;
     }
 
     /** The face in hand, following the mouse like a picked-up item: a small square in its colour with its letter. */

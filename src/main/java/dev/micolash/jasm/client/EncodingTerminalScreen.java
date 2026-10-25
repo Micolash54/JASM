@@ -49,7 +49,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
     private JasmButton linkKey;
     private @Nullable DeckLinkWindow linkWindow;
-    private static final JasmButton.Icon FACES = new JasmButton.Icon(Jasm.id("icon/faces"), 11, 12);
+    private static final JasmButton.Icon FACES = new JasmButton.Icon(Jasm.id("icon/faces"), 16, 16);
     /** The Advanced Encoder's Faces key and window; null on the plain terminal. */
     private @Nullable JasmButton facesKey;
     private @Nullable FacesWindow facesWindow;
