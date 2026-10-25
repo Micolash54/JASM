@@ -76,7 +76,8 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 <br />
 ## Autocrafting
 
-* [Encoding Terminal](encoding-terminal.md): writes recipes and pairs Decks.
+* [Network Encoder](encoding-terminal.md): writes recipes and pairs Decks.
+* [Advanced Encoder](advanced-encoder.md): a Network Encoder that picks which face of a machine each ingredient goes in through.
 * [Recipe Cards](recipe-cards.md): hold one recipe each.
 * [Recipe Rack](recipe-rack.md): stores 16 cards.
 * [Crafting Server](crafting-server.md): runs the jobs.

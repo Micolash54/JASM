@@ -55,6 +55,9 @@ public final class JasmMenus {
     public static final Supplier<MenuType<EncodingTerminalMenu>> ENCODING_TERMINAL = MENUS.register("encoding_terminal",
             () -> new MenuType<>(EncodingTerminalMenu::new, FeatureFlags.VANILLA_SET));
 
+    public static final Supplier<MenuType<EncodingTerminalMenu>> ADVANCED_ENCODER = MENUS.register("advanced_encoder",
+            () -> new MenuType<>(EncodingTerminalMenu::advanced, FeatureFlags.VANILLA_SET));
+
     public static final Supplier<MenuType<RecipeRackMenu>> RECIPE_RACK = MENUS.register("recipe_rack",
             () -> new MenuType<>(RecipeRackMenu::new, FeatureFlags.VANILLA_SET));
 

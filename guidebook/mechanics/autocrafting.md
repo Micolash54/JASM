@@ -16,7 +16,7 @@ Ask for anything from your Crafting Deck, and the network crafts what it needs f
 <br />
 ## What you need
 
-1. A [Crafting Deck](../items/crafting-decks.md), paired at an [Encoding Terminal](../items/encoding-terminal.md).
+1. A [Crafting Deck](../items/crafting-decks.md), paired at a [Network Encoder](../items/encoding-terminal.md).
 2. [Recipe Cards](../items/recipe-cards.md) for the recipes, kept in a [Recipe Rack](../items/recipe-rack.md).
 3. A [Crafting Server](../items/crafting-server.md) with a Processor and a Storage Module.
 4. A [Data Cable](../items/data-cables.md) network that joins them, with power.

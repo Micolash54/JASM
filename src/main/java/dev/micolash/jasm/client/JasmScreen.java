@@ -57,6 +57,7 @@ public abstract class JasmScreen<T extends AbstractContainerMenu> extends Abstra
         Slot hovered = hoveredSlot;
         boolean lit = hovered != null && hovered.isHighlightable();
         if (lit) JasmGui.slotHover(graphics, hovered.x, hovered.y);
+        extractUnderItems(graphics);
         super.extractSlots(graphics, mouseX, mouseY);
         if (lit) {
             JasmGui.slotHoverFrame(graphics, hovered.x, hovered.y);
@@ -65,6 +66,9 @@ public abstract class JasmScreen<T extends AbstractContainerMenu> extends Abstra
             hoveredSlot = null;
         }
     }
+
+    /** Drawn over the slot wells and the hover tint, under the items. Relative to the screen's corner. */
+    protected void extractUnderItems(GuiGraphicsExtractor graphics) {}
 
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {

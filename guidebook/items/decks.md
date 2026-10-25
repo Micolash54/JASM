@@ -62,7 +62,7 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 <br />
 ## Network and travel
 
-* Link to a network at an [Encoding Terminal](encoding-terminal.md), to receive port deliveries and see the Network tab.
+* Link to a network at a [Network Encoder](encoding-terminal.md), to receive port deliveries and see the Network tab.
 * [Send items to other players](../mechanics/sending-items.md).
 * Work outside the Overworld with a [Dimension Upgrade](dimension-upgrade.md).
 

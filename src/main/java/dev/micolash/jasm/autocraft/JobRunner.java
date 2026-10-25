@@ -391,7 +391,7 @@ final class JobRunner {
             }
             targets.sort(Comparator.comparingLong(t -> out.getOrDefault(t.at(), 0L)));
             Target target = targets.getFirst();
-            Machines.Push pushed = Machines.push(target.port(), target.side(), chosen, pool);
+            Machines.Push pushed = Machines.push(target.port(), target.side(), chosen, card.usedFaces(), pool);
             if (pushed == Machines.Push.SHORT) {
                 blocked = sent > 0 ? Wait.NONE : Wait.NO_MATERIAL;
                 break;
@@ -432,6 +432,7 @@ final class JobRunner {
      */
     private static boolean turnedAway(CraftingJob job, int stepIndex, ProcessingCard card, List<ProcessingCard.Amount> chosen, Target target) {
         List<ProcessingCard.Amount> own = card.usedInputs();
+        List<InputFace> faces = card.usedFaces();
         boolean any = false;
         for (int i = 0; i < own.size(); i++) {
             ProcessingCard.Amount written = own.get(i);
@@ -439,7 +440,7 @@ final class JobRunner {
             if (written.isFluid() || written.isMaterial() || sent.item().equals(written.item())) {
                 continue;
             }
-            if (Machines.turnsAway(target.port(), target.side(), written, sent)) {
+            if (Machines.turnsAway(target.port(), target.side(), faces.get(i), written, sent)) {
                 job.refuse(stepIndex, i, sent.item());
                 any = true;
             }

@@ -41,7 +41,7 @@ A [Deck](decks.md) with a 3x3 crafting grid. Ingredients come straight from its 
 
 Craft a Deck of the same tier, or upgrade from the Crafting Deck below it. Either way it keeps its wafers, its charge and whatever is in its grid.
 
-A new Crafting Deck links itself to the network of the [Encoding Terminal](encoding-terminal.md) you used last.
+A new Crafting Deck links itself to the network of the [Network Encoder](encoding-terminal.md) you used last.
 
 <br />
 <br />

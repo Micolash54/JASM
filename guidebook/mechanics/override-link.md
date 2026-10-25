@@ -10,20 +10,20 @@ navigation:
 
 <BlockImage id="basic_archive" scale="3.5" />
 
-An [Encoding Terminal](../items/encoding-terminal.md) links Decks for the whole network. An [Archive](../items/archives.md) links one player's Deck for itself alone, with its Override Link window.
+A [Network Encoder](../items/encoding-terminal.md) links Decks for the whole network. An [Archive](../items/archives.md) links one player's Deck for itself alone, with its Override Link window.
 
 <br />
 <br />
 ## Network link and Archive link
 
-* The Deck Link window on an Encoding Terminal pairs a player's Deck with the network. A paired Deck gets the Network tab, autocrafting, ports and Deck to Deck.
+* The Deck Link window on a Network Encoder pairs a player's Deck with the network. A paired Deck gets the Network tab, autocrafting, ports and Deck to Deck.
 * An Archive backs up the owner's Deck. The Override Link window changes that for this Archive only, and not for the network or any other Archive.
 
 <br />
 <br />
 ## Overriding an Archive
 
-1. Trust the player at an Encoding Terminal and have them pair their Deck there.
+1. Trust the player at a Network Encoder and have them pair their Deck there.
 2. Open the Archive and press the Override Link key on its right.
 3. Put their Deck in the left slot and take it from the right.
 

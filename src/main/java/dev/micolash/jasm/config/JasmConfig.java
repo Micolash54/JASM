@@ -62,7 +62,7 @@ public final class JasmConfig {
     }
 
     public static final ModConfigSpec.IntValue TERMINAL_DRAIN = BUILDER
-            .comment("FE the Encoding Terminal uses each tick")
+            .comment("FE a Network Encoder uses each tick")
             .defineInRange("terminalDrain", 5, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue RACK_DRAIN = BUILDER

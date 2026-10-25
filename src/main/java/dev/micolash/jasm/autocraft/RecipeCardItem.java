@@ -5,6 +5,7 @@ import dev.micolash.jasm.core.ModNameLine;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
@@ -65,6 +66,9 @@ public class RecipeCardItem extends Item {
         return Component.literal(name).withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
     }
 
+    /** One ingredient line of a card's tooltip: what goes in, and through which face. */
+    private record FacedInput(GridKey key, InputFace face) {}
+
     private static void processing(ProcessingCard card, Consumer<Component> builder) {
         ProcessingCard.Amount main = card.main();
         if (!main.isEmpty()) {
@@ -79,16 +83,22 @@ public class RecipeCardItem extends Item {
                     extra.stack().getHoverName()).withStyle(ChatFormatting.GRAY));
         }
         builder.accept(Component.translatable("tooltip.jasm.card.processing").withStyle(ChatFormatting.LIGHT_PURPLE));
-        Map<GridKey, Integer> counts = new LinkedHashMap<>();
-        for (ProcessingCard.Amount input : card.usedInputs()) {
-            counts.merge(input.key(), input.count(), Integer::sum);
+        // the same ingredient through two faces is two lines; a face other than Default is named after it
+        Map<FacedInput, Integer> counts = new LinkedHashMap<>();
+        List<ProcessingCard.Amount> inputs = card.usedInputs();
+        List<InputFace> faces = card.usedFaces();
+        for (int i = 0; i < inputs.size(); i++) {
+            counts.merge(new FacedInput(inputs.get(i).key(), faces.get(i)), inputs.get(i).count(), Integer::sum);
         }
-        counts.forEach((key, n) -> {
-            boolean fluid = key instanceof GridKey.Fluid;
-            boolean units = fluid || key instanceof GridKey.Material;
-            builder.accept(Component.translatable(units ? "tooltip.jasm.card.input_fluid" : "tooltip.jasm.card.input",
-                    fluid ? FluidAmounts.label(n) : String.valueOf(n), ProcessingCard.Amount.of(key, 1).stack().getHoverName())
-                    .withStyle(ChatFormatting.DARK_GRAY));
+        counts.forEach((input, n) -> {
+            boolean fluid = input.key() instanceof GridKey.Fluid;
+            boolean units = fluid || input.key() instanceof GridKey.Material;
+            Component line = Component.translatable(units ? "tooltip.jasm.card.input_fluid" : "tooltip.jasm.card.input",
+                    fluid ? FluidAmounts.label(n) : String.valueOf(n), ProcessingCard.Amount.of(input.key(), 1).stack().getHoverName());
+            if (input.face() != InputFace.DEFAULT) {
+                line = Component.translatable("tooltip.jasm.card.input_face", line, Component.translatable(input.face().translationKey()));
+            }
+            builder.accept(line.copy().withStyle(ChatFormatting.DARK_GRAY));
         });
         for (ProcessingCard.Machine machine : card.machines()) {
             builder.accept(Component.translatable("tooltip.jasm.card.machine", machine.name(), machine.pos().getX(), machine.pos().getY(),

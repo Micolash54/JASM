@@ -84,14 +84,18 @@ public final class MachineRecipes {
             }
             ItemStack stack = candidate.toStack(1);
             return stack.getComponentsPatch().equals(DataComponentPatch.EMPTY) && slots.get(slot).accepts(level, candidate, stack)
-                    && !refused(level, card.usedInputs().get(slot).item(), candidate);
+                    && !refused(level, slot, card.usedInputs().get(slot).item(), candidate);
         }
 
-        /** Whether a loaded machine says no slot of it ever holds {@code candidate}, though one holds the card's {@code own}. */
-        private boolean refused(ServerLevel level, ItemResource own, ItemResource candidate) {
+        /**
+         * Whether a loaded machine says no slot of it ever holds {@code candidate}, though one holds the card's {@code own},
+         * looking through the face the card sends used input slot {@code slot} in by.
+         */
+        private boolean refused(ServerLevel level, int slot, ItemResource own, ItemResource candidate) {
+            InputFace face = slot < card.usedFaces().size() ? card.usedFaces().get(slot) : InputFace.DEFAULT;
             for (ProcessingCard.Machine machine : card.machines()) {
                 BlockPos pos = machine.pos().relative(machine.side());
-                ResourceHandler<ItemResource> inlet = level.isLoaded(pos) ? Machines.inlet(level, pos, machine.side().getOpposite()) : null;
+                ResourceHandler<ItemResource> inlet = level.isLoaded(pos) ? Machines.inlet(level, pos, Machines.face(machine.side(), face)) : null;
                 if (inlet == null) {
                     continue;
                 }

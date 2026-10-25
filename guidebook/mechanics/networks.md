@@ -18,7 +18,7 @@ Machines that are joined by [Data Cables](../items/data-cables.md) form a networ
 
 A network can only hold so many machines. The [Network Brain](../items/network-brain.md) page has the numbers. Everything that does a job counts:
 
-* Encoding Terminals, Recipe Racks and Crafting Servers.
+* Network Encoders, Recipe Racks and Crafting Servers.
 * Access Ports and every other port.
 * Archives.
 * Chip Workshops, Crystal Foundries and Bitling Stations.
@@ -31,7 +31,7 @@ A row of five Archives side by side is a network of five.
 <br />
 ## Who may use it
 
-The network belongs to the player who set it up. The owner can trust other players at an Encoding Terminal. Trusted players can use the blocks and Archives on that network. Different players' networks never join. See [co-op play](co-op-play.md) for everything you can share.
+The network belongs to the player who set it up. The owner can trust other players at a Network Encoder. Trusted players can use the blocks and Archives on that network. Different players' networks never join. See [co-op play](co-op-play.md) for everything you can share.
 
 <br />
 <br />

@@ -22,6 +22,7 @@ import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,8 +113,10 @@ public class JasmJeiPlugin implements IModPlugin {
     @Override
     public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
         registration.addRecipeTransferHandler(new DeckTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
-        registration.addRecipeTransferHandler(new TerminalTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
-        registration.addUniversalRecipeTransferHandler(new ProcessingTransferHandler(registration.getTransferHelper()));
+        for (var terminal : List.of(JasmMenus.ENCODING_TERMINAL.get(), JasmMenus.ADVANCED_ENCODER.get())) {
+            registration.addRecipeTransferHandler(new TerminalTransferHandler(registration.getTransferHelper(), terminal), RecipeTypes.CRAFTING);
+            registration.addUniversalRecipeTransferHandler(new ProcessingTransferHandler(registration.getTransferHelper(), terminal));
+        }
     }
 
     @Override
@@ -126,6 +129,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "crafting_deck", 3, craftingDecks());
         info(registration, "recipe_card", 2, List.of(JasmItems.RECIPE_CARD.get(), JasmItems.FILLED_RECIPE_CARD.get()));
         info(registration, "encoding_terminal", 2, List.of(JasmItems.ENCODING_TERMINAL.get()));
+        info(registration, "advanced_encoder", 1, List.of(JasmItems.ADVANCED_ENCODER.get()));
         info(registration, "recipe_rack", 2, List.of(JasmItems.RECIPE_RACK.get()));
         info(registration, "data_cable", 2, JasmItems.cables());
         info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));

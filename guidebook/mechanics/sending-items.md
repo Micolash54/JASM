@@ -22,7 +22,7 @@ Deck to Deck sends items to another player on your network. They travel for a wh
 <br />
 ## How to send
 
-1. Pair your [Deck](../items/decks.md) at an [Encoding Terminal](../items/encoding-terminal.md).
+1. Pair your [Deck](../items/decks.md) at a [Network Encoder](../items/encoding-terminal.md).
 2. Press **Deck to Deck** on the Deck's screen and choose a player. Only players online on this network show up.
 3. Put the items in the send grid and press **Send**.
 

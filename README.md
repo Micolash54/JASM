@@ -36,7 +36,7 @@ Everything is explained in the [JASM guide](https://micolash54.github.io/JASM/),
 
 Optional:
 
-- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) 29.37.0.99 or newer: all recipes and info pages, recipe keys in the Deck's grid, the Deck's search can follow JEI's, and JEI's "+" fills the Crafting Deck and the Encoding Terminal. On the Crafting Deck it fills what it can, and Ctrl-click asks for what the network can craft.
+- [JEI](https://www.curseforge.com/minecraft/mc-mods/jei) 29.37.0.99 or newer: all recipes and info pages, recipe keys in the Deck's grid, the Deck's search can follow JEI's, and JEI's "+" fills the Crafting Deck and the Network Encoder. On the Crafting Deck it fills what it can, and Ctrl-click asks for what the network can craft.
 - [Jade](https://www.curseforge.com/minecraft/mc-mods/jade) 26.1.10+neoforge or newer shows what's going on inside JASM blocks when you look at them.
 - [Curios](https://www.curseforge.com/minecraft/mc-mods/curios) 15.0.0+26.1.2 or newer adds a slot for wearing a Deck.
 - [Collapsible Groups](https://www.curseforge.com/minecraft/mc-mods/collapsible-groups) 2.0.0-beta3 or newer folds JASM's ports, wafers, Decks and Bitlings into groups in the item list.

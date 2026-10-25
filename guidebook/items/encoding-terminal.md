@@ -1,6 +1,6 @@
 ---
 navigation:
-  title: Encoding Terminal
+  title: Network Encoder
   parent: items/index.md
   position: 500
   icon: encoding_terminal
@@ -8,11 +8,11 @@ item_ids:
 - jasm:encoding_terminal
 ---
 
-# Encoding Terminal
+# Network Encoder
 
 <BlockImage id="encoding_terminal" scale="3.5" />
 
-The Encoding Terminal writes recipes onto [Recipe Cards](recipe-cards.md). It is also where a Deck gets paired with a network, which unlocks autocrafting, ports and the Network tab.
+The Network Encoder writes recipes onto [Recipe Cards](recipe-cards.md). It is also where a Deck gets paired with a network, which unlocks autocrafting, ports and the Network tab.
 
 <br />
 <br />
@@ -24,7 +24,9 @@ The Encoding Terminal writes recipes onto [Recipe Cards](recipe-cards.md). It is
 
 When more than one recipe fits the grid, the key above the result picks which one the card gets. JEI's "+" picks its own recipe.
 
-For a machine, choose it in the terminal's machine list first. Then fill the right-hand column with what the machine gives back. Scroll over a slot to change its amount, with Shift for bigger steps. Right-click with a full bucket or tank to set a fluid. See the [Access Port](access-port.md).
+For a machine, choose it in the encoder's machine list first. Then fill the right-hand column with what the machine gives back. Scroll over a slot to change its amount, with Shift for bigger steps. Right-click with a full bucket or tank to set a fluid. See the [Access Port](access-port.md).
+
+For a machine that only takes some ingredients through its top, bottom or one side, use the [Advanced Encoder](advanced-encoder.md).
 
 The Deck tab shows what is on your Deck. Click an item there for a copy to put in the grid. Nothing leaves the Deck.
 

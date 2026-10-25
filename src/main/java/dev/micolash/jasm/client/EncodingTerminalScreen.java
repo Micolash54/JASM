@@ -6,6 +6,7 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.autocraft.InputFace;
 import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.network.LinkWindowCover;
@@ -41,12 +42,19 @@ import org.jspecify.annotations.Nullable;
  * Side keys on the right open the Deck Link window for pairing Decks and, for the owner, the access list. The panel on
  * the left lists the machines a card can be written for: the Crafting Server first (ordinary crafting cards), then
  * every Access Port. With a port chosen, the grid takes amounts and what the machine gives back goes in a column of
- * three beside it.
+ * three beside it. The Advanced Encoder adds a third side key, Faces: its window paints ingredient slots with
+ * the machine face they go in through. Painted slots show their face's colour on either terminal.
  */
 public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
     private JasmButton linkKey;
     private @Nullable DeckLinkWindow linkWindow;
+    private static final JasmButton.Icon FACES = new JasmButton.Icon(Jasm.id("icon/faces"), 11, 12);
+    /** The Advanced Encoder's Faces key and window; null on the plain terminal. */
+    private @Nullable JasmButton facesKey;
+    private @Nullable FacesWindow facesWindow;
+    /** Whether the Faces key's tooltip was last written for processing mode; null before the first time. */
+    private @Nullable Boolean facesTipFor;
     private static final int WIDTH = 176;
     private static final int HEIGHT = EncodingTerminalMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 60 - HELP_ROOM;
@@ -115,7 +123,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     protected void init() {
         super.init();
         frame = JasmFrame.rounded(new int[]{0, 0, imageWidth, imageHeight}, new int[]{PANEL_X, 0, PANEL_W + 6, imageHeight},
-                JasmGui.sideStrip(KEY_X, 2));
+                JasmGui.sideStrip(KEY_X, sideKeys()));
         addHelp(WIDTH - 7, "items/encoding-terminal.md");
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
@@ -144,6 +152,15 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                 JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT);
         accessButton.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.access_hint")));
         addRenderableWidget(accessButton);
+        if (menu.advanced()) {
+            facesTipFor = null;
+            if (facesWindow == null) {
+                facesWindow = new FacesWindow(font);
+            }
+            facesKey = addRenderableWidget(JasmButton.icon(() -> FACES, Component.translatable("screen.jasm.terminal.faces"),
+                    b -> facesWindow.toggle(), leftPos + KEY_X, topPos + JasmGui.sideKeyY(2), JasmGui.SIDE_KEY_WIDTH,
+                    JasmGui.SIDE_KEY_HEIGHT));
+        }
         // Level with the chosen tab's top, its last row under the sheet's edge like the tab at the back; only the part
         // above the sheet takes clicks.
         deckSearch = new JasmField(font, leftPos + WIDTH - 8 - 58, topPos + TAB_TOP, 58, SHEET_Y - TAB_TOP + 1,
@@ -160,6 +177,29 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         addWidget(deckSearch);
         deckList = new TerminalDeckList(menu, font, deckSearch, leftPos + 8, topPos + EncodingTerminalMenu.INVENTORY_Y);
         showDeckTab(showDeck);
+    }
+
+    /** Side keys on the right: Deck Link and Access, and Faces on the Advanced Encoder. */
+    private int sideKeys() {
+        return menu.advanced() ? 3 : 2;
+    }
+
+    /** The face being painted onto ingredient slots right now, or null. */
+    private @Nullable InputFace painting() {
+        return facesWindow != null && facesWindow.isOpen() ? facesWindow.picked() : null;
+    }
+
+    /** Whether the grid shows each slot's face: on a processing card, on either terminal (the plain one only shows them). */
+    private boolean showFaces() {
+        return menu.processing();
+    }
+
+    /** Paints ingredient slot {@code slot} with the face in hand, once per press. Empty slots take no face. */
+    private void paint(int slot) {
+        InputFace face = painting();
+        if (face != null && slot >= 0 && slot < 9 && placed.add(slot) && !ghostItem(slot).isEmpty() && menu.face(slot) != face) {
+            minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_FACE + slot * 8 + face.ordinal());
+        }
     }
 
     private void toggleLink() {
@@ -306,9 +346,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     public List<Rect2i> sidePanelAreas() {
         var areas = new ArrayList<Rect2i>();
         areas.add(panelArea());
-        int[] strip = JasmGui.sideStrip(KEY_X, 2);
+        int[] strip = JasmGui.sideStrip(KEY_X, sideKeys());
         areas.add(new Rect2i(leftPos + strip[0], topPos + strip[1], strip[2], strip[3]));
         if (linkWindow != null) linkWindow.area().ifPresent(areas::add);
+        if (facesWindow != null) facesWindow.area().ifPresent(areas::add);
         if (trustWindow != null) trustWindow.area().ifPresent(areas::add);
         return areas;
     }
@@ -417,6 +458,22 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (facesWindow != null && facesWindow.contains(event.x(), event.y())) {
+            return facesWindow.mouseClicked(event, doubleClick);
+        }
+        if (painting() != null) {
+            placed.clear();
+            // Painting: a left click paints the ingredient slot under the mouse, a right click anywhere stops.
+            if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
+                facesWindow.stopPainting();
+                return true;
+            }
+            int slot = ghostSlotAt(event.x(), event.y());
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && slot >= 0 && slot < 9) {
+                paint(slot);
+                return true;
+            }
+        }
         if (linkWindow.contains(event.x(), event.y())) {
             return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
         }
@@ -493,7 +550,14 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     /** Holding a copy, dragging over ghost slots does to each what a click there would. On the Deck list's scroll bar it scrolls. */
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (facesWindow != null && facesWindow.mouseDragged(event, width, height)) {
+            return true;
+        }
         if (linkWindow.mouseDragged(event, width, height) || trustWindow.mouseDragged(event, width, height)) {
+            return true;
+        }
+        if (painting() != null && event.button() == InputConstants.MOUSE_BUTTON_LEFT && ghostSlotAt(event.x(), event.y()) >= 0) {
+            paint(ghostSlotAt(event.x(), event.y()));
             return true;
         }
         if (draggingHandle) {
@@ -516,8 +580,14 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (facesWindow != null && facesWindow.mouseReleased()) {
+            return true;
+        }
         if (linkWindow.mouseReleased() | trustWindow.mouseReleased()) {
             return true;
+        }
+        if (painting() != null) {
+            placed.clear();
         }
         if (draggingHandle) {
             draggingHandle = false;
@@ -560,7 +630,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     /** Over the machine list it scrolls; over a filled processing slot it changes the amount (by 10 with Shift). */
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
-        if (linkWindow.contains(x, y)) {
+        if (linkWindow.contains(x, y) || facesWindow != null && facesWindow.contains(x, y)) {
             return true;
         }
         if (trustWindow.contains(x, y)) {
@@ -588,6 +658,14 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (painting() != null && event.isEscape()) {
+            facesWindow.stopPainting();
+            return true;
+        }
+        if (facesWindow != null && facesWindow.isOpen() && event.isEscape()) {
+            facesWindow.close();
+            return true;
+        }
         if (linkWindow.isOpen() && event.isEscape()) {
             linkWindow.close();
             linkKey.setLatched(false);
@@ -663,9 +741,24 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         linkWindow.sync(leftPos, topPos);
         linkKey.setLatched(linkWindow.isOpen());
         picker.update(!menu.processing());
+        if (facesWindow != null) {
+            // Faces only mean something on a processing card: without a machine chosen the key rests and the window shuts.
+            facesKey.active = menu.processing();
+            if (!menu.processing() && facesWindow.isOpen()) {
+                facesWindow.close();
+            }
+            facesKey.setLatched(facesWindow.isOpen());
+            if (facesTipFor == null || facesTipFor != menu.processing()) {
+                facesTipFor = menu.processing();
+                facesKey.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.faces").append("\n")
+                        .append(Component.translatable(facesTipFor ? "screen.jasm.terminal.faces_hint" : "screen.jasm.terminal.choose_machine")
+                                .withColor(JasmGui.MUTED & 0xFFFFFF))));
+            }
+            facesWindow.sync(leftPos, topPos, width, height);
+        }
         // Under the windows nothing lights up or shows a tooltip, except the Deck Link window's own slots.
         boolean over = trustWindow.contains(realMouseX, realMouseY) || linkWindow.hidesMouse(realMouseX, realMouseY)
-                || picker.contains(realMouseX, realMouseY);
+                || picker.contains(realMouseX, realMouseY) || facesWindow != null && facesWindow.contains(realMouseX, realMouseY);
         int mouseX = over ? -1000 : realMouseX;
         int mouseY = over ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
@@ -686,17 +779,21 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
         if (hoveredSlot != null && processingSlot(hoveredSlot) >= 0 && hoveredSlot.isActive() && menu.getCarried().isEmpty()) {
             MaterialKey hoveredMaterial = MaterialMarkerItem.materialOf(hoveredSlot.getItem());
+            int index = processingSlot(hoveredSlot);
+            List<Component> faces = showFaces() && index < 9 ? faceLines(index) : List.of();
             if (hoveredMaterial != null) {
-                graphics.setTooltipForNextFrame(font, List.of(MaterialIcons.name(hoveredMaterial),
-                        Component.literal(String.valueOf(menu.amount(processingSlot(hoveredSlot)))).withStyle(ChatFormatting.GRAY),
-                        Component.literal(MaterialIcons.modName(hoveredMaterial)).withStyle(ChatFormatting.BLUE)),
-                        Optional.empty(), mouseX, mouseY);
+                List<Component> lines = new ArrayList<>(List.of(MaterialIcons.name(hoveredMaterial),
+                        Component.literal(String.valueOf(menu.amount(index))).withStyle(ChatFormatting.GRAY),
+                        Component.literal(MaterialIcons.modName(hoveredMaterial)).withStyle(ChatFormatting.BLUE)));
+                lines.addAll(faces);
+                graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
             }
             FluidResource hoveredFluid = FluidMarkerItem.fluidOf(hoveredSlot.getItem());
             if (hoveredFluid != null) {
-                graphics.setTooltipForNextFrame(font, List.of(hoveredFluid.getHoverName(),
-                        Component.literal(FluidAmounts.label(menu.amount(processingSlot(hoveredSlot)))).withStyle(ChatFormatting.GRAY)),
-                        Optional.empty(), mouseX, mouseY);
+                List<Component> lines = new ArrayList<>(List.of(hoveredFluid.getHoverName(),
+                        Component.literal(FluidAmounts.label(menu.amount(index))).withStyle(ChatFormatting.GRAY)));
+                lines.addAll(faces);
+                graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
             }
         }
         picker.draw(graphics, font, realMouseX, realMouseY);
@@ -707,6 +804,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (linkWindow.isOpen()) {
             graphics.nextStratum();
             linkWindow.draw(graphics, realMouseX, realMouseY, a, linkStatus());
+        }
+        if (facesWindow != null && facesWindow.isOpen()) {
+            graphics.nextStratum();
+            facesWindow.draw(graphics, realMouseX, realMouseY, a);
         }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
             graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
@@ -739,13 +840,65 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.tab_deck_hint"), 170),
                     realMouseX, realMouseY);
         }
-        // The picked example follows the mouse, over everything else.
+        // The face in hand, or the picked example, follows the mouse over everything else.
+        if (painting() != null && realMouseX >= 0 && realMouseY >= 0) {
+            graphics.nextStratum();
+            FacesWindow.held(graphics, font, painting(), realMouseX, realMouseY);
+        }
         if (!ghostHeld.isEmpty()) {
             graphics.nextStratum();
             graphics.item(ghostHeld, realMouseX - 8, realMouseY - 8);
             graphics.itemDecorations(font, ghostHeld, realMouseX - 8, realMouseY - 8,
                     ghostHeld.getCount() > 1 ? String.valueOf(ghostHeld.getCount()) : "");
         }
+    }
+
+    /** Painted ingredient slots: the face's colour washed over the well, with a rim in that colour. */
+    @Override
+    protected void extractUnderItems(GuiGraphicsExtractor graphics) {
+        if (!showFaces()) {
+            return;
+        }
+        for (int i = 0; i < 9; i++) {
+            InputFace face = menu.face(i);
+            Slot slot = menu.getSlot(EncodingTerminalMenu.SLOT_GHOST + i);
+            if (face == InputFace.DEFAULT || !slot.isActive()) {
+                continue;
+            }
+            graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, 0x50000000 | face.color() & 0xFFFFFF);
+            JasmGui.rim(graphics, slot.x - 1, slot.y - 1, 18, 18, face.color());
+            if (slot == hoveredSlot) {
+                graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, JasmGui.HOVER);
+            }
+        }
+    }
+
+    /** An ingredient's tooltip also says which face it goes in through. */
+    @Override
+    protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
+        List<Component> lines = super.getTooltipFromContainerItem(stack);
+        int slot = hoveredSlot == null ? -1 : processingSlot(hoveredSlot);
+        if (showFaces() && slot >= 0 && slot < 9) {
+            lines = new ArrayList<>(lines);
+            lines.addAll(faceLines(slot));
+        }
+        return lines;
+    }
+
+    /**
+     * "Enters through: Top" in the face's colour; Default also says what it means. The plain terminal says nothing for
+     * Default, so it reads as before.
+     */
+    private List<Component> faceLines(int slot) {
+        InputFace face = menu.face(slot);
+        if (face == InputFace.DEFAULT && !menu.advanced()) {
+            return List.of();
+        }
+        Component line = Component.translatable("screen.jasm.terminal.enters_through", Component.translatable(face.translationKey()))
+                .withColor((face == InputFace.DEFAULT ? JasmGui.ACCENT : face.color()) & 0xFFFFFF);
+        return face == InputFace.DEFAULT
+                ? List.of(line, Component.translatable("screen.jasm.terminal.default_side").withStyle(ChatFormatting.GRAY))
+                : List.of(line);
     }
 
     /** Slots that hold a fluid have no item to draw: the fluid itself fills the cell. */
@@ -805,7 +958,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         Component text = null;
         int color = JasmGui.BAD;
         Component notice = menu.notices().current(minecraft.level.getGameTime());
-        if (notice != null) {
+        if (painting() != null) {
+            text = Component.translatable("screen.jasm.terminal.painting", Component.translatable(painting().translationKey()));
+            color = JasmGui.TEXT;
+        } else if (notice != null) {
             text = notice;
             color = menu.notices().ok() ? JasmGui.GOOD : JasmGui.BAD;
         } else if (messageTicks > 0 && !menu.message().isEmpty()) {

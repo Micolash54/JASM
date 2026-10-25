@@ -13,7 +13,7 @@ item_ids:
 
 <ItemImage id="filled_recipe_card" scale="4" />
 
-A Recipe Card holds one recipe for autocrafting. Write it at an [Encoding Terminal](encoding-terminal.md), then store it in a [Recipe Rack](recipe-rack.md).
+A Recipe Card holds one recipe for autocrafting. Write it at a [Network Encoder](encoding-terminal.md), then store it in a [Recipe Rack](recipe-rack.md).
 
 * An **empty** card has nothing on it. One craft makes 4.
 * A **filled** card shows what it makes, and what it takes.

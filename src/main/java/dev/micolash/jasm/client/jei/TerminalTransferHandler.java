@@ -2,7 +2,6 @@ package dev.micolash.jasm.client.jei;
 
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
-import dev.micolash.jasm.registry.JasmMenus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,9 +24,12 @@ import org.jspecify.annotations.Nullable;
 /** JEI's "+" on a crafting recipe fills the Encoding Terminal's ghost grid with the items JEI is showing. Nothing is used up. */
 final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTerminalMenu, RecipeHolder<CraftingRecipe>> {
     private final IRecipeTransferHandlerHelper helper;
+    /** The plain or the Advanced Encoder: they share the menu, each under its own type. */
+    private final MenuType<EncodingTerminalMenu> type;
 
-    TerminalTransferHandler(IRecipeTransferHandlerHelper helper) {
+    TerminalTransferHandler(IRecipeTransferHandlerHelper helper, MenuType<EncodingTerminalMenu> type) {
         this.helper = helper;
+        this.type = type;
     }
 
     @Override
@@ -37,7 +39,7 @@ final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTe
 
     @Override
     public Optional<MenuType<EncodingTerminalMenu>> getMenuType() {
-        return Optional.of(JasmMenus.ENCODING_TERMINAL.get());
+        return Optional.of(type);
     }
 
     @Override

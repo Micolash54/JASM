@@ -24,17 +24,17 @@ Friends can share one network. Everyone keeps their own Deck and their own wafer
 <br />
 ## Trusting friends
 
-1. Open an [Encoding Terminal](../items/encoding-terminal.md) on your network.
+1. Open a [Network Encoder](../items/encoding-terminal.md) on your network.
 2. Open its Access window and type a friend's name. They don't have to be online.
 3. **Stop trusting** takes them off the list again.
 
-Only the owner can trust players, up to 32 per terminal. Trusted players can open and use every JASM machine and Archive on that network. Everyone else is turned away, even if they join a cable to it.
+Only the owner can trust players, up to 32 per encoder. Trusted players can open and use every JASM machine and Archive on that network. Everyone else is turned away, even if they join a cable to it.
 
 <br />
 <br />
 ## Pairing your own Deck
 
-Each trusted player pairs their own [Deck](../items/decks.md) at the terminal, in the Deck Link window. It is one Deck per player: pairing another replaces your old one. A paired Deck gets the Network tab, autocrafting, ports and Deck to Deck.
+Each trusted player pairs their own [Deck](../items/decks.md) at the encoder, in the Deck Link window. It is one Deck per player: pairing another replaces your old one. A paired Deck gets the Network tab, autocrafting, ports and Deck to Deck.
 
 <br />
 <br />

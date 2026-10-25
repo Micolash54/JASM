@@ -16,6 +16,7 @@ import dev.micolash.jasm.wafer.FluidAmounts;
 import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,6 +28,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
@@ -118,7 +120,15 @@ public final class Machines {
      * would take {@code own} but not {@code other}. A machine that is only busy with something else turns nothing away.
      */
     public static boolean turnsAway(AccessPortBlockEntity port, Direction side, ProcessingCard.Amount own, ProcessingCard.Amount other) {
-        ResourceHandler<ItemResource> inlet = inlet(port, side);
+        return turnsAway(port, side, InputFace.DEFAULT, own, other);
+    }
+
+    /** As above, where the card sends this ingredient through {@code face}. */
+    public static boolean turnsAway(AccessPortBlockEntity port, Direction side, InputFace face, ProcessingCard.Amount own,
+            ProcessingCard.Amount other) {
+        ResourceHandler<ItemResource> inlet = port.getLevel() instanceof ServerLevel level
+                ? inlet(level, port.getBlockPos().relative(side), face(side, face))
+                : null;
         if (inlet == null || own.item().isEmpty() || other.item().isEmpty()) {
             return false;
         }
@@ -215,45 +225,75 @@ public final class Machines {
         return push(port, side, set, null) == Push.SENT;
     }
 
-    /**
-     * As above, and materials come out of {@code pool} (the network's storage blocks). The machine is asked first with
-     * nothing taken; the pool then gives up exactly what the set needs or nothing; the machine takes it, and if it
-     * somehow doesn't, everything goes back to the pool.
-     */
+    /** As below, every ingredient through the face the port touches. */
     public static Push push(AccessPortBlockEntity port, Direction side, List<ProcessingCard.Amount> set, @Nullable NetworkPool pool) {
+        return push(port, side, set, List.of(), pool);
+    }
+
+    /**
+     * Puts one set into the machine on the port's {@code side}, each ingredient through its face ({@code faces} goes
+     * with {@code set} entry by entry; a missing one is Default, the face the port touches). Materials come out of
+     * {@code pool} (the network's storage blocks). The machine is asked first with nothing taken; the pool then gives up
+     * exactly what the set needs or nothing; the machine takes it, and if it somehow doesn't, everything goes back to the
+     * pool. One transaction covers every face, so a face that refuses keeps the whole set out.
+     */
+    public static Push push(AccessPortBlockEntity port, Direction side, List<ProcessingCard.Amount> set, List<InputFace> faces,
+            @Nullable NetworkPool pool) {
+        Level level = port.getLevel();
+        if (!(level instanceof ServerLevel)) {
+            return Push.SHUT;
+        }
+        BlockPos pos = port.getBlockPos().relative(side);
+        // Which face each entry goes through, and what kinds go through each face.
+        List<Direction> through = new ArrayList<>(set.size());
+        Map<Direction, Kinds> kinds = new LinkedHashMap<>();
         // A fluid or material counts in shares (an eighth of a bucket each) against the port's allowance, like an item.
         long shares = 0;
-        boolean items = false;
-        boolean fluids = false;
         boolean materials = false;
-        for (ProcessingCard.Amount amount : set) {
+        for (int i = 0; i < set.size(); i++) {
+            ProcessingCard.Amount amount = set.get(i);
+            Direction face = face(side, i < faces.size() ? faces.get(i) : InputFace.DEFAULT);
+            through.add(face);
+            Kinds here = kinds.computeIfAbsent(face, f -> new Kinds());
             if (amount.isMaterial()) {
-                materials = true;
+                here.materials = materials = true;
                 shares += FluidAmounts.shares(amount.count());
             } else if (amount.isFluid()) {
-                fluids = true;
+                here.fluids = true;
                 shares += FluidAmounts.shares(amount.count());
             } else {
-                items = true;
+                here.items = true;
                 shares += amount.count();
             }
         }
         int count = (int) Math.min(shares, Integer.MAX_VALUE);
-        if (port.getLevel() != null && shut(port.getLevel(), port.getBlockPos().relative(side), side.getOpposite(), items, fluids)) {
-            return Push.SHUT;
+        for (Map.Entry<Direction, Kinds> entry : kinds.entrySet()) {
+            if (shut(level, pos, entry.getKey(), entry.getValue().items, entry.getValue().fluids)) {
+                return Push.SHUT;
+            }
         }
         if (!port.canSendBatch(count)) return Push.WAIT;
-        ResourceHandler<ItemResource> inlet = items ? inlet(port, side) : null;
-        ResourceHandler<FluidResource> tank = fluids ? fluidInlet(port, side) : null;
-        List<MaterialInlet> vessels = materials && port.getLevel() instanceof ServerLevel level
-                ? materialInlets(level, port.getBlockPos().relative(side), side.getOpposite())
-                : List.of();
-        if (items && inlet == null || fluids && tank == null || materials && vessels.isEmpty()) {
-            return Push.SHUT;
+        Map<Direction, Handlers> handlers = new HashMap<>();
+        for (Map.Entry<Direction, Kinds> entry : kinds.entrySet()) {
+            Direction face = entry.getKey();
+            Kinds wanted = entry.getValue();
+            Handlers found = new Handlers(wanted.items ? inlet(level, pos, face) : null, wanted.fluids ? fluidInlet(level, pos, face) : null,
+                    wanted.materials ? materialInlets(level, pos, face) : List.of());
+            if (wanted.items && found.inlet() == null || wanted.fluids && found.tank() == null || wanted.materials && found.vessels().isEmpty()) {
+                return Push.SHUT;
+            }
+            handlers.put(face, found);
         }
         if (materials && pool == null) return Push.SHORT;
-        if (port.blockingMode() && (inlet != null && containsIngredient(inlet, set) || tank != null && containsFluid(tank, set)
-                || materials && containsMaterial(vessels, set))) return Push.BUSY;
+        if (port.blockingMode()) {
+            // Every face the set uses is looked at: the machine may show its ingredients on any of them.
+            for (Handlers face : handlers.values()) {
+                if (face.inlet() != null && containsIngredient(face.inlet(), set) || face.tank() != null && containsFluid(face.tank(), set)
+                        || !face.vessels().isEmpty() && containsMaterial(face.vessels(), set)) {
+                    return Push.BUSY;
+                }
+            }
+        }
         // what the pool could give, by exact resource: the first resource of each name stands in for the dry run
         Map<MaterialKey, Material> sample = new HashMap<>();
         if (materials) {
@@ -265,47 +305,85 @@ public final class Machines {
             }
         }
         try (Transaction tx = Transaction.openRoot()) {
-            if (!insertSet(set, inlet, tank, vessels, sample::get, tx)) return Push.REFUSED;
+            if (!insertSet(set, through, handlers, sample::get, List.of(), tx)) return Push.REFUSED;
             // not committed: this was only asking
         }
-        List<Map<Material, Long>> taken = new ArrayList<>();
-        Map<MaterialKey, Map<Material, Long>> pieces = new HashMap<>();
+        // What the pool gave for each entry of the set, in set order (nothing for items and fluids).
+        List<@Nullable Map<Material, Long>> pieces = new ArrayList<>(set.size());
         for (ProcessingCard.Amount amount : set) {
-            if (!amount.isMaterial()) continue;
+            if (!amount.isMaterial()) {
+                pieces.add(null);
+                continue;
+            }
             Map<Material, Long> got = pool.takeMaterial(amount.material(), amount.count());
             if (got == null) {
-                taken.forEach(pool::putBackMaterial);
+                pieces.stream().filter(java.util.Objects::nonNull).forEach(pool::putBackMaterial);
                 return Push.SHORT;
             }
-            taken.add(got);
-            pieces.put(amount.material(), got);
+            pieces.add(got);
         }
         boolean in;
         try (Transaction tx = Transaction.openRoot()) {
-            in = insertSet(set, inlet, tank, vessels, key -> null, pieces, tx);
+            in = insertSet(set, through, handlers, key -> null, pieces, tx);
             if (in) tx.commit();
         }
         if (!in) {
-            taken.forEach(pool::putBackMaterial);
+            pieces.stream().filter(java.util.Objects::nonNull).forEach(pool::putBackMaterial);
             return Push.REFUSED;
         }
         port.transferred(count);
         return Push.SENT;
     }
 
-    private static boolean insertSet(List<ProcessingCard.Amount> set, @Nullable ResourceHandler<ItemResource> inlet,
-            @Nullable ResourceHandler<FluidResource> tank, List<MaterialInlet> vessels, Function<MaterialKey, @Nullable Material> sample,
-            TransactionContext tx) {
-        return insertSet(set, inlet, tank, vessels, sample, Map.of(), tx);
+    /** The face of the machine on a port's {@code side} that an input set to {@code face} goes in through. */
+    public static Direction face(Direction side, InputFace face) {
+        return face.direction() != null ? face.direction() : side.getOpposite();
     }
 
-    /** Puts the set into the machine's handlers inside {@code tx}. Materials go in by {@code pieces} if given, else by the sample. */
-    private static boolean insertSet(List<ProcessingCard.Amount> set, @Nullable ResourceHandler<ItemResource> inlet,
-            @Nullable ResourceHandler<FluidResource> tank, List<MaterialInlet> vessels, Function<MaterialKey, @Nullable Material> sample,
-            Map<MaterialKey, Map<Material, Long>> pieces, TransactionContext tx) {
-        for (ProcessingCard.Amount amount : set) {
+    /**
+     * Whether the block at {@code pos} takes anything (items, fluids or materials) through any of its faces. A card can
+     * send its ingredients through faces the port doesn't touch. Only blocks with a block entity are asked, since ports
+     * ask this of every neighbour every half second. JASM's own machines and cables don't count: their I/O grid says
+     * which faces the port may use.
+     */
+    public static boolean takesAnywhere(Level level, BlockPos pos) {
+        if (!level.isLoaded(pos)) {
+            return false;
+        }
+        BlockEntity entity = level.getBlockEntity(pos);
+        if (entity == null || entity instanceof MachineBlockEntity) {
+            return false;
+        }
+        for (Direction face : Direction.values()) {
+            if (inlet(level, pos, face) != null || fluidInlet(level, pos, face) != null || !materialInlets(level, pos, face).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** What kinds of ingredient go through one face. */
+    private static final class Kinds {
+        boolean items;
+        boolean fluids;
+        boolean materials;
+    }
+
+    /** One face's handlers: null or empty for a kind the set doesn't bring through it. */
+    private record Handlers(@Nullable ResourceHandler<ItemResource> inlet, @Nullable ResourceHandler<FluidResource> tank,
+            List<MaterialInlet> vessels) {}
+
+    /**
+     * Puts the set into the machine inside {@code tx}, each entry through its face's handlers. Materials go in by what
+     * the pool gave for that entry ({@code pieces}) if given, else by the sample.
+     */
+    private static boolean insertSet(List<ProcessingCard.Amount> set, List<Direction> through, Map<Direction, Handlers> handlers,
+            Function<MaterialKey, @Nullable Material> sample, List<@Nullable Map<Material, Long>> pieces, TransactionContext tx) {
+        for (int i = 0; i < set.size(); i++) {
+            ProcessingCard.Amount amount = set.get(i);
+            Handlers face = handlers.get(through.get(i));
             if (amount.isMaterial()) {
-                Map<Material, Long> parts = pieces.get(amount.material());
+                Map<Material, Long> parts = i < pieces.size() ? pieces.get(i) : null;
                 if (parts == null) {
                     Material stand = sample.apply(amount.material());
                     if (stand == null) return false;
@@ -313,12 +391,12 @@ public final class Machines {
                 }
                 for (var part : parts.entrySet()) {
                     Material material = part.getKey();
-                    ResourceHandler<Resource> vessel = vessels.stream().filter(v -> v.kind() == material.kind()).map(MaterialInlet::handler)
+                    ResourceHandler<Resource> vessel = face.vessels().stream().filter(v -> v.kind() == material.kind()).map(MaterialInlet::handler)
                             .findFirst().orElse(null);
                     if (vessel == null || vessel.insert(material.resource(), (int) (long) part.getValue(), tx) != part.getValue()) return false;
                 }
             } else {
-                int taken = amount.isFluid() ? tank.insert(amount.fluid(), amount.count(), tx) : inlet.insert(amount.item(), amount.count(), tx);
+                int taken = amount.isFluid() ? face.tank().insert(amount.fluid(), amount.count(), tx) : face.inlet().insert(amount.item(), amount.count(), tx);
                 if (taken != amount.count()) return false;
             }
         }

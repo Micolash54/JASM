@@ -10,6 +10,7 @@
     "jasm:advanced_combustion_generator",
     "jasm:elite_combustion_generator",
     "jasm:encoding_terminal",
+    "jasm:advanced_encoder",
     "jasm:recipe_rack",
     "jasm:data_cable",
     "jasm:crafting_server",

@@ -35,7 +35,7 @@ Most JASM blocks run on FE.
 
 | Block | Uses |
 | --- | --- |
-| Encoding Terminal | 5 FE a tick |
+| Network Encoder | 5 FE a tick |
 | Recipe Rack | 2 FE a tick |
 | Crafting Server | 20 FE a tick, plus its Processors |
 | Advanced Crafting Server | 40 FE a tick, plus its Processors |

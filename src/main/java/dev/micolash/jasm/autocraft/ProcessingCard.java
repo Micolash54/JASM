@@ -19,11 +19,12 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A recipe for a machine behind an Access Port: what goes in (nine slots, any amount each, positions only for
- * showing), what comes back (up to three, the first one being what the card makes), and which ports it may use.
- * JASM never checks it against the machine: the player says what the machine does.
+ * A recipe for a machine behind an Access Port: what goes in (nine slots, any amount each), what comes back (up to
+ * three, the first one being what the card makes), which ports it may use, and the machine face each input goes in
+ * through (Default, the face the port touches, unless the Advanced Encoder set another). JASM never checks it
+ * against the machine: the player says what the machine does.
  */
-public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines) implements Card {
+public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines, List<InputFace> faces) implements Card {
     public static final int INPUTS = 9;
     public static final int OUTPUTS = 3;
     /** Most of one item in one slot. */
@@ -211,19 +212,45 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     public static final Codec<ProcessingCard> CODEC = RecordCodecBuilder.create(i -> i.group(
             Amount.CODEC.listOf().fieldOf("inputs").forGetter(ProcessingCard::inputs),
             Amount.CODEC.listOf().fieldOf("outputs").forGetter(ProcessingCard::outputs),
-            Machine.CODEC.listOf().fieldOf("machines").forGetter(ProcessingCard::machines))
+            Machine.CODEC.listOf().fieldOf("machines").forGetter(ProcessingCard::machines),
+            // Left out while every input is Default, so cards without faces save exactly as before.
+            InputFace.CODEC.listOf().optionalFieldOf("faces", InputFace.NONE).forGetter(ProcessingCard::faces))
             .apply(i, ProcessingCard::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ProcessingCard> STREAM_CODEC = StreamCodec.composite(
             Amount.STREAM_CODEC.apply(ByteBufCodecs.list(INPUTS)), ProcessingCard::inputs,
             Amount.STREAM_CODEC.apply(ByteBufCodecs.list(OUTPUTS)), ProcessingCard::outputs,
             Machine.STREAM_CODEC.apply(ByteBufCodecs.list(64)), ProcessingCard::machines,
+            InputFace.STREAM_CODEC.apply(ByteBufCodecs.list(INPUTS)), ProcessingCard::faces,
             ProcessingCard::new);
+
+    /** A card whose inputs all go in through the face the port touches. */
+    public ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines) {
+        this(inputs, outputs, machines, InputFace.NONE);
+    }
 
     public ProcessingCard {
         inputs = padded(inputs, INPUTS);
         outputs = padded(outputs, OUTPUTS);
         machines = List.copyOf(machines);
+        // Each face stays with its slot; an empty slot has no face, so two cards that differ only there are the same card.
+        List<InputFace> kept = new ArrayList<>(InputFace.padded(faces));
+        for (int i = 0; i < INPUTS; i++) {
+            if (inputs.get(i).isEmpty()) {
+                kept.set(i, InputFace.DEFAULT);
+            }
+        }
+        faces = kept.equals(InputFace.NONE) ? InputFace.NONE : List.copyOf(kept);
+    }
+
+    /** Whether any input goes in through a face other than the one the port touches. */
+    public boolean hasFaces() {
+        return !faces.equals(InputFace.NONE);
+    }
+
+    /** The face input slot {@code slot} goes in through. */
+    public InputFace face(int slot) {
+        return slot >= 0 && slot < INPUTS ? faces.get(slot) : InputFace.DEFAULT;
     }
 
     private static List<Amount> padded(List<Amount> amounts, int size) {
@@ -264,6 +291,17 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     /** The used input slots, in grid order. */
     public List<Amount> usedInputs() {
         return inputs.stream().filter(a -> !a.isEmpty()).toList();
+    }
+
+    /** The face each used input slot goes in through, in the same order as {@link #usedInputs()}. */
+    public List<InputFace> usedFaces() {
+        List<InputFace> used = new ArrayList<>(INPUTS);
+        for (int i = 0; i < INPUTS; i++) {
+            if (!inputs.get(i).isEmpty()) {
+                used.add(faces.get(i));
+            }
+        }
+        return used;
     }
 
     /** The machines the card may use. */

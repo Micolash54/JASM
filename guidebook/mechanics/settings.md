@@ -67,7 +67,7 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 
 | Setting | Key | What it does |
 | --- | --- | --- |
-| Terminal drain (FE/t) | `terminalDrain` | FE an Encoding Terminal uses each tick. |
+| Encoder drain (FE/t) | `terminalDrain` | FE a Network Encoder uses each tick. |
 | Rack drain (FE/t) | `rackDrain` | FE a Recipe Rack uses each tick. |
 | Server drain (FE/t) | `serverDrain` | FE a Crafting Server uses each tick on its own, busy or idle. |
 | Port drain (FE/t) | `portDrain` | FE an Access Port uses each tick. |

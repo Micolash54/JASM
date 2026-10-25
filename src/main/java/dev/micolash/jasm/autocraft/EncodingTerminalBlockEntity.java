@@ -48,7 +48,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Encoding Terminal: writes a recipe from its ghost grid onto a Recipe Card, pairs Decks with its
  * network, and holds the trust list for its owner's blocks on that network. Mined, it keeps its identity (so paired
- * Decks stay paired) and its trust list.
+ * Decks stay paired) and its trust list. The Advanced Encoder is the same block entity on another block: it
+ * also lets the player pick the machine face each ingredient goes in through. The plain one keeps a card's faces when
+ * the card is written again, but can't change them.
  */
 public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static final int CARD_IN = 0;
@@ -98,6 +100,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     };
     /** Processing mode: how many of each grid item (the first nine) and each output (the last three). */
     private final int[] amounts = new int[AMOUNTS];
+    /** Processing mode: the machine face each grid slot's ingredient goes in through. An empty slot is always Default. */
+    private final InputFace[] faces = InputFace.NONE.toArray(InputFace[]::new);
     /** The Access Ports the next processing card is for. Empty means the Crafting Server: an ordinary crafting card. */
     private final List<Machines.At> selected = new ArrayList<>();
     /** What the ghost grid makes right now, shown next to it. */
@@ -114,10 +118,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     private boolean previewReady;
     /** Whether this block has told the list of terminals where it stands since it was placed or loaded. */
     private boolean placed;
-    /** The card piles and screen as a player's game last heard them, packed by {@link #looks()}. */
+    /** The card piles as a player's game last heard them, packed by {@link #looks()}. */
     private int shownLooks;
-    /** Screens open on this terminal right now, for the lit screen out front. Not saved. */
-    private int openMenus;
     private @Nullable UUID terminalId;
     private @Nullable UUID pendingPairer;
     private TrustList trust = TrustList.EMPTY;
@@ -132,9 +134,15 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
                 case EncodingTerminalMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case EncodingTerminalMenu.DATA_PAIRED -> deckPaired() ? 1 : 0;
                 case EncodingTerminalMenu.DATA_PROCESSING -> processing() ? 1 : 0;
-                default -> index >= EncodingTerminalMenu.DATA_AMOUNTS && index < EncodingTerminalMenu.DATA_AMOUNTS + AMOUNTS
-                        ? amount(index - EncodingTerminalMenu.DATA_AMOUNTS)
-                        : 0;
+                default -> {
+                    if (index >= EncodingTerminalMenu.DATA_AMOUNTS && index < EncodingTerminalMenu.DATA_AMOUNTS + AMOUNTS) {
+                        yield amount(index - EncodingTerminalMenu.DATA_AMOUNTS);
+                    }
+                    if (index >= EncodingTerminalMenu.DATA_FACES && index < EncodingTerminalMenu.DATA_FACES + ProcessingCard.INPUTS) {
+                        yield faces[index - EncodingTerminalMenu.DATA_FACES].ordinal();
+                    }
+                    yield 0;
+                }
             };
         }
 
@@ -166,30 +174,14 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         terminal.syncLooks(terminal.looks());
     }
 
-    /** Cards in the piles out front (one per four blank cards, sixteen at most), then one bit for "someone has it open". */
+    /** Cards in the piles out front: one per four blank cards, sixteen at most. */
     private int looks() {
-        int cards = Math.min(PILE_CARDS, (items.get(CARD_IN).getCount() + 3) / 4);
-        return openMenus > 0 ? cards | 1 << 5 : cards;
-    }
-
-    /** A player opened this terminal's screen. */
-    void menuOpened() {
-        openMenus++;
-    }
-
-    /** A player closed this terminal's screen. */
-    void menuClosed() {
-        openMenus = Math.max(0, openMenus - 1);
+        return Math.min(PILE_CARDS, (items.get(CARD_IN).getCount() + 3) / 4);
     }
 
     /** How many cards the piles out front show, as a player's game knows it. */
     public int shownCards() {
         return shownLooks & 31;
-    }
-
-    /** Whether a player has this terminal open, as a player's game knows it: the screen lights up. */
-    public boolean shownInUse() {
-        return (shownLooks >> 5 & 1) != 0;
     }
 
     /**
@@ -304,6 +296,11 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         }
     }
 
+    /** Whether this is the Advanced Encoder, which can set the face each ingredient goes in through. */
+    public boolean advanced() {
+        return getBlockState().is(JasmBlocks.ADVANCED_ENCODER.get());
+    }
+
     @Override
     public int drainPerTick() {
         return JasmConfig.TERMINAL_DRAIN.getAsInt();
@@ -391,6 +388,24 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         }
     }
 
+    /** The face grid slot {@code slot} goes in through. */
+    public InputFace face(int slot) {
+        return slot >= 0 && slot < ProcessingCard.INPUTS ? faces[slot] : InputFace.DEFAULT;
+    }
+
+    /** Paints grid slot {@code slot} with {@code face}. Only a slot that holds something takes a face. */
+    public void setFace(int slot, InputFace face) {
+        if (slot >= 0 && slot < ProcessingCard.INPUTS && !ghost.getItem(slot).isEmpty() && faces[slot] != face) {
+            faces[slot] = face;
+            setChanged();
+        }
+    }
+
+    /** Every grid slot back to Default: a new recipe starts without faces. */
+    void resetFaces() {
+        java.util.Arrays.fill(faces, InputFace.DEFAULT);
+    }
+
     /** The processing card the grid describes, for the chosen machines that still stand on the network, or why there is none. */
     public CardRecipes.Encoding encodeProcessing(ServerLevel level) {
         List<ProcessingCard.Amount> in = new ArrayList<>();
@@ -418,7 +433,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (machines.isEmpty()) {
             return new CardRecipes.Encoding.Refused("message.jasm.terminal.no_machine");
         }
-        return new CardRecipes.Encoding.Card(new ProcessingCard(in, out, machines));
+        return new CardRecipes.Encoding.Card(new ProcessingCard(in, out, machines, List.of(faces)));
     }
 
     public int previewState() {
@@ -471,6 +486,11 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     }
 
     private void ghostChanged() {
+        for (int i = 0; i < ProcessingCard.INPUTS; i++) {
+            if (ghost.getItem(i).isEmpty()) {
+                faces[i] = InputFace.DEFAULT;
+            }
+        }
         setChanged();
         if (!filling && level instanceof ServerLevel serverLevel) {
             updatePreview(serverLevel);
@@ -504,6 +524,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
      */
     public void fillGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
         fill(() -> {
+            resetFaces();
             for (int i = 0; i < 9; i++) {
                 ItemStack stack = i < items.size() ? items.get(i) : ItemStack.EMPTY;
                 ghost.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
@@ -625,6 +646,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             // The card's own recipe comes back as the pick, so writing it again keeps the result it had.
             fill(() -> {
                 selected.clear();
+                resetFaces();
                 picked = card.recipe();
                 List<ItemStack> inputs = card.inputs();
                 for (int i = 0; i < 9; i++) {
@@ -640,6 +662,11 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             for (int i = 0; i < ProcessingCard.OUTPUTS; i++) {
                 setProcessingSlot(9 + i, card.outputs().get(i).stack(), card.outputs().get(i).count());
             }
+            // After the slots, since emptying a slot puts it back on Default.
+            for (int i = 0; i < ProcessingCard.INPUTS; i++) {
+                faces[i] = card.inputs().get(i).isEmpty() ? InputFace.DEFAULT : card.face(i);
+            }
+            setChanged();
         }
     }
 
@@ -699,6 +726,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             outputItems.add(outputs.getItem(i));
         }
         output.putIntArray("amounts", amounts.clone());
+        if (!List.of(faces).equals(InputFace.NONE)) {
+            output.store("faces", InputFace.CODEC.listOf(), List.of(faces));
+        }
         output.store("selected_machines", Machines.At.CODEC.listOf(), List.copyOf(selected));
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
         output.storeNullable("pending_pairer", UUIDUtil.CODEC, pendingPairer);
@@ -726,6 +756,10 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         int[] saved = input.getIntArray("amounts").orElse(new int[0]);
         for (int a = 0; a < AMOUNTS; a++) {
             amounts[a] = a < saved.length ? saved[a] : 0;
+        }
+        List<InputFace> savedFaces = InputFace.padded(input.read("faces", InputFace.CODEC.listOf()).orElse(InputFace.NONE));
+        for (int f = 0; f < ProcessingCard.INPUTS; f++) {
+            faces[f] = ghost.getItem(f).isEmpty() ? InputFace.DEFAULT : savedFaces.get(f);
         }
         selected.clear();
         selected.addAll(input.read("selected_machines", Machines.At.CODEC.listOf()).orElse(List.of()));

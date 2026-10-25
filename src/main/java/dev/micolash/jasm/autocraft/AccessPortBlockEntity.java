@@ -436,8 +436,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     /**
-     * Whether a machine touches {@code side}: a block that takes items, but not a hopper pointing into the port (that
-     * one brings results back).
+     * Whether a machine touches {@code side}: a block that takes items (or fluids or materials), but not a hopper
+     * pointing into the port (that one brings results back). A block that takes nothing through the face the port
+     * touches counts too if it takes something through another face, since a card may send its ingredients there.
      */
     public boolean hasMachine(Direction side) {
         if (level == null) {
@@ -450,7 +451,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             return false;
         }
         return Machines.inlet(level, pos, side.getOpposite()) != null || Machines.fluidInlet(level, pos, side.getOpposite()) != null
-                || !Machines.materialInlets(level, pos, side.getOpposite()).isEmpty();
+                || !Machines.materialInlets(level, pos, side.getOpposite()).isEmpty() || Machines.takesAnywhere(level, pos);
     }
 
     /**

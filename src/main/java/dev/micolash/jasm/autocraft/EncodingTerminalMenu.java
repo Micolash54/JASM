@@ -16,7 +16,6 @@ import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.MaterialKinds;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -43,6 +42,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -53,7 +53,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Encoding Terminal's menu: card in and out, the pairing slot, the 3×3 ghost grid and what it makes, then the
- * player's inventory (27) and hotbar (9). Ghost slots copy what is clicked into them and never take the item.
+ * player's inventory (27) and hotbar (9). Ghost slots copy what is clicked into them and never take the item. The
+ * Advanced Encoder uses the same menu under its own type, which also paints grid slots with machine faces.
  */
 public class EncodingTerminalMenu extends AbstractContainerMenu implements Notices.Board, MachineView, RecipePicking {
     public static final int GRID_X = 54;
@@ -88,6 +89,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int BUTTON_AMOUNT = 100;
     /** {@code BUTTON_MACHINE + i}: choose or drop the {@code i}th machine of the list last sent. */
     public static final int BUTTON_MACHINE = 1000;
+    /** {@code BUTTON_FACE + slot * 8 + face}: the Advanced Encoder paints grid slot 0-8 with an {@link InputFace}. */
+    public static final int BUTTON_FACE = 2000;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -96,7 +99,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     static final int DATA_PAIRED = 4;
     static final int DATA_PROCESSING = 5;
     static final int DATA_AMOUNTS = 6;
-    static final int DATA_COUNT = DATA_AMOUNTS + EncodingTerminalBlockEntity.AMOUNTS;
+    static final int DATA_FACES = DATA_AMOUNTS + EncodingTerminalBlockEntity.AMOUNTS;
+    static final int DATA_COUNT = DATA_FACES + ProcessingCard.INPUTS;
 
     /** Ticks between refreshes of the machine list. */
     private static final int MACHINES_EVERY = 20;
@@ -178,12 +182,22 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
     /** Server side. */
     public EncodingTerminalMenu(int containerId, Inventory inventory, EncodingTerminalBlockEntity terminal, ContainerLevelAccess access) {
-        this(containerId, inventory, terminal, terminal.ghost(), terminal.outputs(), terminal.preview(), terminal.data(), access, terminal);
+        this(terminal.advanced() ? JasmMenus.ADVANCED_ENCODER.get() : JasmMenus.ENCODING_TERMINAL.get(), containerId,
+                inventory, terminal, terminal.ghost(), terminal.outputs(), terminal.preview(), terminal.data(), access, terminal);
     }
 
     /** Client side. */
     public EncodingTerminalMenu(int containerId, Inventory inventory) {
-        this(containerId, inventory, new SimpleContainer(EncodingTerminalBlockEntity.SLOTS) {
+        this(JasmMenus.ENCODING_TERMINAL.get(), containerId, inventory);
+    }
+
+    /** Client side, the Advanced Encoder. */
+    public static EncodingTerminalMenu advanced(int containerId, Inventory inventory) {
+        return new EncodingTerminalMenu(JasmMenus.ADVANCED_ENCODER.get(), containerId, inventory);
+    }
+
+    private EncodingTerminalMenu(MenuType<?> type, int containerId, Inventory inventory) {
+        this(type, containerId, inventory, new SimpleContainer(EncodingTerminalBlockEntity.SLOTS) {
             @Override
             public boolean canPlaceItem(int slot, ItemStack stack) {
                 return EncodingTerminalBlockEntity.accepts(slot, stack);
@@ -192,9 +206,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 ContainerLevelAccess.NULL, null);
     }
 
-    private EncodingTerminalMenu(int containerId, Inventory inventory, Container container, Container ghost, Container outputs,
-            Container preview, ContainerData data, ContainerLevelAccess access, @Nullable EncodingTerminalBlockEntity terminal) {
-        super(JasmMenus.ENCODING_TERMINAL.get(), containerId);
+    private EncodingTerminalMenu(MenuType<?> type, int containerId, Inventory inventory, Container container, Container ghost,
+            Container outputs, Container preview, ContainerData data, ContainerLevelAccess access,
+            @Nullable EncodingTerminalBlockEntity terminal) {
+        super(type, containerId);
         this.container = container;
         this.ghost = ghost;
         this.outputs = outputs;
@@ -202,9 +217,6 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         this.access = access;
         this.terminal = terminal;
         this.player = inventory.player;
-        if (terminal != null) {
-            terminal.menuOpened();
-        }
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_IN, CARD_X, CARD_IN_Y, EMPTY_CARD));
         addSlot(new MachineSlot(container, EncodingTerminalBlockEntity.CARD_OUT, CARD_X, CARD_OUT_Y, null));
         // The pairing slots sit in the Deck Link window, which places them.
@@ -249,6 +261,16 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         return terminal;
     }
 
+    /** Whether this is the Advanced Encoder's screen, which can paint machine faces. */
+    public boolean advanced() {
+        return getType() == JasmMenus.ADVANCED_ENCODER.get();
+    }
+
+    /** The face grid slot {@code slot} goes in through, as last synced. */
+    public InputFace face(int slot) {
+        return slot >= 0 && slot < ProcessingCard.INPUTS ? InputFace.byId(data.get(DATA_FACES + slot)) : InputFace.DEFAULT;
+    }
+
     @Override
     public RecipePicking.View pickerView() {
         return pickerView;
@@ -263,6 +285,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
     /** Fills the crafting grid from a recipe viewer; {@code recipe} becomes the pick. Processing mode fills slot by slot. */
     public void fillGhostGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
+        if (terminal != null) {
+            terminal.resetFaces();
+        }
         if (terminal != null && !processing()) {
             List<ItemStack> clean = new ArrayList<>();
             for (ItemStack stack : items) {
@@ -413,19 +438,11 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     }
 
     @Override
-    public void removed(Player player) {
-        super.removed(player);
-        if (terminal != null) {
-            terminal.menuClosed();
-        }
-    }
-
-    @Override
     public boolean stillValid(Player player) {
         if (terminal == null) {
             return true;
         }
-        return !terminal.isRemoved() && stillValid(access, player, JasmBlocks.ENCODING_TERMINAL.get()) && terminal.isAuthorized(player);
+        return !terminal.isRemoved() && stillValid(access, player, terminal.getBlockState().getBlock()) && terminal.isAuthorized(player);
     }
 
     /**
@@ -501,8 +518,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         if (terminal == null || !processing()) {
             return;
         }
-        List<ItemStack> in = merged(inputs, ProcessingCard.INPUTS);
+        List<ItemStack> in = advanced() ? apart(inputs) : merged(inputs, ProcessingCard.INPUTS);
         List<ItemStack> out = merged(outputs, ProcessingCard.OUTPUTS);
+        terminal.resetFaces();
         for (int i = 0; i < ProcessingCard.INPUTS; i++) {
             ItemStack stack = i < in.size() ? in.get(i) : ItemStack.EMPTY;
             terminal.setProcessingSlot(i, stack, stack.getCount());
@@ -511,6 +529,15 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
             ItemStack stack = i < out.size() ? out.get(i) : ItemStack.EMPTY;
             terminal.setProcessingSlot(9 + i, stack, stack.getCount());
         }
+    }
+
+    /**
+     * The Advanced Encoder's inputs: each of the recipe's ingredients in a slot of its own, even when two are the same,
+     * so each can go in through its own face. A recipe with more than nine merges them as the plain encoder does.
+     */
+    private static List<ItemStack> apart(List<ItemStack> stacks) {
+        List<ItemStack> apart = stacks.stream().filter(stack -> !stack.isEmpty()).map(ItemStack::copy).toList();
+        return apart.size() <= ProcessingCard.INPUTS ? apart : merged(stacks, ProcessingCard.INPUTS);
     }
 
     private static List<ItemStack> merged(List<ItemStack> stacks, int most) {
@@ -537,6 +564,13 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         if (id >= BUTTON_MACHINE && id < BUTTON_MACHINE + machines.size()) {
             terminal.toggleMachine(machines.get(id - BUTTON_MACHINE).at());
             machinesDue = true;
+            return true;
+        }
+        if (id >= BUTTON_FACE && id < BUTTON_FACE + ProcessingCard.INPUTS * 8) {
+            int face = (id - BUTTON_FACE) % 8;
+            if (advanced() && processing() && face < InputFace.values().length) {
+                terminal.setFace((id - BUTTON_FACE) / 8, InputFace.byId(face));
+            }
             return true;
         }
         if (id >= BUTTON_AMOUNT && id < BUTTON_AMOUNT + EncodingTerminalBlockEntity.AMOUNTS * 4) {

@@ -4,7 +4,6 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.ProcessingCard;
-import dev.micolash.jasm.registry.JasmMenus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,9 +30,12 @@ import org.jspecify.annotations.Nullable;
  */
 final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler<EncodingTerminalMenu> {
     private final IRecipeTransferHandlerHelper helper;
+    /** The plain or the Advanced Encoder: they share the menu, each under its own type. */
+    private final MenuType<EncodingTerminalMenu> type;
 
-    ProcessingTransferHandler(IRecipeTransferHandlerHelper helper) {
+    ProcessingTransferHandler(IRecipeTransferHandlerHelper helper, MenuType<EncodingTerminalMenu> type) {
         this.helper = helper;
+        this.type = type;
     }
 
     @Override
@@ -43,7 +45,7 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
 
     @Override
     public Optional<MenuType<EncodingTerminalMenu>> getMenuType() {
-        return Optional.of(JasmMenus.ENCODING_TERMINAL.get());
+        return Optional.of(type);
     }
 
     @Override

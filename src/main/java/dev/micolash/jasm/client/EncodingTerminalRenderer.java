@@ -16,14 +16,11 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
@@ -32,13 +29,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Draws the Encoding Terminal's two piles of blank cards, one card per four in the terminal, the left pile filling
- * before the right one, and its screen lit up while a player has it open. The card model is the bottom card of the
- * left pile.
+ * before the right one. The card model is the bottom card of the left pile. The screen is part of the block model.
  */
 public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTerminalBlockEntity, EncodingTerminalRenderer.State> {
     private static final StandaloneModelKey<BlockStateModelPart> CARD_LIGHT = new StandaloneModelKey<>(() -> "jasm:encoding_terminal/card_light");
     private static final StandaloneModelKey<BlockStateModelPart> CARD_DARK = new StandaloneModelKey<>(() -> "jasm:encoding_terminal/card_dark");
-    private static final StandaloneModelKey<BlockStateModelPart> SCREEN = new StandaloneModelKey<>(() -> "jasm:encoding_terminal/screen_lit");
     private static final float PIXEL = 1 / 16F;
     /** From the left pile to the right one. */
     private static final float PILE_STEP = 5 * PIXEL;
@@ -51,7 +46,6 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
     static void registerModels(ModelEvent.RegisterStandalone event) {
         event.register(CARD_LIGHT, SimpleUnbakedStandaloneModel.simpleModelWrapper(model("card_light")));
         event.register(CARD_DARK, SimpleUnbakedStandaloneModel.simpleModelWrapper(model("card_dark")));
-        event.register(SCREEN, SimpleUnbakedStandaloneModel.simpleModelWrapper(model("screen_lit")));
     }
 
     private static Identifier model(String name) {
@@ -70,7 +64,6 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
         BlockEntityRenderer.super.extractRenderState(terminal, state, partialTicks, cameraPosition, breakProgress);
         state.facing = terminal.getBlockState().getValue(MachineBlock.FACING);
         state.cards = terminal.shownCards();
-        state.inUse = terminal.shownInUse();
         // The terminal is solid, so its own spot is dark: light the cards from the block in front of it.
         if (terminal.getLevel() != null) {
             state.lightCoords = LevelRenderer.getLightCoords(terminal.getLevel(), terminal.getBlockPos().relative(state.facing));
@@ -79,7 +72,7 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
 
     @Override
     public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
-        if (state.cards == 0 && !state.inUse) {
+        if (state.cards == 0) {
             return;
         }
         ModelManager models = Minecraft.getInstance().getModelManager();
@@ -96,27 +89,18 @@ public class EncodingTerminalRenderer implements BlockEntityRenderer<EncodingTer
             draw(models.getStandaloneModel(level % 2 == 0 ? CARD_LIGHT : CARD_DARK), poseStack, collector, state.lightCoords);
             poseStack.popPose();
         }
-        if (state.inUse) {
-            // Block lighting without the item shading, so the screen keeps its full colour.
-            draw(models.getStandaloneModel(SCREEN), RenderTypes.cutoutMovingBlock(), poseStack, collector, LightCoordsUtil.FULL_BRIGHT);
-        }
         poseStack.popPose();
     }
 
     private static void draw(@Nullable BlockStateModelPart part, PoseStack poseStack, SubmitNodeCollector collector, int light) {
-        draw(part, Sheets.cutoutBlockItemSheet(), poseStack, collector, light);
-    }
-
-    private static void draw(@Nullable BlockStateModelPart part, RenderType renderType, PoseStack poseStack, SubmitNodeCollector collector,
-            int light) {
         if (part != null) {
-            collector.submitBlockModel(poseStack, renderType, List.of(part), BlockModelRenderState.EMPTY_TINTS, light, OverlayTexture.NO_OVERLAY, 0);
+            collector.submitBlockModel(poseStack, Sheets.cutoutBlockItemSheet(), List.of(part), BlockModelRenderState.EMPTY_TINTS, light,
+                    OverlayTexture.NO_OVERLAY, 0);
         }
     }
 
     public static class State extends BlockEntityRenderState {
         Direction facing = Direction.NORTH;
         int cards;
-        boolean inUse;
     }
 }

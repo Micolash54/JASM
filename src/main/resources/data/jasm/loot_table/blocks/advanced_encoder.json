@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "jasm:advanced_encoder",
+          "functions": [
+            {
+              "include": [
+                "jasm:energy",
+                "jasm:owner",
+                "jasm:terminal_id",
+                "jasm:trust"
+              ],
+              "source": "block_entity",
+              "function": "minecraft:copy_components"
+            }
+          ]
+        }
+      ],
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "jasm:blocks/advanced_encoder"
+}

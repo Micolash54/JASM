@@ -5,7 +5,8 @@
     "particle": "jasm:block/network_casing",
     "casing": "jasm:block/network_casing",
     "front": "jasm:block/encoding_terminal_front",
-    "inside": "jasm:block/recipe_rack_inside"
+    "inside": "jasm:block/recipe_rack_inside",
+    "screen": "jasm:block/encoding_terminal_screen"
   },
   "elements": [
     {
@@ -71,6 +72,16 @@
       "to": [14, 14, 4],
       "faces": {
         "north": {"uv": [2, 2, 14, 8], "texture": "#front", "cullface": "north"}
+      }
+    },
+    {
+      "name": "screen",
+      "from": [3, 8, 0.99],
+      "to": [13, 13, 0.99],
+      "shade": false,
+      "light_emission": 15,
+      "faces": {
+        "north": {"uv": [0, 0, 10, 5], "texture": "#screen", "cullface": "north"}
       }
     },
     {

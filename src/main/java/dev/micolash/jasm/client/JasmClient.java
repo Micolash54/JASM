@@ -103,6 +103,7 @@ public final class JasmClient {
         event.register(JasmMenus.BITLING_STATION.get(), BitlingStationScreen::new);
         event.register(JasmMenus.NETWORK_BRAIN.get(), NetworkBrainScreen::new);
         event.register(JasmMenus.ENCODING_TERMINAL.get(), EncodingTerminalScreen::new);
+        event.register(JasmMenus.ADVANCED_ENCODER.get(), EncodingTerminalScreen::new);
         event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ADVANCED_CRAFTING_SERVER.get(), CraftingServerScreen::new);

@@ -117,8 +117,13 @@ public final class JasmBlocks {
     public static final DeferredBlock<EncodingTerminalBlock> ENCODING_TERMINAL = BLOCKS.registerBlock("encoding_terminal",
             EncodingTerminalBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
 
+    /** The Encoding Terminal that also picks the machine face each ingredient goes in through. Same block entity. */
+    public static final DeferredBlock<EncodingTerminalBlock> ADVANCED_ENCODER = BLOCKS.registerBlock("advanced_encoder",
+            EncodingTerminalBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+
     public static final Supplier<BlockEntityType<EncodingTerminalBlockEntity>> ENCODING_TERMINAL_ENTITY = BLOCK_ENTITIES.register(
-            "encoding_terminal", () -> new BlockEntityType<>(EncodingTerminalBlockEntity::new, ENCODING_TERMINAL.get()));
+            "encoding_terminal", () -> new BlockEntityType<>(EncodingTerminalBlockEntity::new, ENCODING_TERMINAL.get(),
+                    ADVANCED_ENCODER.get()));
 
     public static final DeferredBlock<RecipeRackBlock> RECIPE_RACK = BLOCKS.registerBlock("recipe_rack",
             RecipeRackBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));

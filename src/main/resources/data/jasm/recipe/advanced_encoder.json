@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "E": "jasm:elite_processor",
+    "Y": "jasm:synapse_core",
+    "T": "jasm:encoding_terminal",
+    "D": "jasm:data_cable"
+  },
+  "pattern": [
+    "EYE",
+    "DTD",
+    "EYE"
+  ],
+  "result": {
+    "id": "jasm:advanced_encoder"
+  }
+}
