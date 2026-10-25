@@ -2,13 +2,14 @@
   "lines": {
     "26.1": {
       "mc": "26.1.2",
-      "jasm": "0.6.9",
+      "jasm": "0.7.0",
       "pages": [
         "getting-started.html",
         "index.html",
         "items/access-port.html",
         "items/advanced-chips.html",
         "items/advanced-crafting-server.html",
+        "items/advanced-encoder.html",
         "items/archives.html",
         "items/battery.html",
         "items/bitling-station.html",
