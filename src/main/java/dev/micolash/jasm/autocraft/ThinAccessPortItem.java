@@ -7,7 +7,6 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -34,6 +33,7 @@ public class ThinAccessPortItem extends Item {
         if (cable.attach(side, context.getItemInHand(), context.getPlayer())) {
             if (context.getLevel() instanceof ServerLevel serverLevel) PlacementAchievements.placed(serverLevel, pos, context.getPlayer());
             if (!context.getPlayer().getAbilities().instabuild) context.getItemInHand().shrink(1);
+            DataCableBlock.playPortSound(context.getLevel(), pos, false);
             return InteractionResult.SUCCESS;
         }
         return InteractionResult.FAIL;
@@ -63,8 +63,7 @@ public class ThinAccessPortItem extends Item {
             PlacementAchievements.placed(serverLevel, pos, player);
         }
         if (!player.getAbilities().instabuild) context.getItemInHand().shrink(1);
-        var sound = JasmBlocks.ACCESS_PORT.get().defaultBlockState().getSoundType(level, pos, player);
-        level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);
+        DataCableBlock.playPortSound(level, pos, false);
         return InteractionResult.SUCCESS;
     }
 }

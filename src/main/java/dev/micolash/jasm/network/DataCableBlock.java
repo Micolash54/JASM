@@ -230,6 +230,13 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
         return InteractionResult.PASS;
     }
 
+    /** The sound a full port block makes, for a thin port placed or broken inside a cable's block space. */
+    public static void playPortSound(Level level, BlockPos pos, boolean breaking) {
+        var sound = JasmBlocks.ACCESS_PORT.get().defaultBlockState().getSoundType(level, pos, null);
+        level.playSound(null, pos, breaking ? sound.getBreakSound() : sound.getPlaceSound(), SoundSource.BLOCKS,
+                (sound.getVolume() + 1.0F) / 2.0F, sound.getPitch() * 0.8F);
+    }
+
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         return selectedPort(level, pos, player) == null ? super.playerWillDestroy(level, pos, state, player) : state;
@@ -248,6 +255,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
                     var center = bounds.getCenter().add(Vec3.atLowerCornerOf(pos));
                     serverLevel.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, JasmBlocks.ACCESS_PORT.get().defaultBlockState()),
                             center.x, center.y, center.z, 16, bounds.getXsize() / 4, bounds.getYsize() / 4, bounds.getZsize() / 4, 0.05);
+                    playPortSound(serverLevel, pos, true);
                 }
                 cable.detach(side, !player.preventsBlockDrops());
             }
