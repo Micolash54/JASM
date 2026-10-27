@@ -9,12 +9,16 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.NetworkTrust;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.LenientListCodec;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
@@ -100,13 +104,60 @@ public final class Deliveries {
     }
 
     /**
-     * Players online with a Deck paired on the same network as {@code deck}, the sender left out. While the
-     * network's terminal is loaded that means every terminal on it; otherwise just the Deck's own terminal.
+     * Everyone {@code sender} can send to, the sender left out: players on the network their Deck is paired with,
+     * then players on any network whose owner trusts the sender. Each player is listed once.
      */
     public static List<Member> members(ServerPlayer sender, ItemStack deck) {
+        List<Member> members = new ArrayList<>(pairedMembers(sender, deck));
+        addTrustedMembers(sender, members);
+        return members;
+    }
+
+    /**
+     * Players online with a Deck paired on a network whose owner trusts {@code sender} (or that the sender owns),
+     * wherever the sender's own Deck is paired. Trust is checked again each time, from the world's trust lists when
+     * the network's terminal isn't loaded.
+     */
+    private static void addTrustedMembers(ServerPlayer sender, List<Member> members) {
+        MinecraftServer server = sender.level().getServer();
+        Map<UUID, Boolean> trusting = new HashMap<>();
+        for (AutocraftState.Pairing pairing : AutocraftState.get(server).pairings()) {
+            if (pairing.player().equals(sender.getUUID())) continue;
+            ServerPlayer player = server.getPlayerList().getPlayer(pairing.player());
+            if (player == null || members.stream().anyMatch(m -> m.player() == player)) continue;
+            if (trusting.computeIfAbsent(pairing.terminal(), id -> trusts(server, id, sender))) members.add(new Member(player, pairing.deck()));
+        }
+    }
+
+    /**
+     * Whether terminal {@code terminalId} belongs to {@code player} or to someone who trusts them on its network,
+     * right now. While it isn't loaded (or has been mined), the world's trust lists answer.
+     */
+    static boolean trusts(MinecraftServer server, UUID terminalId, ServerPlayer player) {
+        EncodingTerminalBlockEntity terminal = Jobs.terminalById(server, terminalId);
+        if (terminal != null) return terminal.owner() != null && MachineAccess.canUse(terminal, player);
+        return NetworkTrust.get(server).trusts(terminalId, player.getUUID());
+    }
+
+    /**
+     * Whether a Deck paired at {@code terminalId} may still send there: its player owns the network or is trusted on
+     * it now. A terminal not seen since trust moved into the world keeps the old rule, where being paired is enough:
+     * its list can't have changed since.
+     */
+    private static boolean stillTrusted(MinecraftServer server, UUID terminalId, ServerPlayer player) {
+        if (Jobs.terminalById(server, terminalId) == null && !NetworkTrust.get(server).known(terminalId)) return true;
+        return trusts(server, terminalId, player);
+    }
+
+    /**
+     * Players online with a Deck paired on the same network as {@code deck}, the sender left out, while the sender
+     * still owns that network or is trusted on it. While the network's terminal is loaded that means every terminal on
+     * it; otherwise just the Deck's own terminal.
+     */
+    private static List<Member> pairedMembers(ServerPlayer sender, ItemStack deck) {
         MinecraftServer server = sender.level().getServer();
         UUID terminal = pairedTerminal(server, sender, deck);
-        if (terminal == null) return List.of();
+        if (terminal == null || !stillTrusted(server, terminal, sender)) return List.of();
         Set<UUID> group = Set.of(terminal);
         EncodingTerminalBlockEntity block = Jobs.terminalById(server, terminal);
         if (block != null && block.getLevel() instanceof ServerLevel level) {
@@ -147,9 +198,9 @@ public final class Deliveries {
     public static Refusal send(ServerPlayer sender, ItemStack deck, UUID to, List<ItemStack> items) {
         if (!Feature.DECK_TO_DECK.on()) return Refusal.TURNED_OFF;
         MinecraftServer server = sender.level().getServer();
-        if (pairedTerminal(server, sender, deck) == null) return Refusal.NOT_PAIRED;
+        // Who may be sent to is worked out again on every send, trust included: a list shown earlier proves nothing.
         Member member = members(sender, deck).stream().filter(m -> m.player().getUUID().equals(to)).findFirst().orElse(null);
-        if (member == null) return Refusal.NOT_ON_NETWORK;
+        if (member == null) return pairedTerminal(server, sender, deck) == null ? Refusal.NOT_PAIRED : Refusal.NOT_ON_NETWORK;
         List<ItemStack> sent = items.stream().filter(s -> !s.isEmpty()).map(ItemStack::copy).toList();
         if (sent.isEmpty()) return Refusal.EMPTY;
         Refusal refusal = check(sender, deck, member);

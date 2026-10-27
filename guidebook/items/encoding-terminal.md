@@ -36,6 +36,8 @@ The Deck tab shows what is on your Deck. Click an item there for a copy to put i
 
 Open the Deck Link window with the side key. Put a [Deck](decks.md) in its left slot and take it from the right. Pairing another Deck replaces that player's previous one.
 
+Placing the first Network Encoder on a network of your own pairs a Deck you carry, unless it is already paired somewhere.
+
 <br />
 <br />
 ## Who may use it

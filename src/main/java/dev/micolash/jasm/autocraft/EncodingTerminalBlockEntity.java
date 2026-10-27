@@ -4,9 +4,11 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.crafting.RecipeChoices;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.deck.WornDecks;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkTrust;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -14,7 +16,9 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -47,7 +51,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Encoding Terminal: writes a recipe from its ghost grid onto a Recipe Card, pairs Decks with its
- * network, and holds the trust list for its owner's blocks on that network. Mined, it keeps its identity (so paired
+ * network, and is where its owner manages the trust list for their blocks on that network. The list itself is kept
+ * with the world under the terminal's identity ({@link NetworkTrust}). Mined, it keeps its identity (so paired
  * Decks stay paired) and its trust list. The Advanced Encoder is the same block entity on another block: it
  * also lets the player pick the machine face each ingredient goes in through. The plain one keeps a card's faces when
  * the card is written again, but can't change them.
@@ -122,7 +127,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     private int shownLooks;
     private @Nullable UUID terminalId;
     private @Nullable UUID pendingPairer;
-    private TrustList trust = TrustList.EMPTY;
+    /** A trust list this block brought with it (an older save kept it here, or a mined item), until it moves to {@link NetworkTrust}. */
+    private @Nullable TrustList carriedTrust;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -164,10 +170,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (!terminal.previewReady) {
             terminal.updatePreview(serverLevel);
         }
-        if (!terminal.placed) {
-            terminal.placed = true;
-            terminal.claimPlace(serverLevel);
-        }
+        terminal.claimPlaceOnce(serverLevel);
         if (terminal.payForTick()) {
             terminal.processPairing();
         }
@@ -184,12 +187,21 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         return shownLooks & 31;
     }
 
+    /** What the first tick after placing or loading does, done now if it hasn't been yet. */
+    private void claimPlaceOnce(ServerLevel level) {
+        if (!placed && !isRemoved()) {
+            placed = true;
+            claimPlace(level);
+        }
+    }
+
     /**
-     * Records where this terminal stands, so paired Decks can find it. A copy of a terminal that still stands
-     * somewhere loaded becomes a terminal of its own.
+     * Records where this terminal stands, so paired Decks can find it, and moves a trust list it brought with it into
+     * the world's. A copy of a terminal that still stands somewhere loaded becomes a terminal of its own.
      */
     private void claimPlace(ServerLevel level) {
         AutocraftState state = AutocraftState.get(level.getServer());
+        NetworkTrust trust = NetworkTrust.get(level.getServer());
         ArchiveRecord.Placement here = new ArchiveRecord.Placement(level.dimension(), worldPosition);
         UUID id = ensureId();
         AutocraftState.Terminal known = state.terminal(id).orElse(null);
@@ -198,11 +210,22 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             BlockPos at = known.placement().pos();
             if (other != null && other.isLoaded(at) && other.getBlockEntity(at) instanceof EncodingTerminalBlockEntity twin
                     && id.equals(twin.terminalId())) {
+                UUID original = id;
                 renew();
                 id = terminalId;
+                if (carriedTrust == null) trust.copy(original, id);
             }
         }
         state.placeTerminal(id, here);
+        if (carriedTrust != null) {
+            trust.bringIn(id, owner(), carriedTrust);
+            carriedTrust = null;
+            setChanged();
+            // started now, so the block's next save, which no longer holds the list, doesn't reach the disk first
+            trust.saveSoon(level.getServer());
+        } else {
+            trust.setOwner(id, owner());
+        }
     }
 
     /** Remembers who inserted the Deck while it waits for the output slot. */
@@ -278,6 +301,41 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         List<UUID> connected = Networks.at(serverLevel, worldPosition).machines(EncodingTerminalBlockEntity.class).stream()
                 .map(EncodingTerminalBlockEntity::ensureId).toList();
         return AutocraftState.get(serverLevel.getServer()).pairedPlayer(connected, player).isPresent();
+    }
+
+    /**
+     * Just placed by {@code player}: if this is the first encoder on a network of their own, pair the first Deck they
+     * carry that isn't paired anywhere yet: hotbar first, then the rest of the inventory, the worn Deck (with Curios),
+     * then the off-hand. A Deck that is paired somewhere stays where it is.
+     */
+    public void linkPlacerDeck(Player player) {
+        if (!(level instanceof ServerLevel serverLevel) || networkBlocked() || !player.getUUID().equals(owner())) {
+            return;
+        }
+        // what the first tick would do, so a copied encoder gets its own identity before anything pairs to it
+        claimPlaceOnce(serverLevel);
+        CableNetwork network = Networks.at(serverLevel, worldPosition);
+        if (network == null || !network.complete()
+                || network.machines(EncodingTerminalBlockEntity.class).stream().anyMatch(other -> other != this)
+                || hasPairedDeck(player.getUUID())) {
+            return;
+        }
+        AutocraftState state = AutocraftState.get(serverLevel.getServer());
+        List<ItemStack> carried = new ArrayList<>();
+        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
+            carried.add(player.getInventory().getItem(i));
+        }
+        for (int i = 0; i < WornDecks.size(player); i++) {
+            carried.add(WornDecks.get(player, i));
+        }
+        carried.add(player.getInventory().getItem(Inventory.SLOT_OFFHAND));
+        for (ItemStack deck : carried) {
+            UUID deckId = deck.get(JasmComponents.DECK_ID.get());
+            if (DeckItem.isDeck(deck) && (deckId == null || state.pairing(deckId).isEmpty())) {
+                pair(player.getUUID(), deck);
+                return;
+            }
+        }
     }
 
     /** Whether the Deck in the output slot has been paired with this terminal. */
@@ -459,24 +517,70 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         setChanged();
     }
 
+    /** The players the owner trusts here, as the world keeps them. Server side; the client never has the list. */
     public TrustList trust() {
+        if (!(level instanceof ServerLevel serverLevel)) {
+            return carriedTrust == null ? TrustList.EMPTY : carriedTrust;
+        }
+        claimPlaceOnce(serverLevel);
+        return listed(serverLevel);
+    }
+
+    /** The world's list for this terminal, with any list it brought along that hasn't moved there yet. */
+    private TrustList listed(ServerLevel level) {
+        TrustList kept = terminalId == null ? TrustList.EMPTY : NetworkTrust.get(level.getServer()).trust(terminalId);
+        if (carriedTrust == null) {
+            return kept;
+        }
+        TrustList trust = carriedTrust;
+        for (TrustList.Entry entry : kept.entries()) {
+            if (!trust.contains(entry.id())) trust = trust.with(entry.id(), entry.name());
+        }
         return trust;
     }
 
     public void setTrust(TrustList trust) {
-        this.trust = trust;
-        setChanged();
+        if (level instanceof ServerLevel serverLevel) {
+            claimPlaceOnce(serverLevel);
+            NetworkTrust.get(serverLevel.getServer()).setTrust(ensureId(), trust);
+        } else {
+            carriedTrust = trust.entries().isEmpty() ? null : trust;
+            setChanged();
+        }
     }
 
     @Override
     protected void onOwnerChanged(@Nullable UUID previous) {
         if (previous != null) {
-            setTrust(TrustList.EMPTY);
-            if (terminalId != null && level instanceof ServerLevel serverLevel) {
+            carriedTrust = null;
+        }
+        if (terminalId != null && level instanceof ServerLevel serverLevel) {
+            // Before the terminal has claimed its spot it may still turn out to be a copy: claiming records the owner.
+            // A new owner starts with nobody trusted.
+            NetworkTrust trust = NetworkTrust.get(serverLevel.getServer());
+            if (placed) trust.setOwner(terminalId, owner());
+            if (previous != null) {
+                if (placed) trust.setTrust(terminalId, TrustList.EMPTY);
                 AutocraftState state = AutocraftState.get(serverLevel.getServer());
                 state.unpairTerminal(terminalId);
                 state.saveNow(serverLevel.getServer());
             }
+        }
+    }
+
+    /**
+     * A network was worked out: lists still kept in its terminals move to the world's first. Seen whole, its
+     * owners' terminals there remember each other, so trust kept at one still counts at the others while their area
+     * isn't loaded.
+     */
+    public static void networkSeen(ServerLevel level, CableNetwork network) {
+        Map<UUID, UUID> owners = new LinkedHashMap<>();
+        for (EncodingTerminalBlockEntity terminal : network.machines(EncodingTerminalBlockEntity.class)) {
+            terminal.claimPlaceOnce(level);
+            if (terminal.owner() != null) owners.put(terminal.ensureId(), terminal.owner());
+        }
+        if (network.complete() && !owners.isEmpty()) {
+            NetworkTrust.get(level.getServer()).sawNetwork(owners);
         }
     }
 
@@ -732,7 +836,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         output.store("selected_machines", Machines.At.CODEC.listOf(), List.copyOf(selected));
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
         output.storeNullable("pending_pairer", UUIDUtil.CODEC, pendingPairer);
-        output.store("trust", TrustList.CODEC, trust);
+        // only until it has moved to the world's list
+        output.storeNullable("trust", TrustList.CODEC, carriedTrust);
         output.storeNullable("picked_recipe", ResourceKey.codec(Registries.RECIPE), picked);
     }
 
@@ -765,7 +870,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         selected.addAll(input.read("selected_machines", Machines.At.CODEC.listOf()).orElse(List.of()));
         terminalId = input.read("terminal", UUIDUtil.CODEC).orElse(null);
         pendingPairer = input.read("pending_pairer", UUIDUtil.CODEC).orElse(null);
-        trust = input.read("trust", TrustList.CODEC).orElse(TrustList.EMPTY);
+        // older saves kept the list here: it moves to the world's when the terminal first claims its spot
+        carriedTrust = input.read("trust", TrustList.CODEC).filter(t -> !t.entries().isEmpty()).orElse(null);
         picked = input.read("picked_recipe", ResourceKey.codec(Registries.RECIPE)).orElse(null);
     }
 
@@ -776,6 +882,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (terminalId != null) {
             components.set(JasmComponents.TERMINAL_ID.get(), terminalId);
         }
+        // read without claiming the spot: when mined, the terminal has already left it
+        TrustList trust = level instanceof ServerLevel serverLevel ? listed(serverLevel)
+                : carriedTrust == null ? TrustList.EMPTY : carriedTrust;
         if (!trust.entries().isEmpty()) {
             components.set(JasmComponents.TRUST.get(), trust);
         }
@@ -784,8 +893,17 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     @Override
     protected void applyImplicitComponents(DataComponentGetter components) {
         super.applyImplicitComponents(components);
-        terminalId = components.get(JasmComponents.TERMINAL_ID.get());
-        trust = components.getOrDefault(JasmComponents.TRUST.get(), TrustList.EMPTY);
+        UUID carriedId = components.get(JasmComponents.TERMINAL_ID.get());
+        if (placed && terminalId != null && !terminalId.equals(carriedId) && level instanceof ServerLevel serverLevel) {
+            // the network was worked out while it was being placed, before the item's identity arrived
+            AutocraftState.get(serverLevel.getServer()).removeTerminal(terminalId, new ArchiveRecord.Placement(serverLevel.dimension(), worldPosition));
+        }
+        // claimed again with what the item brought
+        placed = false;
+        terminalId = carriedId;
+        // moves to the world's list when the terminal claims its spot
+        TrustList carried = components.get(JasmComponents.TRUST.get());
+        carriedTrust = carried == null || carried.entries().isEmpty() ? null : carried;
     }
 
     @Override

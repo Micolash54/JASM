@@ -391,6 +391,7 @@ public final class Networks {
         for (long key : chunks) {
             byChunk.computeIfAbsent(key, k -> new HashSet<>()).add(network);
         }
+        EncodingTerminalBlockEntity.networkSeen(level, network);
         AutocraftState.get(level.getServer()).mergePairings(network.machines(EncodingTerminalBlockEntity.class).stream()
                 .map(EncodingTerminalBlockEntity::ensureId).toList());
         return network;

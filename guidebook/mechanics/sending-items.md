@@ -16,15 +16,17 @@ navigation:
 
 <ItemImage id="ultimate_deck" scale="4" />
 
-Deck to Deck sends items to another player on your network. They travel for a while, then land in the other player's inbox.
+Deck to Deck sends items to another player on your network, or on any network whose owner trusts you. They travel for a while, then land in the other player's inbox.
 
 <br />
 <br />
 ## How to send
 
-1. Pair your [Deck](../items/decks.md) at a [Network Encoder](../items/encoding-terminal.md).
-2. Press **Deck to Deck** on the Deck's screen and choose a player. Only players online on this network show up.
+1. Pair your [Deck](../items/decks.md) at a [Network Encoder](../items/encoding-terminal.md), or ask a network's owner to trust you.
+2. Press **Deck to Deck** on the Deck's screen and choose a player. Only players online on your network, or on a network whose owner trusts you, show up.
 3. Put the items in the send grid and press **Send**.
+
+When the owner stops trusting you, you can't send to their network any more, even from a Deck you paired there.
 
 The grid is 1 slot on a Starter Deck, 3 on a Basic, 6 on an Advanced and 9 on Elite and Ultimate.
 

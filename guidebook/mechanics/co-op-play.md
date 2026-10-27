@@ -36,6 +36,8 @@ Only the owner can trust players, up to 32 per encoder. Trusted players can open
 
 Each trusted player pairs their own [Deck](../items/decks.md) at the encoder, in the Deck Link window. It is one Deck per player: pairing another replaces your old one. A paired Deck gets the Network tab, autocrafting, ports and Deck to Deck.
 
+Placing the first Network Encoder on a network of your own pairs a Deck you carry, unless it is already paired somewhere.
+
 <br />
 <br />
 ## What you share and what you keep
@@ -68,7 +70,7 @@ On a network, an [Archive](../items/archives.md) backs up the owner's Deck. The 
 <br />
 ## Sending items
 
-Deck to Deck sends items to any online player whose Deck is paired on the same network. See [sending items to players](sending-items.md).
+Deck to Deck sends items to any online player whose Deck is paired on the same network, or on any network whose owner trusts you. When the owner stops trusting you, that stops at once. See [sending items to players](sending-items.md).
 
 <br />
 <br />

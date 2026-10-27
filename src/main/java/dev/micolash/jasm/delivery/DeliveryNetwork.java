@@ -105,7 +105,6 @@ public final class DeliveryNetwork {
     static Deliveries.Refusal overall(ServerPlayer player, DeckMenu menu) {
         ItemStack deck = menu.deck();
         if (!Feature.DECK_TO_DECK.on()) return Deliveries.Refusal.TURNED_OFF;
-        if (Deliveries.pairedTerminal(player.level().getServer(), player, deck) == null) return Deliveries.Refusal.NOT_PAIRED;
         if (!menu.dimensionAllowed()) return Deliveries.Refusal.LOCKED;
         long count = menu.sendItems().stream().mapToLong(ItemStack::getCount).sum();
         if (count == 0) return Deliveries.Refusal.EMPTY;
@@ -128,11 +127,15 @@ public final class DeliveryNetwork {
                         Deliveries.check(player, menu.deck(), member).ordinal()));
             }
             people.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+            // An unpaired Deck can still reach networks that trust its player; with nobody there, say how to start.
+            if (people.isEmpty() && Deliveries.pairedTerminal(player.level().getServer(), player, menu.deck()) == null) {
+                overall = Deliveries.Refusal.NOT_PAIRED;
+            }
         }
         PacketDistributor.sendToPlayer(player, new DeliveryPayloads.People(containerId, people, overall.ordinal()));
     }
 
-    static void send(ServerPlayer player, DeliveryPayloads.Send payload) {
+    public static void send(ServerPlayer player, DeliveryPayloads.Send payload) {
         DeckMenu menu = menu(player, payload.containerId());
         if (menu == null) return;
         Deliveries.Refusal refusal = menu.dimensionAllowed()
