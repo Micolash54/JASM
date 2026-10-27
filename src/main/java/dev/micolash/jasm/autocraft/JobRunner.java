@@ -14,6 +14,7 @@ import dev.micolash.jasm.registry.JasmTriggers;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -222,6 +223,8 @@ final class JobRunner {
             ItemStack made = card.recipe().assemble(input);
             NonNullList<ItemStack> left = card.recipe().getRemainingItems(input);
             needed.forEach((key, n) -> store.extract(record, key, n, false, null));
+            // a wafer made from other wafers combines now, as when a player takes it: from empty ones it comes out blank
+            WaferMerge.settle(store, made, null);
             store.insert(record, ItemResource.of(made), made.getCount(), false, null);
             for (ItemStack remainder : left) {
                 if (!remainder.isEmpty()) {

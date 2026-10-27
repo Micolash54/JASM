@@ -5,7 +5,6 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmRecipes;
-import dev.micolash.jasm.wafer.WaferIdentity;
 import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -33,8 +32,8 @@ import net.minecraft.world.level.Level;
  * <ul>
  * <li>Decks, Archives, generators: the result takes over the source item's data (inserted wafers, Archive identity
  * and links, stored charge).
- * <li>Wafers ({@code merge_wafers}): the result notes every source wafer; their items move over when a player first
- * holds it (see {@link WaferMerge}).
+ * <li>Wafers ({@code merge_wafers}): the result notes every source wafer; their items, and the settings of the first
+ * one that has any, move over when a player first holds it (see {@link WaferMerge}).
  * </ul>
  */
 public class UpgradeRecipe extends NormalCraftingRecipe {
@@ -90,9 +89,9 @@ public class UpgradeRecipe extends NormalCraftingRecipe {
         List<ItemStack> sources = input.items().stream().filter(source).toList();
         if (mergeWafers) {
             ItemStack wafer = result.create();
-            List<WaferIdentity> merged = WaferMerge.sourcesOf(sources);
-            if (!merged.isEmpty()) {
-                wafer.set(JasmComponents.WAFER_MERGE.get(), new WaferMerge(merged));
+            WaferMerge merged = WaferMerge.of(sources);
+            if (merged != null) {
+                wafer.set(JasmComponents.WAFER_MERGE.get(), merged);
             }
             return wafer;
         }

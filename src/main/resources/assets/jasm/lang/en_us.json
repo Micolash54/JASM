@@ -249,6 +249,7 @@
   "message.jasm.deck.fluid.no_room": "No fluid wafer has room for that",
   "message.jasm.wafer.refused.empty": "Nothing to store",
   "message.jasm.wafer.refused.container": "Wafers can't store items that hold other items",
+  "message.jasm.wafer.refused.full_wafer": "Only empty wafers can be stored",
   "message.jasm.wafer.refused.rejected": "Wafers can't store this item",
   "message.jasm.wafer.refused.unsaveable": "This item's data can't be saved, so wafers can't store it",
   "message.jasm.wafer.refused.too_large": "This item carries too much data to store on a wafer",

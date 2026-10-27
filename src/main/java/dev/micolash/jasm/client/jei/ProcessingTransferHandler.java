@@ -30,12 +30,9 @@ import org.jspecify.annotations.Nullable;
  */
 final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler<EncodingTerminalMenu> {
     private final IRecipeTransferHandlerHelper helper;
-    /** The plain or the Advanced Encoder: they share the menu, each under its own type. */
-    private final MenuType<EncodingTerminalMenu> type;
 
-    ProcessingTransferHandler(IRecipeTransferHandlerHelper helper, MenuType<EncodingTerminalMenu> type) {
+    ProcessingTransferHandler(IRecipeTransferHandlerHelper helper) {
         this.helper = helper;
-        this.type = type;
     }
 
     @Override
@@ -43,9 +40,13 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
         return EncodingTerminalMenu.class;
     }
 
+    /**
+     * Both encoders: the Network Encoder and the Advanced Encoder share this menu, each under its own type. JEI keeps
+     * one handler per menu class, so a second one registered for the other type would replace the first.
+     */
     @Override
     public Optional<MenuType<EncodingTerminalMenu>> getMenuType() {
-        return Optional.of(type);
+        return Optional.empty();
     }
 
     @Override

@@ -357,7 +357,7 @@ public final class DeckStorage {
         if (source.isEmpty()) {
             return 0;
         }
-        WaferEligibility.Result eligible = WaferEligibility.check(source, player.level().registryAccess());
+        WaferEligibility.Result eligible = WaferEligibility.check(store, source, player.level().registryAccess());
         if (!eligible.accepted()) {
             if (tell) {
                 Notices.bad(player, Component.translatable(eligible.messageKey()));
@@ -435,7 +435,7 @@ public final class DeckStorage {
     private static long depositAmount(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
             @Nullable Checked checked) {
         if (!DeckItem.worksIn(deck, player.level())) return 0;
-        if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
+        if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(store, key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
         }
         amount = Math.min(amount, affordable(deck));
@@ -506,7 +506,7 @@ public final class DeckStorage {
                 if (limit <= 0) break;
                 long asked = entry.getValue();
                 if (asked <= 0 || entry.getKey().isEmpty()
-                        || !WaferEligibility.check(entry.getKey().toStack(1), player.level().registryAccess()).accepted()) continue;
+                        || !WaferEligibility.check(store, entry.getKey().toStack(1), player.level().registryAccess()).accepted()) continue;
                 long ask = Math.min(asked, limit);
                 long stored = depositCombined(store, deck, entry.getKey(), ask, player, checked, ports);
                 long gone = excess == Excess.VOID ? voidLeft(store, deck, player, checked, entry.getKey(), ask - stored) : 0;
@@ -521,7 +521,7 @@ public final class DeckStorage {
         long paid = limit;
         var left = new LinkedHashMap<ItemResource, Long>();
         items.forEach((key, amount) -> {
-            if (amount > 0 && !key.isEmpty() && WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted())
+            if (amount > 0 && !key.isEmpty() && WaferEligibility.check(store, key.toStack(1), player.level().registryAccess()).accepted())
                 left.put(key, amount);
         });
         var moved = new LinkedHashMap<ItemResource, Long>();
@@ -575,7 +575,7 @@ public final class DeckStorage {
     private static long room(WaferStore store, ItemStack deck, ItemResource key, long amount, ServerPlayer player,
             @Nullable Checked checked) {
         if (!DeckItem.worksIn(deck, player.level())) return 0;
-        if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) {
+        if (amount <= 0 || key.isEmpty() || !WaferEligibility.check(store, key.toStack(1), player.level().registryAccess()).accepted()) {
             return 0;
         }
         List<PoolStore> ports = ports(player, deck, checked == null ? null : checked.avoid);
@@ -724,7 +724,7 @@ public final class DeckStorage {
     /** Whether a Void row would destroy {@code key}: the Deck works here, the item is allowed in, and a usable item wafer's deciding row is Allow with Void. */
     static boolean canVoid(WaferStore store, ItemStack deck, ItemResource key, ServerPlayer player, @Nullable Checked checked) {
         if (key.isEmpty() || !DeckItem.worksIn(deck, player.level())) return false;
-        if (!WaferEligibility.check(key.toStack(1), player.level().registryAccess()).accepted()) return false;
+        if (!WaferEligibility.check(store, key.toStack(1), player.level().registryAccess()).accepted()) return false;
         for (SlotView view : views(store, deck, player, checked)) {
             // Rows on a fluid wafer are about fluids; that wafer never holds items.
             if (view.record() != null && !view.record().isFluid() && view.record().settings().voidsExcess(key.getItem())) return true;

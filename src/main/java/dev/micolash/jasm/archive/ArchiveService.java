@@ -8,6 +8,7 @@ import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.JasmState;
 import dev.micolash.jasm.storage.WaferRecord;
@@ -25,6 +26,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
@@ -162,12 +165,15 @@ public final class ArchiveService {
         WaferRecord record = null;
         if (wafer.has(JasmComponents.WAFER_IDENTITY.get()) || WaferMerge.isPending(wafer)) {
             Verdict verdict = WaferValidator.validate(store, wafer, WaferValidator.Mode.PASSIVE, player);
-            if (verdict != Verdict.VALID && verdict != Verdict.VALID_AHEAD) {
-                return verdict == Verdict.UNFORMATTED ? Result.NO_WAFER : Result.WAFER_LOCKED;
-            }
-            record = WaferValidator.record(store, wafer).orElseThrow();
-            if (archive.id().equals(record.archiveId())) {
-                return Result.ALREADY_LINKED;
+            // UNFORMATTED: crafted from wafers that held nothing, so it is blank and formatted below like any blank wafer
+            if (verdict != Verdict.UNFORMATTED) {
+                if (verdict != Verdict.VALID && verdict != Verdict.VALID_AHEAD) {
+                    return Result.WAFER_LOCKED;
+                }
+                record = WaferValidator.record(store, wafer).orElseThrow();
+                if (archive.id().equals(record.archiveId())) {
+                    return Result.ALREADY_LINKED;
+                }
             }
         }
         if (entries(store, archive).size() >= archive.tier().registrations()) {
@@ -262,11 +268,30 @@ public final class ArchiveService {
         ItemStack replacement = new ItemStack(blankItem);
         replacement.set(JasmComponents.WAFER_IDENTITY.get(),
                 new WaferIdentity(record.id(), record.serial(), store.reissue(record, blankItem.tier(), player)));
+        if (namedByPlayer(record.lastKnownName())) {
+            replacement.set(DataComponents.CUSTOM_NAME, Component.literal(record.lastKnownName()));
+        }
         player.getInventory().setItem(freeSlot, replacement);
         spend(block.energy(), cost);
         // Saved at once, so every older copy stays dissolved even if the game stops right after.
         store.state().saveNow(player.level().getServer());
         return Result.OK;
+    }
+
+    /**
+     * Whether the name the Archive remembers is one a player gave the wafer, rather than a wafer's own name (it may have
+     * been a smaller tier than the wafer it is restored onto).
+     */
+    private static boolean namedByPlayer(String remembered) {
+        if (remembered.isBlank()) {
+            return false;
+        }
+        for (WaferTier tier : WaferTier.values()) {
+            if (new ItemStack(JasmItems.wafer(tier)).getHoverName().getString().equals(remembered)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Whether a wafer's contents fit a wafer of {@code tier}: the total, and on Type Wafers the types and the biggest type. */

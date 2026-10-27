@@ -135,12 +135,6 @@ public final class WaferValidator {
         return record;
     }
 
-    /** Gives a crafted wafer that is still waiting (see {@link WaferMerge}) its own new record. */
-    static WaferRecord formatPending(WaferStore store, ItemStack stack, @Nullable Player holder) {
-        stack.remove(JasmComponents.WAFER_MERGE.get());
-        return format(store, stack, holder);
-    }
-
     /** The record of a stack that has just been validated as granting access. */
     public static Optional<WaferRecord> record(WaferStore store, ItemStack stack) {
         WaferIdentity identity = stack.get(JasmComponents.WAFER_IDENTITY.get());

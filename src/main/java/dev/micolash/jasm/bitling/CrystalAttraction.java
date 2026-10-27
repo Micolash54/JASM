@@ -19,7 +19,7 @@ import org.jspecify.annotations.Nullable;
 public final class CrystalAttraction {
     private static final int PLAYER_RANGE = 48;
     private static final int NEARBY_RANGE = 32;
-    private static final int MAX_NEARBY_BITLINGS = 10;
+    private static final int MAX_NEARBY_BITLINGS = 5;
     private static final int MIN_DISTANCE = 12;
     private static final int MAX_DISTANCE = 24;
 

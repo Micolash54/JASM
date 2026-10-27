@@ -18,6 +18,8 @@ import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import dev.micolash.jasm.wafer.WaferEligibility;
+import dev.micolash.jasm.wafer.WaferItem;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -148,6 +150,8 @@ final class JobPlanning {
         WaferStore store = WaferStore.get(player.level().getServer());
         DeckStorage.checkAll(store, deck, player);
         Map<ItemResource, Long> items = DeckStorage.contents(store, deck, player);
+        // only empty wafers go into crafts; one that holds anything (a chest behind a Storage Port can) stays put
+        items.keySet().removeIf(key -> key.getItem() instanceof WaferItem && !WaferEligibility.isEmptyWafer(store, key.toStack(1)));
         Map<GridKey, Long> stock = new LinkedHashMap<>();
         items.forEach((key, count) -> stock.put(new GridKey.Item(key), count));
         DeckFluidStorage.contents(store, deck).forEach((key, mb) -> stock.put(new GridKey.Fluid(key), mb));

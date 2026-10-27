@@ -9,6 +9,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferHolderItem;
+import dev.micolash.jasm.wafer.WaferItem;
 import java.util.UUID;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
@@ -210,9 +211,13 @@ public class DeckItem extends Item implements WaferHolderItem {
         DeckBucket.tellMiss(player, deck);
     }
 
+    /** The Deck's wafers, then any wafer waiting in a Crafting Deck's grid. */
     @Override
     public void forEachWafer(ItemStack holder, Consumer<ItemStack> action) {
         wafers(holder).forEach(action);
+        holder.getOrDefault(JasmComponents.DECK_GRID.get(), ItemContainerContents.EMPTY).nonEmptyItemCopyStream()
+                .filter(stack -> stack.getItem() instanceof WaferItem)
+                .forEach(action);
     }
 
     /**

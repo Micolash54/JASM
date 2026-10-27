@@ -23,7 +23,7 @@ You find a Basic Bitling in the wild and make friends with it.
 * Never in oceans, rivers, beaches, deserts, badlands, mushroom fields, caves or the Deep Dark.
 * They stay where they are, even when you walk away.
 
-Growing crystals draw them in. While you are near [Seeded Amethyst](../items/seeded-amethyst.md), a Bitling sometimes wanders over for a look and stays around the crystals for a few minutes. None comes while another wild Bitling is close.
+Growing crystals draw them in. While you are near [Seeded Amethyst](../items/seeded-amethyst.md), a Bitling sometimes wanders over for a look and stays around the crystals for a few minutes. No new one comes once there are about 5 wild Bitlings within 32 blocks.
 
 <br />
 <br />

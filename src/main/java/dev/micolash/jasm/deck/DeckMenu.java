@@ -11,6 +11,7 @@ import dev.micolash.jasm.delivery.SendContainer;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferItem;
 import java.util.ArrayList;
@@ -709,8 +710,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
      * Fills the grid for a recipe (JEI's "+"): the grid is emptied onto the wafers first, then each slot takes one of
      * its allowed items (or as many sets as fit, with {@code max}), from the wafers first and then the inventory,
      * picking the item there is most of. A slot asking for a plain item also takes it with extra data (crop stats on
-     * seeds, say) when no plain copy is there, the version there is most of. Slots with nothing to take stay empty, so a
-     * recipe the player can only partly pay for still places what they have.
+     * seeds, say) when no plain copy is there, the version there is most of. A slot asking for a wafer takes any empty
+     * wafer of that kind, filter rows and name or not, a different one per slot; a wafer holding anything is never taken.
+     * Slots with nothing to take stay empty, so a recipe the player can only partly pay for still places what they have.
      */
     public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max) {
         fillGrid(player, wanted, max, null);
@@ -737,16 +739,20 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         Map<ItemResource, Long> available = new HashMap<>();
         // only read when a slot has no plain copy to take
         Map<ItemResource, Long> present = null;
+        // wafers stack to one and a used one is one of a kind, so each wafer slot takes its own
+        Map<ItemResource, Long> wafersTaken = new HashMap<>();
+        WaferStore store = WaferStore.get(player.level().getServer());
         List<@Nullable ItemResource> chosen = new ArrayList<>();
         for (int slot = 0; slot < wanted.size(); slot++) {
             ItemResource best = null;
             long bestCount = 0;
             boolean empty = grid.getItem(slot).isEmpty();
             for (ItemResource option : empty ? wanted.get(slot) : List.<ItemResource>of()) {
-                if (option.isEmpty() || !allowedInGrid(option.toStack(1))) {
+                if (option.isEmpty() || !allowedInGrid(option.toStack(1)) || !fillable(store, option)) {
                     continue;
                 }
-                long count = available.computeIfAbsent(option, key -> storage.count(key) + inventoryCount(player.getInventory(), key));
+                long count = available.computeIfAbsent(option, key -> storage.count(key) + inventoryCount(player.getInventory(), key))
+                        - wafersTaken.getOrDefault(option, 0L);
                 if (count > bestCount) {
                     best = option;
                     bestCount = count;
@@ -757,9 +763,15 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
                     present = onHand(player, storage);
                 }
                 best = GridVariants.best(wanted.get(slot), present);
+                if (best == null) {
+                    best = GridVariants.emptyWafer(wanted.get(slot), present, wafersTaken, key -> fillable(store, key));
+                }
                 if (best != null) {
                     available.putIfAbsent(best, present.get(best));
                 }
+            }
+            if (best != null && GridVariants.isWafer(best)) {
+                wafersTaken.merge(best, 1L, Long::sum);
             }
             chosen.add(best);
         }
@@ -829,6 +841,11 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         return total;
     }
 
+    // a fill only ever takes empty wafers, whatever their rows or name; one holding anything stays where it is
+    private static boolean fillable(WaferStore store, ItemResource key) {
+        return !GridVariants.isWafer(key) || WaferEligibility.isEmptyWafer(store, key.toStack(1));
+    }
+
     private static long inventoryCount(Inventory inventory, ItemResource key) {
         long count = 0;
         for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
@@ -852,8 +869,16 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         return total;
     }
 
-    /** Wafers and Decks never go in the grid: their contents must always stay where the save rules can see them. */
+    /**
+     * Decks never go in the crafting grid, so a Deck's wafers are never inside another Deck. Wafers do, as at a crafting
+     * table (bigger wafers are crafted from smaller ones); the Deck lists them with its own wafers for the save rules.
+     */
     public static boolean allowedInGrid(ItemStack stack) {
+        return !(stack.getItem() instanceof WaferHolderItem);
+    }
+
+    /** Wafers and Decks are never sent to another Deck. */
+    public static boolean allowedToSend(ItemStack stack) {
         return !(stack.getItem() instanceof WaferItem) && !(stack.getItem() instanceof WaferHolderItem);
     }
 
@@ -930,7 +955,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         }
 
         @Override
-        public boolean mayPlace(ItemStack stack) { return usable && allowedInGrid(stack); }
+        public boolean mayPlace(ItemStack stack) { return usable && allowedToSend(stack); }
 
         @Override
         public boolean isActive() { return usable && (!player.level().isClientSide() || window != null); }
@@ -978,7 +1003,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         }
     }
 
-    /** A crafting grid slot: anything but wafers and Decks. */
+    /** A crafting grid slot: anything but Decks. */
     private final class GridSlot extends CoveredSlot {
         GridSlot(DeckGridContainer container, int index, int x, int y) {
             super(container, index, x, y);

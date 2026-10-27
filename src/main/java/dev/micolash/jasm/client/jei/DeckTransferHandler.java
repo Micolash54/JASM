@@ -5,6 +5,7 @@ import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.GridVariants;
 import dev.micolash.jasm.registry.JasmMenus;
+import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -105,6 +106,10 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
             ItemResource found = options.stream().filter(o -> available.getOrDefault(o, 0L) > 0).findFirst().orElse(null);
             if (found == null) {
                 found = GridVariants.best(options, available);
+            }
+            if (found == null) {
+                // the screen can't see inside a wafer; the server takes only empty ones
+                found = GridVariants.emptyWafer(options, available, Map.of(), key -> !WaferMerge.isPending(key.toStack(1)));
             }
             if (found == null) {
                 ItemResource craft = options.stream().filter(menu.view().craftable()::contains).findFirst().orElse(null);

@@ -1,6 +1,10 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.crafting.RecipeChoices;
+import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.WaferEligibility;
+import dev.micolash.jasm.wafer.WaferItem;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.NonNullList;
@@ -184,7 +188,8 @@ public final class CardRecipes {
         /**
          * Whether {@code candidate} may stand in for the encoded item in {@code slot}: the recipe still matches with it
          * there. Items carrying extra data (enchantments, damage, names) only stand in when the encoded item had the
-         * same data, so a worn or enchanted tool is never used up by accident. A slot whose item the recipe hands back
+         * same data, so a worn or enchanted tool is never used up by accident; an empty wafer is the exception, as it
+         * holds nothing (its settings go, as at a crafting table). A slot whose item the recipe hands back
          * keeps to that item, at any wear: a card with a regular crystal never takes a Master one, and a crystal that
          * returns with a little wear keeps serving.
          */
@@ -201,7 +206,7 @@ public final class CardRecipes {
                 if (!sameBesidesWear(stack, there)) {
                     return false;
                 }
-            } else if (!stack.getComponentsPatch().equals(DataComponentPatch.EMPTY)) {
+            } else if (!stack.getComponentsPatch().equals(DataComponentPatch.EMPTY) && !emptyWaferFor(level, stack, there)) {
                 return false;
             }
             NonNullList<ItemStack> test = NonNullList.withSize(9, ItemStack.EMPTY);
@@ -211,10 +216,27 @@ public final class CardRecipes {
             return recipe.matches(CraftingInput.of(3, 3, test), level);
         }
 
-        /** Whether these nine inputs really make this card's output. */
+        /**
+         * An empty wafer stands in for a blank one of its kind whatever its filter rows, name or backup, as it would at
+         * a crafting table; crafting it ends the wafer like the crafting table does. A wafer holding anything never does.
+         */
+        private static boolean emptyWaferFor(ServerLevel level, ItemStack stack, ItemStack encoded) {
+            return stack.getItem() instanceof WaferItem && stack.is(encoded.getItem()) && encoded.getComponentsPatch().isEmpty()
+                    && WaferEligibility.isEmptyWafer(WaferStore.get(level.getServer()), stack);
+        }
+
+        /**
+         * Whether these nine inputs really make this card's output. A wafer made from used wafers carries a note of
+         * which ones went in; that note isn't part of what the card makes.
+         */
         public boolean makes(ServerLevel level, List<ItemStack> inputs) {
             CraftingInput input = CraftingInput.of(3, 3, inputs);
-            return recipe.matches(input, level) && ItemStack.isSameItemSameComponents(recipe.assemble(input), output);
+            if (!recipe.matches(input, level)) {
+                return false;
+            }
+            ItemStack made = recipe.assemble(input);
+            made.remove(JasmComponents.WAFER_MERGE.get());
+            return ItemStack.isSameItemSameComponents(made, output);
         }
     }
 }

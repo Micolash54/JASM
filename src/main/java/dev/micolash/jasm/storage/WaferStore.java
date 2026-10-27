@@ -536,7 +536,7 @@ public final class WaferStore {
      * actor means no player was involved.
      */
     public long insert(WaferRecord record, ItemResource key, long amount, boolean simulate, @Nullable Player actor) {
-        if (record.isFluid()) {
+        if (record.isFluid() || holdsItself(record, key)) {
             return 0;
         }
         long fits = record.isTyped() ? Math.min(amount, record.roomFor(key)) : amount;
@@ -545,6 +545,12 @@ public final class WaferStore {
             contentsChanged(record, actor);
         }
         return accepted;
+    }
+
+    /** Whether {@code key} is a copy of the wafer {@code record} belongs to: a wafer never goes inside itself. */
+    private static boolean holdsItself(WaferRecord record, ItemResource key) {
+        return key.getItem() instanceof WaferItem && key.get(JasmComponents.WAFER_IDENTITY.get()) instanceof WaferIdentity inside
+                && inside.id().equals(record.id());
     }
 
     /** Removes up to {@code amount}; returns the removed amount. A null actor means no player was involved. */
@@ -616,6 +622,14 @@ public final class WaferStore {
                         entry.getValue() - moved, entry.getKey(), source.serial(), source.serial());
             }
         }
+        close(source, actor);
+    }
+
+    /**
+     * Ends a wafer that went into a craft: it is unlinked from its Archive, and its record jumps past every copy of it,
+     * so none of them can use it or be recovered from it again.
+     */
+    public void close(WaferRecord source, @Nullable Player actor) {
         UUID archiveId = source.archiveId();
         if (archiveId != null) {
             state.archive(archiveId).ifPresent(archive -> state.removeLinked(archive, source.serial()));

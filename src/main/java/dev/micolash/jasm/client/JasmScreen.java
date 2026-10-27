@@ -30,8 +30,13 @@ public abstract class JasmScreen<T extends AbstractContainerMenu> extends Abstra
      * {@code page} of the guide.
      */
     protected void addHelp(int right, String page) {
+        addHelp(right, titleLabelY - 3, HELP_HEIGHT, page);
+    }
+
+    /** The same "?" key with its own top edge (from the screen's top) and height, to line up with a button beside it. */
+    protected void addHelp(int right, int top, int height, String page) {
         JasmButton help = JasmButton.text(Component.literal("?"), b -> JasmGuide.open(page), leftPos + right - HELP_SIZE,
-                topPos + titleLabelY - 3, HELP_SIZE, HELP_HEIGHT);
+                topPos + top, HELP_SIZE, height);
         help.setTooltip(Tooltip.create(Component.translatable("screen.jasm.help")));
         addRenderableWidget(help);
     }

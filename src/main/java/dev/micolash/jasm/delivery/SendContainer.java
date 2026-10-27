@@ -33,7 +33,7 @@ public final class SendContainer extends SimpleContainer {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return DeckMenu.allowedInGrid(stack);
+        return DeckMenu.allowedToSend(stack);
     }
 
     @Override

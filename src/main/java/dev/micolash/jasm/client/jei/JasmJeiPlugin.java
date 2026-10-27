@@ -22,7 +22,6 @@ import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.registry.JasmItems;
-import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.wafer.WaferTier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -113,10 +112,9 @@ public class JasmJeiPlugin implements IModPlugin {
     @Override
     public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
         registration.addRecipeTransferHandler(new DeckTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
-        for (var terminal : List.of(JasmMenus.ENCODING_TERMINAL.get(), JasmMenus.ADVANCED_ENCODER.get())) {
-            registration.addRecipeTransferHandler(new TerminalTransferHandler(registration.getTransferHelper(), terminal), RecipeTypes.CRAFTING);
-            registration.addUniversalRecipeTransferHandler(new ProcessingTransferHandler(registration.getTransferHelper(), terminal));
-        }
+        // one each for both encoders, which share a menu class
+        registration.addRecipeTransferHandler(new TerminalTransferHandler(registration.getTransferHelper()), RecipeTypes.CRAFTING);
+        registration.addUniversalRecipeTransferHandler(new ProcessingTransferHandler(registration.getTransferHelper()));
     }
 
     @Override

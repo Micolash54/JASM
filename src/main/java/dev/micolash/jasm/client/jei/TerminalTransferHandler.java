@@ -24,12 +24,9 @@ import org.jspecify.annotations.Nullable;
 /** JEI's "+" on a crafting recipe fills the Encoding Terminal's ghost grid with the items JEI is showing. Nothing is used up. */
 final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTerminalMenu, RecipeHolder<CraftingRecipe>> {
     private final IRecipeTransferHandlerHelper helper;
-    /** The plain or the Advanced Encoder: they share the menu, each under its own type. */
-    private final MenuType<EncodingTerminalMenu> type;
 
-    TerminalTransferHandler(IRecipeTransferHandlerHelper helper, MenuType<EncodingTerminalMenu> type) {
+    TerminalTransferHandler(IRecipeTransferHandlerHelper helper) {
         this.helper = helper;
-        this.type = type;
     }
 
     @Override
@@ -37,9 +34,13 @@ final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTe
         return EncodingTerminalMenu.class;
     }
 
+    /**
+     * Both encoders: the Network Encoder and the Advanced Encoder share this menu, each under its own type. JEI keeps
+     * one handler per menu class, so a second one registered for the other type would replace the first.
+     */
     @Override
     public Optional<MenuType<EncodingTerminalMenu>> getMenuType() {
-        return Optional.of(type);
+        return Optional.empty();
     }
 
     @Override

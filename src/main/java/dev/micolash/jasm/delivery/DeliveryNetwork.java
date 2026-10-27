@@ -168,7 +168,7 @@ public final class DeliveryNetwork {
         WaferStore store = WaferStore.get(server);
         long moved = 0;
         for (ItemStack stack : state.inbox(player.getUUID())) {
-            if (stack.isEmpty() || !DeckMenu.allowedInGrid(stack)) continue;
+            if (stack.isEmpty() || !DeckMenu.allowedToSend(stack)) continue;
             moved += DeckStorage.depositQuietly(store, menu.deck(), stack, player, DeckStorage.Excess.VOID);
         }
         state.inboxChanged(player.getUUID());
