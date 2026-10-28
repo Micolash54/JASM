@@ -32,6 +32,7 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 import org.jspecify.annotations.Nullable;
@@ -90,6 +91,12 @@ public class DataCableBlockEntity extends BlockEntity {
         return port instanceof AttachedPort access ? access.itemInput : null;
     }
 
+    /** A thin Access Port's fluid input, on its mounted face only. */
+    public @Nullable ResourceHandler<FluidResource> fluidInput(@Nullable Direction side) {
+        var port = side == null ? null : ports.get(side);
+        return port instanceof AttachedPort access ? access.fluidInput(side) : null;
+    }
+
     public boolean attach(Direction side, ItemStack stack, Player player) {
         boolean acceptor = stack.is(JasmItems.THIN_POWER_ACCEPTOR.get());
         if (level == null || (!acceptor && !stack.is(JasmItems.THIN_ACCESS_PORT.get()) && TransferPortKind.of(stack) == null) || hasPart(side))
@@ -140,6 +147,7 @@ public class DataCableBlockEntity extends BlockEntity {
             if (drop) Block.popResource(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
             if (port != null) {
                 Containers.dropContents(level, worldPosition, port);
+                port.releaseHeldFluids();
                 port.onChunkUnloaded();
                 port.setRemoved();
             }
@@ -150,6 +158,7 @@ public class DataCableBlockEntity extends BlockEntity {
             if (drop) Block.popResource(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
             if (port != null) {
                 Containers.dropContents(level, worldPosition, port);
+                port.releaseHeldFluids();
                 port.onChunkUnloaded();
                 port.setRemoved();
             }

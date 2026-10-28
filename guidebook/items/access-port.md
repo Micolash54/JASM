@@ -48,6 +48,7 @@ Convert one into the other in a crafting grid. Both recipes are below.
 <br />
 ## Good to know
 
+* Machines and pipes can push items and fluids into it, and they go into the network's storage when there's room.
 * A thin port serves and accepts items only through its outward face, including from pipes and hoppers while idle.
 * Blocking mode waits to send new ingredients while the machine still holds some for this recipe.
 * Add a [Power Upgrade](power-upgrade.md) to supply FE to the machine it faces.

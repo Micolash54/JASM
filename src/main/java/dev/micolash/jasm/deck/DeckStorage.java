@@ -35,6 +35,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -250,7 +251,12 @@ public final class DeckStorage {
 
         /** As {@link #roomFluid(FluidResource, long)}; with {@code Excess.VOID} a voiding fluid counts as having room for all of {@code amount}. */
         public long roomFluid(FluidResource key, long amount, Excess excess) {
-            long room = roomFluid(key, amount);
+            return roomFluid(key, amount, excess, null);
+        }
+
+        /** As above, asked from inside the open transaction {@code tx}: the network's tanks answer as they stand in it. */
+        public long roomFluid(FluidResource key, long amount, Excess excess, @Nullable TransactionContext tx) {
+            long room = DeckFluidStorage.room(store, deck, key, amount, player, this, tx);
             if (excess != Excess.VOID || room >= amount || !DeckFluidStorage.canVoid(store, deck, key, player, this)) return room;
             return Math.min(amount, DeckStorage.affordableFluid(deck));
         }

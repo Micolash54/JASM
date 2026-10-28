@@ -22,6 +22,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -135,12 +136,12 @@ public final class DeckFluidStorage {
     }
 
     private static long roomCombined(WaferStore store, ItemStack deck, FluidResource key, long amount, ServerPlayer player,
-            DeckStorage.@Nullable Checked checked, List<PoolStore> ports) {
+            DeckStorage.@Nullable Checked checked, List<PoolStore> ports, @Nullable TransactionContext tx) {
         long room = 0;
         for (Unit unit : PoolRouter.insertOrder(units(views(store, deck, player, checked), ports), key)) {
             long left = amount - room;
             if (left <= 0) break;
-            room += unit.port() != null ? unit.port().roomFluid(key, left)
+            room += unit.port() != null ? unit.port().roomFluid(key, left, tx)
                     : unit.slot().accepts(key) ? Math.min(left, unit.slot().room(key)) : 0;
         }
         return room;
@@ -185,12 +186,18 @@ public final class DeckFluidStorage {
     /** How many millibuckets of {@code key}, up to {@code amount}, the Deck's fluid wafers would take. Changes nothing. */
     public static long room(WaferStore store, ItemStack deck, FluidResource key, long amount, ServerPlayer player,
             DeckStorage.@Nullable Checked checked) {
+        return room(store, deck, key, amount, player, checked, null);
+    }
+
+    /** As above, asked from inside the open transaction {@code tx}: the network's tanks answer as they stand in it. */
+    public static long room(WaferStore store, ItemStack deck, FluidResource key, long amount, ServerPlayer player,
+            DeckStorage.@Nullable Checked checked, @Nullable TransactionContext tx) {
         if (!DeckStorage.checkDimension(deck, player, false)) return 0;
         if (amount <= 0 || !WaferEligibility.checkFluid(key, player.level().registryAccess()).accepted()) {
             return 0;
         }
         List<PoolStore> ports = ports(player, deck, checked);
-        if (!ports.isEmpty()) return roomCombined(store, deck, key, amount, player, checked, ports);
+        if (!ports.isEmpty()) return roomCombined(store, deck, key, amount, player, checked, ports, tx);
         return DepositRouter.planDeposit(views(store, deck, player, checked), key, amount).stream()
                 .mapToLong(DepositRouter.Allocation::amount).sum();
     }

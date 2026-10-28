@@ -336,6 +336,15 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
         }
     }
 
+    /** As above, asked from inside the open transaction {@code outer}: the block answers as it stands in it, and nothing changes. */
+    public long roomFluid(FluidResource key, long most, @Nullable TransactionContext outer) {
+        if (outer == null) return roomFluid(key, most);
+        if (busy || !canWrite() || !passes(key)) return 0;
+        try (Transaction tx = Transaction.open(outer)) {
+            return insertFluid(key, most, tx);
+        }
+    }
+
     public long insertFluid(FluidResource key, long amount, TransactionContext tx) {
         var handler = fluidHandler();
         if (handler == null || amount <= 0 || !canWrite() || !passes(key)) return 0;

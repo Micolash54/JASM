@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -662,6 +663,53 @@ final class JobRunner {
             }
         }
         return any;
+    }
+
+    /**
+     * Fluid a machine or pipe pushed into {@code port} through {@code side} (null when not known), counted toward the
+     * sets on that port waiting for it, the way {@link #pullFluids} counts what it takes: those on that side first, then
+     * the rest, oldest first. With {@code simulate} nothing changes. Returns the millibuckets the jobs took.
+     */
+    static long creditPushedFluid(ServerLevel level, AccessPortBlockEntity port, @Nullable Direction side, FluidResource fluid, long amount,
+            boolean simulate) {
+        WaferStore store = WaferStore.ifOpen(level.getServer());
+        if (amount <= 0 || store == null || !port.locked()) {
+            return 0;
+        }
+        GridKey key = new GridKey.Fluid(fluid);
+        AutocraftState state = AutocraftState.get(level.getServer());
+        long credited = 0;
+        for (UUID id : port.lockedJobs()) {
+            AutocraftState.Job entry = state.job(id).orElse(null);
+            if (credited >= amount || entry == null || entry.finished()) continue;
+            ServerLevel jobLevel = level.getServer().getLevel(entry.server().dimension());
+            BlockPos pos = entry.server().pos();
+            if (jobLevel == null || !jobLevel.isLoaded(pos) || !(jobLevel.getBlockEntity(pos) instanceof CraftingServerBlockEntity server)
+                    || server.job() == null || !server.job().id().equals(id))
+                continue;
+            CraftingJob job = server.job();
+            WaferRecord fluids = fluidRecord(store, job);
+            if (fluids == null) continue;
+            List<CraftingJob.Sent> sets = job.sent.stream()
+                    .filter(s -> s.port.equals(port.getBlockPos()) && port.lock(s.side) != null && id.equals(port.lock(s.side).job())
+                            && s.wants(key) > 0)
+                    .sorted(Comparator.comparing(s -> s.side != side))
+                    .toList();
+            long most = Math.min(amount - credited, sets.stream().mapToLong(s -> s.wants(key)).sum());
+            most = Math.min(most, store.insertFluid(fluids, fluid, most, true, null));
+            if (most <= 0) continue;
+            if (!simulate) {
+                most = store.insertFluid(fluids, fluid, most, false, null);
+                long left = most;
+                for (CraftingJob.Sent set : sets) {
+                    if (left <= 0) break;
+                    left -= set.arrive(key, left);
+                }
+                server.setChanged();
+            }
+            credited += most;
+        }
+        return credited;
     }
 
     /**
