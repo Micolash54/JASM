@@ -244,16 +244,24 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     public int transferBudget() {
-        return level != null && running() && !networkBlocked() && !redstonePaused() ? operations.available(level.getGameTime(), transferRate()) : 0;
+        return level != null && running() && !networkBlocked() && !redstonePaused() ? operations.available(level.getGameTime(), transferRate(), savesAllowance()) : 0;
+    }
+
+    /**
+     * Whether allowance left unused is kept (up to a second's worth) for a push that arrives on a later tick. Machines that
+     * push on their own timer rarely land on the tick an operation is due.
+     */
+    protected boolean savesAllowance() {
+        return true;
     }
 
     public boolean canSendBatch(int count) {
         return level != null && running() && !networkBlocked() && !redstonePaused()
-                && operations.canSendBatch(level.getGameTime(), transferRate(), count);
+                && operations.canSendBatch(level.getGameTime(), transferRate(), count, savesAllowance());
     }
 
     public void transferred(int count) {
-        if (level != null) operations.transferred(level.getGameTime(), count);
+        if (level != null) operations.transferred(level.getGameTime(), count, savesAllowance());
     }
 
     public boolean acceptsOrdinaryItems() { return true; }

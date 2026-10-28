@@ -105,6 +105,9 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     }
     @Override
     public boolean hasMachine(Direction side) { return false; }
+    /** A Transfer Port runs its own operations, so its allowance is spent when due or not at all. */
+    @Override
+    protected boolean savesAllowance() { return false; }
     @Override
     protected boolean canPowerSide(Direction side) { return works(side); }
 
