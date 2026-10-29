@@ -13,16 +13,12 @@ import org.jspecify.annotations.Nullable;
  * (any charge at all shows at least one step).
  */
 public record DeckCharge() implements RangeSelectItemModelProperty {
-    public static final int STEPS = 6;
+    public static final int STEPS = DeckItem.CHARGE_STEPS;
     public static final MapCodec<DeckCharge> MAP_CODEC = MapCodec.unit(new DeckCharge());
 
     @Override
     public float get(ItemStack stack, @Nullable ClientLevel level, @Nullable ItemOwner owner, int seed) {
-        if (!(stack.getItem() instanceof DeckItem deck)) {
-            return 0;
-        }
-        int energy = DeckItem.energy(stack);
-        return energy <= 0 ? 0 : Math.clamp((int) Math.ceil(energy * (double) STEPS / deck.tier().battery()), 1, STEPS);
+        return DeckItem.chargeStep(stack);
     }
 
     @Override

@@ -22,12 +22,17 @@ import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -41,6 +46,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -74,6 +80,13 @@ public class DockingStationBlockEntity extends MachineBlockEntity implements Wor
     private @Nullable FakePlayer stand;
     /** Set once the dock, being removed, has dropped itself with its Deck inside, so the loot table drops nothing more. */
     private boolean droppedWithDeck;
+    /**
+     * The docked Deck as players' games see it in the tray: only its kind and charge, never its wafers. On the server, the
+     * look last sent; in a player's game, the look received. Empty when no Deck is in.
+     */
+    private ItemStack shownDeck = ItemStack.EMPTY;
+    /** How many times players' games were sent a new look. */
+    private int looksSent;
 
     public DockingStationBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.DOCKING_STATION_ENTITY.get(), pos, state, Tuning.DOCK_CAPACITY);
@@ -81,7 +94,10 @@ public class DockingStationBlockEntity extends MachineBlockEntity implements Wor
 
     /** An empty dock does nothing at all; a docked Deck is charged from what the network has given the dock. */
     static void serverTick(Level level, BlockPos pos, BlockState state, DockingStationBlockEntity dock) {
-        if (!dock.deck().isEmpty() && dock.payForTick()) dock.charge();
+        if (dock.deck().isEmpty()) return;
+        int charged = dock.payForTick() ? dock.charge() : 0;
+        // Spending happens elsewhere, so the charge bar is checked once a second as well as when charging.
+        if (charged > 0 || (level.getGameTime() + pos.asLong()) % 20 == 0) dock.showLook();
     }
 
     /** No running cost: the dock's power only ever goes into the Deck. */
@@ -281,6 +297,65 @@ public class DockingStationBlockEntity extends MachineBlockEntity implements Wor
         }
         DockingStations.holds(this, listed, deck, DeckItem.isCrafting(deck) && !Rules.of(deck).isEmpty());
         listed = deck.isEmpty() ? null : deck.get(JasmComponents.DECK_ID.get());
+        showLook();
+    }
+
+    // --- what players' games are told ---
+
+    /** The Deck to draw in the tray, as this game knows it. Empty when none. */
+    public ItemStack shownDeck() {
+        return shownDeck;
+    }
+
+    /** How many times players' games were sent a new look of the docked Deck. */
+    public int looksSent() {
+        return looksSent;
+    }
+
+    /** What players' games are given of {@code deck}: a plain Deck of the same kind and charge. */
+    private static ItemStack look(ItemStack deck) {
+        if (deck.isEmpty()) return ItemStack.EMPTY;
+        ItemStack look = new ItemStack(deck.getItem());
+        look.set(JasmComponents.ENERGY.get(), DeckItem.energy(deck));
+        return look;
+    }
+
+    /** Whether the two would be drawn the same: same kind of Deck, same step on the charge bar. */
+    private static boolean sameLook(ItemStack a, ItemStack b) {
+        return a.getItem() == b.getItem() && DeckItem.chargeStep(a) == DeckItem.chargeStep(b);
+    }
+
+    /** Tells players' games when the Deck in the tray would be drawn differently, and only then. */
+    private void showLook() {
+        if (!(level instanceof ServerLevel) || isRemoved() || sameLook(deck(), shownDeck)) return;
+        shownDeck = look(deck());
+        looksSent++;
+        level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        ItemStack look = look(deck());
+        if (!look.isEmpty()) {
+            ItemStack.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), look).ifSuccess(encoded -> tag.put("deck", encoded));
+        }
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(ValueInput input) {
+        shownDeck = input.read("deck", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ValueInput input) {
+        handleUpdateTag(input);
     }
 
     @Override
@@ -435,6 +510,8 @@ public class DockingStationBlockEntity extends MachineBlockEntity implements Wor
         locked = input.getBooleanOr("locked", true);
         deckOwner = input.read("deck_owner", UUIDUtil.CODEC).orElse(null);
         deckOwnerName = input.getStringOr("deck_owner_name", "");
+        // Players' games get the Deck with the chunk; nothing more to send.
+        shownDeck = look(deck());
         relist();
     }
 

@@ -88,6 +88,16 @@ public class DeckItem extends Item implements WaferHolderItem {
         return deck.getItem() instanceof DeckItem item ? Math.min(energy, item.tier().battery()) : energy;
     }
 
+    /** Steps on the charge bar a Deck's picture shows. */
+    public static final int CHARGE_STEPS = 6;
+
+    /** How many of the {@link #CHARGE_STEPS} the charge bar shows: 0 when empty, otherwise at least one. */
+    public static int chargeStep(ItemStack stack) {
+        if (!(stack.getItem() instanceof DeckItem deck)) return 0;
+        int energy = energy(stack);
+        return energy <= 0 ? 0 : Math.clamp((int) Math.ceil(energy * (double) CHARGE_STEPS / deck.tier().battery()), 1, CHARGE_STEPS);
+    }
+
     /** What the Deck's upgrade slot takes. */
     public static boolean takesUpgrade(ItemStack stack) {
         return stack.is(JasmItems.DIMENSION_UPGRADE.get());

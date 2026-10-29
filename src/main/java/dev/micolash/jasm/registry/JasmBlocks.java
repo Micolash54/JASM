@@ -134,7 +134,8 @@ public final class JasmBlocks {
             "recipe_rack", () -> new BlockEntityType<>(RecipeRackBlockEntity::new, RECIPE_RACK.get()));
 
     public static final DeferredBlock<DockingStationBlock> DOCKING_STATION = BLOCKS.registerBlock("docking_station",
-            DockingStationBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
+            DockingStationBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL)
+                    .noOcclusion());
 
     public static final Supplier<BlockEntityType<DockingStationBlockEntity>> DOCKING_STATION_ENTITY = BLOCK_ENTITIES.register(
             "docking_station", () -> new BlockEntityType<>(DockingStationBlockEntity::new, DOCKING_STATION.get()));

@@ -68,6 +68,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.CRYSTAL_FOUNDRY_ENTITY.get(), CrystalFoundryRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.DEPLOYMENT_BAY_ENTITY.get(), BayRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.DEMOLITION_BAY_ENTITY.get(), BayRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.DOCKING_STATION_ENTITY.get(), DockingStationRenderer::new);
         event.registerEntityRenderer(JasmEntities.STATION_BITLING.get(), BitlingBodyRenderer::new);
         event.registerEntityRenderer(JasmEntities.WILD_BITLING.get(), BitlingBodyRenderer::new);
     }
