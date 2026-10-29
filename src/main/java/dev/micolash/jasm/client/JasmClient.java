@@ -105,6 +105,7 @@ public final class JasmClient {
         event.register(JasmMenus.ENCODING_TERMINAL.get(), EncodingTerminalScreen::new);
         event.register(JasmMenus.ADVANCED_ENCODER.get(), EncodingTerminalScreen::new);
         event.register(JasmMenus.RECIPE_RACK.get(), RecipeRackScreen::new);
+        event.register(JasmMenus.DOCKING_STATION.get(), DockingStationScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ADVANCED_CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ACCESS_PORT.get(), AccessPortScreen::new);

@@ -8,12 +8,18 @@ import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.deck.DeckMenu;
+import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.dock.DockingStationBlockEntity;
+import dev.micolash.jasm.dock.DockingStations;
+import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.NetworkTrust;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.LenientListCodec;
+import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -122,9 +128,9 @@ public final class Deliveries {
         MinecraftServer server = sender.level().getServer();
         Map<UUID, Boolean> trusting = new HashMap<>();
         for (AutocraftState.Pairing pairing : AutocraftState.get(server).pairings()) {
-            if (pairing.player().equals(sender.getUUID())) continue;
-            ServerPlayer player = server.getPlayerList().getPlayer(pairing.player());
-            if (player == null || members.stream().anyMatch(m -> m.player() == player)) continue;
+            if (pairing.player().equals(sender.getUUID()) || listed(members, pairing.player())) continue;
+            ServerPlayer player = receiver(server, pairing);
+            if (player == null) continue;
             if (trusting.computeIfAbsent(pairing.terminal(), id -> trusts(server, id, sender))) members.add(new Member(player, pairing.deck()));
         }
     }
@@ -168,16 +174,33 @@ public final class Deliveries {
         }
         List<Member> members = new ArrayList<>();
         for (AutocraftState.Pairing pairing : AutocraftState.get(server).pairingsOn(group)) {
-            if (pairing.player().equals(sender.getUUID())) continue;
-            ServerPlayer player = server.getPlayerList().getPlayer(pairing.player());
-            if (player != null && members.stream().noneMatch(m -> m.player() == player)) members.add(new Member(player, pairing.deck()));
+            if (pairing.player().equals(sender.getUUID()) || listed(members, pairing.player())) continue;
+            ServerPlayer player = receiver(server, pairing);
+            if (player != null) members.add(new Member(player, pairing.deck()));
         }
         return members;
     }
 
-    /** Whether {@code player} carries (or wears) the Deck with identity {@code deckId} and it has a Dimension Upgrade. */
+    private static boolean listed(List<Member> members, UUID player) {
+        for (Member member : members) if (member.player().getUUID().equals(player)) return true;
+        return false;
+    }
+
+    /**
+     * Who receives for a paired Deck: its player while online, or, while the Deck sits in a working Docking Station, a stand-in
+     * for them at the dock (so a player away from the game can still be sent to). Null when neither.
+     */
+    private static @Nullable ServerPlayer receiver(MinecraftServer server, AutocraftState.Pairing pairing) {
+        ServerPlayer online = server.getPlayerList().getPlayer(pairing.player());
+        if (online != null) return online;
+        DeckReach reach = DeckReach.find(server, pairing.player(), pairing.deck());
+        return reach != null && reach.docked() ? reach.actor() : null;
+    }
+
+    /** Whether {@code player} carries (or wears, or has docked) the Deck with identity {@code deckId} and it has a Dimension Upgrade. */
     public static boolean carriesUpgradedDeck(ServerPlayer player, UUID deckId) {
-        return DeckItem.hasDimensionUpgrade(Jobs.findDeck(player, deckId));
+        DeckReach reach = DeckReach.find(player.level().getServer(), player.getUUID(), deckId);
+        return reach != null && DeckItem.hasDimensionUpgrade(reach.deck());
     }
 
     /** What stops {@code sender} sending to {@code member} right now, apart from what is in the grid. */
@@ -223,15 +246,51 @@ public final class Deliveries {
         if (trip == null || trip.returning() || !trip.from().equals(player)) return false;
         DeliveryState.Trip back = trip.turnedRound(now(server));
         state.replaceTrip(back);
-        arrive(state, back);
+        arrive(server, state, back);
         return true;
     }
 
-    /** Hands a trip over if its whole load fits in the inbox; otherwise it waits there for room. */
-    private static boolean arrive(DeliveryState state, DeliveryState.Trip trip) {
+    /**
+     * Hands a trip over if its whole load fits in the inbox; otherwise it waits there for room. A receiver whose Deck sits
+     * in a dock gets it on that Deck instead, never in the inbox: see {@link #intoDock}.
+     */
+    private static boolean arrive(MinecraftServer server, DeliveryState state, DeliveryState.Trip trip) {
+        List<DockingStationBlockEntity> docks = DockingStations.of(trip.to());
+        if (!docks.isEmpty()) return intoDock(server, state, trip, docks);
         if (!state.deliver(trip.to(), trip.items())) return false;
         state.removeTrip(trip.id());
         return true;
+    }
+
+    /**
+     * A trip to a player with a docked Deck: what fits goes onto that Deck, like into any full storage, and the rest
+     * stays on the trip and waits for room, as a trip waits for room in a full inbox. Nothing goes to the inbox, and
+     * nothing that arrives is destroyed by a Void row. What went in leaves the trip at once, so it is never handed over
+     * twice. Returns whether the whole trip is handed over.
+     */
+    private static boolean intoDock(MinecraftServer server, DeliveryState state, DeliveryState.Trip trip, List<DockingStationBlockEntity> docks) {
+        WaferStore store = WaferStore.ifOpen(server);
+        if (store == null) return false;
+        List<ItemStack> left = new ArrayList<>();
+        for (ItemStack stack : trip.items().values()) left.add(stack.copy());
+        boolean stored = false;
+        for (DockingStationBlockEntity dock : docks) {
+            DeckReach reach = DeckReach.find(server, trip.to(), dock.deck().get(JasmComponents.DECK_ID.get()));
+            if (reach == null || reach.dock() != dock || !DeckItem.worksIn(reach.deck(), reach.actor().level())) continue;
+            for (ItemStack stack : left) {
+                if (!stack.isEmpty() && DeckMenu.allowedToSend(stack)
+                        && DeckStorage.depositQuietly(store, reach.deck(), stack, reach.actor()) > 0) stored = true;
+            }
+        }
+        if (!stored) return false;
+        left.removeIf(ItemStack::isEmpty);
+        if (left.isEmpty() && trip.items().raw().isEmpty()) {
+            state.removeTrip(trip.id());
+            return true;
+        }
+        state.replaceTrip(new DeliveryState.Trip(trip.id(), trip.from(), trip.fromName(), trip.to(), trip.toName(),
+                new LenientListCodec.Lenient<>(left, trip.items().raw()), trip.start(), trip.arrive(), trip.returning()));
+        return false;
     }
 
     /** Hands over every trip that has arrived. */
@@ -239,7 +298,7 @@ public final class Deliveries {
         DeliveryState state = DeliveryState.get(server);
         long now = now(server);
         for (DeliveryState.Trip trip : state.trips()) {
-            if (trip.arrive() <= now) arrive(state, trip);
+            if (trip.arrive() <= now) arrive(server, state, trip);
         }
     }
 

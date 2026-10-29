@@ -5,6 +5,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.deck.DeckItem;
+import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
@@ -116,9 +117,9 @@ final class JobRunner {
         // A machine that can't be used right now: the job waits for it rather than giving up.
         Wait machineBlocked = Wait.NONE;
         ServerPlayer requester = level.getServer().getPlayerList().getPlayer(job.requester);
-        ItemStack requesterDeck = requester == null ? ItemStack.EMPTY : JobReturns.findDeck(requester, job.deck);
-        boolean dimensionBlocked = !requesterDeck.isEmpty()
-                && (!DeckItem.worksIn(requesterDeck, requester.level()) || !DeckItem.worksIn(requesterDeck, level));
+        DeckReach requesterDeck = DeckReach.find(level.getServer(), job.requester, job.deck);
+        boolean dimensionBlocked = requesterDeck != null
+                && (!DeckItem.worksIn(requesterDeck.deck(), requesterDeck.actor().level()) || !DeckItem.worksIn(requesterDeck.deck(), level));
         if (job.phase == CraftingJob.Phase.CRAFTING && dimensionBlocked) machineBlocked = Wait.DIMENSION;
         if (job.phase == CraftingJob.Phase.CRAFTING && !dimensionBlocked) {
             int free = server.parallel() - job.running.size() - job.sent.size();

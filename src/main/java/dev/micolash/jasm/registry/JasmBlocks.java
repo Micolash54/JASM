@@ -34,6 +34,8 @@ import dev.micolash.jasm.crystal.CrystalFoundryBlockEntity;
 import dev.micolash.jasm.crystal.ResonatorBlock;
 import dev.micolash.jasm.crystal.ResonatorBlockEntity;
 import dev.micolash.jasm.crystal.SeededAmethystBlock;
+import dev.micolash.jasm.dock.DockingStationBlock;
+import dev.micolash.jasm.dock.DockingStationBlockEntity;
 import dev.micolash.jasm.generator.CombustionGeneratorBlock;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.generator.GeneratorTier;
@@ -73,7 +75,7 @@ public final class JasmBlocks {
             CreativeBatteryBlock::new, p -> p.mapColor(MapColor.COLOR_MAGENTA).strength(1.5F).sound(SoundType.METAL));
 
     public static final DeferredBlock<PowerAcceptorBlock> POWER_ACCEPTOR = BLOCKS.registerBlock("power_acceptor",
-            PowerAcceptorBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            PowerAcceptorBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
 
     public static final Supplier<BlockEntityType<PowerAcceptorBlockEntity>> POWER_ACCEPTOR_ENTITY = BLOCK_ENTITIES.register(
             "power_acceptor", () -> new BlockEntityType<>(PowerAcceptorBlockEntity::new, POWER_ACCEPTOR.get()));
@@ -115,21 +117,27 @@ public final class JasmBlocks {
                     GENERATORS.values().stream().map(DeferredBlock::get).collect(Collectors.toSet())));
 
     public static final DeferredBlock<EncodingTerminalBlock> ENCODING_TERMINAL = BLOCKS.registerBlock("encoding_terminal",
-            EncodingTerminalBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            EncodingTerminalBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
 
     /** The Encoding Terminal that also picks the machine face each ingredient goes in through. Same block entity. */
     public static final DeferredBlock<EncodingTerminalBlock> ADVANCED_ENCODER = BLOCKS.registerBlock("advanced_encoder",
-            EncodingTerminalBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            EncodingTerminalBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
 
     public static final Supplier<BlockEntityType<EncodingTerminalBlockEntity>> ENCODING_TERMINAL_ENTITY = BLOCK_ENTITIES.register(
             "encoding_terminal", () -> new BlockEntityType<>(EncodingTerminalBlockEntity::new, ENCODING_TERMINAL.get(),
                     ADVANCED_ENCODER.get()));
 
     public static final DeferredBlock<RecipeRackBlock> RECIPE_RACK = BLOCKS.registerBlock("recipe_rack",
-            RecipeRackBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            RecipeRackBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
 
     public static final Supplier<BlockEntityType<RecipeRackBlockEntity>> RECIPE_RACK_ENTITY = BLOCK_ENTITIES.register(
             "recipe_rack", () -> new BlockEntityType<>(RecipeRackBlockEntity::new, RECIPE_RACK.get()));
+
+    public static final DeferredBlock<DockingStationBlock> DOCKING_STATION = BLOCKS.registerBlock("docking_station",
+            DockingStationBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<DockingStationBlockEntity>> DOCKING_STATION_ENTITY = BLOCK_ENTITIES.register(
+            "docking_station", () -> new BlockEntityType<>(DockingStationBlockEntity::new, DOCKING_STATION.get()));
 
     public static final DeferredBlock<CraftingServerBlock> CRAFTING_SERVER = BLOCKS.registerBlock("crafting_server",
             CraftingServerBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.5F).sound(SoundType.METAL));
@@ -188,7 +196,7 @@ public final class JasmBlocks {
             "crystal_resonator", () -> new BlockEntityType<>(ResonatorBlockEntity::new, CRYSTAL_RESONATOR.get()));
 
     public static final DeferredBlock<CrystalFoundryBlock> CRYSTAL_FOUNDRY = BLOCKS.registerBlock("crystal_foundry",
-            CrystalFoundryBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL));
+            CrystalFoundryBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
 
     public static final Supplier<BlockEntityType<CrystalFoundryBlockEntity>> CRYSTAL_FOUNDRY_ENTITY = BLOCK_ENTITIES.register(
             "crystal_foundry", () -> new BlockEntityType<>(CrystalFoundryBlockEntity::new, CRYSTAL_FOUNDRY.get()));

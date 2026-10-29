@@ -10,6 +10,7 @@ import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.deck.DeckBucket;
 import dev.micolash.jasm.deck.DeckWafers;
+import dev.micolash.jasm.dock.DockedDeck;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.StorageSettings;
@@ -151,6 +152,10 @@ public final class JasmComponents {
 
     public static final Supplier<DataComponentType<StorageSettings>> STORAGE_SETTINGS = COMPONENTS.registerComponentType(
             "storage_settings", b -> b.persistent(StorageSettings.CODEC).networkSynchronized(StorageSettings.STREAM_CODEC));
+
+    /** The Deck a mined Docking Station still holds, with its lock and owner, given back when the dock is placed again. */
+    public static final Supplier<DataComponentType<DockedDeck>> DOCKED_DECK = COMPONENTS.registerComponentType(
+            "docked_deck", b -> b.persistent(DockedDeck.CODEC).networkSynchronized(DockedDeck.STREAM_CODEC));
 
     private JasmComponents() {}
 }

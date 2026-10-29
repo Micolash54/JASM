@@ -5,6 +5,9 @@ import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.dock.DockingStationBlockEntity;
+import dev.micolash.jasm.dock.DockingStations;
+import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import java.util.HashMap;
@@ -57,15 +60,34 @@ public final class Rules {
         }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             DeckItem.forEachCarried(player, deck -> {
-                if (DeckItem.isCrafting(deck) && !of(deck).isEmpty()) {
+                // A Deck that sits in a dock runs its rules there, once; a copy of it carried around never does.
+                if (DeckItem.isCrafting(deck) && !of(deck).isEmpty() && !DockingStations.docked(deck.get(JasmComponents.DECK_ID.get()))) {
                     run(player, deck, server.getTickCount());
                 }
             });
+        }
+        runDocked(server, server.getTickCount());
+    }
+
+    /** One second of the rules of every Crafting Deck sitting in a working Docking Station, its player online or not. */
+    public static void runDocked(MinecraftServer server, long now) {
+        for (DockingStationBlockEntity dock : List.copyOf(DockingStations.withRules())) {
+            UUID owner = dock.deckOwner();
+            DeckReach reach = owner == null ? null : DeckReach.find(server, owner, dock.deck().get(JasmComponents.DECK_ID.get()));
+            if (reach != null && reach.dock() == dock) run(reach.actor(), reach.deck(), now, true);
         }
     }
 
     /** One second of one Deck's rules. */
     public static void run(ServerPlayer player, ItemStack deck, long now) {
+        run(player, deck, now, false);
+    }
+
+    /**
+     * One second of one Deck's rules. A {@code docked} Deck has no player with it: rules whose results go into the
+     * player's inventory wait until it is carried again.
+     */
+    static void run(ServerPlayer player, ItemStack deck, long now, boolean docked) {
         // How far each timed rule has counted, when one may try again, and why one is stuck (cleared once it starts or has nothing to do).
         JasmServerData data = JasmServerData.of(player.level().getServer());
         Map<UUID, Integer> counted = data.ruleCounted;
@@ -88,6 +110,10 @@ public final class Rules {
             if ("message.jasm.deck.dimension_upgrade".equals(stalled.get(rule.id()))) stalled.remove(rule.id());
             if (!rule.enabled() || rule.item().isEmpty()) {
                 stalled.remove(rule.id());
+                continue;
+            }
+            if (docked && rule.toPlayer()) {
+                stalled.put(rule.id(), PauseReason.WAITING_PLAYER.key());
                 continue;
             }
             if (busy(player.level().getServer(), deckId, rule.id())) {

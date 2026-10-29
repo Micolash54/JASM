@@ -18,6 +18,7 @@ import dev.micolash.jasm.core.ChipType;
 import dev.micolash.jasm.crystal.CrystalSeedItem;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckTier;
+import dev.micolash.jasm.dock.DockingStationItem;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.guide.GuideBookItem;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
@@ -57,6 +58,8 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> ENCODING_TERMINAL = ITEMS.registerSimpleBlockItem(JasmBlocks.ENCODING_TERMINAL);
     public static final DeferredItem<BlockItem> ADVANCED_ENCODER = ITEMS.registerSimpleBlockItem(JasmBlocks.ADVANCED_ENCODER);
     public static final DeferredItem<BlockItem> RECIPE_RACK = ITEMS.registerSimpleBlockItem(JasmBlocks.RECIPE_RACK);
+    public static final DeferredItem<DockingStationItem> DOCKING_STATION = ITEMS.registerItem("docking_station",
+            properties -> new DockingStationItem(JasmBlocks.DOCKING_STATION.get(), properties.useBlockDescriptionPrefix()));
     public static final DeferredItem<BlockItem> DATA_CABLE = ITEMS.registerSimpleBlockItem(JasmBlocks.DATA_CABLE);
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ADVANCED_CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.ADVANCED_CRAFTING_SERVER);

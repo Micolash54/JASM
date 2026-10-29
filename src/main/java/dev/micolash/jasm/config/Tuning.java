@@ -39,6 +39,11 @@ public final class Tuning {
     public static final int STATION_STUCK_SECONDS = 10;
     /** Ticks a wild Bitling fed a Data Crystal follows the player who fed it. */
     public static final int WILD_FOLLOW_TICKS = 600;
+    /**
+     * Docking Station, temporary number: the network power it holds for charging the docked Deck (twenty ticks of charging at
+     * a Battery slot's base rate). It costs nothing to run.
+     */
+    public static final int DOCK_CAPACITY = 20_000;
 
     private Tuning() {}
 }

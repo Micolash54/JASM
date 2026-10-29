@@ -8,6 +8,7 @@ import dev.micolash.jasm.storage.WaferStore;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Where every Encoding Terminal stands (so a paired Deck can find its network from anywhere) and every
@@ -85,6 +87,8 @@ public final class AutocraftState extends SavedData {
     private final Map<UUID, Terminal> terminals = new LinkedHashMap<>();
     private final Map<UUID, Job> jobs = new LinkedHashMap<>();
     private final Map<UUID, Pairing> pairings = new LinkedHashMap<>();
+    /** The pairings again, by player, so a port finds its owner's Deck without going through everyone's. Rebuilt after a change. */
+    private @Nullable Map<UUID, List<Pairing>> byPlayer;
     /** The Encoding Terminal each player used last: a newly crafted Deck links there. */
     private final Map<UUID, UUID> lastTerminals = new LinkedHashMap<>();
 
@@ -120,6 +124,7 @@ public final class AutocraftState extends SavedData {
         pairings.values().removeIf(p -> p.deck().equals(deck)
                 || p.player().equals(player) && connectedTerminals.contains(p.terminal()));
         pairings.put(deck, new Pairing(terminal, player, deck));
+        byPlayer = null;
         setDirty();
     }
 
@@ -144,7 +149,15 @@ public final class AutocraftState extends SavedData {
     }
 
     public Optional<Pairing> pairedPlayer(List<UUID> terminals, UUID player) {
-        return pairings.values().stream().filter(p -> p.player().equals(player) && terminals.contains(p.terminal())).findFirst();
+        if (byPlayer == null) {
+            Map<UUID, List<Pairing>> index = new HashMap<>();
+            for (Pairing p : pairings.values()) index.computeIfAbsent(p.player(), id -> new ArrayList<>(1)).add(p);
+            byPlayer = index;
+        }
+        for (Pairing p : byPlayer.getOrDefault(player, List.of())) {
+            if (terminals.contains(p.terminal())) return Optional.of(p);
+        }
+        return Optional.empty();
     }
 
     /** Every Deck paired on one of {@code terminals}. */
@@ -162,12 +175,14 @@ public final class AutocraftState extends SavedData {
         Map<UUID, UUID> latest = new LinkedHashMap<>();
         pairings.values().stream().filter(p -> terminals.contains(p.terminal())).forEach(p -> latest.put(p.player(), p.deck()));
         if (pairings.values().removeIf(p -> terminals.contains(p.terminal()) && !p.deck().equals(latest.get(p.player())))) {
+            byPlayer = null;
             setDirty();
         }
     }
 
     public void unpairTerminal(UUID terminal) {
         if (pairings.values().removeIf(p -> p.terminal().equals(terminal))) {
+            byPlayer = null;
             setDirty();
         }
     }

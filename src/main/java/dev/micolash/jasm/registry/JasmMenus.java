@@ -14,6 +14,7 @@ import dev.micolash.jasm.bay.BayMenu;
 import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.crystal.CrystalFoundryMenu;
 import dev.micolash.jasm.deck.DeckMenu;
+import dev.micolash.jasm.dock.DockingStationMenu;
 import dev.micolash.jasm.generator.CombustionGeneratorMenu;
 import dev.micolash.jasm.pool.StoragePortMenu;
 import dev.micolash.jasm.station.BitlingStationMenu;
@@ -60,6 +61,9 @@ public final class JasmMenus {
 
     public static final Supplier<MenuType<RecipeRackMenu>> RECIPE_RACK = MENUS.register("recipe_rack",
             () -> new MenuType<>(RecipeRackMenu::new, FeatureFlags.VANILLA_SET));
+
+    public static final Supplier<MenuType<DockingStationMenu>> DOCKING_STATION = MENUS.register("docking_station",
+            () -> new MenuType<>(DockingStationMenu::new, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<CraftingServerMenu>> CRAFTING_SERVER = MENUS.register("crafting_server",
             () -> new MenuType<>(CraftingServerMenu::new, FeatureFlags.VANILLA_SET));

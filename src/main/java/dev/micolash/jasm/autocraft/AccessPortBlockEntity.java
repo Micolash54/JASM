@@ -7,6 +7,7 @@ import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.MachineAccess;
@@ -315,20 +316,22 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return pairing != null && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()));
     }
 
-    /** The Deck the port delivers to, with its player. */
-    record DeckTarget(ServerPlayer player, ItemStack deck) {}
+    /** The Deck the port delivers to, with who acts for it (its player, or a stand-in when it is docked). */
+    public record DeckTarget(ServerPlayer player, ItemStack deck) {}
 
-    /** The Deck the port delivers to, if its player is online, it is with them (or in the port) and works here; else null. */
-    @Nullable DeckTarget deckTarget(ServerLevel serverLevel) {
+    /**
+     * The Deck the port delivers to, if it can be reached (in a working Docking Station, or with its player online: carried, or
+     * in the port) and works here; else null.
+     */
+    public @Nullable DeckTarget deckTarget(ServerLevel serverLevel) {
         CableNetwork network = Networks.at(serverLevel, worldPosition);
         var pairing = network == null ? null : destination(network);
         if (pairing == null) return null;
-        ServerPlayer player = serverLevel.getServer().getPlayerList().getPlayer(pairing.player());
-        if (player == null) return null;
-        ItemStack deck = Jobs.findDeck(player, pairing.deck());
-        if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
-        if (deck.isEmpty() || !DeckItem.worksIn(deck, player.level())
-                || !DeckItem.worksIn(deck, serverLevel)
+        DeckReach reach = DeckReach.find(serverLevel.getServer(), pairing.player(), pairing.deck(), getItem(DECK_OUT));
+        if (reach == null) return null;
+        ServerPlayer player = reach.actor();
+        ItemStack deck = reach.deck();
+        if (!DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, serverLevel)
                 || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get())))
             return null;
         return new DeckTarget(player, deck);

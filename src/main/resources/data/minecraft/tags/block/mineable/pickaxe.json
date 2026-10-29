@@ -12,6 +12,7 @@
     "jasm:encoding_terminal",
     "jasm:advanced_encoder",
     "jasm:recipe_rack",
+    "jasm:docking_station",
     "jasm:data_cable",
     "jasm:crafting_server",
     "jasm:advanced_crafting_server",

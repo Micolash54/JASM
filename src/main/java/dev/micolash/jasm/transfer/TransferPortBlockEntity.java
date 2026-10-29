@@ -3,7 +3,6 @@ package dev.micolash.jasm.transfer;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.autocraft.Machines;
-import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.pool.NetworkPool;
@@ -236,16 +235,10 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
                 && crafting.due(world.getGameTime());
         if (budget <= 0 && !craft) return;
         var network = Networks.at(world, worldPosition);
-        var pairing = network == null ? null : destination(network);
-        if (pairing == null) return;
-        var player = world.getServer().getPlayerList().getPlayer(pairing.player());
-        if (player == null) return;
-        ItemStack deck = Jobs.findDeck(player, pairing.deck());
-        if (deck.isEmpty() && pairing.deck().equals(getItem(DECK_OUT).get(JasmComponents.DECK_ID.get()))) deck = getItem(DECK_OUT);
-        if (deck.isEmpty() || !DeckStorage.hasPower(deck) || !DeckItem.worksIn(deck, player.level())
-                || !DeckItem.worksIn(deck, world)
-                || !pairing.terminal().equals(deck.get(JasmComponents.DECK_NETWORK.get())))
-            return;
+        var target = network == null ? null : deckTarget(world);
+        if (target == null || !DeckStorage.hasPower(target.deck())) return;
+        ServerPlayer player = target.player();
+        ItemStack deck = target.deck();
         var store = WaferStore.get(world.getServer());
         var storage = DeckStorage.checked(store, deck, player);
         if (budget > 0) {

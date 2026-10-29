@@ -5,6 +5,7 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.deck.DeckViewTracker;
+import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
@@ -34,13 +35,17 @@ final class JobReturns {
         ItemResource target = ItemResource.of(job.target.create());
         long available = record.count(target) - targetNeeded(level, job, target);
         if (available <= 0) return false;
-        ServerPlayer player = level.getServer().getPlayerList().getPlayer(job.requester);
-        ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
-        if (deck.isEmpty() || !DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)
+        DeckReach reach = DeckReach.find(level.getServer(), job.requester, job.deck);
+        if (reach == null) return false;
+        ServerPlayer player = reach.actor();
+        ItemStack deck = reach.deck();
+        if (!DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)
                 || !JobPlanning.onDeckNetwork(deck, level, server.getBlockPos()))
             return false;
         Map<ItemResource, Long> products = Map.of(target, available);
-        return (job.toPlayer ? moveToInventory(player, record, store, products) : moveToDeck(player, deck, record, store, products)) > 0;
+        if (!job.toPlayer) return moveToDeck(player, deck, record, store, products) > 0;
+        ServerPlayer requester = inventoryOf(level, job, reach);
+        return requester != null && moveToInventory(requester, record, store, products) > 0;
     }
 
     /** Keep requested items that a running or remaining craft may still need as ingredients. */
@@ -106,12 +111,13 @@ final class JobReturns {
             finish(level, server, job);
             return;
         }
-        ServerPlayer player = level.getServer().getPlayerList().getPlayer(job.requester);
-        ItemStack deck = player == null ? ItemStack.EMPTY : findDeck(player, job.deck);
-        if (deck.isEmpty()) {
+        DeckReach reach = DeckReach.find(level.getServer(), job.requester, job.deck);
+        if (reach == null) {
             job.pause = PauseReason.WAITING_PLAYER;
             return;
         }
+        ServerPlayer player = reach.actor();
+        ItemStack deck = reach.deck();
         if (!DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)) {
             job.pause = PauseReason.DIMENSION_UPGRADE;
             return;
@@ -122,7 +128,13 @@ final class JobReturns {
             return;
         }
         if (job.toPlayer) {
-            moveToInventory(player, record, store);
+            ServerPlayer requester = inventoryOf(level, job, reach);
+            if (requester == null) {
+                // Results for the player's inventory: a docked Deck has no player with it, so they wait for them.
+                job.pause = PauseReason.WAITING_PLAYER;
+                return;
+            }
+            moveToInventory(requester, record, store);
             // Fluids never go into an inventory: they go onto the Deck's fluid wafers.
             if (holds(fluids) && DeckStorage.hasPower(deck)) {
                 moveFluidsToDeck(player, deck, fluids, store);
@@ -148,6 +160,11 @@ final class JobReturns {
             // The Deck's screen shows it: a banner, and the job in its list.
             job.pause = DeckStorage.hasPower(deck) ? PauseReason.WAITING_SPACE : PauseReason.DECK_CHARGE;
         }
+    }
+
+    /** Whose inventory a job's results for the player go into: the requester themselves, online; never a docked Deck's stand-in. */
+    private static @Nullable ServerPlayer inventoryOf(ServerLevel level, CraftingJob job, DeckReach reach) {
+        return reach.docked() ? level.getServer().getPlayerList().getPlayer(job.requester) : reach.actor();
     }
 
     /** The Deck with this identity in the player's inventory or worn Deck slot. */
