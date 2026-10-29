@@ -7,11 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_data_cable": {
+    "has_link_chip": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:data_cable"
+            "items": "jasm:link_chip"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_data_cable"
+      "has_link_chip"
     ]
   ],
   "rewards": {

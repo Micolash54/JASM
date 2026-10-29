@@ -2,13 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "I": "minecraft:iron_ingot",
-    "C": "jasm:data_cable",
-    "H": "minecraft:chest"
+    "L": "jasm:link_chip",
+    "H": "minecraft:chest",
+    "P": "jasm:power_acceptor"
   },
   "pattern": [
-    "ICI",
+    "ILI",
     "IHI",
-    "ICI"
+    "IPI"
   ],
   "result": {
     "id": "jasm:docking_station"
