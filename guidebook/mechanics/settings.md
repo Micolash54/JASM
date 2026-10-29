@@ -76,7 +76,7 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | Resonator drain (FE/t) | `resonatorDrain` | FE a powered Crystal Resonator uses each tick. |
 | Foundry drain (FE/t) | `foundryDrain` | FE the Crystal Foundry uses each tick while it grows. |
 | Battery: Basic Bitling (FE) | `batteryBasic` | FE a Basic Bitling's own battery holds. |
-| Battery: typed Bitling (FE) | `batteryBitling` | FE a typed Bitling's own battery holds. |
+| Battery: typed Bitling (FE) | `batteryBitling` | FE a typed Bitling's own battery holds: 150,000 in a new world. |
 | Battery: Nibbling (FE) | `batteryNibbling` | FE a Nibbling's own battery holds. |
 | Battery: Byteling (FE) | `batteryByteling` | FE a Byteling's own battery holds. |
 | Most blocks in a Battery | `batteryMaxBlocks` | Most blocks one Battery may have. A block that would join up a bigger one can't be placed. |
@@ -104,6 +104,8 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | Resonator interval | `resonatorInterval` | Ticks between the extra growth tries a Crystal Resonator gives each plant or budding block it touches. |
 | Resonator wear chance | `resonatorWearChance` | Chance that a Seeded Amethyst wears down one stage each time a Crystal Resonator's extra growth makes a bud grow. |
 | Foundry crystals per seed | `foundryCrystalsPerSeed` | Data Crystals, cut straight into Blank Chips, that the Crystal Foundry grows from one Crystal Seed. |
+| Workshop batch ticks | `workshopBatchTicks` | List: ticks a Chip Workshop batch of 8 chips takes with no Speed Upgrades, then one, two and so on. A single chip takes a sixth of that. Extra upgrades use the last entry. Changing this list doesn't change chip prices. |
+| Workshop power per chip (FE) | `workshopEnergyPerChip` | List: FE per chip in single and batch modes with 0 to 4 Speed Upgrades: 2,000, 2,667, 4,000, 8,000 and 16,000. Extra upgrades use the last entry. Independent of the Workshop and Bays speed lists. |
 | Typed: own-type chance | `oddsOwnTypeBitling` | Chance a typed Bitling makes chips of its own type. The other two types share the rest. |
 | Basic: Advanced chance | `advancedChanceBasic` | Chance a chip made by a Basic Bitling comes out Advanced. |
 | Typed: Advanced chance | `advancedChanceBitling` | Chance a chip made by a typed Bitling comes out Advanced. |

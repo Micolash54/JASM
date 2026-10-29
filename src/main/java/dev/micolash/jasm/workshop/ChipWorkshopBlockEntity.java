@@ -1,5 +1,7 @@
 package dev.micolash.jasm.workshop;
 
+import dev.micolash.jasm.bay.BayClock;
+import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipOdds;
@@ -54,8 +56,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Chip Workshop: a Bitling turns Blank Chips into Logic, Memory and Link chips. The Workshop itself uses no power:
- * whatever a cable or a neighbour gives it goes straight into the critter's battery, and each chip made costs the
- * critter some of that. Left without power, the critter works until its battery runs flat, then naps until it is charged.
+ * whatever a cable or a neighbour gives it goes straight into the critter's battery, as fast as it comes, and each chip
+ * is paid for when its job ends. A job starts once the battery holds one chip's cost; at the end it makes as many chips
+ * as the battery can pay for then.
  */
 public class ChipWorkshopBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     /** The 2x2 grid: Blank Chips for chips, or a Workshop recipe's ingredients. */
@@ -72,9 +75,14 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     public static final int SLOTS = UPGRADE_START + UPGRADES;
     /** What a hopper may look at: everything but the upgrade slots. */
     private static final int[] HOPPER_SLOTS = IntStream.range(0, UPGRADE_START).toArray();
-    /** Only a landing place for power on its way into the critter's battery. */
+    /**
+     * Only a landing place for power on its way into the critter's battery: it takes this much, or as much as the
+     * battery has room for if that is more.
+     */
     public static final int CAPACITY = 1_000;
     public static final int BATCH_SIZE = 8;
+    /** A single chip takes this share of a batch's time. */
+    private static final int SINGLE_SHARE = 6;
     /** Layout 1 (no number saved) had 15 outputs, layout 2 had 6; both had a single input slot before the outputs. */
     private static final int LAYOUT = 3;
     private static final int LEGACY_OUTPUTS = 15;
@@ -88,8 +96,6 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     private boolean batch;
     private boolean advancedSelected;
     private int progress;
-    /** Blank Chips the running operation will turn into chips. */
-    private int operationChips;
     private boolean napping;
     /** The critter seen last tick, so a different one put in starts fresh. Not saved: after loading, the one there is it. */
     private @Nullable Item lastCritter;
@@ -162,6 +168,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, ChipWorkshopBlockEntity workshop) {
         workshop.tick((ServerLevel) level);
+        workshop.sizeIntake();
         workshop.pushOutputs((ServerLevel) level);
         // Compared with what players were last told, since a critter can also be taken out between two ticks.
         if (workshop.looksChanged(workshop.looks())) {
@@ -264,35 +271,46 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
             need = gridInput().items().stream().allMatch(ItemStack::isEmpty) ? WorkshopNeed.NONE : WorkshopNeed.NO_RECIPE;
         }
         follow("");
-        int perChip = SpeedUpgradeItem.power(Tuning.BITLING_DRAIN_PER_CHIP, upgrades);
-        if (!napping && BitlingItem.energy(critter) < Math.max(1, perChip)) {
-            napping = true;
-            progress = 0;
-        }
-        if (napping) {
-            // It wakes up once its battery is full again.
-            if (BitlingItem.energy(critter) >= bitling.battery()) {
-                napping = false;
+        int perChip = chipPower(upgrades);
+        int affordable = perChip <= 0 ? Integer.MAX_VALUE : BitlingItem.energy(critter) / perChip;
+        if (affordable == 0) {
+            // Not even one chip's worth: it naps, and wakes as soon as it has that much.
+            if (!napping) {
+                napping = true;
+                progress = 0;
             }
             return;
         }
-        int chips = chipsThisOperation(critter, perChip);
+        napping = false;
+        int chips = Math.min(Math.min(batch ? BATCH_SIZE : 1, blankChips()), affordable);
         if (chips == 0) {
             // Every Blank Chip was taken out: the next operation starts from the beginning.
             progress = 0;
             return;
         }
-        // Chips taken out part way through are simply not made; ones added wait for the next operation.
-        operationChips = progress == 0 ? chips : Math.min(operationChips, chips);
-        if (!roomFor(bitling, operationChips)) {
+        // The count follows the Blank Chips and the battery right up to the end: chips taken out are not made, and
+        // power that comes in meanwhile pays for more.
+        if (!roomFor(bitling, chips)) {
             return;
         }
         working = true;
         if (++progress >= ticksForMode()) {
             progress = 0;
-            finish(level, critter, bitling, operationChips, perChip);
+            finish(level, critter, bitling, chips, perChip);
         }
         setChanged();
+    }
+
+    /** FE one chip costs with the Workshop's own price list. */
+    public static int chipPower(int upgrades) {
+        var table = JasmConfig.WORKSHOP_ENERGY_PER_CHIP.get();
+        return table.isEmpty() ? Tuning.BITLING_DRAIN_PER_CHIP : table.get(Math.clamp(upgrades, 0, table.size() - 1));
+    }
+
+    /** Ticks a chip operation takes: a batch from the Workshop's own speed table, a single chip a sixth of that, rounded. */
+    public static int chipTicks(boolean batch, int upgrades) {
+        int batchTicks = BayClock.ticksFor(upgrades, JasmConfig.WORKSHOP_BATCH_TICKS.get());
+        return batch ? batchTicks : Math.max(1, (batchTicks + SINGLE_SHARE / 2) / SINGLE_SHARE);
     }
 
     /**
@@ -425,6 +443,19 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         return Math.min(100, progress * 100 / Math.max(1, ticksForMode()));
     }
 
+    /**
+     * Lets in as much power as the critter's battery has room for, so charging is only as quick as the supply. Set after
+     * each tick, ready for what cables and generators give before the next one.
+     */
+    private void sizeIntake() {
+        ItemStack critter = items.get(CRITTER);
+        int room = critter.getItem() instanceof BitlingItem bitling ? Math.max(0, bitling.battery() - BitlingItem.energy(critter)) : 0;
+        int size = Math.max(CAPACITY, room);
+        if (energy.getCapacityAsInt() != size) {
+            energy.resize(size);
+        }
+    }
+
     /** Moves the power the Workshop was given into the critter's battery. */
     private void feed(ItemStack critter, BitlingItem bitling) {
         int amount = energy.getAmountAsInt();
@@ -443,13 +474,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         if (recipe != null && progressFor.equals(recipe.id().toString())) {
             return recipeTicks(recipe.value());
         }
-        return SpeedUpgradeItem.ticks(batch ? Tuning.WORKSHOP_TICKS_PER_BATCH : Tuning.WORKSHOP_TICKS_PER_OPERATION, upgrades);
-    }
-
-    /** Chips the next operation makes: one, or up to a batch, as many as there are Blank Chips and battery for. */
-    private int chipsThisOperation(ItemStack critter, int perChip) {
-        int chips = Math.min(batch ? BATCH_SIZE : 1, blankChips());
-        return perChip <= 0 ? chips : Math.min(chips, BitlingItem.energy(critter) / perChip);
+        return chipTicks(batch, upgrades);
     }
 
     /**
@@ -773,13 +798,14 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         output.putBoolean("advanced", advancedSelected);
         output.putInt("progress", progress);
         output.putString("progress_for", progressFor);
-        output.putInt("operation_chips", operationChips);
         output.putBoolean("napping", napping);
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
     }
 
     @Override
     protected void loadAdditional(ValueInput input) {
+        // Power that came in after the last tick may be more than the usual landing place: keep all of it.
+        energy.resize(Math.max(CAPACITY, input.getIntOr("energy", 0)));
         super.loadAdditional(input);
         items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
         overflow.clear();
@@ -796,7 +822,6 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         advancedSelected = input.getBooleanOr("advanced", false);
         progress = Math.max(0, input.getIntOr("progress", 0));
         progressFor = input.getStringOr("progress_for", "");
-        operationChips = Math.max(0, input.getIntOr("operation_chips", 0));
         napping = input.getBooleanOr("napping", false);
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
     }

@@ -68,7 +68,7 @@ On this world you can also craft one:
 Surround a Basic Bitling with 8 chips of one type in a crafting grid to get a Logic, Memory or Link Bitling.
 
 * Mostly makes its own type, sometimes Advanced.
-* Battery of 100,000 FE.
+* Battery of 150,000 FE.
 * [Trains](../mechanics/training-bitlings.md) on every chip it makes, then grows into a Nibbling.
 
 <br />

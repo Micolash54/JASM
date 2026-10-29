@@ -99,7 +99,7 @@ public final class JasmConfig {
 
     public static final ModConfigSpec.IntValue BATTERY_BITLING = BUILDER
             .comment("FE the battery of a typed Bitling holds")
-            .defineInRange("batteryBitling", 100_000, 1, Integer.MAX_VALUE);
+            .defineInRange("batteryBitling", 150_000, 1, Integer.MAX_VALUE);
 
     public static final ModConfigSpec.IntValue BATTERY_NIBBLING = BUILDER
             .comment("FE the battery of a Nibbling holds")
@@ -160,6 +160,14 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue FOUNDRY_CRYSTALS_PER_SEED = BUILDER
             .comment("Data Crystals, cut straight into Blank Chips, that the Crystal Foundry grows from one Crystal Seed")
             .defineInRange("foundryCrystalsPerSeed", 16, 1, 1_000);
+
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> WORKSHOP_BATCH_TICKS = BUILDER
+            .comment("Ticks a Chip Workshop batch of 8 chips takes with 0 to 4 Speed Upgrades. A single chip takes a sixth of that. A four-entry list gives the fourth upgrade half the last entry; otherwise extra upgrades use the last. The power a chip costs doesn't change with these")
+            .defineList("workshopBatchTicks", List.of(1_200, 600, 300, 150, 75), () -> 1_200, value -> value instanceof Integer i && i >= 1);
+
+    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> WORKSHOP_ENERGY_PER_CHIP = BUILDER
+            .comment("FE per chip in the Chip Workshop, in single and batch modes, with 0 to 4 Speed Upgrades. Extra upgrades use the last entry. Independent of the Workshop and Bays speed lists")
+            .defineList("workshopEnergyPerChip", List.of(2_000, 2_667, 4_000, 8_000, 16_000), () -> 2_000, value -> value instanceof Integer i && i >= 0);
 
     public static final ModConfigSpec.DoubleValue ODDS_OWN_TYPE_BITLING = BUILDER
             .comment("Chance a young typed Bitling makes its own chip type; the other two types share the rest")
