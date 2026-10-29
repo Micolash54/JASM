@@ -7,11 +7,11 @@
       "I": "minecraft:iron_ingot",
       "C": "minecraft:copper_ingot",
       "R": "minecraft:redstone",
-      "F": "minecraft:furnace"
+      "B": "minecraft:blast_furnace"
     },
     "pattern": [
       "ICI",
-      "RFR",
+      "RBR",
       "IRI"
     ],
     "result": {

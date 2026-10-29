@@ -5,14 +5,15 @@
     "type": "jasm:upgrade",
     "key": {
       "X": "minecraft:diamond",
-      "R": "minecraft:redstone",
+      "K": "jasm:link_chip",
       "P": "jasm:basic_combustion_generator",
-      "K": "jasm:link_chip"
+      "B": "jasm:blank_upgrade",
+      "O": "jasm:power_acceptor"
     },
     "pattern": [
       "XKX",
-      "RPR",
-      "XRX"
+      "PBP",
+      "XOX"
     ],
     "source": "jasm:basic_combustion_generator",
     "result": {

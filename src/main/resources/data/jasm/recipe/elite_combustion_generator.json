@@ -5,14 +5,15 @@
     "type": "jasm:upgrade",
     "key": {
       "X": "minecraft:emerald",
-      "R": "minecraft:redstone",
+      "A": "jasm:advanced_logic_chip",
       "P": "jasm:advanced_combustion_generator",
-      "A": "jasm:advanced_logic_chip"
+      "B": "jasm:blank_upgrade",
+      "O": "jasm:power_acceptor"
     },
     "pattern": [
       "XAX",
-      "RPR",
-      "XRX"
+      "PBP",
+      "XOX"
     ],
     "source": "jasm:advanced_combustion_generator",
     "result": {
