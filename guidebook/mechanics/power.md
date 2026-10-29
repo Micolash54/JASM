@@ -37,8 +37,8 @@ Most JASM blocks run on FE.
 | --- | --- |
 | Network Encoder | 5 FE a tick |
 | Recipe Rack | 2 FE a tick |
-| Crafting Server | 20 FE a tick, plus its Processors |
-| Advanced Crafting Server | 40 FE a tick, plus its Processors |
+| Crafting Server | what its Processors use, only while it has a job |
+| Advanced Crafting Server | what its Processors use, only while it has a job |
 | Access Port | 2 FE a tick |
 | Network Brain | 8 FE a tick alone, 24 with one floor, up to 5,000 with 8 floors |
 | Crystal Resonator | 10 FE a tick |

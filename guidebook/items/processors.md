@@ -20,7 +20,7 @@ item_ids:
 
 Processors go in a [Crafting Server](crafting-server.md). Each one runs crafts side by side, so more Processors means a job finishes sooner.
 
-| Processor | Crafts at once | Adds to the server's use |
+| Processor | Crafts at once | Uses while its server has a job |
 | --- | --- | --- |
 | Basic | 1 | 10 FE a tick |
 | Advanced | 4 | 30 FE a tick |

@@ -25,9 +25,8 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A block of the crafting network: it adopts the network's owner, holds some FE, and uses a flat amount every tick,
- * busy or idle. Without enough for the tick it stops working
- * until charged again.
+ * A block of the crafting network: it adopts the network's owner, holds some FE, and uses a flat amount every tick
+ * (some only while they have work). Without enough for the tick it stops working until charged again.
  */
 public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     private static final int PUSH_TICKS = 10;
@@ -161,6 +160,11 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return true;
     }
 
+    /** Whether the block pays this tick. One that only pays while it has work says no when idle, but still counts as powered while it holds a tick's cost. */
+    protected boolean paysThisTick() {
+        return true;
+    }
+
     /** Pays for one tick. Returns whether the block works this tick: not while its network is full. */
     public boolean payForTick() {
         if (checkStopped() || !readyToRun()) {
@@ -170,7 +174,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         int drain = drainPerTick();
         int amount = energy.getAmountAsInt();
         running = amount >= drain;
-        if (running && drain > 0) {
+        if (running && drain > 0 && paysThisTick()) {
             energy.set(amount - drain);
         }
         return running;
@@ -200,7 +204,7 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
 
     /** FE a tick it is paying right now: its cost while the last tick was paid for, otherwise nothing. */
     public int usingNow() {
-        return running() ? Math.max(0, drainPerTick()) : 0;
+        return running() && paysThisTick() ? Math.max(0, drainPerTick()) : 0;
     }
 
     /**

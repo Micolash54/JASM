@@ -1,6 +1,5 @@
 package dev.micolash.jasm.autocraft;
 
-import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import java.util.List;
@@ -58,12 +57,6 @@ public class AdvancedCraftingServerBlockEntity extends CraftingServerBlockEntity
     @Override
     public MenuType<CraftingServerMenu> menuType() {
         return JasmMenus.ADVANCED_CRAFTING_SERVER.get();
-    }
-
-    /** A bigger machine: twice the Crafting Server's own use, plus its Processors as usual. */
-    @Override
-    public int drainPerTick() {
-        return super.drainPerTick() + JasmConfig.SERVER_DRAIN.getAsInt();
     }
 
     @Override

@@ -17,7 +17,7 @@ The Crafting Server does the work. It runs one crafting job at a time. [Processo
 | At a glance | |
 | --- | --- |
 | Slots | 4 for Processors, 4 for Storage Modules |
-| Uses | 20 FE a tick, plus its Processors |
+| Uses | what its Processors use, only while it has a job. Nothing when idle |
 | Each craft takes | half a second, whatever the Processor |
 | Counts toward | the [machine limit](network-brain.md) |
 

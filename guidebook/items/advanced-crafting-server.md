@@ -17,7 +17,7 @@ A [Crafting Server](crafting-server.md) two blocks tall, with room for ten of ev
 | At a glance | |
 | --- | --- |
 | Slots | 10 for Processors, 10 for Storage Modules |
-| Uses | 40 FE a tick, plus its Processors |
+| Uses | what its Processors use, only while it has a job. Nothing when idle |
 | Counts toward | the [machine limit](network-brain.md) |
 
 <br />

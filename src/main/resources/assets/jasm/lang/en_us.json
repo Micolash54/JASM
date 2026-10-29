@@ -251,7 +251,6 @@
   "jasm.configuration.resonatorWearChance": "Resonator wear chance",
   "jasm.configuration.seededWearChance": "Seeded wear chance",
   "jasm.configuration.sendBlocksPerSecond": "Send blocks per second",
-  "jasm.configuration.serverDrain": "Server drain (FE/t)",
   "jasm.configuration.spawnRate": "Spawn rate (%)",
   "jasm.configuration.starter": "Starter Deck",
   "jasm.configuration.tankBuckets": "Tank buckets",

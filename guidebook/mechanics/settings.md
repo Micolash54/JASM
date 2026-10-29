@@ -69,11 +69,10 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | --- | --- | --- |
 | Encoder drain (FE/t) | `terminalDrain` | FE a Network Encoder uses each tick. |
 | Rack drain (FE/t) | `rackDrain` | FE a Recipe Rack uses each tick. |
-| Server drain (FE/t) | `serverDrain` | FE a Crafting Server uses each tick on its own, busy or idle. |
 | Port drain (FE/t) | `portDrain` | FE an Access Port uses each tick. |
-| Basic Processor use (FE/t) | `basicProcessorDrain` | FE each Basic Processor adds to its server's use each tick. |
-| Adv. Processor use (FE/t) | `advancedProcessorDrain` | FE each Advanced Processor adds to its server's use each tick. |
-| Elite Processor use (FE/t) | `eliteProcessorDrain` | FE each Elite Processor adds to its server's use each tick. |
+| Basic Processor use (FE/t) | `basicProcessorDrain` | FE a Basic Processor uses each tick while its server has a job. |
+| Adv. Processor use (FE/t) | `advancedProcessorDrain` | FE an Advanced Processor uses each tick while its server has a job. |
+| Elite Processor use (FE/t) | `eliteProcessorDrain` | FE an Elite Processor uses each tick while its server has a job. |
 | Resonator drain (FE/t) | `resonatorDrain` | FE a powered Crystal Resonator uses each tick. |
 | Foundry drain (FE/t) | `foundryDrain` | FE the Crystal Foundry uses each tick while it grows. |
 | Battery: Basic Bitling (FE) | `batteryBasic` | FE a Basic Bitling's own battery holds. |

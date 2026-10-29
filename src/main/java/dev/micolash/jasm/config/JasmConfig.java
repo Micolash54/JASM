@@ -69,24 +69,20 @@ public final class JasmConfig {
             .comment("FE a Recipe Rack uses each tick")
             .defineInRange("rackDrain", 2, 0, 1_000_000);
 
-    public static final ModConfigSpec.IntValue SERVER_DRAIN = BUILDER
-            .comment("FE a Crafting Server uses each tick on its own, busy or idle")
-            .defineInRange("serverDrain", 20, 0, 1_000_000);
-
     public static final ModConfigSpec.IntValue PORT_DRAIN = BUILDER
             .comment("FE an Access Port uses each tick")
             .defineInRange("portDrain", 2, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_BASIC = BUILDER
-            .comment("FE each Basic Processor adds to its server's use per tick")
+            .comment("FE a Basic Processor uses each tick while its server has a job")
             .defineInRange("basicProcessorDrain", 10, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_ADVANCED = BUILDER
-            .comment("FE each Advanced Processor adds to its server's use per tick")
+            .comment("FE an Advanced Processor uses each tick while its server has a job")
             .defineInRange("advancedProcessorDrain", 30, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_ELITE = BUILDER
-            .comment("FE each Elite Processor adds to its server's use per tick")
+            .comment("FE an Elite Processor uses each tick while its server has a job")
             .defineInRange("eliteProcessorDrain", 80, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue RESONATOR_DRAIN = BUILDER

@@ -1,6 +1,5 @@
 package dev.micolash.jasm.autocraft;
 
-import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -152,9 +151,10 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         }
     }
 
+    /** What its Processors use while it works; the server itself uses nothing. */
     @Override
     public int drainPerTick() {
-        int drain = JasmConfig.SERVER_DRAIN.getAsInt();
+        int drain = 0;
         for (int i = 0; i < processorSlots; i++) {
             ProcessorTier tier = ServerPartItem.processorOf(items.get(i));
             if (tier != null) {
@@ -162,6 +162,12 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
             }
         }
         return drain;
+    }
+
+    /** Only a server with a job pays, even a job that is waiting for ingredients or a machine. */
+    @Override
+    protected boolean paysThisTick() {
+        return job != null;
     }
 
     /** Crafts this server runs at the same time. */
