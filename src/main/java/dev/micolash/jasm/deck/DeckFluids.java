@@ -98,6 +98,7 @@ public final class DeckFluids {
         }
         if (moved > 0) {
             play(player, key.getFluidType().getSound(SoundActions.BUCKET_FILL));
+            DeckBucket.forgetIfGone(deck, player, storage);
         } else {
             Notices.bad(player, Component.translatable("message.jasm.deck.fluid.no_fill"));
         }

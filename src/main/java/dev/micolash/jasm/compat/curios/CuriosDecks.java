@@ -76,6 +76,7 @@ public final class CuriosDecks implements WornDecks.Slots {
             if (context.entity() instanceof Player player && player.level() instanceof ServerLevel level && SLOT.equals(context.identifier())) {
                 WornDeckKeeper.wornTick(player, stack);
                 DeckItem.forgetStaleLink(stack, level);
+                DeckItem.forgetEmptyPick(stack, level, player);
             }
         }
 

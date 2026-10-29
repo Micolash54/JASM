@@ -141,7 +141,9 @@ public final class DeckViewTracker {
                 sent.contents.put(key, t[0]);
                 if (t[1] > 0) sent.chest.put(key, t[1]);
             });
-            sendFluids(player, menu.containerId, sent, totals(fluids, pool == null ? Map.of() : pool.fluidContents()));
+            Map<FluidResource, long[]> fluidTotals = totals(fluids, pool == null ? Map.of() : pool.fluidContents());
+            if (menu.isCrafting()) DeckBucket.forgetIfUnlisted(menu.deck(), fluidTotals, pool);
+            sendFluids(player, menu.containerId, sent, fluidTotals);
             sendMaterials(player, menu.containerId, sent, pool == null ? Map.of() : pool.materialContents());
         }
         int energy = DeckItem.energy(menu.deck());

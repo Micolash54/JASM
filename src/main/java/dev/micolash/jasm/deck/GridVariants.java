@@ -1,6 +1,10 @@
 package dev.micolash.jasm.deck;
 
+import dev.micolash.jasm.core.Training;
+import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.workshop.BitlingItem;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +57,38 @@ public final class GridVariants {
             }
         }
         return null;
+    }
+
+    /** A critter drawn with a training bar, as the evolve recipes show it: the slot wants one with a full bar. */
+    public static boolean wantsTrained(ItemResource option) {
+        return option.getItem() instanceof BitlingItem critter && critter.trainingRequired() > 0
+                && option.toStack(1).has(JasmComponents.TRAINING.get());
+    }
+
+    /**
+     * {@code options} with each wanted trained critter swapped for the copies in {@code present} whose bar is full,
+     * whatever else is on them (charge, name). Nothing is left for it when only untrained ones are there.
+     */
+    public static List<ItemResource> withTrained(List<ItemResource> options, Map<ItemResource, Long> present) {
+        if (options.stream().noneMatch(GridVariants::wantsTrained)) {
+            return options;
+        }
+        List<ItemResource> result = new ArrayList<>();
+        for (ItemResource option : options) {
+            if (!wantsTrained(option)) {
+                result.add(option);
+                continue;
+            }
+            BitlingItem critter = (BitlingItem) option.getItem();
+            for (Map.Entry<ItemResource, Long> entry : present.entrySet()) {
+                ItemResource key = entry.getKey();
+                if (entry.getValue() > 0 && key.getItem() == critter && !result.contains(key)
+                        && Training.full(BitlingItem.trained(key.toStack(1)), critter.trainingRequired())) {
+                    result.add(key);
+                }
+            }
+        }
+        return result;
     }
 
     public static boolean isWafer(ItemResource key) {

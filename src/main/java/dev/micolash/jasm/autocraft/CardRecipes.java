@@ -1,10 +1,13 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.core.Training;
 import dev.micolash.jasm.crafting.RecipeChoices;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.workshop.BitlingItem;
+import dev.micolash.jasm.workshop.EvolveRecipe;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.NonNullList;
@@ -191,7 +194,8 @@ public final class CardRecipes {
          * same data, so a worn or enchanted tool is never used up by accident; an empty wafer is the exception, as it
          * holds nothing (its settings go, as at a crafting table). A slot whose item the recipe hands back
          * keeps to that item, at any wear: a card with a regular crystal never takes a Master one, and a crystal that
-         * returns with a little wear keeps serving.
+         * returns with a little wear keeps serving. A slot holding a fully trained critter takes any copy of it, whatever
+         * its charge or name; the recipe turns away the ones whose bar isn't full.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
             ItemStack there = encoded.get(slot);
@@ -202,7 +206,11 @@ public final class CardRecipes {
                 return true;
             }
             ItemStack stack = candidate.toStack(1);
-            if (returnsSelf(slot)) {
+            if (trainedCritter(slot)) {
+                if (!stack.is(there.getItem())) {
+                    return false;
+                }
+            } else if (returnsSelf(slot)) {
                 if (!sameBesidesWear(stack, there)) {
                     return false;
                 }
@@ -225,6 +233,13 @@ public final class CardRecipes {
                     && WaferEligibility.isEmptyWafer(WaferStore.get(level.getServer()), stack);
         }
 
+        /** Whether the recipe needs the critter in {@code slot} to have a full training bar. */
+        private boolean trainedCritter(int slot) {
+            ItemStack there = encoded.get(slot);
+            return recipe instanceof EvolveRecipe && there.getItem() instanceof BitlingItem critter
+                    && Training.full(BitlingItem.trained(there), critter.trainingRequired());
+        }
+
         /**
          * Whether these nine inputs really make this card's output. A wafer made from used wafers carries a note of
          * which ones went in; that note isn't part of what the card makes.
@@ -236,6 +251,10 @@ public final class CardRecipes {
             }
             ItemStack made = recipe.assemble(input);
             made.remove(JasmComponents.WAFER_MERGE.get());
+            if (recipe instanceof EvolveRecipe) {
+                // the grown critter keeps the charge and name of the one that went in
+                return made.is(output.getItem()) && made.getCount() == output.getCount();
+            }
             return ItemStack.isSameItemSameComponents(made, output);
         }
     }

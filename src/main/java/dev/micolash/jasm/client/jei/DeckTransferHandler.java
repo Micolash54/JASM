@@ -103,13 +103,15 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
                 }
                 continue;
             }
-            ItemResource found = options.stream().filter(o -> available.getOrDefault(o, 0L) > 0).findFirst().orElse(null);
+            // a trained critter in the recipe means any copy with a full bar, so only those are looked for
+            List<ItemResource> usable = GridVariants.withTrained(options, available);
+            ItemResource found = usable.stream().filter(o -> available.getOrDefault(o, 0L) > 0).findFirst().orElse(null);
             if (found == null) {
-                found = GridVariants.best(options, available);
+                found = GridVariants.best(usable, available);
             }
             if (found == null) {
                 // the screen can't see inside a wafer; the server takes only empty ones
-                found = GridVariants.emptyWafer(options, available, Map.of(), key -> !WaferMerge.isPending(key.toStack(1)));
+                found = GridVariants.emptyWafer(usable, available, Map.of(), key -> !WaferMerge.isPending(key.toStack(1)));
             }
             if (found == null) {
                 ItemResource craft = options.stream().filter(menu.view().craftable()::contains).findFirst().orElse(null);

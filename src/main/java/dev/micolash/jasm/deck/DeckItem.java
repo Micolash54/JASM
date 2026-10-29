@@ -242,6 +242,14 @@ public class DeckItem extends Item implements WaferHolderItem {
     public void inventoryTick(ItemStack stack, ServerLevel level, Entity owner, @Nullable EquipmentSlot slot) {
         super.inventoryTick(stack, level, owner, slot);
         forgetStaleLink(stack, level);
+        forgetEmptyPick(stack, level, owner);
+    }
+
+    /** Once a second: a Crafting Deck whose picked fluid ran out by some other route forgets the pick. Also run for worn Decks. */
+    public static void forgetEmptyPick(ItemStack stack, ServerLevel level, Entity owner) {
+        if (owner instanceof ServerPlayer player && level.getGameTime() % 20 == 0) {
+            DeckBucket.forgetIfGone(stack, player);
+        }
     }
 
     /** Once a second: a Deck that another Deck replaced at its terminal forgets the link. Also run for worn Decks. */

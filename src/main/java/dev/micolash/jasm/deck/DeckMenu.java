@@ -710,7 +710,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
      * Fills the grid for a recipe (JEI's "+"): the grid is emptied onto the wafers first, then each slot takes one of
      * its allowed items (or as many sets as fit, with {@code max}), from the wafers first and then the inventory,
      * picking the item there is most of. A slot asking for a plain item also takes it with extra data (crop stats on
-     * seeds, say) when no plain copy is there, the version there is most of. A slot asking for a wafer takes any empty
+     * seeds, say) when no plain copy is there, the version there is most of. A trained critter in the recipe takes any copy with a full training bar, and none without. A slot asking for a wafer takes any empty
      * wafer of that kind, filter rows and name or not, a different one per slot; a wafer holding anything is never taken.
      * Slots with nothing to take stay empty, so a recipe the player can only partly pay for still places what they have.
      */
@@ -747,7 +747,15 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
             ItemResource best = null;
             long bestCount = 0;
             boolean empty = grid.getItem(slot).isEmpty();
-            for (ItemResource option : empty ? wanted.get(slot) : List.<ItemResource>of()) {
+            List<ItemResource> options = wanted.get(slot);
+            if (empty && options.stream().anyMatch(GridVariants::wantsTrained)) {
+                // a trained critter in the recipe means any copy with a full bar
+                if (present == null) {
+                    present = onHand(player, storage);
+                }
+                options = GridVariants.withTrained(options, present);
+            }
+            for (ItemResource option : empty ? options : List.<ItemResource>of()) {
                 if (option.isEmpty() || !allowedInGrid(option.toStack(1)) || !fillable(store, option)) {
                     continue;
                 }
@@ -758,13 +766,13 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
                     bestCount = count;
                 }
             }
-            if (best == null && empty && !wanted.get(slot).isEmpty()) {
+            if (best == null && empty && !options.isEmpty()) {
                 if (present == null) {
                     present = onHand(player, storage);
                 }
-                best = GridVariants.best(wanted.get(slot), present);
+                best = GridVariants.best(options, present);
                 if (best == null) {
-                    best = GridVariants.emptyWafer(wanted.get(slot), present, wafersTaken, key -> fillable(store, key));
+                    best = GridVariants.emptyWafer(options, present, wafersTaken, key -> fillable(store, key));
                 }
                 if (best != null) {
                     available.putIfAbsent(best, present.get(best));

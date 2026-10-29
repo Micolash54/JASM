@@ -3,6 +3,8 @@ package dev.micolash.jasm.deck;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.Notices;
+import dev.micolash.jasm.pool.NetworkPool;
+import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -38,6 +40,7 @@ import net.neoforged.neoforge.common.util.BlockSnapshot;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import java.util.Map;
 import java.util.function.IntFunction;
 import org.jspecify.annotations.Nullable;
 
@@ -105,6 +108,42 @@ public final class DeckBucket {
         } else {
             deck.set(JasmComponents.DECK_BUCKET.get(), fluid);
         }
+    }
+
+    /**
+     * Forgets the pick when the Deck holds none of that fluid any more, so its icon stops showing a drop. Does nothing
+     * when a linked Deck can't reach its network, which may hold the fluid. Returns whether it forgot.
+     */
+    public static boolean forgetIfGone(ItemStack deck, ServerPlayer player, DeckStorage.Checked storage) {
+        FluidResource key = picked(deck);
+        if (key.isEmpty() || !seesNetwork(deck, player) || storage.countFluid(key) > 0) {
+            return false;
+        }
+        deck.remove(JasmComponents.DECK_BUCKET.get());
+        return true;
+    }
+
+    /** As above, for a Deck nobody has a storage view of: the once-a-second check on Decks a player carries. */
+    public static void forgetIfGone(ItemStack deck, ServerPlayer player) {
+        if (deck.has(JasmComponents.DECK_BUCKET.get()) && DeckItem.worksIn(deck, player.level())) {
+            forgetIfGone(deck, player, DeckStorage.checked(WaferStore.get(player.level().getServer()), deck, player));
+        }
+    }
+
+    /** As above, for an open Deck screen: the pick must be one of the fluids its list shows, or the player can't undo it. */
+    public static void forgetIfUnlisted(ItemStack deck, Map<FluidResource, long[]> listed, @Nullable NetworkPool pool) {
+        FluidResource key = picked(deck);
+        if (key.isEmpty() || (pool == null && deck.has(JasmComponents.DECK_NETWORK.get()))) {
+            return;
+        }
+        long[] shown = listed.get(key);
+        if (shown == null || shown[0] <= 0) {
+            deck.remove(JasmComponents.DECK_BUCKET.get());
+        }
+    }
+
+    private static boolean seesNetwork(ItemStack deck, ServerPlayer player) {
+        return !deck.has(JasmComponents.DECK_NETWORK.get()) || PoolAccess.forDeck(player, deck) != null;
     }
 
     /** The vanilla bucket that holds {@code fluid}, or null when the fluid has none and so can't be placed. */
@@ -244,6 +283,7 @@ public final class DeckBucket {
         }
         var storage = DeckStorage.checked(WaferStore.get(level.getServer()), deck, player);
         if (storage.countFluid(key) < BUCKET) {
+            forgetIfGone(deck, player, storage);
             miss(deck, Reason.OUT_OF_FLUID, key);
             return;
         }
@@ -261,6 +301,7 @@ public final class DeckBucket {
             return;
         }
         deck.remove(JasmComponents.DECK_BUCKET_MISS.get());
+        forgetIfGone(deck, player, storage);
     }
 
     private static boolean holdsLiquid(Level level, BlockPos pos, BlockState state, Fluid fluid) {

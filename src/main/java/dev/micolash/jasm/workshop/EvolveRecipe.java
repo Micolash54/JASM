@@ -93,8 +93,21 @@ public class EvolveRecipe extends NormalCraftingRecipe {
         return List.of(new ShapedCraftingRecipeDisplay(
                 pattern.width(),
                 pattern.height(),
-                pattern.ingredients().stream().map(e -> e.map(Ingredient::display).orElse(SlotDisplay.Empty.INSTANCE)).toList(),
+                pattern.ingredients().stream().map(e -> e.map(this::shown).orElse(SlotDisplay.Empty.INSTANCE)).toList(),
                 new SlotDisplay.ItemStackSlotDisplay(result),
                 new SlotDisplay.ItemSlotDisplay(Items.CRAFTING_TABLE)));
+    }
+
+    /** The critter slot shows a critter with a full training bar, which is what the recipe asks for. */
+    private SlotDisplay shown(Ingredient ingredient) {
+        List<SlotDisplay> critters = ingredient.items()
+                .map(holder -> new ItemStack(holder.value()))
+                .filter(stack -> stack.getItem() instanceof BitlingItem && source.test(stack))
+                .<SlotDisplay>map(stack -> {
+                    stack.set(JasmComponents.TRAINING.get(), ((BitlingItem) stack.getItem()).trainingRequired());
+                    return new SlotDisplay.ItemStackSlotDisplay(ItemStackTemplate.fromNonEmptyStack(stack));
+                })
+                .toList();
+        return critters.isEmpty() ? ingredient.display() : critters.size() == 1 ? critters.getFirst() : new SlotDisplay.Composite(critters);
     }
 }
