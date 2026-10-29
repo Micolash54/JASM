@@ -52,7 +52,7 @@ Ports move items and fluids between the network and the blocks next to them.
 * **Thin:** sits on a [Data Cable](data-cables.md) face and works on the block in front of it.
 * **Block:** joins the network like a machine and works on every block it touches, with one set of filters and one speed shared between them.
 * On a JASM machine, a block port only moves what that face's I/O setting allows.
-* A block Input or Two-Way Port also takes items pushed into it by hoppers, pipes or machines.
+* Machines, hoppers and pipes can push items and fluids into an Input or Two-Way Port, and they go into the network's storage when there's room. A thin one takes them only through its outward face.
 
 Convert one shape into the other in a crafting grid.
 

@@ -105,9 +105,12 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     }
     @Override
     public boolean hasMachine(Direction side) { return false; }
-    /** A Transfer Port runs its own operations, so its allowance is spent when due or not at all. */
+    /**
+     * A Transfer Port's own operations spend their allowance when due or not at all. One that takes pushes keeps what they
+     * leave, up to a second's worth, for what is pushed in on any tick.
+     */
     @Override
-    protected boolean savesAllowance() { return false; }
+    protected PortOperations.Saving saving() { return takesPushes() ? PortOperations.Saving.PUSHES : PortOperations.Saving.NONE; }
     @Override
     protected boolean canPowerSide(Direction side) { return works(side); }
 
@@ -142,8 +145,21 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     }
 
     protected void servedChanged() {}
-    /** Only a Full Input or Input Output Port takes items pushed into it, by hoppers, pipes or a machine's Output face. */
-    public boolean takesPushes() { return full() && kind.imports(); }
+    /**
+     * Only an Input or Input Output Port takes items and fluid pushed into it, by hoppers, pipes or a machine's Output
+     * face: a full one on every face, a thin one through its mounted face. Its input filter decides what goes in.
+     */
+    @Override
+    public boolean takesPushes() { return kind.imports(); }
+
+    @Override
+    protected boolean acceptsPushedFluid(FluidResource fluid) { return takesPushes() && filters.input().rank(fluid.getFluid()) >= 0; }
+
+    /** No crafting job ever waits on a Transfer Port. */
+    @Override
+    protected long creditPushedFluid(ServerLevel level, @Nullable Direction side, FluidResource fluid, long amount, boolean simulate) {
+        return 0;
+    }
 
     @Override
     public int[] getSlotsForFace(Direction side) { return takesPushes() ? INTAKE : NO_SLOTS; }
@@ -211,6 +227,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         payForTick();
         sendPower();
         processDeckLink();
+        tickIntake();
         if (!(level instanceof ServerLevel world) || !running() || networkBlocked()) return;
         if (redstonePaused()) return;
         int budget = transferBudget();

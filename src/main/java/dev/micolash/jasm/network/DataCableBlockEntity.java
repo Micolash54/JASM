@@ -34,7 +34,6 @@ import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 import org.jspecify.annotations.Nullable;
 
 /** A cable's block, and the independent Access Ports and thin Power Acceptors mounted on its faces. */
@@ -85,16 +84,16 @@ public class DataCableBlockEntity extends BlockEntity {
         return mask;
     }
 
-    /** The mounted part, rather than the cable, supplies this face's item input. */
+    /** The port mounted on that face, rather than the cable, takes what is pushed in there, if it takes pushes at all. */
     public @Nullable ResourceHandler<ItemResource> itemInput(@Nullable Direction side) {
         var port = side == null ? null : ports.get(side);
-        return port instanceof AttachedPort access ? access.itemInput : null;
+        return port == null ? null : port.itemInput(side);
     }
 
-    /** A thin Access Port's fluid input, on its mounted face only. */
+    /** As {@link #itemInput}, for fluid. */
     public @Nullable ResourceHandler<FluidResource> fluidInput(@Nullable Direction side) {
         var port = side == null ? null : ports.get(side);
-        return port instanceof AttachedPort access ? access.fluidInput(side) : null;
+        return port == null ? null : port.fluidInput(side);
     }
 
     public boolean attach(Direction side, ItemStack stack, Player player) {
@@ -357,11 +356,9 @@ public class DataCableBlockEntity extends BlockEntity {
 
     private final class AttachedPort extends AccessPortBlockEntity {
         private final Direction face;
-        private final ResourceHandler<ItemResource> itemInput;
         AttachedPort(Direction face) {
             super(DataCableBlockEntity.this.worldPosition, JasmBlocks.ACCESS_PORT.get().defaultBlockState());
             this.face = face;
-            this.itemInput = new WorldlyContainerWrapper(this, face);
         }
         @Override
         public boolean hasMachine(Direction side) { return side == face && super.hasMachine(side); }

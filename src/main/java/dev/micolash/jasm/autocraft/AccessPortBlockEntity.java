@@ -2,7 +2,6 @@ package dev.micolash.jasm.autocraft;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
@@ -23,14 +22,12 @@ import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
-import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -65,13 +62,10 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
-import net.neoforged.neoforge.transfer.TransferPreconditions;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.transaction.Transaction;
-import net.neoforged.neoforge.transfer.transaction.SnapshotJournal;
-import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -119,38 +113,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private @Nullable UUID pendingLinker;
     private final PortOperations operations = new PortOperations();
 
-    /** Fluid a push handed over in the transaction still open, stored when it commits. */
-    private record PushedFluid(@Nullable Direction side, FluidResource fluid, long amount) {}
-
-    private record HeldFluid(FluidResource fluid, long amount) {
-        static final Codec<HeldFluid> CODEC = RecordCodecBuilder.create(i -> i.group(
-                FluidResource.CODEC.fieldOf("fluid").forGetter(HeldFluid::fluid),
-                Codec.LONG.fieldOf("amount").forGetter(HeldFluid::amount))
-                .apply(i, HeldFluid::new));
-    }
-
-    private final List<PushedFluid> pushedFluids = new ArrayList<>();
-    /** Handed over but found no room when stored (something else filled it within the same push); kept until it fits. */
-    private final Map<FluidResource, Long> heldFluids = new LinkedHashMap<>();
-    private final SnapshotJournal<List<PushedFluid>> pushJournal = new SnapshotJournal<>() {
-        @Override
-        protected List<PushedFluid> createSnapshot() {
-            return List.copyOf(pushedFluids);
-        }
-
-        @Override
-        protected void revertToSnapshot(List<PushedFluid> snapshot) {
-            pushedFluids.clear();
-            pushedFluids.addAll(snapshot);
-        }
-
-        @Override
-        protected void onRootCommit(List<PushedFluid> originalState) {
-            storePushedFluids();
-        }
-    };
-    /** One per face, and the last for a push with no side. */
-    private final FluidInput[] fluidInputs = new FluidInput[7];
+    /** What machines, hoppers and pipes push in. */
+    private final PortIntake intake = new PortIntake(this);
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -191,9 +155,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         port.sendPower();
         port.processDeckLink();
         port.forwardItems();
-        if (!port.heldFluids.isEmpty() && (level.getGameTime() + pos.asLong()) % 20 == 0) {
-            port.storeHeldFluids();
-        }
+        port.tickIntake();
         if (level.getGameTime() % 10 == 0) {
             // A machine can start taking items without its block changing (a modded one finishing its build, say).
             port.refreshSides();
@@ -243,25 +205,39 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return PortOperations.itemsPerOperation(speedUpgrades());
     }
 
+    private boolean working() {
+        return level != null && running() && !networkBlocked() && !redstonePaused();
+    }
+
+    /** What the port's own work may move now. */
     public int transferBudget() {
-        return level != null && running() && !networkBlocked() && !redstonePaused() ? operations.available(level.getGameTime(), transferRate(), savesAllowance()) : 0;
+        return working() ? operations.available(level.getGameTime(), transferRate(), saving()) : 0;
+    }
+
+    /** What a push into the port may move now. */
+    int pushBudget() {
+        return working() ? operations.forPush(level.getGameTime(), transferRate(), saving()) : 0;
     }
 
     /**
-     * Whether allowance left unused is kept (up to a second's worth) for a push that arrives on a later tick. Machines that
-     * push on their own timer rarely land on the tick an operation is due.
+     * What the port does with allowance it left unused. An Access Port keeps it (up to a second's worth) for anything it
+     * does on a later tick: machines that push on their own timer rarely land on the tick an operation is due.
      */
-    protected boolean savesAllowance() {
-        return true;
+    protected PortOperations.Saving saving() {
+        return PortOperations.Saving.ALL;
     }
 
     public boolean canSendBatch(int count) {
-        return level != null && running() && !networkBlocked() && !redstonePaused()
-                && operations.canSendBatch(level.getGameTime(), transferRate(), count, savesAllowance());
+        return working() && operations.canSendBatch(level.getGameTime(), transferRate(), count, saving());
     }
 
     public void transferred(int count) {
-        if (level != null) operations.transferred(level.getGameTime(), count, savesAllowance());
+        if (level != null) operations.transferred(level.getGameTime(), count, saving());
+    }
+
+    /** A push moved {@code count} shares into the port. */
+    void pushed(int count) {
+        if (level != null) operations.pushed(level.getGameTime(), count, saving());
     }
 
     public boolean acceptsOrdinaryItems() { return true; }
@@ -340,10 +316,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     /** The Deck the port delivers to, with its player. */
-    private record DeckTarget(ServerPlayer player, ItemStack deck) {}
+    record DeckTarget(ServerPlayer player, ItemStack deck) {}
 
     /** The Deck the port delivers to, if its player is online, it is with them (or in the port) and works here; else null. */
-    private @Nullable DeckTarget deckTarget(ServerLevel serverLevel) {
+    @Nullable DeckTarget deckTarget(ServerLevel serverLevel) {
         CableNetwork network = Networks.at(serverLevel, worldPosition);
         var pairing = network == null ? null : destination(network);
         if (pairing == null) return null;
@@ -645,158 +621,56 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return held;
     }
 
-    // --- fluid pushed in ---
+    // --- what is pushed in ---
 
     /**
-     * What machines and pipes push fluid into through {@code side} (null when no side is given). It takes only what
-     * fits right now: first what a job on this port waits for, then what the network's storage has room for, within the
-     * port's allowance. Nothing is kept in the port: it is stored when the push goes through. Automation can't take any out.
+     * Whether machines, hoppers and pipes may push into the port at all. Items wait in its buffer; fluid goes straight to
+     * a job waiting for it or the network's storage, and only as much as fits.
      */
-    public ResourceHandler<FluidResource> fluidInput(@Nullable Direction side) {
-        int index = side == null ? fluidInputs.length - 1 : side.ordinal();
-        if (fluidInputs[index] == null) fluidInputs[index] = new FluidInput(side);
-        return fluidInputs[index];
+    public boolean takesPushes() {
+        return true;
     }
 
-    /** How much of {@code fluid}, up to {@code amount}, a push through {@code side} may hand over now. Changes nothing. */
-    private long fluidRoom(@Nullable Direction side, FluidResource fluid, long amount, TransactionContext tx) {
-        if (!(level instanceof ServerLevel serverLevel) || stopped()) return 0;
-        long accepted = 0;
-        long same = heldFluids.getOrDefault(fluid, 0L);
-        for (PushedFluid push : pushedFluids) {
-            accepted += push.amount();
-            if (push.fluid().equals(fluid)) same += push.amount();
-        }
-        // The allowance stops an unpowered, blocked or paused port too.
-        long most = Math.min(amount, (long) transferBudget() * FluidAmounts.PER_SHARE - accepted);
-        if (most <= 0) return 0;
-        long wanted = same + most;
-        long room = JobRunner.creditPushedFluid(serverLevel, this, side, fluid, wanted, true);
-        DeckTarget target = room < wanted ? deckTarget(serverLevel) : null;
-        if (target != null) {
-            room += Math.min(storage(serverLevel, target, side).roomFluid(fluid, wanted - room, DeckStorage.Excess.VOID, tx),
-                    DeckStorage.affordableFluid(target.deck()));
-        }
-        return Math.clamp(room - same, 0, most);
+    /** What machines, hoppers and pipes push items into through {@code side} (null when no side is given), or null. */
+    public @Nullable ResourceHandler<ItemResource> itemInput(@Nullable Direction side) {
+        return takesPushes() ? intake.itemInput(side) : null;
     }
 
-    private DeckStorage.Checked storage(ServerLevel serverLevel, DeckTarget target, @Nullable Direction side) {
-        var storage = DeckStorage.checked(WaferStore.get(serverLevel.getServer()), target.deck(), target.player());
-        // never back into the machine it came from
-        return side == null ? storage : storage.avoiding(worldPosition.relative(side));
+    /**
+     * What machines and pipes push fluid into through {@code side} (null when no side is given), or null. It takes only
+     * what fits right now, within the port's allowance, and keeps none: it is stored when the push goes through.
+     */
+    public @Nullable ResourceHandler<FluidResource> fluidInput(@Nullable Direction side) {
+        return takesPushes() ? intake.fluidInput(side) : null;
     }
 
-    /** The push went through: what it handed over goes to waiting jobs first, then the network. */
-    private void storePushedFluids() {
-        List<PushedFluid> pushes = List.copyOf(pushedFluids);
-        pushedFluids.clear();
-        long total = pushes.stream().mapToLong(PushedFluid::amount).sum();
-        if (total <= 0) return;
-        transferred((int) FluidAmounts.shares(total));
-        for (PushedFluid push : pushes) {
-            long left = storeFluid(push.side(), push.fluid(), push.amount());
-            // Only if something else filled the room within the same push: kept and stored once there is room.
-            if (left > 0) heldFluids.merge(push.fluid(), left, Long::sum);
-        }
-        setChanged();
+    /** Whether the port lets {@code fluid} in when pushed. */
+    protected boolean acceptsPushedFluid(FluidResource fluid) {
+        return true;
     }
 
-    /** Stores {@code amount} of {@code fluid}: waiting jobs first, then the network. Returns what found no place. */
-    private long storeFluid(@Nullable Direction side, FluidResource fluid, long amount) {
-        if (!(level instanceof ServerLevel serverLevel)) return amount;
-        long left = amount - JobRunner.creditPushedFluid(serverLevel, this, side, fluid, amount, false);
-        DeckTarget target = left > 0 ? deckTarget(serverLevel) : null;
-        if (target != null) {
-            left -= storage(serverLevel, target, side).depositFluidResult(fluid, left, DeckStorage.Excess.VOID).total();
-            Jobs.refreshOpenDeck(target.player(), target.deck());
-        }
-        return left;
+    /**
+     * How much of {@code amount} pushed through {@code side} goes to the jobs on this port waiting for it, before the
+     * network's storage. With {@code simulate} nothing changes.
+     */
+    protected long creditPushedFluid(ServerLevel level, @Nullable Direction side, FluidResource fluid, long amount, boolean simulate) {
+        return JobRunner.creditPushedFluid(level, this, side, fluid, amount, simulate);
     }
 
-    /** Fluid a push handed over that found no room when it was stored, tried again once a second. */
-    private void storeHeldFluids() {
-        if (heldFluids.isEmpty() || stopped() || !running() || networkBlocked() || redstonePaused()) return;
-        for (FluidResource fluid : List.copyOf(heldFluids.keySet())) {
-            Long amount = heldFluids.remove(fluid);
-            long left = amount == null ? 0 : storeFluid(null, fluid, amount);
-            if (left > 0) heldFluids.merge(fluid, left, Long::sum);
-        }
-        setChanged();
+    /** Fluid a push left in the port (something else filled the room within the same push) is stored again once a second. */
+    protected void tickIntake() {
+        if (intake.holdsFluid() && level != null && (level.getGameTime() + worldPosition.asLong()) % 20 == 0) intake.storeHeldFluids();
     }
 
     /** The port is going: fluid it still holds goes to the network if there is room. */
     public void releaseHeldFluids() {
-        for (FluidResource fluid : List.copyOf(heldFluids.keySet())) {
-            Long amount = heldFluids.remove(fluid);
-            long left = amount == null ? 0 : storeFluid(null, fluid, amount);
-            if (left > 0) {
-                Jasm.LOGGER.warn("Access Port at {} was removed holding {} mB of {} with no room for it on its network", worldPosition, left,
-                        fluid.getFluid());
-            }
-        }
+        intake.releaseHeldFluids();
     }
 
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
         releaseHeldFluids();
-    }
-
-    /** One face's fluid input: one empty tank that never fills, since what comes in is stored at once. */
-    private final class FluidInput implements ResourceHandler<FluidResource> {
-        private final @Nullable Direction side;
-
-        FluidInput(@Nullable Direction side) {
-            this.side = side;
-        }
-
-        @Override
-        public int size() {
-            return 1;
-        }
-
-        @Override
-        public FluidResource getResource(int index) {
-            Objects.checkIndex(index, 1);
-            return FluidResource.EMPTY;
-        }
-
-        @Override
-        public long getAmountAsLong(int index) {
-            Objects.checkIndex(index, 1);
-            return 0;
-        }
-
-        /** The most one step of the port can take. */
-        @Override
-        public long getCapacityAsLong(int index, FluidResource resource) {
-            Objects.checkIndex(index, 1);
-            return (long) transferRate() * FluidAmounts.PER_SHARE;
-        }
-
-        @Override
-        public boolean isValid(int index, FluidResource resource) {
-            Objects.checkIndex(index, 1);
-            return !resource.isEmpty();
-        }
-
-        @Override
-        public int insert(int index, FluidResource resource, int amount, TransactionContext tx) {
-            TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
-            Objects.checkIndex(index, 1);
-            long accepted = fluidRoom(side, resource, amount, tx);
-            if (accepted <= 0) return 0;
-            pushJournal.updateSnapshots(tx);
-            pushedFluids.add(new PushedFluid(side, resource, accepted));
-            return (int) accepted;
-        }
-
-        @Override
-        public int extract(int index, FluidResource resource, int amount, TransactionContext tx) {
-            TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
-            Objects.checkIndex(index, 1);
-            return 0;
-        }
     }
 
     /** Items can enter the buffer even while the port is idle or unpowered. */
@@ -889,10 +763,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
-        if (!heldFluids.isEmpty()) {
-            output.store("held_fluids", HeldFluid.CODEC.listOf(),
-                    heldFluids.entrySet().stream().map(e -> new HeldFluid(e.getKey(), e.getValue())).toList());
-        }
+        intake.save(output);
     }
 
     @Override
@@ -907,9 +778,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
-        heldFluids.clear();
-        input.read("held_fluids", HeldFluid.CODEC.listOf()).orElse(List.of())
-                .forEach(held -> heldFluids.merge(held.fluid(), held.amount(), Long::sum));
+        intake.load(input);
     }
 
     /** The mined item keeps the port's name. */
