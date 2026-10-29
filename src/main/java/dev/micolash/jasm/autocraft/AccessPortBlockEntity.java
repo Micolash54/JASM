@@ -130,6 +130,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_BLOCKING -> blockingMode ? 1 : 0;
                 case AccessPortMenu.DATA_PAUSED -> redstonePaused() ? 1 : 0;
                 case AccessPortMenu.DATA_REDSTONE -> redstoneMode.ordinal();
+                case AccessPortMenu.DATA_DRAIN -> drainPerTick();
                 default -> 0;
             };
         }

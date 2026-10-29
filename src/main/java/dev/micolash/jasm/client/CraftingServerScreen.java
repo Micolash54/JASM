@@ -12,6 +12,7 @@ import dev.micolash.jasm.wafer.FluidAmounts;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -134,8 +135,12 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + PANEL_X + 1, topPos + PANEL_Y + PANEL_H - 1, PANEL_W - 2);
         }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
-                    String.format("%,d", menu.capacity())), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(font, List.of(
+                    Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
+                            String.format("%,d", menu.capacity())).getVisualOrderText(),
+                    Component.translatable("screen.jasm.archive.drain", menu.drain())
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    mouseX, mouseY);
         }
         // A row's full name, and on a machine's row what the job waits on there.
         int row = (mouseY - topPos - listTop()) / ROW_H;

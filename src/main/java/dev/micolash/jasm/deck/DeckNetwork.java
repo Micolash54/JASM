@@ -35,6 +35,8 @@ public final class DeckNetwork {
                         (payload, context) -> extract((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.Insert.TYPE, DeckPayloads.Insert.STREAM_CODEC,
                         (payload, context) -> insert((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.StoreAll.TYPE, DeckPayloads.StoreAll.STREAM_CODEC,
+                        (payload, context) -> storeAll((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.Configure.TYPE, DeckPayloads.Configure.STREAM_CODEC,
                         (payload, context) -> configure((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.ClearGrid.TYPE, DeckPayloads.ClearGrid.STREAM_CODEC,
@@ -120,6 +122,57 @@ public final class DeckNetwork {
         menu.setCarried(carried);
         finish(player, menu);
         return moved;
+    }
+
+    /**
+     * Double-click in the inventory: shift-clicks every stack that is the same item with the same data as the one
+     * clicked, hotbar included, armour and off-hand not. What the Deck can't take stays where it is. Returns the amount stored.
+     */
+    public static long storeAll(ServerPlayer player, DeckPayloads.StoreAll payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !allow(player) || payload.slot() < 0 || payload.slot() >= menu.slots.size()) {
+            return 0;
+        }
+        Slot clicked = menu.slots.get(payload.slot());
+        if (!inInventory(player, clicked)) {
+            return 0;
+        }
+        ItemStack carried = menu.getCarried();
+        ItemStack kind = carried.isEmpty() ? clicked.mayPickup(player) ? clicked.getItem() : ItemStack.EMPTY : carried;
+        if (kind.isEmpty()) {
+            return 0;
+        }
+        kind = kind.copyWithCount(1);
+        // The first click of the double-click lifted the stack onto the cursor; set it back so one pass sees every stack.
+        if (!carried.isEmpty() && clicked.getItem().isEmpty() && clicked.mayPlace(carried)) {
+            clicked.setByPlayer(carried);
+            menu.setCarried(ItemStack.EMPTY);
+        }
+        long moved = 0;
+        for (Slot slot : menu.slots) {
+            if (!inInventory(player, slot) || !slot.mayPickup(player) || !ItemStack.isSameItemSameComponents(slot.getItem(), kind)) {
+                continue;
+            }
+            int before = slot.getItem().getCount();
+            menu.quickMoveStack(player, slot.index);
+            ItemStack left = slot.getItem();
+            int taken = before - left.getCount();
+            if (left.isEmpty()) {
+                slot.setByPlayer(ItemStack.EMPTY);
+            }
+            if (taken <= 0) {
+                // Nothing went in, so the rest of this item won't fit either.
+                break;
+            }
+            moved += taken;
+        }
+        finish(player, menu);
+        return moved;
+    }
+
+    /** The main inventory and hotbar; not armour or the off-hand. */
+    private static boolean inInventory(ServerPlayer player, Slot slot) {
+        return slot.container == player.getInventory() && slot.getContainerSlot() < Inventory.INVENTORY_SIZE;
     }
 
     /** Starts emptying one wafer: the menu moves a share of it every tick. False if nothing started. */

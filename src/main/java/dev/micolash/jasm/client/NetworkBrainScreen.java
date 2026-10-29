@@ -3,7 +3,9 @@ package dev.micolash.jasm.client;
 import dev.micolash.jasm.brain.BrainStatus;
 import dev.micolash.jasm.brain.NetworkBrainMenu;
 import dev.micolash.jasm.core.BrainBalance;
+import java.util.List;
 import java.util.Locale;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
@@ -89,8 +91,12 @@ public class NetworkBrainScreen extends JasmScreen<NetworkBrainMenu> {
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractContents(graphics, mouseX, mouseY, a);
         if (within(mouseX, mouseY, leftPos + POWER_X, topPos + POWER_Y, POWER_WIDTH, BAR_HEIGHT)) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
-                    String.format("%,d", menu.capacity())), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(font, List.of(
+                    Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
+                            String.format("%,d", menu.capacity())).getVisualOrderText(),
+                    Component.translatable("screen.jasm.archive.drain", menu.drain())
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    mouseX, mouseY);
         }
         if (within(mouseX, mouseY, leftPos + PAD, topPos + USE_Y, INNER_WIDTH, font.lineHeight)) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.brain.use.tower"), 180), mouseX, mouseY);

@@ -48,8 +48,12 @@ public class RecipeRackScreen extends JasmScreen<RecipeRackMenu> {
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractContents(graphics, mouseX, mouseY, a);
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
-                    String.format("%,d", menu.capacity())), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(font, List.of(
+                    Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
+                            String.format("%,d", menu.capacity())).getVisualOrderText(),
+                    Component.translatable("screen.jasm.archive.drain", menu.drain())
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    mouseX, mouseY);
         }
     }
 

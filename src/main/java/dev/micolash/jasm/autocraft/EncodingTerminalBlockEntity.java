@@ -147,7 +147,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
                     if (index >= EncodingTerminalMenu.DATA_FACES && index < EncodingTerminalMenu.DATA_FACES + ProcessingCard.INPUTS) {
                         yield faces[index - EncodingTerminalMenu.DATA_FACES].ordinal();
                     }
-                    yield 0;
+                    yield index == EncodingTerminalMenu.DATA_DRAIN ? drainPerTick() : 0;
                 }
             };
         }

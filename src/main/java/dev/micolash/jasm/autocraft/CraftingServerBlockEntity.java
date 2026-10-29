@@ -67,6 +67,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
                 case CraftingServerMenu.DATA_PAUSE -> j == null ? 0 : j.pause().code();
                 case CraftingServerMenu.DATA_AMOUNT_LOW -> j == null ? 0 : ContainerWords.low((int) Math.min(Integer.MAX_VALUE, j.amount()));
                 case CraftingServerMenu.DATA_AMOUNT_HIGH -> j == null ? 0 : ContainerWords.high((int) Math.min(Integer.MAX_VALUE, j.amount()));
+                case CraftingServerMenu.DATA_DRAIN -> drainPerTick();
                 default -> 0;
             };
         }

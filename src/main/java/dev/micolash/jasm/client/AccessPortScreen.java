@@ -9,6 +9,7 @@ import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -253,8 +254,12 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH
                 && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
-                    String.format("%,d", menu.capacity())), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(font, List.of(
+                    Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
+                            String.format("%,d", menu.capacity())).getVisualOrderText(),
+                    Component.translatable("screen.jasm.archive.drain", menu.drain())
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    mouseX, mouseY);
         }
         if (linkWindow.isOpen()) {
             graphics.nextStratum();

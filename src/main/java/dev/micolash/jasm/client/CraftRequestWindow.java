@@ -81,6 +81,8 @@ final class CraftRequestWindow {
     private int mostAskedAt = -1;
     /** The Deck's Max answers counted when Max was asked: a higher count is the answer. */
     private int mostSeen;
+    /** How many of the Deck's jobs were running when last looked at. */
+    private int jobsSeen;
 
     /** A button and where it sits: from the window's left (or right) edge, and from its top (or bottom, when negative). */
     private record Placed(Button button, int x, int y, boolean fromRight) {}
@@ -147,6 +149,7 @@ final class CraftRequestWindow {
         amount.setValue(String.valueOf(Math.max(1, count)));
         amount.setFocused(true);
         forgetMost();
+        jobsSeen = menu.view().jobs().size();
         ask();
     }
 
@@ -228,6 +231,14 @@ final class CraftRequestWindow {
         ticks++;
         sendMostWhenFree();
         takeMost();
+        // A job starting or ending changes which servers are free, so the answer on screen is asked for again.
+        int running = menu.view().jobs().size();
+        if (running != jobsSeen) {
+            jobsSeen = running;
+            if (isOpen() && askIn == 0) {
+                askIn = 5;
+            }
+        }
         if (askIn > 0 && --askIn == 0) {
             ask();
         }
@@ -285,11 +296,11 @@ final class CraftRequestWindow {
             lines.add(new Line(Component.translatable("screen.jasm.craft.makes_title"), null, 0, JasmGui.GOOD));
             lines.add(new Line(null, target, answer.made(), JasmGui.TEXT));
         }
+        section(lines, "screen.jasm.craft.missing", answer.missing(), JasmGui.BAD);
         section(lines, "screen.jasm.craft.takes", answer.taken(), JasmGui.SUBTEXT);
         // The last craft is the request itself; the ones before it are made on the way.
         List<DeckPayloads.Entry> first = answer.crafts().size() > 1 ? answer.crafts().subList(0, answer.crafts().size() - 1) : List.of();
         section(lines, "screen.jasm.craft.first", first, JasmGui.SUBTEXT);
-        section(lines, "screen.jasm.craft.missing", answer.missing(), JasmGui.BAD);
         return lines;
     }
 

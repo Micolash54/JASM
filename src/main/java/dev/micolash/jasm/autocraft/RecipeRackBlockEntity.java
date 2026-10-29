@@ -48,6 +48,7 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
                 case RecipeRackMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
                 case RecipeRackMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case RecipeRackMenu.DATA_MISSING -> missing;
+                case RecipeRackMenu.DATA_DRAIN -> drainPerTick();
                 default -> 0;
             };
         }

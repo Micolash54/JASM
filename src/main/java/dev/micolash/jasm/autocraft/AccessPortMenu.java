@@ -63,7 +63,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     static final int DATA_BLOCKING = 6;
     static final int DATA_PAUSED = 7;
     static final int DATA_REDSTONE = 8;
-    public static final int DATA_COUNT = 9;
+    static final int DATA_DRAIN = 9;
+    public static final int DATA_COUNT = 10;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -270,6 +271,10 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
 
     public int energy() {
         return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
+    }
+
+    public int drain() {
+        return data.get(DATA_DRAIN);
     }
 
     public int capacity() {

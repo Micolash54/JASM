@@ -42,6 +42,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -1241,6 +1242,17 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     }
 
     // --- input ---
+
+    /** A plain double-click on an inventory stack stores every stack of that item, instead of gathering them on the cursor. */
+    @Override
+    protected void slotClicked(@Nullable Slot slot, int slotId, int buttonNum, ContainerInput input) {
+        if (input == ContainerInput.PICKUP_ALL && slot != null && slot.container == minecraft.player.getInventory()
+                && slot.getContainerSlot() < Inventory.INVENTORY_SIZE && (slot.hasItem() || !menu.getCarried().isEmpty())) {
+            ClientPacketDistributor.sendToServer(new DeckPayloads.StoreAll(menu.containerId, slot.index));
+            return;
+        }
+        super.slotClicked(slot, slotId, buttonNum, input);
+    }
 
     /** Only the panels count as the screen: items dropped anywhere else fall out as usual. */
     @Override

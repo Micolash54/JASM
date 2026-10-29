@@ -100,7 +100,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     static final int DATA_PROCESSING = 5;
     static final int DATA_AMOUNTS = 6;
     static final int DATA_FACES = DATA_AMOUNTS + EncodingTerminalBlockEntity.AMOUNTS;
-    static final int DATA_COUNT = DATA_FACES + ProcessingCard.INPUTS;
+    static final int DATA_DRAIN = DATA_FACES + ProcessingCard.INPUTS;
+    static final int DATA_COUNT = DATA_DRAIN + 1;
 
     /** Ticks between refreshes of the machine list. */
     private static final int MACHINES_EVERY = 20;
@@ -417,6 +418,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
     public int energy() {
         return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
+    }
+
+    public int drain() {
+        return data.get(DATA_DRAIN);
     }
 
     public int capacity() {

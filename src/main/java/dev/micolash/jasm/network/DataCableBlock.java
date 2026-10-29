@@ -41,6 +41,7 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -289,10 +290,23 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
     public ItemStack getCloneItemStack(LevelReader level, BlockPos pos, BlockState state, boolean includeData,
             Player player) {
         if (level instanceof Level world && world.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
-            Direction side = selectedPort(world, pos, player);
+            Direction side = player == null ? null : selectedPort(world, pos, player);
+            if (side == null && player != null) side = portFacingLookedAt(cable, pos, player);
             if (side != null) return cable.partItem(side);
         }
         return new ItemStack(this);
+    }
+
+    /**
+     * Another mod's side screen asks about this block while the player looks at the machine next to it. The port on the face
+     * towards that machine is the one it means, so it gets the port instead of the cable.
+     */
+    private static @Nullable Direction portFacingLookedAt(DataCableBlockEntity cable, BlockPos pos, Player player) {
+        if (!(player.pick(player.blockInteractionRange(), 1, false) instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return null;
+        for (Direction side : Direction.values()) {
+            if (pos.relative(side).equals(hit.getBlockPos()) && cable.hasPart(side)) return side;
+        }
+        return null;
     }
 
     // running water used to wash cables and their ports away

@@ -36,7 +36,8 @@ public class RecipeRackMenu extends AbstractContainerMenu implements MachineView
     static final int DATA_ENERGY_HIGH = 1;
     static final int DATA_RUNNING = 2;
     static final int DATA_MISSING = 3;
-    static final int DATA_COUNT = 4;
+    static final int DATA_DRAIN = 4;
+    static final int DATA_COUNT = 5;
 
     private static final Identifier EMPTY_CARD = Jasm.id("container/empty_card");
 
@@ -81,6 +82,10 @@ public class RecipeRackMenu extends AbstractContainerMenu implements MachineView
 
     public int energy() {
         return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
+    }
+
+    public int drain() {
+        return data.get(DATA_DRAIN);
     }
 
     public int capacity() {

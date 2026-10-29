@@ -76,7 +76,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     static final int DATA_PAUSE = 9;
     static final int DATA_AMOUNT_LOW = 10;
     static final int DATA_AMOUNT_HIGH = 11;
-    static final int DATA_COUNT = 12;
+    static final int DATA_DRAIN = 12;
+    static final int DATA_COUNT = 13;
 
     private static final Identifier EMPTY_PROCESSOR = Jasm.id("container/empty_processor");
     private static final Identifier EMPTY_MODULE = Jasm.id("container/empty_module");
@@ -241,6 +242,10 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
 
     public int energy() {
         return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
+    }
+
+    public int drain() {
+        return data.get(DATA_DRAIN);
     }
 
     public int capacity() {

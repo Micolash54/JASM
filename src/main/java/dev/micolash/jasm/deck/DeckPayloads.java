@@ -73,6 +73,20 @@ public final class DeckPayloads {
         }
     }
 
+    /** Client → server: double-click on an inventory stack. Store every stack of that item, as shift-click would. */
+    public record StoreAll(int containerId, int slot) implements CustomPacketPayload {
+        public static final Type<StoreAll> TYPE = new Type<>(Jasm.id("deck_store_all"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, StoreAll> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, StoreAll::containerId,
+                ByteBufCodecs.VAR_INT, StoreAll::slot,
+                StoreAll::new);
+
+        @Override
+        public Type<StoreAll> type() {
+            return TYPE;
+        }
+    }
+
     /** Server → client: part of the full contents. Page 0 starts over. */
     public record Snapshot(int containerId, int page, int pages, List<Entry> entries) implements CustomPacketPayload {
         public static final Type<Snapshot> TYPE = new Type<>(Jasm.id("deck_snapshot"));
