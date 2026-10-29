@@ -51,7 +51,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     /** The faces a full port serves, found when a neighbour changes and every half second. */
     private List<Direction> served = List.of();
     private final List<Direction> ownFace;
-    /** Which face the next operation starts at, so a full port's faces take turns. */
+    /** Which face the next operation starts at, so a full port's faces take turns. Kept in memory only. */
     private int turn;
     private TransferFilters filters = TransferFilters.DEFAULT;
     private final PortCrafting crafting = new PortCrafting();
@@ -246,11 +246,17 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             var allowance = new Allowance((int) Math.min(budget, DeckStorage.affordable(deck)), budget);
             if (takesPushes()) allowance.itemsMoved(sendIntake(storage, allowance.forItems()));
             List<Direction> faces = workFaces();
-            // A full port's faces take turns at going first, so one busy chest can't keep the others waiting.
-            int start = faces.isEmpty() ? 0 : Math.floorMod(turn++, faces.size());
+            // A full port's faces take turns: each operation starts after the face served last, and a face that takes
+            // or gives nothing is passed over, so no chest gets two turns in a row while another waits.
+            int start = faces.isEmpty() ? 0 : Math.floorMod(turn, faces.size());
+            int next = start;   // nothing served: the same face is first again
             for (int i = 0; i < faces.size() && allowance.shares > 0; i++) {
-                moveThrough(world, faces.get((start + i) % faces.size()), storage, store, deck, player, allowance);
+                int at = (start + i) % faces.size();
+                int before = allowance.shares;
+                moveThrough(world, faces.get(at), storage, store, deck, player, allowance);
+                if (allowance.shares < before) next = at + 1;
             }
+            turn = next;
         }
         if (craft) crafting.run(this, world, network, player, deck, storage);
         Jobs.refreshOpenDeck(player, deck);
