@@ -161,7 +161,7 @@ final class PortCrafting {
             } else {
                 ProcessingCard processing = (ProcessingCard) card;
                 if (processing.usedInputs().isEmpty()
-                        || processing.spots().stream().noneMatch(at -> Machines.reach(world, network, at) != null)) continue;
+                        || Machines.spots(world, network, processing).stream().noneMatch(at -> Machines.reach(world, network, at) != null)) continue;
                 result = processing.result().copyWithCount(processing.main().count());
             }
             if (!result.isEmpty() && !MaterialMarkerItem.isMarker(result)) results.add(result);

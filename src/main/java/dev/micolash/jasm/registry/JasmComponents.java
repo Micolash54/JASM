@@ -3,6 +3,7 @@ package dev.micolash.jasm.registry;
 import com.mojang.serialization.Codec;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
+import dev.micolash.jasm.autocraft.PortMemory;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
 import dev.micolash.jasm.bay.BayRedstone;
@@ -156,6 +157,10 @@ public final class JasmComponents {
     /** The Deck a mined Docking Station still holds, with its lock and owner, given back when the dock is placed again. */
     public static final Supplier<DataComponentType<DockedDeck>> DOCKED_DECK = COMPONENTS.registerComponentType(
             "docked_deck", b -> b.persistent(DockedDeck.CODEC).networkSynchronized(DockedDeck.STREAM_CODEC));
+
+    /** The machines a mined Access Port served, so their processing cards find it again when it is placed back on the same network. */
+    public static final Supplier<DataComponentType<PortMemory>> PORT_MEMORY = COMPONENTS.registerComponentType(
+            "port_memory", b -> b.persistent(PortMemory.CODEC).networkSynchronized(PortMemory.STREAM_CODEC));
 
     private JasmComponents() {}
 }

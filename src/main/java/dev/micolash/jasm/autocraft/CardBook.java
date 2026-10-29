@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,6 +20,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.PlacementInfo;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The cards a network knows, as the planner sees them. Each slot of a crafting card accepts its encoded item and any
@@ -41,6 +43,12 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
      * {@code reachable} says whether a processing card has a machine it can use.
      */
     public CardBook(ServerLevel level, Collection<? extends Card> cards, Collection<ItemResource> stored, Predicate<ProcessingCard> reachable) {
+        this(level, cards, stored, reachable, null);
+    }
+
+    /** As above, on {@code network}: a machine whose port was mined and placed back there is looked at where it is now. */
+    public CardBook(ServerLevel level, Collection<? extends Card> cards, Collection<ItemResource> stored, Predicate<ProcessingCard> reachable,
+            @Nullable CableNetwork network) {
         List<CardRecipes.Resolved> resolved = new ArrayList<>();
         List<ProcessingCard> processing = new ArrayList<>();
         Set<Card> seen = new HashSet<>();
@@ -72,7 +80,7 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
             add(new CardPattern(level, r, candidates));
         }
         for (ProcessingCard p : processing) {
-            add(new ProcessingPattern(level, p, candidates));
+            add(new ProcessingPattern(level, p, candidates, network));
         }
         unreachable.removeAll(byOutput.keySet());
     }
@@ -195,9 +203,9 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         private final Map<GridKey, Long> extras = new LinkedHashMap<>();
 
         /** {@code candidates} are the items worth trying in the slots the machines' recipe opens. */
-        ProcessingPattern(ServerLevel level, ProcessingCard card, Collection<ItemResource> candidates) {
+        ProcessingPattern(ServerLevel level, ProcessingCard card, Collection<ItemResource> candidates, @Nullable CableNetwork network) {
             this.card = card;
-            MachineRecipes.Match recipe = MachineRecipes.of(level, card);
+            MachineRecipes.Match recipe = MachineRecipes.of(level, Machines.located(level, network, card));
             List<ProcessingCard.Amount> inputs = card.usedInputs();
             for (int i = 0; i < inputs.size(); i++) {
                 ProcessingCard.Amount input = inputs.get(i);

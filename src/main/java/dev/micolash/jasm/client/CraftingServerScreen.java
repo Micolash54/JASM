@@ -55,8 +55,6 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int HANDLE_HEIGHT = 12;
     private static final int TEXT_X = LIST_X + 19;
     private static final int ROW_BAR_W = 70;
-    /** The name of the machine a craft is out in. */
-    private static final int MACHINE = 0xFF89B4FA;
 
     private Button cancel;
     private Button collect;
@@ -263,7 +261,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
                 graphics.text(font, lines.get(i), tx, LIST_Y + i * 9, pause.warning() ? JasmGui.WARN : JasmGui.BAD, false);
             }
         }
-        // What is crafting right now, a row each: how far its step is, and how many run at once or the machine they are in.
+        // What is crafting right now, a row each: how far its step is, and how many run at once (crafting rows only).
         List<CraftingJob.Now> rows = menu.now();
         scroll = Math.clamp(scroll, 0, maxScroll());
         for (int row = 0; row < visibleRows() && scroll + row < rows.size(); row++) {
@@ -271,10 +269,9 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
             int y = listTop() + row * ROW_H;
             ItemStack stack = now.what().toStack(1);
             icon(graphics, stack, LIST_X, y);
-            Component right = now.machine().orElse(Component.literal("×" + now.running()));
-            String label = trim(right.getString(), 60);
-            int labelWidth = font.width(label);
-            graphics.text(font, label, LIST_RIGHT - labelWidth, y, now.machine().isPresent() ? MACHINE : JasmGui.GOOD, false);
+            String label = now.machine().isPresent() ? "" : trim("×" + now.running(), 60);
+            int labelWidth = label.isEmpty() ? 0 : font.width(label);
+            if (!label.isEmpty()) graphics.text(font, label, LIST_RIGHT - labelWidth, y, JasmGui.GOOD, false);
             graphics.text(font, trim(name(stack).getString(), LIST_RIGHT - TEXT_X - labelWidth - 4), TEXT_X, y, JasmGui.TEXT, false);
             String count = amount(stack, now.made()) + "/" + amount(stack, now.total());
             int countWidth = font.width(count);

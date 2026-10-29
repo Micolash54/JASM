@@ -27,6 +27,7 @@ import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import dev.micolash.jasm.network.CableNetwork;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -400,11 +401,11 @@ public final class CraftingJob {
      * Step {@code index}'s machine recipe, if its card is a processing card whose recipe JASM knows. Looked up once a
      * second until it is found (a machine may stand in an unloaded spot for a while), then kept for the rest of the job.
      */
-    MachineRecipes.@Nullable Match machineRecipe(ServerLevel level, int index) {
+    MachineRecipes.@Nullable Match machineRecipe(ServerLevel level, @Nullable CableNetwork network, int index) {
         MachineRecipes.Match known = machineRecipes.get(index);
         long now = level.getGameTime();
         if (known == null && steps.get(index).card instanceof ProcessingCard card && now >= machineRetry.getOrDefault(index, 0L)) {
-            known = MachineRecipes.of(level, card);
+            known = MachineRecipes.of(level, Machines.located(level, network, card));
             if (known != null) {
                 machineRecipes.put(index, known);
             } else {

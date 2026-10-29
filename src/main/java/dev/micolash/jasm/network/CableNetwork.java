@@ -13,6 +13,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -45,6 +46,7 @@ public final class CableNetwork {
     private @Nullable List<EnergyHandler> consumers;
     private @Nullable List<BatteryBlockEntity> batteries;
     private final Map<Class<?>, List<?>> byKind = new HashMap<>();
+    private final Map<Function<CableNetwork, ?>, Object> derived = new HashMap<>();
     private long checkedTick = -1;
     private long leaderTick = -1;
     private @Nullable NetworkBrainBlockEntity leader;
@@ -90,6 +92,17 @@ public final class CableNetwork {
             byKind.put(kind, known);
         }
         return known;
+    }
+
+    /** Something worked out from this network by {@code make} (a constant), found once and kept as long as the network. */
+    @SuppressWarnings("unchecked")
+    public <T> T derived(Function<CableNetwork, T> make) {
+        Object known = derived.get(make);
+        if (known == null) {
+            known = make.apply(this);
+            derived.put(make, known);
+        }
+        return (T) known;
     }
 
     /** The loaded blocks of the network that aren't cables, looked up once. */

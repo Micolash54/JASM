@@ -363,6 +363,8 @@ public class DataCableBlockEntity extends BlockEntity {
         @Override
         public boolean hasMachine(Direction side) { return side == face && super.hasMachine(side); }
         @Override
+        public Direction face() { return face; }
+        @Override
         protected boolean canPowerSide(Direction side) { return side == face; }
         @Override
         public void refreshSides() {

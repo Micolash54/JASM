@@ -759,7 +759,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             });
         } else if (found instanceof ProcessingCard card) {
             selected.clear();
-            selected.addAll(card.spots());
+            // a machine whose port was mined and placed back shows up ticked where it is now
+            selected.addAll(level instanceof ServerLevel server ? Machines.spots(server, Networks.at(server, worldPosition), card) : card.spots());
             for (int i = 0; i < ProcessingCard.INPUTS; i++) {
                 setProcessingSlot(i, card.inputs().get(i).stack(), card.inputs().get(i).count());
             }

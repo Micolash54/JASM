@@ -23,6 +23,7 @@ import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
+import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -38,6 +39,7 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -52,7 +54,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -113,6 +117,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private @Nullable UUID destinationDeck;
     private @Nullable UUID pendingLinker;
     private final PortOperations operations = new PortOperations();
+    /** What the port's item remembered when it was placed: the machines it served where it was mined. */
+    private @Nullable PortMemory movedFrom;
+    /** The machine last seen on each side, kept after it is taken away until something else stands there. */
+    private final Map<Direction, Item> seen = new EnumMap<>(Direction.class);
+    /** What the item keeps, worked out just before the block goes (once it is gone the network can't be asked). */
+    private @Nullable PortMemory keptOnMining;
 
     /** What machines, hoppers and pipes push in. */
     private final PortIntake intake = new PortIntake(this);
@@ -455,7 +465,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         BlockState state = getBlockState();
         BlockState shown = state;
         for (Direction side : Direction.values()) {
-            shown = shown.setValue(AccessPortBlock.SIDES.get(side), sideLooks(side));
+            PortSide looks = sideLooks(side);
+            noteMachine(side, looks == PortSide.MACHINE || looks == PortSide.BUSY);
+            shown = shown.setValue(AccessPortBlock.SIDES.get(side), looks);
         }
         if (shown != state) {
             level.setBlock(worldPosition, shown, Block.UPDATE_CLIENTS);
@@ -525,6 +537,72 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             names.append(Machines.blockName(level, worldPosition.relative(sides.get(i))));
         }
         return names;
+    }
+
+    // --- remembering the machines when mined ---
+
+    /** The face a thin port is mounted on; null for the full block, which serves every side. */
+    public @Nullable Direction face() {
+        return null;
+    }
+
+    /** The one side with a machine, as the port shows it, or null with none or several. */
+    public @Nullable Direction onlyMachineSide() {
+        if (face() != null) {
+            return face();
+        }
+        BlockState state = getBlockState();
+        if (!(state.getBlock() instanceof AccessPortBlock)) {
+            return null;
+        }
+        Direction only = null;
+        for (Direction side : Direction.values()) {
+            PortSide looks = state.getValue(AccessPortBlock.SIDES.get(side));
+            if (looks == PortSide.MACHINE || looks == PortSide.BUSY) {
+                if (only != null) {
+                    return null;
+                }
+                only = side;
+            }
+        }
+        return only;
+    }
+
+    /** Only Access Ports remember machines; the other ports built on them serve none. */
+    private boolean remembers() {
+        return !(this instanceof TransferPortBlockEntity);
+    }
+
+    /** What the item remembered when this port was placed, or null. */
+    public @Nullable PortMemory movedFrom() {
+        return movedFrom;
+    }
+
+    /** The machine last seen on {@code side}, or air. */
+    Item seenMachine(Direction side) {
+        return seen.getOrDefault(side, Items.AIR);
+    }
+
+    /** Notes what stands on {@code side} after a change there: a machine is kept, anything but air in its place forgets it. */
+    public void noteMachine(Direction side, boolean machine) {
+        if (!(level instanceof ServerLevel) || !remembers()) {
+            return;
+        }
+        BlockPos pos = worldPosition.relative(side);
+        if (!level.isLoaded(pos)) {
+            return;
+        }
+        BlockState there = level.getBlockState(pos);
+        Item now = machine ? there.getBlock().asItem() : Items.AIR;
+        if (now != Items.AIR ? seen.get(side) == now : there.isAir() || !seen.containsKey(side)) {
+            return;
+        }
+        if (now != Items.AIR) {
+            seen.put(side, now);
+        } else {
+            seen.remove(side);
+        }
+        setChanged();
     }
 
     // --- the locks ---
@@ -675,6 +753,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
         releaseHeldFluids();
+        if (level instanceof ServerLevel server && remembers()) {
+            keptOnMining = PortMemory.of(this, server);
+        }
     }
 
     /** Items can enter the buffer even while the port is idle or unpowered. */
@@ -767,6 +848,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
+        output.storeNullable("moved_from", PortMemory.CODEC, movedFrom);
+        if (!seen.isEmpty()) {
+            output.store("seen_machines", SEEN_CODEC, seen);
+        }
         intake.save(output);
     }
 
@@ -782,10 +867,15 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
+        movedFrom = input.read("moved_from", PortMemory.CODEC).orElse(null);
+        seen.clear();
+        seen.putAll(input.read("seen_machines", SEEN_CODEC).orElse(Map.of()));
         intake.load(input);
     }
 
-    /** The mined item keeps the port's name. */
+    private static final Codec<Map<Direction, Item>> SEEN_CODEC = Codec.unboundedMap(Direction.CODEC, BuiltInRegistries.ITEM.byNameCodec());
+
+    /** The mined item keeps the port's name, and the machines its cards name. */
     @Override
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
@@ -794,6 +884,11 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (!label.isEmpty()) {
             components.set(DataComponents.CUSTOM_NAME, Component.literal(label));
         }
+        PortMemory kept = keptOnMining != null ? keptOnMining
+                : level instanceof ServerLevel server && remembers() ? PortMemory.of(this, server) : null;
+        if (kept != null) {
+            components.set(JasmComponents.PORT_MEMORY.get(), kept);
+        }
     }
 
     @Override
@@ -801,11 +896,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         super.applyImplicitComponents(components);
         Component name = components.get(DataComponents.CUSTOM_NAME);
         label = name == null ? "" : name.getString();
+        movedFrom = remembers() ? components.get(JasmComponents.PORT_MEMORY.get()) : null;
     }
 
     @Override
     public void removeComponentsFromTag(ValueOutput output) {
         super.removeComponentsFromTag(output);
         output.discard("label");
+        output.discard("moved_from");
     }
 }

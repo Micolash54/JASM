@@ -331,7 +331,7 @@ final class JobRunner {
         List<Target> targets = new ArrayList<>();
         // the first machine that can't be used says why, should none of them take a set
         Wait problem = card.spots().isEmpty() ? Wait.MISSING : Wait.NONE;
-        for (Machines.At at : card.spots()) {
+        for (Machines.At at : Machines.spots(level, network, card)) {
             AccessPortBlockEntity port = Machines.reach(level, network, at);
             Wait wait = port == null ? unreachable(level, network, at)
                     : !port.running() || port.networkBlocked() || port.redstonePaused() ? Wait.PORT_OFF
@@ -364,7 +364,7 @@ final class JobRunner {
         Wait tried = Wait.NONE;
         boolean refusedHere = false;
         while (sent < free && step.left > 0) {
-            Choice choice = chooseSet(level, job, stepIndex, card, record, reserved, keep);
+            Choice choice = chooseSet(level, network, job, stepIndex, card, record, reserved, keep);
             boolean enough = choice.set() != null
                     && fluidSet.entrySet().stream().allMatch(e -> fluids != null && fluids.countFluid(e.getKey()) >= e.getValue());
             if (!enough) {
@@ -465,7 +465,7 @@ final class JobRunner {
      * no machine has turned away), then the card's own item again. A slot gets one kind of item per set. Fluids and
      * materials are as written, and a job planned before shares were kept takes exactly what the card says.
      */
-    static Choice chooseSet(ServerLevel level, CraftingJob job, int stepIndex, ProcessingCard card, WaferRecord record,
+    static Choice chooseSet(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, int stepIndex, ProcessingCard card, WaferRecord record,
             Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep) {
         CraftingJob.Step step = job.steps.get(stepIndex);
         List<ProcessingCard.Amount> inputs = card.usedInputs();
@@ -492,7 +492,7 @@ final class JobRunner {
                     }
                 }
                 if (!others.isEmpty()) {
-                    MachineRecipes.Match recipe = job.machineRecipe(level, stepIndex);
+                    MachineRecipes.Match recipe = job.machineRecipe(level, network, stepIndex);
                     if (recipe == null) {
                         unchecked = true;
                     } else if (recipe.opens(i)) {

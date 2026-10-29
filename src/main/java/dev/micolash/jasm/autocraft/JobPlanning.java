@@ -96,7 +96,7 @@ final class JobPlanning {
 
     /** Whether a processing card has a machine it can use: one of its ports stands on the network and faces something. */
     static boolean reachable(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
-        for (Machines.At at : card.spots()) {
+        for (Machines.At at : Machines.spots(level, network, card)) {
             if (Machines.reach(level, network, at) != null) {
                 return true;
             }
@@ -160,7 +160,7 @@ final class JobPlanning {
         if (materialPool != null) {
             materialPool.materialContents().forEach((key, units) -> stock.put(new GridKey.Material(key), units));
         }
-        CardBook book = new CardBook(level, cards(network, player), items.keySet(), card -> reachable(level, network, card));
+        CardBook book = new CardBook(level, cards(network, player), items.keySet(), card -> reachable(level, network, card), network);
         return new Prepared(new Setup(network, stock, book), null);
     }
 

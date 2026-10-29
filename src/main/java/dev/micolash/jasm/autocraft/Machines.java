@@ -68,6 +68,43 @@ public final class Machines {
         return port != null && port.hasMachine(at.side()) ? port : null;
     }
 
+    /**
+     * Where the machine a card names at {@code at} is now: there while a port stands there, or where its port was placed
+     * back on the same network after being mined.
+     */
+    public static At current(ServerLevel level, @Nullable CableNetwork network, At at) {
+        if (network == null || port(level, network, at.port(), at.side()) != null) {
+            return at;
+        }
+        At moved = PortMemory.moved(network, at);
+        return moved != null ? moved : at;
+    }
+
+    /** {@code card} with each machine where it is now; the card itself when none moved. */
+    public static ProcessingCard located(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
+        if (network == null) {
+            return card;
+        }
+        List<ProcessingCard.Machine> machines = null;
+        for (int i = 0; i < card.machines().size(); i++) {
+            ProcessingCard.Machine machine = card.machines().get(i);
+            At now = current(level, network, machine.at());
+            if (!now.equals(machine.at())) {
+                if (machines == null) {
+                    machines = new ArrayList<>(card.machines());
+                }
+                machines.set(i, new ProcessingCard.Machine(now.port(), now.side(), machine.name()));
+            }
+        }
+        return machines == null ? card : new ProcessingCard(card.inputs(), card.outputs(), machines, card.faces());
+    }
+
+    /** The machines {@code card} may use, where they are now, each once. */
+    public static List<At> spots(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
+        ProcessingCard here = located(level, network, card);
+        return here == card ? card.spots() : here.spots().stream().distinct().toList();
+    }
+
     /** The Access Ports on {@code network} that are loaded. */
     public static List<AccessPortBlockEntity> ports(CableNetwork network) {
         return network.machines(AccessPortBlockEntity.class);

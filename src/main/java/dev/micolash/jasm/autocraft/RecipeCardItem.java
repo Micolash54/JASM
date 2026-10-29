@@ -101,8 +101,7 @@ public class RecipeCardItem extends Item {
             builder.accept(line.copy().withStyle(ChatFormatting.DARK_GRAY));
         });
         for (ProcessingCard.Machine machine : card.machines()) {
-            builder.accept(Component.translatable("tooltip.jasm.card.machine", machine.name(), machine.pos().getX(), machine.pos().getY(),
-                    machine.pos().getZ()).withStyle(ChatFormatting.DARK_AQUA));
+            builder.accept(Component.translatable("tooltip.jasm.card.machine", machine.name()).withStyle(ChatFormatting.DARK_AQUA));
         }
     }
 }
