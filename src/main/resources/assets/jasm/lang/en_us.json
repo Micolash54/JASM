@@ -362,6 +362,8 @@
   "screen.jasm.network.status.working": "Working",
   "screen.jasm.network.status.stopped": "Stopped or out of power",
   "screen.jasm.network.status.unloaded": "Not loaded",
+  "screen.jasm.network.power": "%s FE/t",
+  "screen.jasm.network.using": "Using %s FE/t",
   "screen.jasm.rule.new": "New rule",
   "screen.jasm.rule.edit": "Rule",
   "screen.jasm.rule.number": "Number",

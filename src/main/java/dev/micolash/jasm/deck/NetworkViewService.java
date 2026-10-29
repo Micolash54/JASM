@@ -155,7 +155,7 @@ public final class NetworkViewService {
         List<NetworkBrainBlockEntity> brains = network.machines(NetworkBrainBlockEntity.class);
         boolean brainUnpowered = !brains.isEmpty() && brains.stream().noneMatch(NetworkBrainBlockEntity::working);
         NetworkViewPayloads.Header header = new NetworkViewPayloads.Header(0, leader == null ? -1 : leader.floors(),
-                limit.count(), limit.limit(), limit.stopped(), brainUnpowered, partial);
+                limit.count(), limit.limit(), limit.stopped(), brainUnpowered, partial, cells.totalPower());
         return new NetworkViewPayloads.View(containerId, header, nodes);
     }
 
@@ -247,28 +247,49 @@ public final class NetworkViewService {
             return null;
         }
 
+        /** FE a tick the whole network is paying right now: every loaded machine, Archive and mounted port. */
+        long totalPower() {
+            long total = 0;
+            for (BlockPos pos : positions) {
+                if (level.isLoaded(pos)) total += power(level.getBlockEntity(pos));
+            }
+            for (PortCell port : ports) {
+                total += port.port().usingNow();
+            }
+            return total;
+        }
+
         NetworkViewPayloads.Node node(NetworkTree.Row row) {
             int cell = row.cell();
             if (cell >= positions.size()) {
                 PortCell port = ports.get(cell - positions.size());
                 BlockPos pos = positions.get(port.cable());
                 int status = !level.isLoaded(pos) ? 2 : port.port().running() ? 0 : 1;
+                int power = status == 2 ? 0 : port.port().usingNow();
                 return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), port.holder().portItem(port.port()),
-                        portName(port.port()), pos, level.dimension(), status);
+                        portName(port.port()), pos, level.dimension(), status, power);
             }
             BlockPos pos = positions.get(cell);
             if (!level.isLoaded(pos)) {
                 // Never read a block that isn't loaded: that would load its chunk.
                 return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), ItemStack.EMPTY,
-                        Component.translatable("screen.jasm.network.status.unloaded"), pos, level.dimension(), 2);
+                        Component.translatable("screen.jasm.network.status.unloaded"), pos, level.dimension(), 2, 0);
             }
             BlockState state = level.getBlockState(pos);
             BlockEntity entity = level.getBlockEntity(pos);
             Component name = row.junction() ? Component.translatable("screen.jasm.network.junction") : name(entity, state);
             int status = row.junction() || running(entity) ? 0 : 1;
             return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), new ItemStack(state.getBlock()), name, pos,
-                    level.dimension(), status);
+                    level.dimension(), status, row.junction() ? 0 : power(entity));
         }
+    }
+
+    /** FE a tick the block is paying right now; 0 for anything that never pays. */
+    private static int power(@Nullable BlockEntity entity) {
+        if (entity instanceof MachineBlockEntity machine) {
+            return machine.usingNow();
+        }
+        return entity instanceof ArchiveBlockEntity archive ? archive.usingNow() : 0;
     }
 
     private static boolean running(@Nullable BlockEntity entity) {

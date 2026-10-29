@@ -257,6 +257,12 @@ public class NetworkBrainBlockEntity extends MachineBlockEntity {
         return BrainBalance.fromConfig().drain(towerFloors);
     }
 
+    /** The lowest floor pays for the whole tower, so the floors above show nothing. */
+    @Override
+    public int usingNow() {
+        return leadsItsTower() ? super.usingNow() : 0;
+    }
+
     @Override
     public boolean countsTowardLimit() {
         return false;

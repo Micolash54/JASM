@@ -113,6 +113,11 @@ public class ArchiveBlockEntity extends BlockEntity implements MenuProvider {
         }
     }
 
+    /** FE a tick it is paying right now: its running cost while it has charge, nothing on a full network. */
+    public int usingNow() {
+        return networkStopped() ? 0 : Math.min(energy.getAmountAsInt(), tier.drainPerTick());
+    }
+
     /** Whether its network holds more machines than its brain allows: it can't link or recover then. */
     public boolean networkStopped() {
         return level instanceof ServerLevel s && Networks.at(s, worldPosition) instanceof CableNetwork n && n.limitState().stopped();

@@ -21,8 +21,10 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
@@ -45,11 +47,18 @@ public final class NetworkPanel {
     /** The list/tree key: wide and tall enough to hold its 11 px icon inside the button's rim. */
     private static final int KEY_WIDTH = 21;
     private static final int KEY_HEIGHT = 19;
-    /** The strip above the rows: just under one row, so the list loses one row to it. */
-    private static final int HEADER = 19;
+    /** Room under the grid's last row that the list may use, so the header's gap costs it no row. */
+    private static final int SPARE = 2;
+    /** The strip above the rows: a little over one row, so the list loses one row to it. */
+    private static final int HEADER = 21;
     /** The little box that folds a junction's rows away. */
     private static final int FOLD = 7;
     private static final int DOT = 4;
+    /** The bolt before the header's power total: as tall as the digits, three pixels clear of them. */
+    private static final Identifier POWER_BOLT = Jasm.id("icon/power_bolt");
+    private static final int BOLT_WIDTH = 5;
+    private static final int BOLT_HEIGHT = 7;
+    private static final int BOLT_GAP = 3;
     /** Junction icons are drawn through a half-clear coat of the well's colour. */
     private static final int FADE = 0x801E1E2E;
     private static final JasmButton.Icon LIST = new JasmButton.Icon(Jasm.id("icon/view_list"), 11, 11);
@@ -169,12 +178,12 @@ public final class NetworkPanel {
     /** The strip above the rows: one short one, or two rows' worth when the view is partial. */
     private int headerHeight() {
         NetworkViewPayloads.View view = view();
-        return view != null && view.header().partial() ? 2 * ROW : HEADER;
+        return view != null && view.header().partial() ? 2 * ROW + 2 : HEADER;
     }
 
     /** Rows are 17 px of content on an 18 px step, so the last one needs no gap under it. */
     private int listRows() {
-        return Math.max(0, (rows * ROW - headerHeight() + 1) / ROW);
+        return Math.max(0, (rows * ROW + SPARE - headerHeight() + 1) / ROW);
     }
 
     public int maxScroll() {
@@ -252,7 +261,7 @@ public final class NetworkPanel {
             return -1;
         }
         int listTop = y + headerHeight();
-        if (mouseY < listTop || mouseY >= y + rows * ROW) {
+        if (mouseY < listTop || mouseY >= y + rows * ROW + SPARE) {
             return -1;
         }
         int index = (int) Math.floor((mouseY - listTop) / ROW) + scroll;
@@ -312,9 +321,20 @@ public final class NetworkPanel {
             state = Component.translatable("screen.jasm.network.working");
             colour = JasmGui.GOOD;
         }
-        graphics.text(font, state, x + width - KEY_WIDTH - 4 - font.width(state), y, colour, false);
-        graphics.text(font, Component.translatable("screen.jasm.network.machines", header.count(), BrainBalance.shown(header.limit())), x + 1, y + 9,
-                JasmGui.SUBTEXT, false);
+        int right = x + width - KEY_WIDTH - 4;
+        graphics.text(font, state, right - font.width(state), y, colour, false);
+        Component machines = Component.translatable("screen.jasm.network.machines", header.count(), BrainBalance.shown(header.limit()));
+        graphics.text(font, machines, x + 1, y + 9, JasmGui.SUBTEXT, false);
+        if (header.power() > 0) {
+            Component use = Component.translatable("screen.jasm.network.power", String.format("%,d", header.power()));
+            int useX = right - font.width(use);
+            graphics.text(font, use, useX, y + 9, JasmGui.SUBTEXT, false);
+            // Beside a long "Machines" line, the bolt is left out and only "N FE/t" shows.
+            int boltX = useX - BOLT_GAP - BOLT_WIDTH;
+            if (boltX >= x + 1 + font.width(machines) + 4) {
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, POWER_BOLT, boltX, y + 9, BOLT_WIDTH, BOLT_HEIGHT);
+            }
+        }
         if (header.partial()) {
             graphics.text(font, trimmed(Component.translatable("screen.jasm.network.partial").getString(), width - 2), x + 1, y + ROW + 5,
                     JasmGui.MUTED, false);
@@ -324,7 +344,7 @@ public final class NetworkPanel {
     /** Each row hangs from a line down from its parent, with a short tick into it. */
     private void drawLines(GuiGraphicsExtractor graphics, List<NetworkViewPayloads.Node> nodes, int scroll) {
         int top = y + headerHeight();
-        int bottom = y + rows * ROW;
+        int bottom = y + rows * ROW + SPARE;
         for (int i = 0; i < nodes.size(); i++) {
             NetworkViewPayloads.Node node = nodes.get(i);
             // Past the deepest indent a row sits right under its parent's icon: no line would fit, so none is drawn.
@@ -369,6 +389,12 @@ public final class NetworkPanel {
             };
             graphics.fill(dotX, ry + 7, dotX + DOT, ry + 7 + DOT, colour);
             nameEnd = dotX - 3;
+            if (node.power() > 0) {
+                String use = Component.translatable("screen.jasm.network.power", String.format("%,d", node.power())).getString();
+                int useX = nameEnd - font.width(use);
+                graphics.text(font, use, useX, ry + 5, JasmGui.SUBTEXT, false);
+                nameEnd = useX - 3;
+            }
         }
         int nameX = ix + 19;
         graphics.text(font, trimmed(node.name().getString(), nameEnd - nameX), nameX, ry + 5,
@@ -402,6 +428,10 @@ public final class NetworkPanel {
                 default -> Component.translatable("screen.jasm.network.status.unloaded").withColor(JasmGui.MUTED & 0xFFFFFF);
             };
             lines.add(status.getVisualOrderText());
+            if (node.power() > 0) {
+                lines.add(Component.translatable("screen.jasm.network.using", String.format("%,d", node.power()))
+                        .withColor(JasmGui.SUBTEXT & 0xFFFFFF).getVisualOrderText());
+            }
         }
         return lines;
     }

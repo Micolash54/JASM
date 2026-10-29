@@ -25,8 +25,10 @@ public final class NetworkViewPayloads {
     /**
      * The network as a whole. {@code state}: 0 shown, 1 not linked, 2 not reachable (terminal gone or unloaded),
      * 3 no access. {@code floors} is the leading brain's tower's, 0 for a lone brain, or -1 without a brain.
+     * {@code power} is the FE a tick the whole network is paying right now.
      */
-    public record Header(int state, int floors, int count, int limit, boolean stopped, boolean brainUnpowered, boolean partial) {
+    public record Header(int state, int floors, int count, int limit, boolean stopped, boolean brainUnpowered, boolean partial,
+            long power) {
         static final StreamCodec<ByteBuf, Header> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Header::state,
                 ByteBufCodecs.VAR_INT, Header::floors,
@@ -35,19 +37,21 @@ public final class NetworkViewPayloads {
                 ByteBufCodecs.BOOL, Header::stopped,
                 ByteBufCodecs.BOOL, Header::brainUnpowered,
                 ByteBufCodecs.BOOL, Header::partial,
+                ByteBufCodecs.VAR_LONG, Header::power,
                 Header::new);
 
         public static Header of(int state) {
-            return new Header(state, -1, 0, 0, false, false, false);
+            return new Header(state, -1, 0, 0, false, false, false, 0);
         }
     }
 
     /**
      * One row: the row it hangs under (-1 for the first), how deep it sits, whether it is a junction, what it looks
-     * like and where it is. {@code status}: 0 working, 1 stopped or no power, 2 not loaded.
+     * like and where it is. {@code status}: 0 working, 1 stopped or no power, 2 not loaded. {@code power} is the FE a
+     * tick it is paying right now, 0 when it pays nothing.
      */
     public record Node(int parent, int depth, boolean junction, ItemStack icon, Component name, BlockPos pos,
-            ResourceKey<Level> dimension, int status) {
+            ResourceKey<Level> dimension, int status, int power) {
         static final StreamCodec<RegistryFriendlyByteBuf, Node> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Node::parent,
                 ByteBufCodecs.VAR_INT, Node::depth,
@@ -57,6 +61,7 @@ public final class NetworkViewPayloads {
                 BlockPos.STREAM_CODEC, Node::pos,
                 ResourceKey.streamCodec(Registries.DIMENSION), Node::dimension,
                 ByteBufCodecs.VAR_INT, Node::status,
+                ByteBufCodecs.VAR_INT, Node::power,
                 Node::new);
     }
 
