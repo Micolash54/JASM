@@ -61,8 +61,8 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
     @Override
     public boolean canWrite() { return settings().access().canWrite() && active(); }
     @Override
-    public boolean prefers(ItemResource key) { return settings().lists(key.getItem()) || count(key) > 0; }
-    public boolean passes(ItemResource key) { return settings().passes(key.getItem()); }
+    public boolean prefers(ItemResource key) { return settings().lists(key) || count(key) > 0; }
+    public boolean passes(ItemResource key) { return settings().passes(key); }
     public boolean passes(FluidResource key) { return settings().passes(key.getFluid()); }
 
     private final class FluidSide implements PoolRouter.Unit<FluidResource> {

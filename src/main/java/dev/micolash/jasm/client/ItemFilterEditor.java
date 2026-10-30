@@ -111,7 +111,7 @@ class ItemFilterEditor {
     private int grabY;
     private boolean draggingScroll;
     private record Placed(Button button, int x, int y) {}
-    private record Selector(Mode mode, String value) {}
+    private record Selector(Mode mode, String value, WaferSettings.@Nullable Variant variant) {}
 
     ItemFilterEditor(Font font, int rows, boolean movable, Supplier<ItemStack> carried) {
         this(font, rows, movable, carried, movable ? WIDTH : BASE_WIDTH - 16);
@@ -302,7 +302,12 @@ class ItemFilterEditor {
     private int listBottom() { return y + listY + listHeight; }
     private int maxScroll() { return Math.max(0, (tagChoices.isEmpty() ? draft.rules().size() : tagChoices.size()) - wholeRows()); }
     private int offset() { return tagChoices.isEmpty() ? scroll : tagScroll; }
-    private Filter candidate() { return new Filter(mode, text.getValue(), allow, true); }
+    private Filter candidate() { return new Filter(mode, text.getValue(), allow, true, false, 0, variant()); }
+    // A Material row made from an item takes only that kind of it, while its name is still the one the item filled in.
+    private WaferSettings.@Nullable Variant variant() {
+        if (mode != Mode.MATERIAL || contents || ghost.isEmpty()) return null;
+        return text.getValue().trim().equals(BuiltInRegistries.ITEM.getKey(ghost.getItem()).toString()) ? WaferSettings.Variant.of(ghost) : null;
+    }
     private void update() {
         if (modeButton == null) return;
         modeButton.setMessage(label(mode.getSerializedName()));
@@ -343,9 +348,9 @@ class ItemFilterEditor {
         List<Filter> rules = new ArrayList<>(draft.rules());
         Filter rule = rules.get(at);
         switch (control) {
-            case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled(), rule.voidExcess(), rule.stock()));
-            case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled(), rule.voidExcess(), rule.stock()));
-            case 5 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), rule.enabled(), !rule.voidExcess(), rule.stock()));
+            case 0 -> rules.set(at, new Filter(rule.mode(), rule.value(), !rule.allow(), rule.enabled(), rule.voidExcess(), rule.stock(), rule.variant()));
+            case 1 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), !rule.enabled(), rule.voidExcess(), rule.stock(), rule.variant()));
+            case 5 -> rules.set(at, new Filter(rule.mode(), rule.value(), rule.allow(), rule.enabled(), !rule.voidExcess(), rule.stock(), rule.variant()));
             case 2 -> {
                 if (at > 0) Collections.swap(rules, at, at - 1);
             }
@@ -417,9 +422,11 @@ class ItemFilterEditor {
     }
 
     private ItemStack icon(Filter rule) {
-        List<ItemStack> matches = icons.computeIfAbsent(new Selector(rule.mode(), rule.value()),
+        List<ItemStack> matches = icons.computeIfAbsent(new Selector(rule.mode(), rule.value(), rule.variant()),
                 key -> {
-                    List<ItemStack> items = BuiltInRegistries.ITEM.stream().filter(rule::matches).map(ItemStack::new).toList();
+                    // A row made from an item shows that exact kind.
+                    if (rule.variant() != null) return rule.variantStack().isEmpty() ? List.of() : List.of(rule.variantStack());
+                    List<ItemStack> items = BuiltInRegistries.ITEM.stream().map(ItemStack::new).filter(rule::matches).toList();
                     // A fluid row shows the fluid's bucket.
                     return !items.isEmpty() ? items : BuiltInRegistries.FLUID.stream().filter(rule::matches).map(Fluid::getBucket)
                             .filter(bucket -> bucket != Items.AIR).distinct().map(ItemStack::new).toList();

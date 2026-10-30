@@ -57,7 +57,7 @@ public final class DeckStorage {
 
         @Override
         public boolean accepts(ItemResource key) {
-            return record == null || record.settings().rank(key.getItem()) >= 0;
+            return record == null || record.settings().rank(key) >= 0;
         }
 
         @Override
@@ -539,8 +539,8 @@ public final class DeckStorage {
             WaferRecord record = slot.record();
             WaferSettings settings = record == null ? WaferSettings.DEFAULT : record.settings();
             List<ItemResource> order = new ArrayList<>(left.keySet());
-            order.removeIf(key -> settings.rank(key.getItem()) < 0);
-            order.sort(Comparator.comparingInt(key -> settings.rank(key.getItem())));
+            order.removeIf(key -> settings.rank(key) < 0);
+            order.sort(Comparator.comparingInt(key -> settings.rank(key)));
             for (ItemResource key : order) {
                 if (limit <= 0) break;
                 long remaining = left.get(key);
@@ -733,7 +733,7 @@ public final class DeckStorage {
         if (!WaferEligibility.check(store, key.toStack(1), player.level().registryAccess()).accepted()) return false;
         for (SlotView view : views(store, deck, player, checked)) {
             // Rows on a fluid wafer are about fluids; that wafer never holds items.
-            if (view.record() != null && !view.record().isFluid() && view.record().settings().voidsExcess(key.getItem())) return true;
+            if (view.record() != null && !view.record().isFluid() && view.record().settings().voidsExcess(key)) return true;
         }
         return false;
     }

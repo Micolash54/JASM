@@ -44,7 +44,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
@@ -590,8 +589,8 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     }
 
     /** An item dragged from JEI fills the new filter's ghost input. */
-    public void setFilter(int index, @Nullable Item item) {
-        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setItem(item == null ? ItemStack.EMPTY : new ItemStack(item), false);
+    public void setFilter(int index, @Nullable ItemStack item) {
+        if (filterWindow != null && filterWindow.isOpen()) filterWindow.setItem(item == null ? ItemStack.EMPTY : item, false);
     }
 
     // --- for item list mods (JEI) ---

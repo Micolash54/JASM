@@ -49,7 +49,6 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -65,12 +64,12 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  */
 @JeiPlugin
 public class JasmJeiPlugin implements IModPlugin {
-    /** What a dragged ingredient names in a filter row: an item, or the ID of a fluid or something else. */
-    private record Dropped(@Nullable Item item, @Nullable Identifier id) {}
+    /** What a dragged ingredient names in a filter row: an item (with its kind, such as one comb type), or the ID of a fluid or something else. */
+    private record Dropped(@Nullable ItemStack item, @Nullable Identifier id) {}
 
     private static <I> @Nullable Dropped dropped(ITypedIngredient<I> ingredient) {
         Optional<ItemStack> stack = ingredient.getIngredient(VanillaTypes.ITEM_STACK).filter(s -> !s.isEmpty());
-        if (stack.isPresent()) return new Dropped(stack.get().getItem(), null);
+        if (stack.isPresent()) return new Dropped(stack.get(), null);
         Optional<FluidStack> fluid = ingredient.getIngredient(NeoForgeTypes.FLUID_STACK).filter(f -> !f.isEmpty());
         if (fluid.isPresent()) return new Dropped(null, BuiltInRegistries.FLUID.getKey(fluid.get().getFluid()));
         Identifier id = JeiMaterials.idOf(ingredient);

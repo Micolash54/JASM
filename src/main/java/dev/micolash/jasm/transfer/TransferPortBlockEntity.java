@@ -165,7 +165,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
 
     @Override
     public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
-        return takesPushes() && slot >= 0 && slot < BUFFER_SLOTS && filters.input().rank(stack.getItem()) >= 0;
+        return takesPushes() && slot >= 0 && slot < BUFFER_SLOTS && filters.input().rank(stack) >= 0;
     }
 
     @Override
@@ -275,12 +275,12 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         if (inventory != null && kind.exports() && filters.output().hasAllow()) {
             var contents = storage.contents();
             var keys = new ArrayList<>(contents.keySet());
-            keys.removeIf(key -> filters.output().rank(key.getItem()) < 0);
-            keys.sort(Comparator.comparingInt(key -> filters.output().rank(key.getItem())));
+            keys.removeIf(key -> filters.output().rank(key) < 0);
+            keys.sort(Comparator.comparingInt(key -> filters.output().rank(key)));
             long[] left = stock ? PortStock.itemsLeft(filters.output(), inventory) : null;
             for (var key : keys) {
                 if (allowance.forItems() <= 0) break;
-                int row = filters.output().rank(key.getItem());
+                int row = filters.output().rank(key);
                 long most = Math.min(Math.min(allowance.forItems(), contents.get(key)), PortStock.of(left, row));
                 if (most <= 0) continue;
                 // No transaction is open while the Deck moves things: its storage blocks open their own.
@@ -310,8 +310,8 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             var unique = new LinkedHashSet<ItemResource>();
             for (int slot = 0; slot < inventory.size(); slot++) if (!inventory.getResource(slot).isEmpty()) unique.add(inventory.getResource(slot));
             var keys = new ArrayList<>(unique);
-            keys.removeIf(key -> filters.input().rank(key.getItem()) < 0);
-            keys.sort(Comparator.comparingInt(key -> filters.input().rank(key.getItem())));
+            keys.removeIf(key -> filters.input().rank(key) < 0);
+            keys.sort(Comparator.comparingInt(key -> filters.input().rank(key)));
             for (var key : keys) {
                 if (allowance.forItems() <= 0) break;
                 int room = (int) storage.room(key, allowance.forItems(), DeckStorage.Excess.VOID);

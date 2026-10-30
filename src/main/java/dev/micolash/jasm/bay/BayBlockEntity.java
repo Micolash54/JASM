@@ -403,9 +403,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         wake();
     }
 
-    // components ignored, same as every other filter
     protected boolean passes(ItemStack stack) {
-        return filter.rank(stack.getItem()) >= 0;
+        return filter.rank(stack) >= 0;
     }
 
     protected boolean passes(Fluid fluid) {

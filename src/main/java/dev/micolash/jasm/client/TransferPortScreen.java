@@ -20,7 +20,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
@@ -173,7 +172,7 @@ public final class TransferPortScreen extends JasmScreen<TransferPortMenu> {
     /** The drop spots of the lists on show; a Two-Way Port has just the chosen one. */
     public List<Rect2i> filterSlots() { return active.stream().map(ItemFilterEditor::slotArea).toList(); }
     public void setFilterMaterial(int index, net.minecraft.resources.Identifier id) { if (index >= 0 && index < active.size()) active.get(index).setMaterial(id); }
-    public void setFilterItem(int index, Item item) { if (index >= 0 && index < active.size()) active.get(index).setItem(new ItemStack(item), false); }
+    public void setFilterItem(int index, ItemStack item) { if (index >= 0 && index < active.size()) active.get(index).setItem(item, false); }
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mx, int my, float a) {
         super.extractBackground(graphics, mx, my, a);

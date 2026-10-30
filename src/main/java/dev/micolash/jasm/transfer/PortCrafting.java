@@ -140,7 +140,7 @@ final class PortCrafting {
             if (job.toPlayer() || job.target() == null) continue;
             ItemStack target = job.target().create();
             FluidResource key = FluidMarkerItem.fluidOf(target);
-            if (fluid ? key != null && rule.matches(key.getFluid()) : key == null && rule.matches(target.getItem())) {
+            if (fluid ? key != null && rule.matches(key.getFluid()) : key == null && rule.matches(target)) {
                 pending = Math.min(Integer.MAX_VALUE, pending + Math.min(Integer.MAX_VALUE, job.amount()));
             }
         }
@@ -178,7 +178,7 @@ final class PortCrafting {
     private static @Nullable ItemStack target(WaferSettings output, int row, List<ItemStack> results) {
         for (ItemStack result : results) {
             FluidResource fluid = FluidMarkerItem.fluidOf(result);
-            int rank = fluid != null ? output.rank(fluid.getFluid()) : output.rank(result.getItem());
+            int rank = fluid != null ? output.rank(fluid.getFluid()) : output.rank(result);
             if (rank == row) return result;
         }
         return null;
@@ -211,7 +211,7 @@ final class PortCrafting {
         if (fluid) {
             for (var entry : storage.fluidContents().entrySet()) if (rule.matches(entry.getKey().getFluid())) held += entry.getValue();
         } else {
-            for (var entry : storage.contents().entrySet()) if (rule.matches(entry.getKey().getItem())) held += entry.getValue();
+            for (var entry : storage.contents().entrySet()) if (rule.matches(entry.getKey())) held += entry.getValue();
         }
         return held;
     }

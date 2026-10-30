@@ -1,5 +1,6 @@
 package dev.micolash.jasm.bay;
 
+import com.google.common.base.Suppliers;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.config.JasmConfig;
@@ -8,6 +9,7 @@ import dev.micolash.jasm.registry.JasmTags;
 import dev.micolash.jasm.storage.WaferSettings;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -82,12 +84,12 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             if (state.liquid()) return Plan.idle(BayStatus.FILTERED);
         }
         if (!breakable(level, front, state)) return Plan.idle(BayStatus.SLEEPING);
-        if (!passes(state)) return Plan.idle(BayStatus.FILTERED);
         FakePlayer player = fakePlayer(level);
+        Supplier<List<ItemStack>> drops = Suppliers.memoize(() -> drops(level, front, state, player));
+        if (!passes(state, drops)) return Plan.idle(BayStatus.FILTERED);
         if (!level.mayInteract(player, front)) return Plan.idle(BayStatus.NOT_ALLOWED);
-        List<ItemStack> drops = drops(level, front, state, player);
-        if (!fitsAll(drops)) return Plan.idle(BayStatus.GRID_FULL);
-        return Plan.work(breakCost(level, front, state, drops));
+        if (!fitsAll(drops.get())) return Plan.idle(BayStatus.GRID_FULL);
+        return Plan.work(breakCost(level, front, state, drops.get()));
     }
 
     @Override
@@ -111,10 +113,11 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         }
         if (scoopable(state, fluid) && state.liquid()) return BayStatus.FILTERED;
         if (!breakable(level, front, state)) return BayStatus.SLEEPING;
-        if (!passes(state)) return BayStatus.FILTERED;
         FakePlayer player = fakePlayer(level);
+        Supplier<List<ItemStack>> rolled = Suppliers.memoize(() -> drops(level, front, state, player));
+        if (!passes(state, rolled)) return BayStatus.FILTERED;
         if (!level.mayInteract(player, front)) return BayStatus.NOT_ALLOWED;
-        List<ItemStack> drops = drops(level, front, state, player);
+        List<ItemStack> drops = rolled.get();
         if (!fitsAll(drops)) return BayStatus.GRID_FULL;
         int cost = breakCost(level, front, state, drops);
         if (!canPay(cost)) return BayStatus.NO_POWER;
@@ -180,19 +183,28 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
 
     /**
      * Whether the filter lets this block be broken. The block is named by its item where it has one, and by the block
-     * itself for block tags and blocks without an item.
+     * itself for block tags and blocks without an item. A row made from an item compares against the block's item as
+     * the block drops it, so a filled shulker box or one kind of comb only passes a row made from that same kind.
      */
-    private boolean passes(BlockState state) {
+    private boolean passes(BlockState state, Supplier<List<ItemStack>> drops) {
         WaferSettings filter = filter();
         if (filter.rules().isEmpty()) return true;
         Item item = state.getBlock().asItem();
+        boolean exact = filter.rules().stream().anyMatch(rule -> rule.enabled() && rule.variant() != null);
+        ItemStack self = item == Items.AIR ? ItemStack.EMPTY : exact ? dropped(item, drops.get()) : new ItemStack(item);
         var block = BuiltInRegistries.BLOCK.wrapAsHolder(state.getBlock());
         var id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         for (WaferSettings.Filter rule : filter.rules()) {
             if (!rule.enabled()) continue;
-            if (item != Items.AIR && rule.matches(item) || rule.matches(block, id)) return rule.allow();
+            if (!self.isEmpty() && rule.matches(self) || rule.matches(block, id)) return rule.allow();
         }
         return !filter.hasAllow();
+    }
+
+    // a block that doesn't drop itself (stone into cobblestone) counts as its plain item
+    private static ItemStack dropped(Item item, List<ItemStack> drops) {
+        for (ItemStack drop : drops) if (drop.is(item)) return drop;
+        return new ItemStack(item);
     }
 
     private static boolean breakable(ServerLevel level, BlockPos pos, BlockState state) {

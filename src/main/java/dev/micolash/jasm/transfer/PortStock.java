@@ -25,7 +25,7 @@ final class PortStock {
             long held = 0;
             for (int slot = 0; slot < block.size(); slot++) {
                 ItemResource resource = block.getResource(slot);
-                if (!resource.isEmpty() && rule.matches(resource.getItem())) held += block.getAmountAsLong(slot);
+                if (!resource.isEmpty() && rule.matches(resource)) held += block.getAmountAsLong(slot);
             }
             return held;
         });

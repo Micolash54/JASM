@@ -14,7 +14,6 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
@@ -137,6 +136,6 @@ public final class StoragePortScreen extends JasmScreen<StoragePortMenu> {
 
     /** The filter's drop spots, for JEI. */
     public List<Rect2i> filterSlots() { return List.of(editor.slotArea()); }
-    public void setFilterItem(int index, Item item) { if (index == 0) editor.setItem(new ItemStack(item), false); }
+    public void setFilterItem(int index, ItemStack item) { if (index == 0) editor.setItem(item, false); }
     public void setFilterMaterial(int index, Identifier id) { if (index == 0) editor.setMaterial(id); }
 }
