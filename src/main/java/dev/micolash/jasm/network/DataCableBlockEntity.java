@@ -168,6 +168,14 @@ public class DataCableBlockEntity extends BlockEntity {
         return true;
     }
 
+    /** The face carrying a part (thin port or acceptor) that touches the block at {@code other}, or null if none does. */
+    public @Nullable Direction partFacing(BlockPos other) {
+        for (Direction side : Direction.values()) {
+            if (worldPosition.relative(side).equals(other) && hasPart(side)) return side;
+        }
+        return null;
+    }
+
     /** What mining the part on that face gives. */
     public ItemStack partItem(Direction side) {
         return acceptors.containsKey(side) ? new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()) : portItem(ports.get(side));

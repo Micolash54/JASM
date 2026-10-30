@@ -303,10 +303,7 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
      */
     private static @Nullable Direction portFacingLookedAt(DataCableBlockEntity cable, BlockPos pos, Player player) {
         if (!(player.pick(player.blockInteractionRange(), 1, false) instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return null;
-        for (Direction side : Direction.values()) {
-            if (pos.relative(side).equals(hit.getBlockPos()) && cable.hasPart(side)) return side;
-        }
-        return null;
+        return cable.partFacing(hit.getBlockPos());
     }
 
     // running water used to wash cables and their ports away

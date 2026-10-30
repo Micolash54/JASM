@@ -42,10 +42,10 @@ public final class JasmMenus {
             () -> new MenuType<>(CombustionGeneratorMenu::new, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<CrystalFoundryMenu>> CRYSTAL_FOUNDRY = MENUS.register("crystal_foundry",
-            () -> new MenuType<>(CrystalFoundryMenu::new, FeatureFlags.VANILLA_SET));
+            () -> IMenuTypeExtension.create(CrystalFoundryMenu::client));
 
     public static final Supplier<MenuType<ChipWorkshopMenu>> CHIP_WORKSHOP = MENUS.register("chip_workshop",
-            () -> new MenuType<>(ChipWorkshopMenu::new, FeatureFlags.VANILLA_SET));
+            () -> IMenuTypeExtension.create(ChipWorkshopMenu::client));
 
     public static final Supplier<MenuType<BitlingStationMenu>> BITLING_STATION = MENUS.register("bitling_station",
             () -> new MenuType<>(BitlingStationMenu::new, FeatureFlags.VANILLA_SET));

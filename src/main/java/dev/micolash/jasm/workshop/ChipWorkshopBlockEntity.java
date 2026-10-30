@@ -8,6 +8,7 @@ import dev.micolash.jasm.core.ChipOdds;
 import dev.micolash.jasm.core.ChipType;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.core.Training;
+import dev.micolash.jasm.network.FaceMode;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -92,7 +93,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     private final List<ItemStack> overflow = new ArrayList<>();
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
     private final MachineSides.Gated<ItemResource> itemGates = new MachineSides.Gated<>(automation);
-    private final MachineSides sides = new MachineSides(MachineSides.ALL, false, this::sidesChanged);
+    private final MachineSides sides = new MachineSides(MachineSides.ALL, false, FaceMode.INPUT, true, this::sidesChanged);
     private boolean batch;
     private boolean advancedSelected;
     private int progress;
@@ -141,6 +142,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
                             | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
                             | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0) | (redstonePaused() ? ChipWorkshopMenu.FLAG_PAUSED : 0);
                 case ChipWorkshopMenu.DATA_REDSTONE -> redstoneMode.ordinal();
+                case ChipWorkshopMenu.DATA_AUTO_OUTPUT -> sides.autoOutput() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -627,6 +629,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     public ResourceHandler<ItemResource> automation() {
         return automation;
+    }
+
+    @Override
+    public boolean sendsPosToScreen() {
+        return true;
     }
 
     @Override

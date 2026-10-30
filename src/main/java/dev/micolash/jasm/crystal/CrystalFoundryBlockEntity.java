@@ -3,6 +3,7 @@ package dev.micolash.jasm.crystal;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
+import dev.micolash.jasm.network.FaceMode;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -59,7 +60,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
     private final MachineSides.Gated<ItemResource> itemGates = new MachineSides.Gated<>(automation);
-    private final MachineSides sides = new MachineSides(MachineSides.ALL, false, this::sidesChanged);
+    private final MachineSides sides = new MachineSides(MachineSides.ALL, false, FaceMode.INPUT, true, this::sidesChanged);
     private boolean growing;
     private int made;
     private int progress;
@@ -86,6 +87,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
                             | (growing && !roomForOne() ? CrystalFoundryMenu.FLAG_FULL : 0)
                             | (redstonePaused() ? CrystalFoundryMenu.FLAG_PAUSED : 0);
                 case CrystalFoundryMenu.DATA_REDSTONE -> redstoneMode.ordinal();
+                case CrystalFoundryMenu.DATA_AUTO_OUTPUT -> sides.autoOutput() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -292,6 +294,11 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
 
     public ResourceHandler<ItemResource> automation() {
         return automation;
+    }
+
+    @Override
+    public boolean sendsPosToScreen() {
+        return true;
     }
 
     @Override

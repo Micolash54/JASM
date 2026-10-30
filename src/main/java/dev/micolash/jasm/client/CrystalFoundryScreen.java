@@ -55,7 +55,8 @@ public class CrystalFoundryScreen extends JasmScreen<CrystalFoundryMenu> {
         leftPos = Math.max(0, (width - WIDTH) / 2);
         addHelp(WIDTH - 7, "items/crystal-foundry.md");
         if (io == null) {
-            io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
+            io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id),
+                    menu::shownAt, menu::autoOutput);
         }
         addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
         redstone = addRenderableWidget(JasmButton.icon(

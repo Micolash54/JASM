@@ -67,6 +67,11 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return sides() != null;
     }
 
+    /** Whether the screen is told where the block stands when it opens; the menu type then has to read it. */
+    public boolean sendsPosToScreen() {
+        return false;
+    }
+
     /** The I/O grid, for the machines that have one. */
     public @Nullable MachineSides sides() {
         return null;
@@ -111,11 +116,11 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
 
     /**
      * Twice a second, sends what the machine made out of each Output face into the block there, up to a stack (or a
-     * bucket) a face. Neighbours that aren't loaded are skipped.
+     * bucket) a face, unless its Auto Output switch is off. Neighbours that aren't loaded are skipped.
      */
     protected void pushOutputs(ServerLevel level) {
         MachineSides sides = sides();
-        if (sides == null || !sides.anyOut() || (level.getGameTime() + worldPosition.asLong()) % PUSH_TICKS != 0) return;
+        if (sides == null || !sides.anyOut() || !sides.autoOutput() || (level.getGameTime() + worldPosition.asLong()) % PUSH_TICKS != 0) return;
         MachineSides.Gated<ItemResource> items = itemGates();
         MachineSides.Gated<FluidResource> fluids = fluidGates();
         Direction front = frontSide();

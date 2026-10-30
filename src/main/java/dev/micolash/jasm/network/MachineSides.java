@@ -12,8 +12,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A machine's I/O grid: for each of its six faces, what hoppers, pipes and ports may do through it, once for items and,
- * on machines with a tank, once for fluids. Every face starts at None. The screen's face buttons step through the modes
- * this machine offers.
+ * on machines with a tank, once for fluids. A newly placed machine starts every face at the mode it is given (Input on
+ * the Workshop and Foundry, None on the bays). The screen's face buttons step through the modes this machine offers.
+ * Machines with an Auto Output switch only push their results out on their own while it is on; the bays always do.
  */
 public final class MachineSides {
     /** The full cycle, in click order. */
@@ -25,6 +26,9 @@ public final class MachineSides {
     /** Menu button ids: one per face, the items' six first, then the fluids'. */
     public static final int BUTTON_FIRST = 100;
     private static final int FACES = MachineFace.values().length;
+    /** Menu button id of the Auto Output switch, just after the face buttons. */
+    public static final int AUTO_OUTPUT_BUTTON = BUTTON_FIRST + 2 * FACES;
+    private static final String AUTO_OUTPUT = "auto_output";
 
     public enum Kind {
         ITEMS("io_items"),
@@ -41,19 +45,41 @@ public final class MachineSides {
     private final boolean fluids;
     private final Runnable changed;
     private final FaceMode[][] modes = new FaceMode[Kind.values().length][FACES];
+    private final boolean switchable;
     private boolean anyOut;
+    private boolean autoOutput;
 
-    /** {@code changed} hears about every change a player makes. */
-    public MachineSides(List<FaceMode> offered, boolean fluids, Runnable changed) {
+    /**
+     * Every face starts at {@code start}, if offered, else None. With {@code switchable}, the machine has an Auto Output
+     * switch, off on a new machine. {@code changed} hears about every change a player makes.
+     */
+    public MachineSides(List<FaceMode> offered, boolean fluids, FaceMode start, boolean switchable, Runnable changed) {
         this.offered = offered;
         this.fluids = fluids;
+        this.switchable = switchable;
         this.changed = changed;
-        clear();
+        fill(offered.contains(start) ? start : FaceMode.NONE);
     }
 
-    private void clear() {
-        for (FaceMode[] kind : modes) Arrays.fill(kind, FaceMode.NONE);
-        anyOut = false;
+    public boolean hasAutoOutputSwitch() {
+        return switchable;
+    }
+
+    /** Whether the machine pushes its results out of its Output sides on its own. Without a switch it always does. */
+    public boolean autoOutput() {
+        return !switchable || autoOutput;
+    }
+
+    public void setAutoOutput(boolean on) {
+        if (!switchable || autoOutput == on) return;
+        autoOutput = on;
+        changed.run();
+    }
+
+    /** Every face this machine has set to {@code mode}; fluid faces stay None on a machine without a tank. */
+    private void fill(FaceMode mode) {
+        for (Kind kind : Kind.values()) Arrays.fill(modes[kind.ordinal()], kind == Kind.FLUIDS && !fluids ? FaceMode.NONE : mode);
+        refreshOut();
     }
 
     public boolean hasFluids() {
@@ -88,6 +114,11 @@ public final class MachineSides {
 
     /** A face button pressed in the screen: that face steps to the next mode. False if {@code id} isn't one of ours. */
     public boolean click(int id) {
+        if (id == AUTO_OUTPUT_BUTTON) {
+            if (!switchable) return false;
+            setAutoOutput(!autoOutput);
+            return true;
+        }
         int index = id - BUTTON_FIRST;
         if (index < 0 || index >= Kind.values().length * FACES) return false;
         Kind kind = Kind.values()[index / FACES];
@@ -112,11 +143,16 @@ public final class MachineSides {
     public void save(ValueOutput output) {
         output.putInt(Kind.ITEMS.key, packed(Kind.ITEMS));
         if (fluids) output.putInt(Kind.FLUIDS.key, packed(Kind.FLUIDS));
+        if (switchable) output.putBoolean(AUTO_OUTPUT, autoOutput);
     }
 
-    /** Older machines saved none: every face stays at None. */
+    /**
+     * A saved machine keeps the faces it saved. Machines saved before the grid existed saved none: every face stays at
+     * None, as it was for them, whatever a new machine starts at. Machines saved before the Auto Output switch came load
+     * with it on, so they keep pushing as they did.
+     */
     public void load(ValueInput input) {
-        clear();
+        fill(FaceMode.NONE);
         for (Kind kind : Kind.values()) {
             if (kind == Kind.FLUIDS && !fluids) continue;
             int packed = input.getIntOr(kind.key, 0);
@@ -125,6 +161,7 @@ public final class MachineSides {
                 modes[kind.ordinal()][face.ordinal()] = offered.contains(mode) ? mode : FaceMode.NONE;
             }
         }
+        if (switchable) autoOutput = input.getBooleanOr(AUTO_OUTPUT, true);
         refreshOut();
     }
 

@@ -144,7 +144,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
                     leftPos + BayMenu.WIDTH - 7 - HELP_ROOM - HELP_SIZE, topPos + titleLabelY - 3, HELP_SIZE, HELP_HEIGHT));
             soundTooltip();
         }
-        if (io == null) io = new IoGridWindow(font, true, menu::sides, this::click);
+        if (io == null) io = new IoGridWindow(font, true, menu::sides, this::click, menu::bayPos, null);
         addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
         editor = null;
         if (!collapsed()) {

@@ -7,6 +7,7 @@ import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.SpeedUpgradeSlot;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -41,7 +42,8 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     static final int DATA_FLAGS = 6;
     static final int DATA_SIDES = 7;
     static final int DATA_REDSTONE = 8;
-    static final int DATA_COUNT = 9;
+    static final int DATA_AUTO_OUTPUT = 9;
+    static final int DATA_COUNT = 10;
 
     static final int FLAG_GROWING = 1;
     static final int FLAG_POWERED = 2;
@@ -59,6 +61,7 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     private final ContainerData data;
     private final ContainerLevelAccess access;
     private final @Nullable Block block;
+    private @Nullable BlockPos shownAt;
 
     /** Server side. */
     public CrystalFoundryMenu(int containerId, Inventory inventory, Container container, ContainerData data, ContainerLevelAccess access,
@@ -144,6 +147,23 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
     /** The I/O grid's item faces, two bits each. */
     public int sides() {
         return data.get(DATA_SIDES);
+    }
+
+    /** Client side, opened from the block: the opening data says where it stands, so the I/O grid can show its neighbours. */
+    public static CrystalFoundryMenu client(int containerId, Inventory inventory, @Nullable RegistryFriendlyByteBuf buf) {
+        CrystalFoundryMenu menu = new CrystalFoundryMenu(containerId, inventory);
+        if (buf != null && buf.isReadable()) menu.shownAt = buf.readBlockPos();
+        return menu;
+    }
+
+    /** Where the machine stands, as the client was told when the screen opened; null if it wasn't. */
+    public @Nullable BlockPos shownAt() {
+        return shownAt;
+    }
+
+    /** Whether the machine pushes its results out on its own. */
+    public boolean autoOutput() {
+        return data.get(DATA_AUTO_OUTPUT) != 0;
     }
 
     /** The redstone key and the I/O grid's face buttons. */

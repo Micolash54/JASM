@@ -7,6 +7,7 @@ import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.SpeedUpgradeSlot;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -60,7 +61,8 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     static final int DATA_NEED = 11;
     static final int DATA_SIDES = 12;
     static final int DATA_REDSTONE = 13;
-    static final int DATA_COUNT = 14;
+    static final int DATA_AUTO_OUTPUT = 14;
+    static final int DATA_COUNT = 15;
 
     static final int FLAG_BATCH = 1;
     static final int FLAG_ADVANCED = 2;
@@ -79,6 +81,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     private final ContainerLevelAccess access;
     private final @Nullable Block block;
     private final @Nullable ChipWorkshopBlockEntity workshop;
+    private @Nullable BlockPos shownAt;
 
     /** Server side. */
     public ChipWorkshopMenu(int containerId, Inventory inventory, ChipWorkshopBlockEntity workshop, ContainerData data, ContainerLevelAccess access,
@@ -204,6 +207,23 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     /** The I/O grid's item faces, two bits each. */
     public int sides() {
         return data.get(DATA_SIDES);
+    }
+
+    /** Client side, opened from the block: the opening data says where it stands, so the I/O grid can show its neighbours. */
+    public static ChipWorkshopMenu client(int containerId, Inventory inventory, @Nullable RegistryFriendlyByteBuf buf) {
+        ChipWorkshopMenu menu = new ChipWorkshopMenu(containerId, inventory);
+        if (buf != null && buf.isReadable()) menu.shownAt = buf.readBlockPos();
+        return menu;
+    }
+
+    /** Where the machine stands, as the client was told when the screen opened; null if it wasn't. */
+    public @Nullable BlockPos shownAt() {
+        return shownAt;
+    }
+
+    /** Whether the machine pushes its results out on its own. */
+    public boolean autoOutput() {
+        return data.get(DATA_AUTO_OUTPUT) != 0;
     }
 
     @Override

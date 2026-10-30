@@ -58,7 +58,11 @@ A Redstone Upgrade adds a key under the upgrade slots to pause the Workshop. The
 
 Blank Chips can go in any of the four slots, and the critter keeps making chips even with other things beside them. A few things aren't chips: a Byteling builds the <ItemLink id="synapse_core" /> from what is in the grid.
 
-Its Input / Output key sets each side. Input fills the grid. Output sends finished chips out into whatever is on that side, and lets them be pulled out there too. The Blank Chips in the grid never leave through a side. Every side starts closed.
+Its Input / Output key sets each side and shows the block next to it. Input fills the grid. Output lets finished chips be pulled out there. The Blank Chips in the grid never leave through a side. Every side starts at Input.
+
+With Auto Output on, the Workshop also sends finished chips out of its Output sides into whatever is there, an Access Port included. It starts off.
+
+For Access Port jobs, set the side facing the port to Input/Output and turn Auto Output on.
 
 A Chip Workshop counts toward a network's [machine limit](network-brain.md).
 

@@ -107,7 +107,8 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_ADVANCED),
                 leftPos + SIDE_PAD, topPos + ADVANCED_Y, SIDE_TEXT_WIDTH, BAR_HEIGHT));
         if (io == null) {
-            io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id));
+            io = new IoGridWindow(font, false, kind -> menu.sides(), id -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id),
+                    menu::shownAt, menu::autoOutput);
         }
         addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
         redstone = addRenderableWidget(JasmButton.icon(

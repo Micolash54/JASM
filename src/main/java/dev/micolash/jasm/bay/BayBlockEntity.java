@@ -3,6 +3,7 @@ package dev.micolash.jasm.bay;
 import com.mojang.authlib.GameProfile;
 import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.network.FaceMode;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -123,7 +124,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         fluidAutomation = new BayAutomation.Fluids(tank, kind().takesIn());
         itemGates = new MachineSides.Gated<>(itemAutomation);
         fluidGates = new MachineSides.Gated<>(fluidAutomation);
-        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true, this::sidesChanged);
+        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true, FaceMode.NONE, false, this::sidesChanged);
     }
 
     public abstract BayKind kind();
