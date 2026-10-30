@@ -24,7 +24,7 @@ The Network Encoder writes recipes onto [Recipe Cards](recipe-cards.md). It is a
 
 When more than one recipe fits the grid, the key above the result picks which one the card gets. JEI's "+" picks its own recipe.
 
-For a machine, choose it in the encoder's machine list first. Then fill the right-hand column with what the machine gives back. Scroll over a slot to change its amount, with Shift for bigger steps. Right-click with a full bucket or tank to set a fluid. See the [Access Port](access-port.md).
+For a machine, choose it in the encoder's machine list first. Then fill the right-hand column with what the machine gives back. Scroll over a slot to change its amount, or middle-click it and type the amount (fluids in buckets, up to three decimals: 1.25 is 1,250 mB). Right-click with a full bucket or tank to set a fluid. See the [Access Port](access-port.md).
 
 For a machine that only takes some ingredients through its top, bottom or one side, use the [Advanced Encoder](advanced-encoder.md).
 

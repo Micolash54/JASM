@@ -28,13 +28,16 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     public static final int INPUTS = 9;
     public static final int OUTPUTS = 3;
     /** Most of one item in one slot. */
-    public static final int MAX_AMOUNT = 999;
+    public static final int MAX_AMOUNT = 9_999;
 
-    /** Most millibuckets of one fluid in one slot. */
-    public static final int MAX_FLUID = 32_000;
+    /** Most millibuckets of one fluid in one slot: 9,999 buckets. */
+    public static final int MAX_FLUID = 9_999_000;
 
-    /** Most units of one material in one slot. */
-    public static final int MAX_MATERIAL = MAX_FLUID;
+    /**
+     * Most units of one material in one slot. Not a game rule, only room: the terminal's amount box sends what is typed
+     * packed into one button number, which can't go much past 134 million.
+     */
+    public static final int MAX_MATERIAL = 100_000_000;
 
     /** Some of one item, some millibuckets of one fluid, or some units of one other mod's material; empty where a slot is empty. */
     public record Amount(ItemResource item, FluidResource fluid, @Nullable MaterialKey material, int count) {
@@ -162,7 +165,8 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
 
         /** The most a slot holding this example stack takes: more for a fluid or material marker than for an item. */
         public static int max(ItemStack example) {
-            return FluidMarkerItem.isMarker(example) || MaterialMarkerItem.isMarker(example) ? MAX_FLUID : MAX_AMOUNT;
+            if (MaterialMarkerItem.isMarker(example)) return MAX_MATERIAL;
+            return FluidMarkerItem.isMarker(example) ? MAX_FLUID : MAX_AMOUNT;
         }
 
         /** As a stack to show; the count may be more than a stack holds. A fluid or material shows as its marker. */

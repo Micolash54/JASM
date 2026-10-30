@@ -31,7 +31,7 @@ A Docking Station holds one [Deck](decks.md) for its network, joined by a [Data 
 * **Locked:** only the Deck's owner and the network's owner can take it out. A Deck starts locked.
 * **Unlocked:** anyone trusted on the network can take it out.
 * Only the Deck's owner and the network's owner can lock or unlock it.
-* Breaking the station follows the same rule. The broken station keeps the Deck inside, locked or not, until it is placed again. Its tooltip says whose Deck it holds.
+* Breaking the station, or picking it up with a [Wrench](wrench.md), follows the same rule. The broken station keeps the Deck inside, locked or not, until it is placed again. Its tooltip says whose Deck it holds.
 * Explosions don't break it. Hoppers, pipes and ports can't take the Deck out.
 
 <br />

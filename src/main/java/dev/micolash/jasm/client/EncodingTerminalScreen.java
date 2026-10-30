@@ -8,6 +8,8 @@ import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.InputFace;
 import dev.micolash.jasm.autocraft.MaterialMarkerItem;
+import dev.micolash.jasm.autocraft.ProcessingCard;
+import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -65,6 +67,8 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private JasmButton encodeButton;
     /** Picks between several recipes that fit the grid. */
     private RecipePicker picker;
+    /** The box a middle-click on a processing slot opens, to type its amount. */
+    private SlotAmountEntry amountEntry;
     private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final Identifier ARROW_DOWN = Jasm.id("icon/craft_arrow");
@@ -146,6 +150,8 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         picker = new RecipePicker(menu.pickerView(), menu.containerId, leftPos + EncodingTerminalMenu.PREVIEW_X + 2,
                 topPos + EncodingTerminalMenu.GRID_Y - 1, 11, leftPos + EncodingTerminalMenu.PREVIEW_X, topPos + EncodingTerminalMenu.PREVIEW_Y);
         addRenderableWidget(picker.key());
+        amountEntry = new SlotAmountEntry(font, (slot, amount) -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId,
+                EncodingTerminalMenu.BUTTON_EXACT + amount * 16 + slot));
         trustWindow = new TrustWindow(menu, font);
         accessButton = JasmButton.icon(() -> ACCESS, Component.translatable("screen.jasm.terminal.access"),
                 b -> trustWindow.toggle(leftPos + 8, topPos + 14), leftPos + KEY_X, topPos + JasmGui.sideKeyY(1),
@@ -474,6 +480,19 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
                 return true;
             }
         }
+        if (amountEntry.isOpen()) {
+            if (amountEntry.contains(event.x(), event.y())) {
+                return amountEntry.mouseClicked(event, doubleClick);
+            }
+            amountEntry.close();
+        }
+        if (event.button() == InputConstants.MOUSE_BUTTON_MIDDLE && menu.processing()) {
+            int slot = ghostSlotAt(event.x(), event.y());
+            if (slot >= 0 && menu.amount(slot) > 0) {
+                openAmount(slot);
+                return true;
+            }
+        }
         if (linkWindow.contains(event.x(), event.y())) {
             return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
         }
@@ -526,6 +545,13 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         return super.mouseClicked(event, doubleClick);
     }
 
+    /** Opens the amount box under processing slot {@code slot}; a fluid's is typed in buckets. */
+    private void openAmount(int slot) {
+        Rect2i area = ghostSlotArea(slot);
+        int max = ProcessingCard.Amount.max(ghostItem(slot));
+        amountEntry.open(slot, area.getX(), area.getY(), menu.amount(slot), max, menu.fluid(slot), leftPos + 2, leftPos + imageWidth - 2);
+    }
+
     /**
      * The Deck list clicks like a chest, except that what comes out is a copy and nothing leaves the Deck. Left takes
      * a stack, right half of one, Shift does nothing. Holding a copy, right lets go of it and left swaps it for what is
@@ -550,6 +576,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     /** Holding a copy, dragging over ghost slots does to each what a click there would. On the Deck list's scroll bar it scrolls. */
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (amountEntry.isOpen() && amountEntry.mouseDragged(event, dx, dy)) {
+            return true;
+        }
         if (facesWindow != null && facesWindow.mouseDragged(event, width, height)) {
             return true;
         }
@@ -580,6 +609,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (amountEntry.isOpen() && amountEntry.mouseReleased(event)) {
+            return true;
+        }
         if (facesWindow != null && facesWindow.mouseReleased()) {
             return true;
         }
@@ -627,7 +659,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         return -1;
     }
 
-    /** Over the machine list it scrolls; over a filled processing slot it changes the amount (by 10 with Shift). */
+    /** Over the machine list it scrolls; over a filled processing slot it changes the amount one step. */
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         if (linkWindow.contains(x, y) || facesWindow != null && facesWindow.contains(x, y)) {
@@ -647,8 +679,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (menu.processing() && hoveredSlot != null && hoveredSlot.hasItem() && scrollY != 0) {
             int slot = processingSlot(hoveredSlot);
             if (slot >= 0) {
-                boolean shift = minecraft.hasShiftDown();
-                int op = scrollY > 0 ? (shift ? 2 : 0) : (shift ? 3 : 1);
+                int op = scrollY > 0 ? 0 : 1;
                 minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_AMOUNT + slot * 4 + op);
                 return true;
             }
@@ -658,6 +689,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (amountEntry.keyPressed(event)) {
+            return true;
+        }
         if (painting() != null && event.isEscape()) {
             facesWindow.stopPainting();
             return true;
@@ -688,6 +722,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (amountEntry.charTyped(event)) {
+            return true;
+        }
         if (trustWindow.isOpen() && trustWindow.charTyped(event)) {
             return true;
         }
@@ -783,7 +820,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             List<Component> faces = showFaces() && index < 9 ? faceLines(index) : List.of();
             if (hoveredMaterial != null) {
                 List<Component> lines = new ArrayList<>(List.of(MaterialIcons.name(hoveredMaterial),
-                        Component.literal(String.valueOf(menu.amount(index))).withStyle(ChatFormatting.GRAY),
+                        Component.literal(String.format("%,d", menu.amount(index))).withStyle(ChatFormatting.GRAY),
                         Component.literal(MaterialIcons.modName(hoveredMaterial)).withStyle(ChatFormatting.BLUE)));
                 lines.addAll(faces);
                 graphics.setTooltipForNextFrame(font, lines, Optional.empty(), mouseX, mouseY);
@@ -808,6 +845,13 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (facesWindow != null && facesWindow.isOpen()) {
             graphics.nextStratum();
             facesWindow.draw(graphics, realMouseX, realMouseY, a);
+        }
+        if (amountEntry.isOpen() && (!menu.processing() || menu.amount(amountEntry.slot()) <= 0)) {
+            amountEntry.close();
+        }
+        if (amountEntry.isOpen()) {
+            graphics.nextStratum();
+            amountEntry.draw(graphics, realMouseX, realMouseY, a);
         }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
             graphics.setTooltipForNextFrame(font, List.of(
@@ -925,7 +969,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
     }
 
-    /** The amount written on each filled processing slot, over its item: "250 mB" or "1.5 B" for a fluid. */
+    /**
+     * The amount written on each filled processing slot, over its item: "250mB" or "1.5B" for a fluid, "1.2KB" from a
+     * thousand buckets up, and "12K" for a material from ten thousand units. Anything wider than the slot is drawn smaller.
+     */
     private void drawAmounts(GuiGraphicsExtractor graphics) {
         graphics.nextStratum();
         for (int slot = 0; slot < EncodingTerminalBlockEntity.AMOUNTS; slot++) {
@@ -935,11 +982,16 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             }
             Rect2i area = ghostSlotArea(slot);
             if (menu.fluid(slot)) {
-                JasmGui.fitCount(graphics, font, FluidAmounts.label(amount).replace(" ", ""), area.getX(), area.getY());
+                String text = amount < 1_000_000 ? FluidAmounts.label(amount).replace(" ", "") : GridEntries.abbreviateBuckets(amount) + "B";
+                JasmGui.fitCount(graphics, font, text, area.getX(), area.getY());
                 continue;
             }
-            String text = String.valueOf(amount);
-            graphics.text(font, text, area.getX() + 17 - font.width(text), area.getY() + 9, 0xFFFFFFFF, true);
+            String text = amount < 10_000 ? String.valueOf(amount) : GridEntries.abbreviate(amount);
+            if (font.width(text) > 18) {
+                JasmGui.fitCount(graphics, font, text, area.getX(), area.getY());
+            } else {
+                graphics.text(font, text, area.getX() + 17 - font.width(text), area.getY() + 9, 0xFFFFFFFF, true);
+            }
         }
     }
 

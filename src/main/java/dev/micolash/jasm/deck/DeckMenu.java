@@ -14,6 +14,7 @@ import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferHolderItem;
 import dev.micolash.jasm.wafer.WaferItem;
+import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -417,14 +418,36 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         if (input == ContainerInput.SWAP && buttonNum == deckSlot) {
             return;
         }
+        if (input == ContainerInput.QUICK_MOVE && resultSlot >= 0 && slotIndex == resultSlot) {
+            craftStack(player);
+            return;
+        }
         super.clicked(slotIndex, buttonNum, input, player);
+    }
+
+    /**
+     * Shift-click on the result: craft again while the grid keeps making the same thing, up to one stack of the result.
+     * Fewer is made when the materials or the room run out first, or when another craft would pass the stack.
+     */
+    private void craftStack(Player player) {
+        Slot slot = slots.get(resultSlot);
+        if (!slot.mayPickup(player)) return;
+        ItemStack first = slot.getItem().copy();
+        int made = 0;
+        while (made < first.getMaxStackSize()) {
+            ItemStack next = slot.getItem();
+            if (next.isEmpty() || !ItemStack.isSameItemSameComponents(first, next) || made + next.getCount() > first.getMaxStackSize()) break;
+            ItemStack crafted = quickMoveStack(player, resultSlot);
+            if (crafted.isEmpty()) break;
+            made += crafted.getCount();
+        }
     }
 
     /**
      * Shift-click: a wafer moves between the Deck's wafer slots and the inventory; any other item from the
      * inventory is stored on the Deck's wafers. On a Crafting Deck, a grid item goes back to the wafers (or the
-     * inventory if they're full), and the result crafts once into the inventory; vanilla repeats that while the
-     * refilled grid keeps making the same thing.
+     * inventory if they're full), and the result crafts once into the inventory; {@link #craftStack} repeats that
+     * while the refilled grid keeps making the same thing, up to one stack.
      */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
@@ -707,12 +730,12 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
     }
 
     /**
-     * Fills the grid for a recipe (JEI's "+"): the grid is emptied onto the wafers first, then each slot takes one of
-     * its allowed items (or as many sets as fit, with {@code max}), from the wafers first and then the inventory,
-     * picking the item there is most of. A slot asking for a plain item also takes it with extra data (crop stats on
-     * seeds, say) when no plain copy is there, the version there is most of. A trained critter in the recipe takes any copy with a full training bar, and none without. A slot asking for a wafer takes any empty
-     * wafer of that kind, filter rows and name or not, a different one per slot; a wafer holding anything is never taken.
-     * Slots with nothing to take stay empty, so a recipe the player can only partly pay for still places what they have.
+     * Fills the grid for a recipe (JEI's "+"): the grid is emptied onto the wafers first, then {@link GridFill} picks
+     * each slot's item from what is left, the same way the screen does, and it comes from the wafers first (as far as
+     * the charge pays) and then the inventory. A trained critter in the recipe takes any copy with a full training bar,
+     * and none without. A slot asking for a wafer takes any empty wafer of that kind, filter rows and name or not, a
+     * different one per slot; a wafer holding anything is never taken. Slots with nothing left stay empty, so a recipe
+     * the player can only partly pay for still places one of each thing they have.
      */
     public void fillGrid(ServerPlayer player, List<List<ItemResource>> wanted, boolean max) {
         fillGrid(player, wanted, max, null);
@@ -736,76 +759,69 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
             }
         }
         placing = false;
-        Map<ItemResource, Long> available = new HashMap<>();
-        // only read when a slot has no plain copy to take
-        Map<ItemResource, Long> present = null;
-        // wafers stack to one and a used one is one of a kind, so each wafer slot takes its own
-        Map<ItemResource, Long> wafersTaken = new HashMap<>();
+        Inventory inventory = player.getInventory();
         WaferStore store = WaferStore.get(player.level().getServer());
-        List<@Nullable ItemResource> chosen = new ArrayList<>();
+        GridFill.Source source = new GridFill.Source() {
+            private final Map<ItemResource, Long> stored = new HashMap<>();
+            private @Nullable Map<ItemResource, Long> allStored;
+            private @Nullable Map<ItemResource, Long> allCarried;
+
+            @Override
+            public long stored(ItemResource key) {
+                return stored.computeIfAbsent(key, storage::count);
+            }
+
+            @Override
+            public long carried(ItemResource key) {
+                return allCarried().getOrDefault(key, 0L);
+            }
+
+            @Override
+            public Map<ItemResource, Long> allStored() {
+                if (allStored == null) {
+                    allStored = storage.contents();
+                }
+                return allStored;
+            }
+
+            @Override
+            public Map<ItemResource, Long> allCarried() {
+                if (allCarried == null) {
+                    allCarried = carriedItems(inventory);
+                }
+                return allCarried;
+            }
+
+            @Override
+            public long budget() {
+                return DeckStorage.affordable(deck);
+            }
+
+            @Override
+            public boolean takes(ItemResource key) {
+                return allowedInGrid(key.toStack(1)) && fillable(store, key);
+            }
+        };
+        // a slot something is stuck in is left out of the recipe
+        List<List<ItemResource>> open = new ArrayList<>();
         for (int slot = 0; slot < wanted.size(); slot++) {
-            ItemResource best = null;
-            long bestCount = 0;
-            boolean empty = grid.getItem(slot).isEmpty();
-            List<ItemResource> options = wanted.get(slot);
-            if (empty && options.stream().anyMatch(GridVariants::wantsTrained)) {
-                // a trained critter in the recipe means any copy with a full bar
-                if (present == null) {
-                    present = onHand(player, storage);
-                }
-                options = GridVariants.withTrained(options, present);
-            }
-            for (ItemResource option : empty ? options : List.<ItemResource>of()) {
-                if (option.isEmpty() || !allowedInGrid(option.toStack(1)) || !fillable(store, option)) {
-                    continue;
-                }
-                long count = available.computeIfAbsent(option, key -> storage.count(key) + inventoryCount(player.getInventory(), key))
-                        - wafersTaken.getOrDefault(option, 0L);
-                if (count > bestCount) {
-                    best = option;
-                    bestCount = count;
-                }
-            }
-            if (best == null && empty && !options.isEmpty()) {
-                if (present == null) {
-                    present = onHand(player, storage);
-                }
-                best = GridVariants.best(options, present);
-                if (best == null) {
-                    best = GridVariants.emptyWafer(options, present, wafersTaken, key -> fillable(store, key));
-                }
-                if (best != null) {
-                    available.putIfAbsent(best, present.get(best));
-                }
-            }
-            if (best != null && GridVariants.isWafer(best)) {
-                wafersTaken.merge(best, 1L, Long::sum);
-            }
-            chosen.add(best);
+            open.add(grid.getItem(slot).isEmpty() ? wanted.get(slot) : List.of());
         }
-        int sets = max ? Integer.MAX_VALUE : 1;
-        Map<ItemResource, Integer> uses = new HashMap<>();
-        chosen.forEach(key -> {
-            if (key != null) {
-                uses.merge(key, 1, Integer::sum);
-            }
-        });
-        for (Map.Entry<ItemResource, Integer> use : uses.entrySet()) {
-            sets = (int) Math.min(sets, Math.min(use.getKey().getMaxStackSize(), available.get(use.getKey()) / use.getValue()));
-        }
+        List<GridFill.@Nullable Pick> picks = GridFill.plan(open, source, max);
         placing = true;
-        for (int i = 0; i < chosen.size(); i++) {
-            ItemResource key = chosen.get(i);
-            if (key == null || sets <= 0) {
+        for (int i = 0; i < picks.size(); i++) {
+            GridFill.Pick pick = picks.get(i);
+            if (pick == null) {
                 continue;
             }
-            int needed = sets;
+            ItemResource key = pick.key();
             ItemStack placed = ItemStack.EMPTY;
-            for (ItemStack taken : storage.withdrawQuietly(key, needed)) {
-                placed = placed.isEmpty() ? taken : placed.copyWithCount(placed.getCount() + taken.getCount());
+            if (pick.stored() > 0) {
+                for (ItemStack taken : storage.withdrawQuietly(key, pick.stored())) {
+                    placed = placed.isEmpty() ? taken : placed.copyWithCount(placed.getCount() + taken.getCount());
+                }
             }
-            needed -= placed.getCount();
-            Inventory inventory = player.getInventory();
+            int needed = pick.count() - placed.getCount();
             for (int s = 0; s < Inventory.INVENTORY_SIZE && needed > 0; s++) {
                 ItemStack there = inventory.getItem(s);
                 if (s != deckSlot && key.matches(there)) {
@@ -826,27 +842,29 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
     }
 
     /**
-     * What JEI's "+" can fill the grid from: {@code stored} (the wafers as the screen last heard), the inventory without
-     * the Deck itself, and what is already in the grid, since {@link #fillGrid} puts that back on the wafers first.
+     * What JEI's "+" sees from the screen, for {@link GridFill}: the wafers and network as the screen last heard, the
+     * inventory without the Deck itself, and what is already in the grid, since {@link #fillGrid} empties that first:
+     * onto the wafers while there is charge, into the inventory without. Without charge nothing comes off the wafers.
      */
-    public Map<ItemResource, Long> availableForFill(Map<ItemResource, Long> stored) {
-        Map<ItemResource, Long> total = new HashMap<>(stored);
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && i != deckSlot) {
-                total.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
-            }
-        }
+    public GridFill.Source screenFillSource() {
+        Map<ItemResource, Long> stored = new HashMap<>(view.contents());
+        Map<ItemResource, Long> carried = carriedItems(player.getInventory());
+        long budget = GridFill.budget(view.energy());
+        long returned = 0;
         if (grid != null) {
             for (int i = 0; i < DeckGridContainer.SIZE; i++) {
                 ItemStack stack = grid.getItem(i);
                 if (!stack.isEmpty()) {
-                    total.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+                    (budget > 0 ? stored : carried).merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+                    returned += stack.getCount();
                 }
             }
         }
-        return total;
+        // putting the grid back on the wafers uses charge too
+        long left = budget == Long.MAX_VALUE ? budget : Math.max(0, budget - returned);
+        // the screen can't see inside a wafer; the server takes only empty ones
+        return GridFill.Source.of(stored, carried, left,
+                key -> allowedInGrid(key.toStack(1)) && (!GridVariants.isWafer(key) || !WaferMerge.isPending(key.toStack(1))));
     }
 
     // a fill only ever takes empty wafers, whatever their rows or name; one holding anything stays where it is
@@ -854,20 +872,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         return !GridVariants.isWafer(key) || WaferEligibility.isEmptyWafer(store, key.toStack(1));
     }
 
-    private static long inventoryCount(Inventory inventory, ItemResource key) {
-        long count = 0;
-        for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
-            if (key.matches(inventory.getItem(i))) {
-                count += inventory.getItem(i).getCount();
-            }
-        }
-        return count;
-    }
-
-    // wafers + inventory, each version counted on its own
-    private Map<ItemResource, Long> onHand(ServerPlayer player, DeckStorage.Checked storage) {
-        Map<ItemResource, Long> total = storage.contents();
-        Inventory inventory = player.getInventory();
+    // the inventory without the Deck, each version counted on its own
+    private Map<ItemResource, Long> carriedItems(Inventory inventory) {
+        Map<ItemResource, Long> total = new HashMap<>();
         for (int i = 0; i < Inventory.INVENTORY_SIZE; i++) {
             ItemStack stack = inventory.getItem(i);
             if (!stack.isEmpty() && i != deckSlot) {

@@ -87,6 +87,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int BUTTON_CRAFTING_SERVER = 2;
     /** {@code BUTTON_AMOUNT + slot * 4 + op}: processing slot 0-11 (grid, then outputs); op 0 +1, 1 -1, 2 +10, 3 -10. */
     public static final int BUTTON_AMOUNT = 100;
+    /** {@code BUTTON_EXACT + amount * 16 + slot}: set processing slot 0-11 to a typed amount (kept within what the slot takes). */
+    public static final int BUTTON_EXACT = 10_000;
     /** {@code BUTTON_MACHINE + i}: choose or drop the {@code i}th machine of the list last sent. */
     public static final int BUTTON_MACHINE = 1000;
     /** {@code BUTTON_FACE + slot * 8 + face}: the Advanced Encoder paints grid slot 0-8 with an {@link InputFace}. */
@@ -594,6 +596,13 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 int now = terminal.amount(slot);
                 // Going down stops at one step (or where it already is, if lower), never at nothing.
                 terminal.setAmount(slot, change < 0 ? Math.max(now + change, Math.min(now, small)) : now + change);
+            }
+            return true;
+        }
+        if (id >= BUTTON_EXACT) {
+            int slot = (id - BUTTON_EXACT) % 16;
+            if (processing() && slot < EncodingTerminalBlockEntity.AMOUNTS && terminal.amount(slot) > 0) {
+                terminal.setAmount(slot, (id - BUTTON_EXACT) / 16);
             }
             return true;
         }

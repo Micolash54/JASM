@@ -15,7 +15,8 @@ item_ids:
 For turning machines and picking them up.
 
 * **Right-click** a side of a JASM machine, Archive or generator to turn its front there.
-* **Sneak and right-click** a JASM machine, cable or power block to pick it up at once. It keeps what it keeps when mined.
+* **Sneak and right-click** a JASM machine, cable or power block to pick it up at once, straight into your inventory. Anything in its slots comes too. What doesn't fit drops on the ground. It keeps what it keeps when mined.
+* A Docking Station picks up with its Deck inside, like breaking it, and only for those who may break it.
 * Wrenches from other mods work on JASM blocks too, and this one works with mods that accept any wrench.
 
 <br />

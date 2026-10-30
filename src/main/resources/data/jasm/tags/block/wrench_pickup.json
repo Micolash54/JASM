@@ -26,6 +26,7 @@
     "jasm:network_brain",
     "jasm:network_chamber",
     "jasm:deployment_bay",
-    "jasm:demolition_bay"
+    "jasm:demolition_bay",
+    "jasm:docking_station"
   ]
 }

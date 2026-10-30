@@ -8,6 +8,7 @@ import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import dev.micolash.jasm.transfer.TransferPortKind;
+import dev.micolash.jasm.wrench.Wrenching;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -143,7 +144,7 @@ public class DataCableBlockEntity extends BlockEntity {
         if (port == null && !acceptor) return false;
         if (!hasParts() && !removing && DataCableBlock.coreless(getBlockState()) && level instanceof ServerLevel serverLevel) {
             // The last port of a space without a cable takes the space with it.
-            if (drop) Block.popResource(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
+            if (drop) Wrenching.pop(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
             if (port != null) {
                 Containers.dropContents(level, worldPosition, port);
                 port.releaseHeldFluids();
@@ -154,7 +155,7 @@ public class DataCableBlockEntity extends BlockEntity {
             return true;
         }
         if (level instanceof ServerLevel) {
-            if (drop) Block.popResource(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
+            if (drop) Wrenching.pop(level, worldPosition, port != null ? portItem(port) : new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()));
             if (port != null) {
                 Containers.dropContents(level, worldPosition, port);
                 port.releaseHeldFluids();

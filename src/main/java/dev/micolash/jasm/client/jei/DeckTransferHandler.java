@@ -3,9 +3,8 @@ package dev.micolash.jasm.client.jei;
 import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
-import dev.micolash.jasm.deck.GridVariants;
+import dev.micolash.jasm.deck.GridFill;
 import dev.micolash.jasm.registry.JasmMenus;
-import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,9 +32,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * JEI's "+" on a crafting recipe fills a Crafting Deck's grid. The screen only says which items each slot may take;
- * the server picks them from the Deck's wafers and the inventory, taking an item with extra data when the recipe wants
- * it plain and no plain copy is there, and checks everything again. What is already in the grid counts too, since the
- * server puts it back on the wafers first. When some ingredients
+ * the server picks them from the Deck's wafers and the inventory and checks everything again. Both pick the same way
+ * ({@link GridFill}), so the slots shown filled are the ones the server fills; items on the wafers count only while the
+ * Deck has charge. What is already in the grid counts too, since the server empties it first. When some ingredients
  * are missing, the rest still go in. Missing ones the network can craft light up blue, the others red, and the "+"
  * turns blue, or orange while anything red is left. Ctrl-click also asks for the blue ones, one request window after
  * another. Only when nothing at all can be had does the "+" refuse.
@@ -83,46 +82,33 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
         if (inputs.size() > 9) {
             return helper.createInternalError();
         }
-        Map<ItemResource, Long> available = menu.availableForFill(menu.view().contents());
         List<List<ItemResource>> wanted = new ArrayList<>();
+        for (IRecipeSlotView input : inputs) {
+            wanted.add(input.getItemStacks().filter(DeckMenu::allowedInGrid).map(ItemResource::of).distinct()
+                    .limit(DeckPayloads.MAX_OPTIONS).toList());
+        }
+        // the same picking the server does, so a slot shown filled is one the server fills
+        List<GridFill.@Nullable Pick> picks = GridFill.plan(wanted, menu.screenFillSource(), false);
         List<IRecipeSlotView> missing = new ArrayList<>();
         List<IRecipeSlotView> craftable = new ArrayList<>();
         // What to craft for the craftable slots, one per slot, in the recipe's order.
         Map<ItemResource, Integer> toCraft = new LinkedHashMap<>();
         int needed = 0;
-        for (IRecipeSlotView input : inputs) {
-            if (!input.isEmpty()) {
-                needed++;
-            }
-            List<ItemResource> options = input.getItemStacks().filter(DeckMenu::allowedInGrid).map(ItemResource::of).distinct()
-                    .limit(DeckPayloads.MAX_OPTIONS).toList();
-            wanted.add(options);
-            if (options.isEmpty()) {
-                if (!input.isEmpty()) {
-                    missing.add(input);
-                }
+        for (int i = 0; i < inputs.size(); i++) {
+            IRecipeSlotView input = inputs.get(i);
+            if (input.isEmpty()) {
                 continue;
             }
-            // a trained critter in the recipe means any copy with a full bar, so only those are looked for
-            List<ItemResource> usable = GridVariants.withTrained(options, available);
-            ItemResource found = usable.stream().filter(o -> available.getOrDefault(o, 0L) > 0).findFirst().orElse(null);
-            if (found == null) {
-                found = GridVariants.best(usable, available);
+            needed++;
+            if (picks.get(i) != null) {
+                continue;
             }
-            if (found == null) {
-                // the screen can't see inside a wafer; the server takes only empty ones
-                found = GridVariants.emptyWafer(usable, available, Map.of(), key -> !WaferMerge.isPending(key.toStack(1)));
-            }
-            if (found == null) {
-                ItemResource craft = options.stream().filter(menu.view().craftable()::contains).findFirst().orElse(null);
-                if (craft == null) {
-                    missing.add(input);
-                } else {
-                    craftable.add(input);
-                    toCraft.merge(craft, 1, Integer::sum);
-                }
+            ItemResource craft = wanted.get(i).stream().filter(menu.view().craftable()::contains).findFirst().orElse(null);
+            if (craft == null) {
+                missing.add(input);
             } else {
-                available.merge(found, -1L, Long::sum);
+                craftable.add(input);
+                toCraft.merge(craft, 1, Integer::sum);
             }
         }
         if (needed > 0 && missing.size() == needed) {

@@ -12,7 +12,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import org.jspecify.annotations.Nullable;
 
 /**
  * The Docking Station screen: the Deck slot and whose Deck it is, then a recessed section two lines tall with the lock
@@ -21,8 +20,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Layout, in GUI pixels (the same at every GUI scale): 176 wide, title and charge bar on row 6, Deck slot 22 to 38,
  * name line 44 to 53, section 55 to 81 with its two lines at 59 and 69 wrapped to 154 pixels, keys 85 to 101, inventory
- * label 105, inventory from 116. Every message fits two lines at that width; in the locked text a long player name is
- * cut short with an ellipsis so it does too. Anything longer would be cut off, never drawn over something else.
+ * label 105, inventory from 116. Every message fits two lines at that width (the locked text breaks after "Network").
+ * Anything longer would be cut off, never drawn over something else.
  */
 public class DockingStationScreen extends JasmScreen<DockingStationMenu> {
     private static final int WIDTH = DockingStationMenu.WIDTH;
@@ -48,10 +47,6 @@ public class DockingStationScreen extends JasmScreen<DockingStationMenu> {
 
     private JasmButton lock;
     private JasmButton takeOut;
-    /** The locked text last fitted, and the name it was fitted for. */
-    private @Nullable Component lockedText;
-    private String lockedFor = "";
-
     public DockingStationScreen(DockingStationMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
         this.inventoryLabelX = DockingStationMenu.INVENTORY_X;
@@ -118,7 +113,7 @@ public class DockingStationScreen extends JasmScreen<DockingStationMenu> {
             graphics.text(font, whose, (imageWidth - font.width(whose)) / 2, NAME_Y, JasmGui.TEXT, false);
         }
         long now = minecraft.level.getGameTime();
-        List<Line> turns = sectionLines(docked, name, now);
+        List<Line> turns = sectionLines(docked, now);
         Line shown = turns.get((int) (now / TURN_TICKS % turns.size()));
         List<FormattedCharSequence> parts = font.split(shown.text(), TEXT_WIDTH);
         for (int i = 0; i < Math.min(SECTION_LINES, parts.size()); i++) {
@@ -131,7 +126,7 @@ public class DockingStationScreen extends JasmScreen<DockingStationMenu> {
      * The messages that take turns in the section: a refusal or other notice alone while it lasts; else the lock text,
      * then what stops the network using the Deck or the network owner's override, if any.
      */
-    private List<Line> sectionLines(boolean docked, String name, long now) {
+    private List<Line> sectionLines(boolean docked, long now) {
         List<Line> lines = new ArrayList<>();
         Component notice = menu.notices().current(now);
         if (notice != null) {
@@ -142,7 +137,7 @@ public class DockingStationScreen extends JasmScreen<DockingStationMenu> {
             lines.add(new Line(Component.translatable("screen.jasm.docking_station.empty"), JasmGui.SUBTEXT));
             return lines;
         }
-        lines.add(new Line(menu.locked() ? lockedText(name) : Component.translatable("screen.jasm.docking_station.unlocked"),
+        lines.add(new Line(Component.translatable(menu.locked() ? "screen.jasm.docking_station.locked" : "screen.jasm.docking_station.unlocked"),
                 menu.locked() ? JasmGui.WARN : JasmGui.GOOD));
         if (!menu.may(DockingStationMenu.LINKED)) {
             lines.add(new Line(Component.translatable("screen.jasm.docking_station.not_linked"), JasmGui.BAD));
@@ -154,21 +149,6 @@ public class DockingStationScreen extends JasmScreen<DockingStationMenu> {
             lines.add(new Line(Component.translatable("screen.jasm.docking_station.override"), JasmGui.SUBTEXT));
         }
         return lines;
-    }
-
-    /** The locked text, with a name too long for its two lines cut short with an ellipsis; ordinary names show in full. */
-    private Component lockedText(String name) {
-        if (lockedText == null || !lockedFor.equals(name)) {
-            String shown = name;
-            Component text = Component.translatable("screen.jasm.docking_station.locked", shown);
-            while (font.split(text, TEXT_WIDTH).size() > SECTION_LINES && shown.length() > 1) {
-                shown = shown.substring(0, shown.length() - 1);
-                text = Component.translatable("screen.jasm.docking_station.locked", shown + "\u2026");
-            }
-            lockedText = text;
-            lockedFor = name;
-        }
-        return lockedText;
     }
 
     private static boolean full(ItemStack deck) {
