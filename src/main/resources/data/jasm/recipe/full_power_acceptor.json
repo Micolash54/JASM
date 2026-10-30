@@ -1,0 +1,13 @@
+{
+  "type": "jasm:upgrade",
+  "pattern": [
+    "P"
+  ],
+  "key": {
+    "P": "jasm:thin_power_acceptor"
+  },
+  "source": "jasm:thin_power_acceptor",
+  "result": {
+    "id": "jasm:power_acceptor"
+  }
+}

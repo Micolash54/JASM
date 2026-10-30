@@ -35,6 +35,8 @@ Open the Craft tab on the Deck, pick an item and an amount, and press **Craft**.
 
 A hammer in the Items tab marks items with a known recipe, even when some are already stored.
 
+Items a recipe hands back, like Mystical Agriculture's Infusion Crystals, are reused: one copy serves every craft in the job, even if it is enchanted or renamed.
+
 <br />
 <br />
 ## While it runs

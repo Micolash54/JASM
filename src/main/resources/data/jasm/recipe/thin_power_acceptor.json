@@ -1,9 +1,12 @@
 {
-  "type": "minecraft:crafting_shapeless",
-  "ingredients": [
-    "jasm:power_acceptor",
-    "minecraft:redstone"
+  "type": "jasm:upgrade",
+  "pattern": [
+    "P"
   ],
+  "key": {
+    "P": "jasm:power_acceptor"
+  },
+  "source": "jasm:power_acceptor",
   "result": {
     "id": "jasm:thin_power_acceptor"
   }

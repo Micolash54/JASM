@@ -155,8 +155,8 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
             for (int i = 0; i < 9; i++) {
                 ItemStack left = card.leftover(i);
                 if (!left.isEmpty()) {
-                    // A worn copy of the item that went in counts as that item, so the planner sees it come back.
-                    ItemStack kind = card.returnsSelf(i) ? card.encoded(i) : left;
+                    // A copy of the item that went in (worn, or bare of its data) counts as that item, so the planner sees it come back.
+                    ItemStack kind = card.returnsSelf(level, i) ? card.encoded(i) : left;
                     remainders.merge(new GridKey.Item(ItemResource.of(kind)), (long) left.getCount(), Long::sum);
                 }
             }

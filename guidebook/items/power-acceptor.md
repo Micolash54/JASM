@@ -27,7 +27,7 @@ Its screen shows the power going through it, in FE/t.
 | Speed | set by the other mod: it holds no power and passes on whatever is pushed into it, as far as the network has room |
 | Direction | set in its screen: Input only or Output only |
 
-The cable-mounted Power Interface does the same from a cable face, like a thin [Access Port](access-port.md): its plate faces out, and it only trades power with the block in front of it. Its mode is set the same way, in its screen.
+The cable-mounted Power Interface does the same from a cable face, like a thin [Access Port](access-port.md): its plate faces out, and it only trades power with the block in front of it. Its mode is set the same way, in its screen. Craft either form on its own to turn it into the other.
 
 If you only need to charge a [Deck](decks.md), a [Combustion Generator](combustion-generators.md) is simpler.
 
@@ -36,6 +36,6 @@ If you only need to charge a [Deck](decks.md), a [Combustion Generator](combusti
 ## Recipe
 
 <Row>
-  <RecipeFor id="power_acceptor" />
-  <RecipeFor id="thin_power_acceptor" />
+  <RecipesFor id="power_acceptor" />
+  <RecipesFor id="thin_power_acceptor" />
 </Row>

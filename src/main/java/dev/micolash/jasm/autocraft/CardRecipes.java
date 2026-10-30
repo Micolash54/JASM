@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponentPatch;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -112,6 +111,8 @@ public final class CardRecipes {
         private final ItemStack output;
         /** What one craft of the encoded grid leaves in each of the nine slots, worked out when first asked. */
         private @Nullable List<ItemStack> leftovers;
+        /** Per slot, whether its item comes back after a craft; worked out when first asked. */
+        private Boolean @Nullable [] returns;
 
         Resolved(RecipeCard card, CraftingRecipe recipe, List<ItemStack> encoded, ItemStack output) {
             this.card = card;
@@ -121,13 +122,30 @@ public final class CardRecipes {
         }
 
         /**
-         * Whether the recipe hands the item in {@code slot} back after a craft, as the same item (worn a little, like
-         * a reusable tool or crystal). One of it then serves every craft.
+         * Whether the recipe hands the item in {@code slot} back after a craft, as the same item: worn a little, or as a
+         * bare copy that lost its enchantments, name or other data (Mystical Agriculture's crystals come back like that).
+         * One of it then serves every craft. The copy that comes back must still fit the slot, so a recipe that asks
+         * for one variant of an item (one comb type) and hands back another doesn't count.
          */
-        public boolean returnsSelf(int slot) {
-            ItemStack there = encoded.get(slot);
-            ItemStack left = leftover(slot);
-            return !there.isEmpty() && !left.isEmpty() && sameBesidesWear(left, there);
+        public boolean returnsSelf(Level level, int slot) {
+            if (returns == null) {
+                returns = new Boolean[9];
+            }
+            if (returns[slot] == null) {
+                ItemStack there = encoded.get(slot);
+                ItemStack left = leftover(slot);
+                returns[slot] = !there.isEmpty() && !left.isEmpty() && left.is(there.getItem()) && fits(level, slot, left.copyWithCount(1));
+            }
+            return returns[slot];
+        }
+
+        /** Whether the recipe still matches with {@code stack} in {@code slot} and the encoded items everywhere else. */
+        private boolean fits(Level level, int slot, ItemStack stack) {
+            NonNullList<ItemStack> test = NonNullList.withSize(9, ItemStack.EMPTY);
+            for (int i = 0; i < 9; i++) {
+                test.set(i, i == slot ? stack : encoded.get(i));
+            }
+            return recipe.matches(CraftingInput.of(3, 3, test), level);
         }
 
         /** What one craft of the encoded grid leaves in grid slot {@code slot}, or empty. */
@@ -148,18 +166,6 @@ public final class CardRecipes {
                 leftovers = List.copyOf(bySlot);
             }
             return leftovers.get(slot);
-        }
-
-        /** The same item with the same data, whatever its wear. */
-        private static boolean sameBesidesWear(ItemStack a, ItemStack b) {
-            if (!a.is(b.getItem())) {
-                return false;
-            }
-            ItemStack x = a.copyWithCount(1);
-            ItemStack y = b.copyWithCount(1);
-            x.set(DataComponents.DAMAGE, 0);
-            y.set(DataComponents.DAMAGE, 0);
-            return ItemStack.isSameItemSameComponents(x, y);
         }
 
         public RecipeCard card() {
@@ -193,8 +199,9 @@ public final class CardRecipes {
          * there. Items carrying extra data (enchantments, damage, names) only stand in when the encoded item had the
          * same data, so a worn or enchanted tool is never used up by accident; an empty wafer is the exception, as it
          * holds nothing (its settings go, as at a crafting table). A slot whose item the recipe hands back
-         * keeps to that item, at any wear: a card with a regular crystal never takes a Master one, and a crystal that
-         * returns with a little wear keeps serving. A slot holding a fully trained critter takes any copy of it, whatever
+         * takes any copy of that item, whatever its wear, enchantments, name or other data, as long as the recipe still
+         * takes it there: the crystal that comes back bare keeps serving, but a card with a regular crystal never takes a
+         * Master one. A slot holding a fully trained critter takes any copy of it, whatever
          * its charge or name; the recipe turns away the ones whose bar isn't full.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
@@ -210,18 +217,14 @@ public final class CardRecipes {
                 if (!stack.is(there.getItem())) {
                     return false;
                 }
-            } else if (returnsSelf(slot)) {
-                if (!sameBesidesWear(stack, there)) {
+            } else if (returnsSelf(level, slot)) {
+                if (!stack.is(there.getItem())) {
                     return false;
                 }
             } else if (!stack.getComponentsPatch().equals(DataComponentPatch.EMPTY) && !emptyWaferFor(level, stack, there)) {
                 return false;
             }
-            NonNullList<ItemStack> test = NonNullList.withSize(9, ItemStack.EMPTY);
-            for (int i = 0; i < 9; i++) {
-                test.set(i, i == slot ? stack : encoded.get(i));
-            }
-            return recipe.matches(CraftingInput.of(3, 3, test), level);
+            return fits(level, slot, stack);
         }
 
         /**
