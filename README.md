@@ -14,6 +14,10 @@ JASM stores your items as data on small chips called wafers. You carry them in a
 
 Little robots called Bitlings do a lot of the work. Find one in the wild, befriend it with a chip, and it'll make chips for you, run your network's brain or knock down blocks with a laser.
 
+<p align="center">
+  <a href="https://discord.gg/NUtjT64s5f"><img src="screenshots/test_server_banner.png" alt="Try out JASM! Join our FTB Evolution 2 + JASM server on Discord"></a>
+</p>
+
 ## The guide
 
 Everything is explained in the [JASM guide](https://micolash54.github.io/JASM/), with recipes and a page for every item. It's in the game too: craft a JASM Guide from a Book and a Data Crystal, hold G over any JASM item, or press "?" on a machine screen.
