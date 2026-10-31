@@ -872,7 +872,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
 
     /**
      * The line under the grid: the last message for a few seconds, otherwise a lack of power, how pairing the Deck is
-     * going, or in processing mode how the amounts work.
+     * going.
      */
     private void drawMessage(GuiGraphicsExtractor graphics) {
         Component text = null;
@@ -889,9 +889,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             color = menu.message().equals("message.jasm.terminal.encoded") ? JasmGui.GOOD : JasmGui.BAD;
         } else if (!menu.running()) {
             text = MachineStatusText.noPower(menu.containerId, "message.jasm.terminal.no_power");
-        } else if (menu.processing()) {
-            text = Component.translatable("screen.jasm.terminal.processing_hint");
-            color = JasmGui.MUTED;
         }
         if (text != null) {
             List<FormattedCharSequence> lines = font.split(text, imageWidth - 16);

@@ -730,7 +730,6 @@
   "screen.jasm.terminal.deck_empty": "Your Deck is empty",
   "screen.jasm.terminal.deck_pick": "Click for a copy to put in the grid",
   "screen.jasm.terminal.output_hint": "Put what the machine gives back here",
-  "screen.jasm.terminal.processing_hint": "Scroll or middle click over a slot to change its amount",
   "screen.jasm.terminal.need_processing": "Switch the encoder to Processing first",
   "screen.jasm.terminal.mode_crafting": "Crafting",
   "screen.jasm.terminal.mode_processing": "Processing",

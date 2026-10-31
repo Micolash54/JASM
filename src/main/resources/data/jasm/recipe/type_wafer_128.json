@@ -1,15 +1,15 @@
 {
   "type": "jasm:upgrade",
   "key": {
-    "X": "minecraft:netherite_scrap",
+    "N": "minecraft:netherite_ingot",
+    "S": "jasm:synapse_core",
     "R": "minecraft:redstone",
-    "W": "jasm:type_wafer_64",
-    "S": "jasm:synapse_core"
+    "W": "jasm:type_wafer_64"
   },
   "pattern": [
-    "XSX",
+    "NSN",
     "RWR",
-    "XWX"
+    "NWN"
   ],
   "source": "jasm:type_wafer_64",
   "result": {
