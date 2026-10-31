@@ -30,9 +30,9 @@ Burn anything a furnace burns and get power. A generator charges Decks and other
 | --- | --- | --- | --- | --- |
 | Basic | 2x faster | 40 FE a tick | 100,000 FE | 1,000 FE a tick |
 | Advanced | 4x faster | 160 FE a tick | 400,000 FE | 2,500 FE a tick |
-| Elite | 8x faster | 640 FE a tick | 1,000,000 FE | 5,000 FE a tick |
+| Elite | 6x faster | 480 FE a tick | 1,000,000 FE | 5,000 FE a tick |
 
-A piece of coal gives 32,000 FE in a Basic generator over 40 seconds, 64,000 FE over 20 seconds in an Advanced one and 128,000 FE over 10 seconds in an Elite one.
+A piece of coal gives 32,000 FE in a Basic generator over 40 seconds, 64,000 FE over 20 seconds in an Advanced one and 127,680 FE over 13.3 seconds in an Elite one.
 
 <br />
 <br />

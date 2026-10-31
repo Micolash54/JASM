@@ -3,12 +3,12 @@ package dev.micolash.jasm.generator;
 /**
  * Combustion Generator tiers. Each tier burns fuel faster ({@code burnSpeed}: a fuel item lasts its furnace burn
  * time divided by this) and makes more FE from it. Coal: Basic 32,000 FE over 40 s, Advanced 64,000 over 20 s,
- * Elite 128,000 over 10 s.
+ * Elite 127,680 over 13.3 s.
  */
 public enum GeneratorTier {
     BASIC("basic_combustion_generator", 2, 40, 100_000, 1_000),
     ADVANCED("advanced_combustion_generator", 4, 160, 400_000, 2_500),
-    ELITE("elite_combustion_generator", 8, 640, 1_000_000, 5_000);
+    ELITE("elite_combustion_generator", 6, 480, 1_000_000, 5_000);
 
     private final String registryName;
     private final int burnSpeed;
