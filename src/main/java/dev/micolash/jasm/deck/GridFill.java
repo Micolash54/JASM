@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
@@ -18,9 +19,10 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Slot by slot, each takes the allowed item there is most of among what the slots before it left, so a recipe that
  * takes any planks can use two kinds. A slot asking for a plain item takes a copy with extra data when no plain copy is
- * left. Items on the wafers or in the network cost charge to take out, so only as many count as the charge pays for; the
- * inventory is free. A slot with nothing left stays empty. One of each by default; with {@code max}, as many full crafts
- * as there is enough for, once there is enough for one.
+ * left, the one there is most of, if the shared rule ({@code ItemVariants}) and the recipe allow it; each slot may take
+ * a different copy. Items on the wafers or in the network cost charge to take out, so only as many count as the charge
+ * pays for; the inventory is free. A slot with nothing left stays empty. One of each by default; with {@code max}, as
+ * many full crafts as there is enough for, once there is enough for one.
  */
 public final class GridFill {
     private GridFill() {}
@@ -95,7 +97,16 @@ public final class GridFill {
 
     /** One pick per slot of {@code wanted}, in order; null where the slot stays empty. An empty option list is an empty slot. */
     public static List<@Nullable Pick> plan(List<List<ItemResource>> wanted, Source source, boolean max) {
-        List<@Nullable Pick> picks = new Pass(source, 1).run(wanted);
+        return plan(wanted, source, max, (slot, key) -> true);
+    }
+
+    /**
+     * As above; {@code variantFits} says whether the recipe still takes a copy with extra data in a slot (see
+     * {@link GridVariants#recipeTakes}).
+     */
+    public static List<@Nullable Pick> plan(List<List<ItemResource>> wanted, Source source, boolean max,
+            BiPredicate<Integer, ItemResource> variantFits) {
+        List<@Nullable Pick> picks = new Pass(source, 1, variantFits).run(wanted);
         if (!max || !full(wanted, picks)) {
             return picks;
         }
@@ -104,7 +115,7 @@ public final class GridFill {
         int high = 99;
         while (low < high) {
             int sets = (low + high + 1) >>> 1;
-            List<@Nullable Pick> more = new Pass(source, sets).run(wanted);
+            List<@Nullable Pick> more = new Pass(source, sets, variantFits).run(wanted);
             if (full(wanted, more)) {
                 picks = more;
                 low = sets;
@@ -128,28 +139,30 @@ public final class GridFill {
     private static final class Pass {
         private final Source source;
         private final int sets;
+        private final BiPredicate<Integer, ItemResource> variantFits;
         private final Map<ItemResource, Long> storedTaken = new HashMap<>();
         private final Map<ItemResource, Long> carriedTaken = new HashMap<>();
         private long budget;
         // everything still to be had, built when a slot needs it and dropped after each take
         private @Nullable Map<ItemResource, Long> left;
 
-        Pass(Source source, int sets) {
+        Pass(Source source, int sets, BiPredicate<Integer, ItemResource> variantFits) {
             this.source = source;
             this.sets = sets;
+            this.variantFits = variantFits;
         }
 
         List<@Nullable Pick> run(List<List<ItemResource>> wanted) {
             budget = source.budget();
             List<@Nullable Pick> picks = new ArrayList<>();
-            for (List<ItemResource> options : wanted) {
-                ItemResource key = choose(options);
+            for (int slot = 0; slot < wanted.size(); slot++) {
+                ItemResource key = choose(wanted.get(slot), slot);
                 picks.add(key == null ? null : take(key));
             }
             return picks;
         }
 
-        private @Nullable ItemResource choose(List<ItemResource> options) {
+        private @Nullable ItemResource choose(List<ItemResource> options, int slot) {
             if (options.isEmpty()) {
                 return null;
             }
@@ -172,8 +185,9 @@ public final class GridFill {
             if (best != null) {
                 return best;
             }
-            ItemResource variant = GridVariants.best(options, left());
-            if (variant != null && left().get(variant) >= sets && variant.getMaxStackSize() >= sets && source.takes(variant)) {
+            ItemResource variant = GridVariants.best(options, left(),
+                    key -> key.getMaxStackSize() >= sets && source.takes(key) && variantFits.test(slot, key));
+            if (variant != null && left().get(variant) >= sets) {
                 return variant;
             }
             // wafers stack to one; a used one is one of a kind, so what earlier slots took is already off the list

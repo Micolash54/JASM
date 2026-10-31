@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.crafting.ItemVariants;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -46,7 +47,8 @@ import org.jspecify.annotations.Nullable;
  * </ul>
  *
  * An item takes a slot's place only if the recipe takes it there and in no other slot, it carries no extra data (a
- * named or enchanted item is never used up by accident), with it in that slot the machine has no other recipe of the
+ * named or enchanted item is never used up by accident) unless it is the card's own item with data {@link ItemVariants}
+ * allows, with it in that slot the machine has no other recipe of the
  * same kind it could run instead, and no machine of the card says it never holds it.
  */
 public final class MachineRecipes {
@@ -83,8 +85,9 @@ public final class MachineRecipes {
                 return false;
             }
             ItemStack stack = candidate.toStack(1);
-            return stack.getComponentsPatch().equals(DataComponentPatch.EMPTY) && slots.get(slot).accepts(level, candidate, stack)
-                    && !refused(level, slot, card.usedInputs().get(slot).item(), candidate);
+            ItemResource own = card.usedInputs().get(slot).item();
+            return (stack.getComponentsPatch().equals(DataComponentPatch.EMPTY) || ItemVariants.standsIn(own, candidate))
+                    && slots.get(slot).accepts(level, candidate, stack) && !refused(level, slot, own, candidate);
         }
 
         /**

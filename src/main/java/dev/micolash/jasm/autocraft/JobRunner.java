@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.crafting.ItemVariants;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
@@ -478,7 +479,8 @@ final class JobRunner {
 
     /**
      * The items for one set of a processing card from what the job holds. Each item slot takes the card's own item
-     * while the step's share of it lasts, then another item from the share that the machines' recipe takes there (and
+     * while the step's share of it lasts, then the same item with other data from the share (see {@link ItemVariants};
+     * the recipe, when known, must take it), then another item from the share that the machines' recipe takes there (and
      * no machine has turned away), then the card's own item again. A slot gets one kind of item per set. Fluids and
      * materials are as written, and a job planned before shares were kept takes exactly what the card says.
      */
@@ -517,7 +519,12 @@ final class JobRunner {
                     pick = copy;
                 } else if (!others.isEmpty()) {
                     MachineRecipes.Match recipe = job.machineRecipe(level, network, stepIndex);
-                    if (recipe == null) {
+                    // the card's own item with other data (seeds with crop stats): the recipe, when known, must take it too
+                    ItemResource variant = others.stream().filter(key -> ItemVariants.standsIn(own, key) && !job.refused(stepIndex, slot, key)
+                            && (recipe == null || !recipe.opens(slot) || job.takes(level, stepIndex, recipe, slot, key))).findFirst().orElse(null);
+                    if (variant != null) {
+                        pick = variant;
+                    } else if (recipe == null) {
                         unchecked = true;
                     } else if (recipe.opens(i)) {
                         pick = others.stream().filter(key -> job.takes(level, stepIndex, recipe, slot, key)).findFirst().orElse(own);

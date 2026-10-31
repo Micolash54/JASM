@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.core.GridKey;
+import dev.micolash.jasm.crafting.ItemVariants;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
@@ -26,7 +27,8 @@ import org.jspecify.annotations.Nullable;
  * The cards a network knows, as the planner sees them. Each slot of a crafting card accepts its encoded item and any
  * other item that is stored or can be crafted, as long as the recipe still matches with it there. A processing card
  * takes the items and fluids written on it, and only counts while one of its machines can be reached; when JASM finds
- * the machines' real recipe for it, each item slot also takes whatever else that recipe takes there.
+ * the machines' real recipe for it, each item slot also takes whatever else that recipe takes there. Without one, an
+ * item slot also takes its item with other data, as far as {@link ItemVariants} allows.
  */
 public final class CardBook implements CraftPlanner.Book<GridKey> {
     /** A pattern made from a card. */
@@ -103,6 +105,12 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
     @Override
     public long space(GridKey key, long amount) {
         return key instanceof GridKey.Fluid || key instanceof GridKey.Material ? (amount + FluidAmounts.PER_BUCKET - 1) / FluidAmounts.PER_BUCKET : amount;
+    }
+
+    /** Items with no extra data are used before copies that carry some (seeds with crop stats). */
+    @Override
+    public int rank(GridKey key) {
+        return key instanceof GridKey.Item item && !item.resource().isComponentsPatchEmpty() ? 1 : 0;
     }
 
     /** Only items grow from copies of themselves: a job holds back no fluid or material as a seed. */
@@ -228,6 +236,15 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
                         // an item written in another slot stays that slot's, so a job never mistakes one for the other
                         boolean written = inputs.stream().anyMatch(other -> candidate.equals(other.item()));
                         if (!written && !options.contains(key) && recipe.accepts(level, i, candidate)) {
+                            options.add(key);
+                        }
+                    }
+                } else if (!input.isFluid() && !input.isMaterial()) {
+                    // no known recipe to ask: the same item with other data stands in (seeds with another mod's crop stats)
+                    for (ItemResource candidate : candidates) {
+                        GridKey key = new GridKey.Item(candidate);
+                        boolean written = inputs.stream().anyMatch(other -> candidate.equals(other.item()));
+                        if (!written && !options.contains(key) && ItemVariants.standsIn(input.item(), candidate)) {
                             options.add(key);
                         }
                     }

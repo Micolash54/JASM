@@ -807,7 +807,9 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
         for (int slot = 0; slot < wanted.size(); slot++) {
             open.add(grid.getItem(slot).isEmpty() ? wanted.get(slot) : List.of());
         }
-        List<GridFill.@Nullable Pick> picks = GridFill.plan(open, source, max);
+        RecipeHolder<?> shown = recipe == null ? null : player.level().getServer().getRecipeManager().recipeMap().byKey(recipe);
+        CraftingRecipe crafting = shown != null && shown.value() instanceof CraftingRecipe c ? c : null;
+        List<GridFill.@Nullable Pick> picks = GridFill.plan(open, source, max, GridVariants.recipeTakes(crafting, wanted, player.level()));
         placing = true;
         for (int i = 0; i < picks.size(); i++) {
             GridFill.Pick pick = picks.get(i);

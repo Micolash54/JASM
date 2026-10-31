@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.Training;
+import dev.micolash.jasm.crafting.ItemVariants;
 import dev.micolash.jasm.crafting.RecipeChoices;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
@@ -141,31 +142,61 @@ public final class CardRecipes {
 
         /** Whether the recipe still matches with {@code stack} in {@code slot} and the encoded items everywhere else. */
         private boolean fits(Level level, int slot, ItemStack stack) {
+            return recipe.matches(CraftingInput.of(3, 3, swapped(slot, stack)), level);
+        }
+
+        /**
+         * Whether the recipe takes {@code stack} in {@code slot} and, crafting with it, makes the card's result and leaves
+         * the same things behind as with the card's own item. A stand-in that would change either is never used, so a
+         * job never plans a craft it can't finish.
+         */
+        private boolean agrees(Level level, int slot, ItemStack stack) {
+            NonNullList<ItemStack> test = swapped(slot, stack);
+            CraftingInput input = CraftingInput.of(3, 3, test);
+            if (!recipe.matches(input, level) || !ItemStack.matches(recipe.assemble(input), output)) {
+                return false;
+            }
+            List<ItemStack> left = leftovers(recipe, test);
+            for (int i = 0; i < 9; i++) {
+                if (!ItemStack.matches(left.get(i), leftover(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** The encoded grid with {@code stack} in {@code slot}. */
+        private NonNullList<ItemStack> swapped(int slot, ItemStack stack) {
             NonNullList<ItemStack> test = NonNullList.withSize(9, ItemStack.EMPTY);
             for (int i = 0; i < 9; i++) {
                 test.set(i, i == slot ? stack : encoded.get(i));
             }
-            return recipe.matches(CraftingInput.of(3, 3, test), level);
+            return test;
         }
 
         /** What one craft of the encoded grid leaves in grid slot {@code slot}, or empty. */
         public ItemStack leftover(int slot) {
             if (leftovers == null) {
-                // The recipe sees the grid cut down to its used rows and columns, so its leftovers are placed back by position.
-                CraftingInput.Positioned positioned = CraftingInput.ofPositioned(3, 3, encoded);
-                CraftingInput input = positioned.input();
-                List<ItemStack> left = recipe.getRemainingItems(input);
-                NonNullList<ItemStack> bySlot = NonNullList.withSize(9, ItemStack.EMPTY);
-                for (int i = 0; i < left.size() && input.width() > 0; i++) {
-                    int row = positioned.top() + i / input.width();
-                    int column = positioned.left() + i % input.width();
-                    if (row < 3 && column < 3) {
-                        bySlot.set(row * 3 + column, left.get(i));
-                    }
-                }
-                leftovers = List.copyOf(bySlot);
+                leftovers = leftovers(recipe, encoded);
             }
             return leftovers.get(slot);
+        }
+
+        /** What one craft of {@code grid} leaves in each of its nine slots. */
+        private static List<ItemStack> leftovers(CraftingRecipe recipe, List<ItemStack> grid) {
+            // The recipe sees the grid cut down to its used rows and columns, so its leftovers are placed back by position.
+            CraftingInput.Positioned positioned = CraftingInput.ofPositioned(3, 3, grid);
+            CraftingInput input = positioned.input();
+            List<ItemStack> left = recipe.getRemainingItems(input);
+            NonNullList<ItemStack> bySlot = NonNullList.withSize(9, ItemStack.EMPTY);
+            for (int i = 0; i < left.size() && input.width() > 0; i++) {
+                int row = positioned.top() + i / input.width();
+                int column = positioned.left() + i % input.width();
+                if (row < 3 && column < 3) {
+                    bySlot.set(row * 3 + column, left.get(i));
+                }
+            }
+            return List.copyOf(bySlot);
         }
 
         public RecipeCard card() {
@@ -196,13 +227,14 @@ public final class CardRecipes {
 
         /**
          * Whether {@code candidate} may stand in for the encoded item in {@code slot}: the recipe still matches with it
-         * there. Items carrying extra data (enchantments, damage, names) only stand in when the encoded item had the
-         * same data, so a worn or enchanted tool is never used up by accident; an empty wafer is the exception, as it
-         * holds nothing (its settings go, as at a crafting table). A slot whose item the recipe hands back
-         * takes any copy of that item, whatever its wear, enchantments, name or other data, as long as the recipe still
-         * takes it there: the crystal that comes back bare keeps serving, but a card with a regular crystal never takes a
-         * Master one. A slot holding a fully trained critter takes any copy of it, whatever
-         * its charge or name; the recipe turns away the ones whose bar isn't full.
+         * there. The same item with other data stands in when {@link ItemVariants} allows it (seeds with another mod's
+         * crop stats) and crafting with it makes the same result and leftovers. Other items carrying extra data
+         * (enchantments, damage, names) only stand in when the encoded item had the same data, so a worn or enchanted
+         * tool is never used up by accident; an empty wafer is the exception, as it holds nothing (its settings go, as at
+         * a crafting table). A slot whose item the recipe hands back takes any copy of that item, whatever its wear,
+         * enchantments, name or other data, as long as the recipe still takes it there: the crystal that comes back bare
+         * keeps serving, but a card with a regular crystal never takes a Master one. A slot holding a fully trained
+         * critter takes any copy of it, whatever its charge or name; the recipe turns away the ones whose bar isn't full.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
             ItemStack there = encoded.get(slot);
@@ -213,14 +245,12 @@ public final class CardRecipes {
                 return true;
             }
             ItemStack stack = candidate.toStack(1);
-            if (trainedCritter(slot)) {
+            if (trainedCritter(slot) || returnsSelf(level, slot)) {
                 if (!stack.is(there.getItem())) {
                     return false;
                 }
-            } else if (returnsSelf(level, slot)) {
-                if (!stack.is(there.getItem())) {
-                    return false;
-                }
+            } else if (ItemVariants.standsIn(there, stack)) {
+                return agrees(level, slot, stack);
             } else if (!stack.getComponentsPatch().equals(DataComponentPatch.EMPTY) && !emptyWaferFor(level, stack, there)) {
                 return false;
             }

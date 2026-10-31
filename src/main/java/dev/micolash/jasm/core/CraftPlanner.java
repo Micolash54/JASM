@@ -20,7 +20,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The requested item is always crafted, never taken from storage. Its ingredients come from storage first, then
  * from leftovers of earlier crafts in the same job, and are crafted only when neither has enough. A slot that accepts
- * several items takes the encoded one first, then the others in order of how many there are.
+ * several items takes the encoded one first, then the others by the book's rank and how many there are.
  *
  * <p>A pattern whose own item in a slot is also what it makes (a smithing template copied with diamonds) grows: it
  * needs a seed, the copies one craft takes, which the job holds back for itself and gives back at the end. Each craft
@@ -65,6 +65,11 @@ public final class CraftPlanner<K> {
         /** Whether copies of {@code key} may be made from copies of itself. */
         default boolean grows(K key) {
             return true;
+        }
+
+        /** Among a slot's other items, a lower rank is taken first; the same rank goes most plentiful first. */
+        default int rank(K key) {
+            return 0;
         }
     }
 
@@ -513,13 +518,13 @@ public final class CraftPlanner<K> {
     }
 
     /**
-     * Takes up to {@code amount} of what is already there for {@code options}: the encoded item first, then the others,
-     * most plentiful first (ties keep the encoded order). With options to choose from, each is taken in whole lots of
-     * {@code unit}. Returns how many.
+     * Takes up to {@code amount} of what is already there for {@code options}: the encoded item first, then the others
+     * by the book's rank, most plentiful first (ties keep the encoded order). With options to choose from, each is taken
+     * in whole lots of {@code unit}. Returns how many.
      */
     private long useAvailable(List<K> options, long amount, long unit, Pattern<K> consumer) {
         List<K> byAmount = new ArrayList<>(options.subList(1, options.size()));
-        byAmount.sort(Comparator.comparingLong((K k) -> available(k)).reversed());
+        byAmount.sort(Comparator.comparingInt(book::rank).thenComparing(Comparator.comparingLong((K k) -> available(k)).reversed()));
         byAmount.addFirst(options.getFirst());
         long lot = options.size() > 1 ? Math.max(1, unit) : 1;
         long got = 0;

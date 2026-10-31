@@ -4,6 +4,7 @@ import dev.micolash.jasm.client.DeckScreen;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.GridFill;
+import dev.micolash.jasm.deck.GridVariants;
 import dev.micolash.jasm.registry.JasmMenus;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -88,7 +89,8 @@ final class DeckTransferHandler implements IRecipeTransferHandler<DeckMenu, Reci
                     .limit(DeckPayloads.MAX_OPTIONS).toList());
         }
         // the same picking the server does, so a slot shown filled is one the server fills
-        List<GridFill.@Nullable Pick> picks = GridFill.plan(wanted, menu.screenFillSource(), false);
+        List<GridFill.@Nullable Pick> picks = GridFill.plan(wanted, menu.screenFillSource(), false,
+                GridVariants.recipeTakes(recipe.value(), wanted, player.level()));
         List<IRecipeSlotView> missing = new ArrayList<>();
         List<IRecipeSlotView> craftable = new ArrayList<>();
         // What to craft for the craftable slots, one per slot, in the recipe's order.
