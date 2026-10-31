@@ -75,6 +75,11 @@ Convert one into the other in a crafting grid. Both recipes are below.
 * Blocking mode waits to send new ingredients while the machine still holds some for this recipe.
 * Mined or picked up with a [Wrench](wrench.md), the port keeps its name, machine type, recipes, Blocking Mode and redstone mode, and has them again when placed.
 * A job whose recipe no port serves waits and says so, and carries on once a port serves it again. Ingredients already sent to a port that is then mined are no longer waited on.
+
+<br />
+<br />
+## Upgrades and power
+
 * Add a [Power Upgrade](power-upgrade.md) to supply FE to the machines of the chosen type, or the machine a thin port faces.
 * Five upgrade slots take up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md). A paused port moves nothing and shows Paused, and crafting jobs wait for it.
 * It uses no power and counts toward the [machine limit](network-brain.md).

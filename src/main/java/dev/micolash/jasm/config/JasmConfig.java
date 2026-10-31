@@ -105,6 +105,26 @@ public final class JasmConfig {
             .comment("FE the battery of a Byteling holds")
             .defineInRange("batteryByteling", 400_000, 1, Integer.MAX_VALUE);
 
+    public static final ModConfigSpec.IntValue BATTERY_DECK_STARTER = BUILDER
+            .comment("FE the battery of a Starter Deck holds. Lowering it never deletes charge at once: a Deck holding more counts as full and drops to the new top the next time it spends power")
+            .defineInRange("batteryDeckStarter", 10_000, 1, Integer.MAX_VALUE);
+
+    public static final ModConfigSpec.IntValue BATTERY_DECK_BASIC = BUILDER
+            .comment("FE the battery of a Basic Deck holds")
+            .defineInRange("batteryDeckBasic", 25_000, 1, Integer.MAX_VALUE);
+
+    public static final ModConfigSpec.IntValue BATTERY_DECK_ADVANCED = BUILDER
+            .comment("FE the battery of an Advanced Deck holds, and so does its Crafting Deck")
+            .defineInRange("batteryDeckAdvanced", 50_000, 1, Integer.MAX_VALUE);
+
+    public static final ModConfigSpec.IntValue BATTERY_DECK_ELITE = BUILDER
+            .comment("FE the battery of an Elite Deck holds, and so does its Crafting Deck")
+            .defineInRange("batteryDeckElite", 500_000, 1, Integer.MAX_VALUE);
+
+    public static final ModConfigSpec.IntValue BATTERY_DECK_ULTIMATE = BUILDER
+            .comment("FE the battery of an Ultimate Deck holds, and so does its Crafting Deck")
+            .defineInRange("batteryDeckUltimate", 1_000_000, 1, Integer.MAX_VALUE);
+
     public static final ModConfigSpec.IntValue BATTERY_MAX_BLOCKS = BUILDER
             .comment("Blocks one Battery may have. A block that would join up a bigger one can't be placed. A battery already bigger keeps working and all its power, it just can't grow")
             .defineInRange("batteryMaxBlocks", 64, 1, 256);
@@ -321,6 +341,17 @@ public final class JasmConfig {
             case ADVANCED -> DECK_SLOTS_ADVANCED;
             case ELITE -> DECK_SLOTS_ELITE;
             case ULTIMATE -> DECK_SLOTS_ULTIMATE;
+        });
+    }
+
+    /** FE the battery of a Deck of this tier holds in this world. */
+    public static int deckBattery(DeckTier tier) {
+        return orDefault(switch (tier) {
+            case STARTER -> BATTERY_DECK_STARTER;
+            case BASIC -> BATTERY_DECK_BASIC;
+            case ADVANCED -> BATTERY_DECK_ADVANCED;
+            case ELITE -> BATTERY_DECK_ELITE;
+            case ULTIMATE -> BATTERY_DECK_ULTIMATE;
         });
     }
 

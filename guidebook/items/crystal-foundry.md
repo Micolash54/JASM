@@ -18,10 +18,15 @@ The Crystal Foundry grows Data Crystals in bulk and cuts each one into a <ItemLi
 * It runs on power from a [Data Cable](data-cables.md) network or a generator next to it.
 * Five upgrade slots take up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md).
 * It waits when its outputs are full. A Redstone Upgrade adds a key under the slots to pause it, and the crystal keeps its progress.
+* It counts toward a network's machine limit. See [the Network Brain](network-brain.md).
+
+<br />
+<br />
+## Sides and output
+
 * Its Input / Output key sets each side and shows the block next to it. Input lets hoppers and pipes put seeds in. Output lets the chips be pulled out there. Every side starts at Input.
 * With Auto Output on, it also sends the chips out of its Output sides into whatever is there, an Access Port included. It starts off.
 * For Access Port jobs, set the side facing the port to Input/Output and turn Auto Output on.
-* It counts toward a network's machine limit. See [the Network Brain](network-brain.md).
 
 <br />
 <br />

@@ -15,7 +15,8 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Guide tags that read the world's rules when a page opens: {@code <Rule name="deck.slots.ultimate" />} prints a number,
+ * Guide tags that read the world's rules when a page opens: {@code <Rule name="deck.slots.ultimate" />} prints a number
+ * ({@code deck.battery.ultimate} prints a Deck's battery in FE, with commas),
  * and {@code <WhenOn feature="bays">} / {@code <WhenOff feature="bays">} show their contents only in that state. With no
  * world loaded (title screen, website export) they show the standard numbers.
  */
@@ -29,6 +30,9 @@ final class GuideRules {
         }
         if (name.startsWith("brain.machines.")) {
             return BrainBalance.shown(brain.limit(true, Integer.parseInt(name.substring("brain.machines.".length()))));
+        }
+        if (name.startsWith("deck.battery.")) {
+            return String.format("%,d", DeckTier.valueOf(name.substring("deck.battery.".length()).toUpperCase(Locale.ROOT)).battery());
         }
         return switch (name) {
             case "brain.withoutBrain" -> BrainBalance.shown(brain.limit(false, 0));

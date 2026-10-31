@@ -26,11 +26,11 @@ A Deck is a handheld reader for your wafers. Put wafers in its side panel and st
 
 | Tier | Wafer slots | Battery |
 | --- | --- | --- |
-| Starter | <Rule name="deck.slots.starter" /> | 10,000 FE |
-| Basic | <Rule name="deck.slots.basic" /> | 25,000 FE |
-| Advanced | <Rule name="deck.slots.advanced" /> | 50,000 FE |
-| Elite | <Rule name="deck.slots.elite" /> | 125,000 FE |
-| Ultimate | <Rule name="deck.slots.ultimate" /> | 250,000 FE |
+| Starter | <Rule name="deck.slots.starter" /> | <Rule name="deck.battery.starter" /> FE |
+| Basic | <Rule name="deck.slots.basic" /> | <Rule name="deck.battery.basic" /> FE |
+| Advanced | <Rule name="deck.slots.advanced" /> | <Rule name="deck.battery.advanced" /> FE |
+| Elite | <Rule name="deck.slots.elite" /> | <Rule name="deck.battery.elite" /> FE |
+| Ultimate | <Rule name="deck.slots.ultimate" /> | <Rule name="deck.battery.ultimate" /> FE |
 
 <br />
 <br />
