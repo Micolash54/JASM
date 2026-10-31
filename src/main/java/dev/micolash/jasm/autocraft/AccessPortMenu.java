@@ -106,6 +106,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     private List<ProcessingCard> listed = List.of();
     /** The recipes the port serves; on the server, what was last sent. */
     private List<ActiveRecipe> active = List.of();
+    private @Nullable Pasted pasted;
+    private int pastes;
     /** Server side: every card in the network's racks at the last look, whoever may use them. */
     private Set<Card> onNetwork = Set.of();
     /** Server side: whether the recipes went out once yet, and how many times the list did. */
@@ -370,6 +372,71 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         if (port == null || player.containerMenu != this || !stillValid(player) || !validName(name)) return false;
         port.setLabel(name);
         return true;
+    }
+
+    /**
+     * What a paste did: the name the port has now, the recipes it took in, those that did not fit (past 16), those it
+     * already served (add only), and how many of the taken ones no rack on the network holds.
+     */
+    public record Pasted(String name, boolean add, int added, int notFit, int already, int missing) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, Pasted> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.stringUtf8(MAX_NAME), Pasted::name,
+                ByteBufCodecs.BOOL, Pasted::add,
+                ByteBufCodecs.VAR_INT, Pasted::added,
+                ByteBufCodecs.VAR_INT, Pasted::notFit,
+                ByteBufCodecs.VAR_INT, Pasted::already,
+                ByteBufCodecs.VAR_INT, Pasted::missing,
+                Pasted::new);
+    }
+
+    /** Client side: what the last paste did, and how many pastes the server has answered. */
+    public @Nullable Pasted pasted() { return pasted; }
+
+    public int pastes() { return pastes; }
+
+    public void setPasted(Pasted result) {
+        pasted = result;
+        pastes++;
+    }
+
+    /**
+     * Server side: pastes settings copied from a port. {@code add} false replaces the name and the recipes; true adds the
+     * recipes the port doesn't serve yet (until it serves 16) and keeps the name. Refused (null) unless this is the
+     * player's open, usable port screen, the name is one the rename panel takes, there are at most 16 recipes and each
+     * one makes something and takes something in. A recipe no rack holds is taken all the same, and shows as missing.
+     */
+    public @Nullable Pasted paste(Player player, String name, List<ProcessingCard> recipes, boolean add) {
+        if (port == null || player.containerMenu != this || !stillValid(player) || !validName(name)
+                || recipes.size() > AccessPortBlockEntity.MAX_RECIPES || !recipes.stream().allMatch(ProcessingCard::wellFormed)) {
+            return null;
+        }
+        Set<ProcessingCard> wanted = new LinkedHashSet<>();
+        for (ProcessingCard card : recipes) wanted.add(card.clean());
+        List<ProcessingCard> taken = new ArrayList<>();
+        int notFit = 0;
+        int already = 0;
+        if (add) {
+            for (ProcessingCard card : wanted) {
+                if (port.serves(card)) already++;
+                else if (port.select(card)) taken.add(card);
+                else notFit++;
+            }
+        } else {
+            port.setLabel(name);
+            port.replaceRecipes(List.copyOf(wanted));
+            taken.addAll(wanted);
+        }
+        int missing = 0;
+        if (player instanceof ServerPlayer serverPlayer) {
+            // the marks must be those of the racks as they are now, not as they were a second ago
+            syncRecipes(serverPlayer);
+            for (ProcessingCard card : taken) if (!onNetwork.contains(card)) missing++;
+        }
+        Pasted result = new Pasted(port.label(), add, taken.size(), notFit, already, missing);
+        if (player instanceof ServerPlayer serverPlayer && serverPlayer.connection.hasChannel(CraftPayloads.PortPasted.TYPE)) {
+            PacketDistributor.sendToPlayer(serverPlayer, new CraftPayloads.PortPasted(containerId, result));
+        }
+        return result;
     }
 
     /** Looks at the racks again and sends the list if it changed, then the served recipes with their missing marks. */

@@ -32,8 +32,14 @@ public class JasmButton extends Button {
     /** An icon sprite and its size. */
     public record Icon(Identifier sprite, int width, int height) {}
 
+    /** The four looks of a key: each a sprite of its own, so a key can have a face that isn't stretched from the shared one. */
+    public record Skin(Identifier normal, Identifier highlighted, Identifier disabled, Identifier pressed) {}
+
+    private static final Skin SHARED = new Skin(NORMAL, HIGHLIGHTED, DISABLED, PRESSED);
+
     private final @Nullable Supplier<Icon> icon;
     private @Nullable ItemStack stack;
+    private Skin skin = SHARED;
     private Identifier selectedSprite = SELECTED;
     private final boolean wrap;
     private boolean small;
@@ -73,6 +79,12 @@ public class JasmButton extends Button {
                 .build(b -> new JasmButton(b, null, false));
         button.stack = stack;
         return button;
+    }
+
+    /** Draws this key from its own sprites instead of the shared button ones. */
+    public JasmButton withSkin(Skin skin) {
+        this.skin = skin;
+        return this;
     }
 
     /** The chosen key of a group shows a green rim instead of the usual one. */
@@ -123,7 +135,8 @@ public class JasmButton extends Button {
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         // A click leaves the button focused; only show that when the player is moving around with the keyboard.
         boolean lit = isHovered() || isFocused() && Minecraft.getInstance().getLastInputType().isKeyboard();
-        Identifier sprite = selected ? selectedSprite : pressed() ? PRESSED : !active ? DISABLED : lit ? HIGHLIGHTED : NORMAL;
+        Identifier sprite = selected ? selectedSprite : pressed() ? skin.pressed() : !active ? skin.disabled()
+                : lit ? skin.highlighted() : skin.normal();
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, getX(), getY(), getWidth(), getHeight());
         boolean bright = active || selected;
         graphics.pose().pushMatrix();

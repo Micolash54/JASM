@@ -278,6 +278,11 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
         return List.copyOf(out);
     }
 
+    /** Whether the card makes something and takes something in: a card a screen may send without a rack holding it. */
+    public boolean wellFormed() {
+        return !main().isEmpty() && inputs.stream().anyMatch(input -> !input.isEmpty());
+    }
+
     /** The first output: what the card makes. Empty only on a broken card. */
     public Amount main() {
         return outputs.stream().filter(a -> !a.isEmpty()).findFirst().orElse(Amount.EMPTY);

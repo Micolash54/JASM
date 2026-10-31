@@ -738,6 +738,24 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return true;
     }
 
+    /** Serves exactly {@code cards}, each once and in that order, at most {@link #MAX_RECIPES}, in place of what it served. */
+    public void replaceRecipes(List<ProcessingCard> cards) {
+        if (!servesRecipes()) {
+            return;
+        }
+        Set<ProcessingCard> now = new LinkedHashSet<>();
+        for (ProcessingCard card : cards) {
+            if (now.size() < MAX_RECIPES) {
+                now.add(card.clean());
+            }
+        }
+        if (!List.copyOf(now).equals(List.copyOf(recipes))) {
+            recipes.clear();
+            recipes.addAll(now);
+            setChanged();
+        }
+    }
+
     /** Whether the port serves as many recipes as it can. */
     public boolean recipesFull() {
         return recipes.size() >= MAX_RECIPES;

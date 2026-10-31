@@ -79,10 +79,13 @@ public final class CraftNetwork {
                         (payload, context) -> portMachineType((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.PortRecipe.TYPE, CraftPayloads.PortRecipe.STREAM_CODEC,
                         (payload, context) -> portRecipe((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.PortPaste.TYPE, CraftPayloads.PortPaste.STREAM_CODEC,
+                        (payload, context) -> portPaste((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.ProcessingGhost.TYPE, CraftPayloads.ProcessingGhost.STREAM_CODEC,
                         (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
                 .playToClient(CraftPayloads.PortMachines.TYPE, CraftPayloads.PortMachines.STREAM_CODEC, CraftNetwork::onPortMachines)
                 .playToClient(CraftPayloads.PortRecipes.TYPE, CraftPayloads.PortRecipes.STREAM_CODEC, CraftNetwork::onPortRecipes)
+                .playToClient(CraftPayloads.PortPasted.TYPE, CraftPayloads.PortPasted.STREAM_CODEC, CraftNetwork::onPortPasted)
                 .playToClient(CraftPayloads.PortActive.TYPE, CraftPayloads.PortActive.STREAM_CODEC, CraftNetwork::onPortActive)
                 .playToClient(CraftPayloads.PortLinkedPlayer.TYPE, CraftPayloads.PortLinkedPlayer.STREAM_CODEC, CraftNetwork::onPortLinkedPlayer)
                 .playToClient(CraftPayloads.TerminalDeck.TYPE, CraftPayloads.TerminalDeck.STREAM_CODEC, CraftNetwork::onTerminalDeck)
@@ -318,6 +321,12 @@ public final class CraftNetwork {
         }
     }
 
+    private static void onPortPasted(CraftPayloads.PortPasted payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()) {
+            menu.setPasted(payload.result());
+        }
+    }
+
     private static void onPortLinkedPlayer(CraftPayloads.PortLinkedPlayer payload, IPayloadContext context) {
         var open = context.player().containerMenu;
         if (open.containerId != payload.containerId()) return;
@@ -343,6 +352,12 @@ public final class CraftNetwork {
             return false;
         }
         return payload.add() ? menu.addRecipe(player, payload.recipe()) : menu.removeRecipe(player, payload.recipe());
+    }
+
+    /** The open Access Port takes pasted settings; see {@link AccessPortMenu#paste}. */
+    public static boolean portPaste(ServerPlayer player, CraftPayloads.PortPaste payload) {
+        return player.containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()
+                && menu.paste(player, payload.name(), payload.recipes(), payload.add()) != null;
     }
 
     /** The open Access Port serves another kind of machine, if one of that kind touches it. */

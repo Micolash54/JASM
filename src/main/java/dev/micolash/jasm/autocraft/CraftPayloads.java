@@ -434,6 +434,35 @@ public final class CraftPayloads {
         public Type<PortRecipe> type() { return TYPE; }
     }
 
+    /**
+     * Client → server: paste settings copied from a port onto the open Access Port: its name and recipes replace the
+     * port's, or ({@code add}) its recipes are added and the name stays.
+     */
+    public record PortPaste(int containerId, String name, List<ProcessingCard> recipes, boolean add) implements CustomPacketPayload {
+        public static final Type<PortPaste> TYPE = new Type<>(Jasm.id("port_paste"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortPaste> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortPaste::containerId,
+                ByteBufCodecs.stringUtf8(AccessPortMenu.MAX_NAME), PortPaste::name,
+                ProcessingCard.STREAM_CODEC.apply(ByteBufCodecs.list(AccessPortBlockEntity.MAX_RECIPES)), PortPaste::recipes,
+                ByteBufCodecs.BOOL, PortPaste::add,
+                PortPaste::new);
+
+        @Override
+        public Type<PortPaste> type() { return TYPE; }
+    }
+
+    /** Server → client: what a paste onto the open Access Port did, for the notice over its recipes. */
+    public record PortPasted(int containerId, AccessPortMenu.Pasted result) implements CustomPacketPayload {
+        public static final Type<PortPasted> TYPE = new Type<>(Jasm.id("port_pasted"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortPasted> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortPasted::containerId,
+                AccessPortMenu.Pasted.STREAM_CODEC, PortPasted::result,
+                PortPasted::new);
+
+        @Override
+        public Type<PortPasted> type() { return TYPE; }
+    }
+
     /** Client → server: open the screen of the server running one of this Deck's jobs. */
     public record OpenServer(int containerId, BlockPos server) implements CustomPacketPayload {
         public static final Type<OpenServer> TYPE = new Type<>(Jasm.id("craft_open_server"));

@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
@@ -67,8 +68,15 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final int ACTIVE_ROWS = 2;
     private static final int ACTIVE_X = (WIDTH - ACTIVE_COLS * 18) / 2 - 1;
     private static final int ACTIVE_Y = 54;
-    /** How long the "port is full" line stays over the served recipes. */
+    /** How long the "port is full" line stays over the served recipes, and how long a copy or paste line does. */
     private static final long FULL_NOTICE_MS = 3_000;
+    private static final long PASTE_NOTICE_MS = 4_000;
+    /** The Copy and Paste keys at the right end of the heading's row; the count sits just left of them. */
+    private static final int COPY_KEY_SIZE = 13;
+    private static final int COPY_KEY_X = ACTIVE_X + ACTIVE_COLS * 18 - 2 * COPY_KEY_SIZE - 2;
+    private static final int PASTE_KEY_X = ACTIVE_X + ACTIVE_COLS * 18 - COPY_KEY_SIZE;
+    private static final int COPY_KEY_Y = ACTIVE_LABEL_Y - 4;
+    private static final int COUNT_RIGHT = COPY_KEY_X - 2;
     /** The recipe list's panel, left of the main one, and its grid. */
     private static final int LIST = 113;
     private static final int LIST_X = -LIST;
@@ -91,11 +99,18 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final JasmButton.Icon RENAME = new JasmButton.Icon(Jasm.id("icon/rename"), 12, 12);
     private static final JasmButton.Icon FOLD = new JasmButton.Icon(Jasm.id("icon/triangle_right"), 4, 6);
     private static final JasmButton.Icon UNFOLD = new JasmButton.Icon(Jasm.id("icon/triangle_left"), 4, 6);
+    /** The Copy and Paste keys' own face, drawn as is at their 13 x 13. */
+    private static final JasmButton.Skin COPY_PASTE_KEY = new JasmButton.Skin(Jasm.id("copy_paste_key"),
+            Jasm.id("copy_paste_key_highlighted"), Jasm.id("copy_paste_key_disabled"), Jasm.id("copy_paste_key_pressed"));
+    private static final JasmButton.Icon COPY = new JasmButton.Icon(Jasm.id("icon/copy"), 7, 7);
+    private static final JasmButton.Icon PASTE = new JasmButton.Icon(Jasm.id("icon/paste"), 7, 7);
 
 
     private JasmButton blocking;
     private JasmButton link;
     private JasmButton renameKey;
+    private JasmButton copyKey;
+    private JasmButton pasteKey;
     private JasmButton redstone;
     private JasmButton fold;
     /** One key per kind of machine while there are several; rebuilt when the kinds change. */
@@ -113,7 +128,13 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private Component shownTitle;
     private int listRow;
     private boolean draggingList;
-    private long fullNoticeUntil;
+    /** The line over the served recipes: what it says, whether it is good news, and until when. */
+    private Component notice = Component.empty();
+    private boolean noticeOk;
+    private long noticeUntil;
+    /** The copied settings the Paste key's tooltip was written for, and how many pastes the server has answered. */
+    private PortClipboard.@Nullable Copied pasteTipFor;
+    private int seenPastes;
     /** The recipes the search lets through, worked out again only when the list or the search changes. */
     private List<ProcessingCard> shown = List.of();
     private @Nullable List<ProcessingCard> shownFrom;
@@ -164,6 +185,17 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         renameKey = addRenderableWidget(JasmButton.icon(() -> RENAME, renameLabel, b -> toggleRename(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(2), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         renameKey.setTooltip(Tooltip.create(renameLabel));
+        Component copyLabel = Component.translatable("screen.jasm.port.copy");
+        copyKey = addRenderableWidget(JasmButton.icon(() -> COPY, copyLabel, b -> copySettings(),
+                leftPos + COPY_KEY_X, topPos + COPY_KEY_Y, COPY_KEY_SIZE, COPY_KEY_SIZE).withSkin(COPY_PASTE_KEY));
+        copyKey.setTooltip(Tooltip.create(copyLabel.copy().append("\n")
+                .append(Component.translatable("screen.jasm.port.copy_hint").withColor(JasmGui.MUTED & 0xFFFFFF))));
+        pasteKey = addRenderableWidget(JasmButton.icon(() -> PASTE, Component.translatable("screen.jasm.port.paste"),
+                b -> pasteSettings(Minecraft.getInstance().hasShiftDown()),
+                leftPos + PASTE_KEY_X, topPos + COPY_KEY_Y, COPY_KEY_SIZE, COPY_KEY_SIZE).withSkin(COPY_PASTE_KEY));
+        pasteTipFor = PortClipboard.get();
+        pasteKey.active = pasteTipFor != null;
+        pasteKey.setTooltip(pasteTooltip(pasteTipFor));
         if (linkWindow == null) {
             linkWindow = new DeckLinkWindow(font, menu.getSlot(AccessPortMenu.SLOT_DECK_IN), menu.getSlot(AccessPortMenu.SLOT_DECK_OUT),
                     menu.linkCover(), Component.translatable("screen.jasm.archive.reset_deck"),
@@ -254,6 +286,83 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     protected void containerTick() {
         super.containerTick();
         updateRedstoneButton();
+        PortClipboard.Copied copied = PortClipboard.get();
+        pasteKey.active = copied != null;
+        if (copied != pasteTipFor) {
+            pasteTipFor = copied;
+            pasteKey.setTooltip(pasteTooltip(copied));
+        }
+        if (menu.pastes() != seenPastes) {
+            seenPastes = menu.pastes();
+            if (menu.pasted() != null) pasted(menu.pasted());
+        }
+    }
+
+    private void showNotice(Component message, boolean ok, long millis) {
+        notice = message;
+        noticeOk = ok;
+        noticeUntil = Util.getMillis() + millis;
+    }
+
+    private static Component twoLines(Component first, Component second) {
+        return Component.empty().append(first).append("\n").append(second);
+    }
+
+    /** The name the port shows as its title, cut to fit a notice line. */
+    private String titleText() {
+        return font.plainSubstrByWidth(shownTitle.getString(), 100);
+    }
+
+    /** Remembers this port's name and recipes for Paste. */
+    private void copySettings() {
+        List<ProcessingCard> recipes = new ArrayList<>();
+        for (AccessPortMenu.ActiveRecipe recipe : menu.active()) recipes.add(recipe.recipe());
+        PortClipboard.set(label, shownTitle.getString(), recipes);
+        showNotice(Component.translatable("screen.jasm.port.copied", titleText(), recipeCount(recipes.size())), true, PASTE_NOTICE_MS);
+    }
+
+    /** Sends the copied settings: replacing this port's name and recipes, or with Shift only adding the recipes. */
+    private void pasteSettings(boolean add) {
+        PortClipboard.Copied copied = PortClipboard.get();
+        if (copied == null) return;
+        ClientPacketDistributor.sendToServer(new CraftPayloads.PortPaste(menu.containerId, copied.name(), copied.recipes(), add));
+    }
+
+    private Tooltip pasteTooltip(PortClipboard.@Nullable Copied copied) {
+        Component head = Component.translatable("screen.jasm.port.paste");
+        if (copied == null) {
+            return Tooltip.create(head.copy().append("\n")
+                    .append(Component.translatable("screen.jasm.port.paste_nothing").withColor(JasmGui.MUTED & 0xFFFFFF)));
+        }
+        String shown = font.plainSubstrByWidth(copied.shown(), 100);
+        return Tooltip.create(head.copy().append("\n")
+                .append(Component.translatable("screen.jasm.port.paste_what", shown, recipeCount(copied.recipes().size()))
+                        .withColor(JasmGui.SUBTEXT & 0xFFFFFF))
+                .append("\n").append(Component.translatable("screen.jasm.port.paste_click").withColor(JasmGui.MUTED & 0xFFFFFF))
+                .append("\n").append(Component.translatable("screen.jasm.port.paste_shift").withColor(JasmGui.MUTED & 0xFFFFFF)));
+    }
+
+    /** The server's answer to a paste: the title follows a new name, and a line says how it went. */
+    private void pasted(AccessPortMenu.Pasted result) {
+        if (!result.add()) renamed(result.name());
+        Component missing = Component.translatable("screen.jasm.port.paste_missing", result.missing());
+        Component message;
+        boolean ok = true;
+        if (!result.add()) {
+            message = Component.translatable("screen.jasm.port.pasted", titleText(), recipeCount(result.added()));
+            if (result.missing() > 0) message = twoLines(message, missing);
+        } else if (result.added() == 0 && result.notFit() == 0) {
+            message = Component.translatable("screen.jasm.port.already");
+        } else {
+            Component notFit = Component.translatable("screen.jasm.port.not_fit", result.notFit(), AccessPortBlockEntity.MAX_RECIPES);
+            Component added = result.added() == 1 ? Component.translatable("screen.jasm.port.added_one")
+                    : Component.translatable("screen.jasm.port.added", result.added());
+            ok = result.notFit() == 0;
+            if (result.added() == 0) message = notFit;
+            else if (result.notFit() > 0) message = twoLines(added, notFit);
+            else message = result.missing() > 0 ? twoLines(added, missing) : added;
+        }
+        showNotice(message, ok, PASTE_NOTICE_MS);
     }
 
     private void toggleLink() {
@@ -615,8 +724,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                 if (i == hoveredList) JasmGui.slotHoverFrame(graphics, x, y);
             }
         }
-        if (Util.getMillis() < fullNoticeUntil) {
-            JasmGui.notice(graphics, font, fullLine(), false, leftPos + ACTIVE_X, topPos + ACTIVE_Y + ACTIVE_ROWS * 18, ACTIVE_COLS * 18);
+        if (Util.getMillis() < noticeUntil) {
+            JasmGui.notice(graphics, font, notice, noticeOk, leftPos + ACTIVE_X, topPos + ACTIVE_Y + ACTIVE_ROWS * 18, ACTIVE_COLS * 18);
         }
         if (hoveredActive >= 0) {
             AccessPortMenu.ActiveRecipe recipe = active.get(hoveredActive);
@@ -683,8 +792,10 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         Component state = status();
         graphics.text(font, state, WIDTH - 8 - font.width(state) + 1, MACHINE_Y, statusColor(), false);
         graphics.text(font, Component.translatable("screen.jasm.port.active"), ACTIVE_X + 1, ACTIVE_LABEL_Y, JasmGui.SUBTEXT, false);
-        Component count = recipeCount(menu.active().size());
-        graphics.text(font, count, ACTIVE_X + ACTIVE_COLS * 18 - font.width(count) + 1, ACTIVE_LABEL_Y, JasmGui.MUTED, false);
+        int served = menu.active().size();
+        Component count = Component.translatable("screen.jasm.port.recipe_total", served, AccessPortBlockEntity.MAX_RECIPES);
+        graphics.text(font, count, COUNT_RIGHT - font.width(count) + 1, ACTIVE_LABEL_Y,
+                served >= AccessPortBlockEntity.MAX_RECIPES ? JasmGui.WARN : JasmGui.MUTED, false);
         graphics.text(font, Component.translatable("screen.jasm.port.buffer"), AccessPortMenu.BUFFER_X, AccessPortMenu.BUFFER_Y - 10,
                 JasmGui.SUBTEXT, false);
         if (!folded()) {
@@ -755,7 +866,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                 ProcessingCard card = shown().get(listed);
                 if (activeSet().contains(card)) return true;
                 if (full()) {
-                    fullNoticeUntil = Util.getMillis() + FULL_NOTICE_MS;
+                    showNotice(fullLine(), false, FULL_NOTICE_MS);
                 } else {
                     ClientPacketDistributor.sendToServer(new CraftPayloads.PortRecipe(menu.containerId, card, true));
                 }

@@ -45,6 +45,7 @@ Fluids work too. Several ports with the same recipe share the work.
 * **Machine** row: the machine the port works with, and what it is doing. Hover its icon for the name.
 * A recipe whose card has left every rack is dimmed and marked as missing. It comes back when the card is in a rack again.
 * The pencil key opens a small window to rename the port. Press **Rename** to set the name.
+* **Copy** and **Paste** keys on the Active recipes row remember a port's name and recipes until the game closes. Click Paste to replace this port's name and recipes, or Shift+click to add its recipes (up to 16).
 
 Editing a card makes a new recipe: pick the new one again.
 
