@@ -52,6 +52,8 @@ The old generator is used up. The new one keeps its stored power.
 <br />
 ## Recipes
 
+A server can turn off the Elite recipe. Elite generators already placed keep working.
+
 <Column>
   <Row>
     <RecipeFor id="basic_combustion_generator" />

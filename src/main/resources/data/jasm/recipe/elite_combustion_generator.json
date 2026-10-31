@@ -1,6 +1,6 @@
 {
   "type": "jasm:switchable",
-  "feature": "generators",
+  "feature": "elite_generator",
   "recipe": {
     "type": "jasm:upgrade",
     "key": {

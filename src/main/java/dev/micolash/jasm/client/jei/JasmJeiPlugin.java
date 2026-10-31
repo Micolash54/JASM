@@ -212,7 +212,7 @@ public class JasmJeiPlugin implements IModPlugin {
     /** Features this world turned off: their items and recipes leave JEI. JEI starts again on every join, so this follows the world being played. */
     private static void hideTurnedOffFeatures(IJeiRuntime runtime) {
         List<ItemStack> offItems = Arrays.stream(Feature.values()).filter(feature -> !feature.on())
-                .flatMap(feature -> feature.items().stream()).map(ItemStack::new).toList();
+                .flatMap(feature -> feature.items().stream()).distinct().map(ItemStack::new).toList();
         if (!offItems.isEmpty()) {
             runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, offItems);
         }

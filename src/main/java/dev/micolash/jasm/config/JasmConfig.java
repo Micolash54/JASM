@@ -322,6 +322,11 @@ public final class JasmConfig {
             .comment("Combustion Generators. Off: they can't be crafted, and placed ones stop burning but keep their fuel and charge")
             .define("generators", true);
 
+    public static final ModConfigSpec.BooleanValue FEATURE_ELITE_GENERATOR = BUILDER
+            .worldRestart()
+            .comment("Elite Combustion Generator recipe. Off: it can't be crafted; placed ones keep working")
+            .define("eliteGenerator", true);
+
     static {
         BUILDER.pop();
     }

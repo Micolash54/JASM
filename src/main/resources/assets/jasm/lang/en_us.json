@@ -234,6 +234,7 @@
   "jasm.configuration.dropEntityLimit": "Drop entity limit",
   "jasm.configuration.dropEntityRadius": "Drop entity radius",
   "jasm.configuration.elite": "Elite Deck",
+  "jasm.configuration.eliteGenerator": "Elite Combustion Generator recipe",
   "jasm.configuration.eliteProcessorDrain": "Elite Processor use (FE/t)",
   "jasm.configuration.energyCapacity": "Energy capacity (FE)",
   "jasm.configuration.energyPerItem": "Power per item moved (FE)",

@@ -45,6 +45,7 @@ public final class JasmTabs {
                 }
                 if (Feature.GENERATORS.on()) {
                     for (GeneratorTier tier : GeneratorTier.values()) {
+                        if (tier == GeneratorTier.ELITE && !Feature.ELITE_GENERATOR.on()) continue;
                         output.accept(JasmItems.generator(tier));
                     }
                 }

@@ -18,6 +18,7 @@ public enum Feature implements StringRepresentable {
     DECK_TO_DECK,
     BAYS,
     GENERATORS,
+    ELITE_GENERATOR,
     BASIC_BITLING_RECIPE;
 
     public static final Codec<Feature> CODEC = StringRepresentable.fromEnum(Feature::values);
@@ -33,12 +34,14 @@ public enum Feature implements StringRepresentable {
             case DECK_TO_DECK -> JasmConfig.FEATURE_DECK_TO_DECK;
             case BAYS -> JasmConfig.FEATURE_BAYS;
             case GENERATORS -> JasmConfig.FEATURE_GENERATORS;
+            case ELITE_GENERATOR -> JasmConfig.FEATURE_ELITE_GENERATOR;
             case BASIC_BITLING_RECIPE -> JasmConfig.BASIC_BITLING_RECIPE;
         };
     }
 
-    /** Whether this world has it; before any world has loaded the config, its default. */
+    /** Whether this world has it; before any world has loaded the config, its default. The Elite generator also needs the generators. */
     public boolean on() {
+        if (this == ELITE_GENERATOR && !GENERATORS.on()) return false;
         return JasmConfig.SPEC.isLoaded() ? value().get() : value().getDefault();
     }
 
@@ -47,6 +50,7 @@ public enum Feature implements StringRepresentable {
         return switch (this) {
             case BAYS -> List.of(JasmItems.DEPLOYMENT_BAY.get(), JasmItems.DEMOLITION_BAY.get());
             case GENERATORS -> Arrays.stream(GeneratorTier.values()).<ItemLike>map(JasmItems::generator).toList();
+            case ELITE_GENERATOR -> List.of(JasmItems.generator(GeneratorTier.ELITE));
             case DECK_TO_DECK, BASIC_BITLING_RECIPE -> List.of();
         };
     }
