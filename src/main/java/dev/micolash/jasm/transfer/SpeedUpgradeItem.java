@@ -52,6 +52,15 @@ public final class SpeedUpgradeItem extends Item {
     }
 
     /**
+     * Where a job that was {@code progress} ticks into {@code before} ticks stands when it becomes {@code after} ticks long:
+     * the same share done, so adding or taking out a Speed Upgrade only changes how long the rest takes.
+     */
+    public static int keepShare(int progress, int before, int after) {
+        if (progress <= 0 || before <= 0 || before == after) return progress;
+        return Math.clamp((progress * (long) after + before / 2) / before, 0, Math.max(0, after - 1));
+    }
+
+    /**
      * The power a machine uses each tick for a job of {@code baseTicks} ticks, normally drawing {@code baseDrain}, once it takes
      * {@code ticks} ticks: the same job, paid for with the extra power, in less time.
      */

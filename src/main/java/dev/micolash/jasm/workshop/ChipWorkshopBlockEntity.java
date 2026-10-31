@@ -117,6 +117,8 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     private int need;
     /** Speed Upgrades in the slots, counted at the start of each tick. */
     private int upgrades;
+    /** Whether {@link #upgrades} has been counted since loading, so a change can be told from the first count. */
+    private boolean upgradesKnown;
     /** What a Redstone Upgrade in the column does; kept while the upgrade is out, but only followed while it is in. */
     private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
 
@@ -224,7 +226,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     }
 
     private void tick(ServerLevel level) {
+        int before = upgrades;
         upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
+        if (upgradesKnown && before != upgrades && progress > 0) {
+            // The operation stays as far along as it was; only the rest of its time gets shorter or longer.
+            progress = SpeedUpgradeItem.keepShare(progress, ticksForMode(before), ticksForMode(upgrades));
+        }
+        upgradesKnown = true;
         if (!overflow.isEmpty()) {
             for (ItemStack stack : overflow) {
                 Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 1, worldPosition.getZ() + 0.5, stack);
@@ -473,10 +481,15 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     /** Ticks an operation takes in the mode it is set to. */
     private int ticksForMode() {
+        return ticksForMode(upgrades);
+    }
+
+    /** As {@link #ticksForMode()}, with {@code speedUpgrades} Speed Upgrades inside. */
+    private int ticksForMode(int speedUpgrades) {
         if (recipe != null && progressFor.equals(recipe.id().toString())) {
-            return recipeTicks(recipe.value());
+            return SpeedUpgradeItem.ticks(recipe.value().ticks(), speedUpgrades);
         }
-        return chipTicks(batch, upgrades);
+        return chipTicks(batch, speedUpgrades);
     }
 
     /**

@@ -68,6 +68,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     private boolean busy;
     /** Speed Upgrades in the slots, counted at the start of each tick. */
     private int upgrades;
+    /** Whether {@link #upgrades} has been counted since loading, so a change can be told from the first count. */
+    private boolean upgradesKnown;
     /** What a Redstone Upgrade in the column does; kept while the upgrade is out, but only followed while it is in. */
     private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
 
@@ -184,7 +186,14 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     }
 
     private void tick() {
+        int before = upgrades;
         upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
+        if (upgradesKnown && before != upgrades && progress > 0) {
+            // The crystal stays as far along as it was; only the rest of its time gets shorter or longer.
+            progress = SpeedUpgradeItem.keepShare(progress, SpeedUpgradeItem.ticks(Tuning.FOUNDRY_TICKS_PER_CRYSTAL, before), ticksPerCrystal());
+            sentState = -1;
+        }
+        upgradesKnown = true;
         busy = false;
         if (redstonePaused()) {
             // Everything waits as it is: the crystal keeps its progress and no new seed is taken.

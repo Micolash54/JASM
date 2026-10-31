@@ -28,6 +28,7 @@ final class JobsWindow {
     private final DeckMenu menu;
     private final Font font;
     private final Button close;
+    private final Runnable onClosed;
     private boolean open;
     private int scroll;
     private int x;
@@ -35,10 +36,12 @@ final class JobsWindow {
     private int width;
     private int height;
 
-    JobsWindow(DeckMenu menu, Font font) {
+    /** {@code onClosed} runs whenever an open window shuts, so the key that opened it can pop back out. */
+    JobsWindow(DeckMenu menu, Font font, Runnable onClosed) {
         this.menu = menu;
         this.font = font;
-        close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> open = false, 0, 0, 11, 11);
+        this.onClosed = onClosed;
+        close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11);
     }
 
     boolean isOpen() {
@@ -55,7 +58,9 @@ final class JobsWindow {
     }
 
     void close() {
+        if (!open) return;
         open = false;
+        onClosed.run();
     }
 
     boolean contains(double mouseX, double mouseY) {
@@ -149,7 +154,7 @@ final class JobsWindow {
 
     boolean keyPressed(KeyEvent event) {
         if (event.isEscape()) {
-            open = false;
+            close();
             return true;
         }
         return false;

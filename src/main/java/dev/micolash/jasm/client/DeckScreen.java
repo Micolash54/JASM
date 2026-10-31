@@ -274,7 +274,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         tabs.clear();
         craftWindow = new CraftRequestWindow(menu, font);
         ruleWindow = new RuleWindow(menu, font);
-        jobsWindow = new JobsWindow(menu, font);
+        jobsWindow = new JobsWindow(menu, font, this::updateTabs);
         jobsButton = null;
         int tabX = leftPos + mainX + 217;
         for (int i = 0; i < shown.size(); i++) {
