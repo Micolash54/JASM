@@ -26,7 +26,9 @@ When more than one recipe fits the grid, the key above the result picks which on
 
 Two keys beside **Encode** set the kind of card: the crafting table for **Crafting**, the furnace for **Processing**. Crafting is for anything with a crafting grid.
 
-For a machine, press Processing and fill the right-hand column with what the machine gives back. The card names no machine: pick the recipe in the screen of the [Access Port](access-port.md) that should make it. Scroll over a slot to change its amount, or middle-click it and type the amount (fluids in buckets, up to three decimals: 1.25 is 1,250 mB). Right-click with a full bucket or tank to set a fluid.
+For a machine, press Processing and fill the right-hand column with what the machine gives back. The card names no machine: pick the recipe in the screen of the [Access Port](access-port.md) that should make it.
+
+Scroll over a slot to change its amount, or middle-click it and type the amount (fluids in buckets, up to three decimals: 1.25 is 1,250 mB). Right-click with a full bucket or tank to set a fluid.
 
 For a machine that only takes some ingredients through its top, bottom or one side, use the [Advanced Encoder](advanced-encoder.md).
 
