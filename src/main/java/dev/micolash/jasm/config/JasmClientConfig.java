@@ -47,6 +47,10 @@ public final class JasmClientConfig {
             .comment("Folds the filter away on bay panels")
             .define("bayFilterCollapsed", false);
 
+    public static final ModConfigSpec.BooleanValue PORT_RECIPES_FOLDED = BUILDER
+            .comment("Folds the recipe list away on Access Port screens")
+            .define("portRecipesFolded", false);
+
     static {
         BUILDER.pop().push("sounds");
     }
@@ -105,6 +109,15 @@ public final class JasmClientConfig {
 
     public static void setBayFilterCollapsed(boolean collapsed) {
         BAY_FILTER_COLLAPSED.set(collapsed);
+        SPEC.save();
+    }
+
+    public static boolean portRecipesFolded() {
+        return SPEC.isLoaded() && PORT_RECIPES_FOLDED.get();
+    }
+
+    public static void setPortRecipesFolded(boolean folded) {
+        PORT_RECIPES_FOLDED.set(folded);
         SPEC.save();
     }
 

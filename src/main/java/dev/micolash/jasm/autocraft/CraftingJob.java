@@ -17,6 +17,7 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
@@ -26,6 +27,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import dev.micolash.jasm.network.CableNetwork;
 import org.jspecify.annotations.Nullable;
@@ -143,8 +145,9 @@ public final class CraftingJob {
     }
 
     /**
-     * One set of a processing card's ingredients sent into a machine: which step, through which Access Port, what
-     * has yet to come back, and when it went. It holds a Processor slot until nothing is left to wait for.
+     * One set of a processing card's ingredients sent into a machine: which step, through which Access Port, the machine
+     * that took it and its name then, what has yet to come back, and when it went. It holds a Processor slot until
+     * nothing is left to wait for.
      */
     public static final class Sent {
         static final Codec<Sent> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -152,8 +155,12 @@ public final class CraftingJob {
                 BlockPos.CODEC.fieldOf("port").forGetter(s -> s.port),
                 Direction.CODEC.optionalFieldOf("side", Direction.DOWN).forGetter(s -> s.side),
                 ProcessingCard.Amount.CODEC.listOf().fieldOf("waiting").forGetter(s -> s.waiting),
-                Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since))
-                .apply(i, Sent::new));
+                Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since),
+                // sets sent before these were kept have neither
+                BuiltInRegistries.BLOCK.byNameCodec().optionalFieldOf("machine").forGetter(s -> Optional.ofNullable(s.machine)),
+                ComponentSerialization.CODEC.optionalFieldOf("machine_name").forGetter(s -> Optional.ofNullable(s.name)))
+                .apply(i, (step, port, side, waiting, since, machine, name) -> new Sent(step, port, side, waiting, since,
+                        machine.orElse(null), name.orElse(null))));
 
         final int step;
         final BlockPos port;
@@ -163,13 +170,19 @@ public final class CraftingJob {
         final List<ProcessingCard.Amount> waiting;
         /** Game time it was sent. */
         final long since;
+        /** The machine that took the set, and the name it had then; null on sets saved before they were kept. */
+        final @Nullable Block machine;
+        final @Nullable Component name;
 
-        Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since) {
+        Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
+                @Nullable Component name) {
             this.step = step;
             this.port = port.immutable();
             this.side = side;
             this.waiting = new ArrayList<>(waiting);
             this.since = since;
+            this.machine = machine;
+            this.name = name;
         }
 
         /** Counts {@code amount} of {@code key} as arrived. Returns how many of them this set was waiting for. */
@@ -271,7 +284,8 @@ public final class CraftingJob {
             Phase.CODEC.optionalFieldOf("phase", Phase.CRAFTING).forGetter(j -> j.phase),
             Codec.BOOL.optionalFieldOf("to_player", false).forGetter(j -> j.toPlayer),
             Codec.LONG.optionalFieldOf("fluid_serial", 0L).forGetter(j -> j.fluidSerial),
-            UUIDUtil.CODEC.optionalFieldOf("fluid_record").forGetter(j -> Optional.ofNullable(j.fluidRecordId)))
+            UUIDUtil.CODEC.optionalFieldOf("fluid_record").forGetter(j -> Optional.ofNullable(j.fluidRecordId)),
+            PauseReason.CODEC.optionalFieldOf("ended", PauseReason.NONE).forGetter(j -> j.ended))
             .apply(i, CraftingJob::new));
 
     final UUID id;
@@ -295,6 +309,11 @@ public final class CraftingJob {
     Phase phase;
     /** Why nothing is happening right now, for screens; not saved. */
     PauseReason pause = PauseReason.NONE;
+    /**
+     * Why part of the job stopped for good (a set's port was removed), kept and saved until the job is over so its
+     * screens can still say so once nothing else holds it up.
+     */
+    PauseReason ended;
     /** Set by each collection: a machine holds results of a material that the network's storage has no room for. */
     boolean noRoom;
     /** The machine the job has waited on longest, for screens; not saved. */
@@ -350,8 +369,9 @@ public final class CraftingJob {
 
     private CraftingJob(UUID id, long serial, UUID recordId, UUID requester, String requesterName, Optional<UUID> deck,
             Optional<ItemStackTemplate> target, long amount, List<Step> steps, List<Running> running, List<Sent> sent, Phase phase,
-            boolean toPlayer, long fluidSerial, Optional<UUID> fluidRecordId) {
+            boolean toPlayer, long fluidSerial, Optional<UUID> fluidRecordId, PauseReason ended) {
         this.id = id;
+        this.ended = ended;
         this.serial = serial;
         this.recordId = recordId;
         this.fluidSerial = fluidSerial;
@@ -371,7 +391,7 @@ public final class CraftingJob {
     static CraftingJob start(UUID id, long serial, UUID recordId, UUID requester, String requesterName, UUID deck, ItemStackTemplate target,
             long amount, List<Step> steps, boolean toPlayer, long fluidSerial, Optional<UUID> fluidRecordId) {
         return new CraftingJob(id, serial, recordId, requester, requesterName, Optional.of(deck), Optional.of(target), amount, steps,
-                List.of(), List.of(), Phase.CRAFTING, toPlayer, fluidSerial, fluidRecordId);
+                List.of(), List.of(), Phase.CRAFTING, toPlayer, fluidSerial, fluidRecordId, PauseReason.NONE);
     }
 
     /** Whether the job keeps fluids in a record of their own. */
@@ -382,7 +402,8 @@ public final class CraftingJob {
     /** A job found in the list of running jobs but missing from its server (after a crash): it only returns its items. */
     static CraftingJob adopted(AutocraftState.Job entry) {
         return new CraftingJob(entry.id(), entry.serial(), entry.recordId(), entry.requester(), entry.requesterName(), entry.deck(),
-                Optional.empty(), 0, List.of(), List.of(), List.of(), Phase.RETURNING, false, entry.fluidSerial(), entry.fluidRecordId());
+                Optional.empty(), 0, List.of(), List.of(), List.of(), Phase.RETURNING, false, entry.fluidSerial(), entry.fluidRecordId(),
+                PauseReason.NONE);
     }
 
     /** Step {@code index}'s crafting card with its recipe, or null if the recipe is gone (or it is a processing card). */
@@ -494,8 +515,14 @@ public final class CraftingJob {
         return waiting;
     }
 
+    /** What screens show: what holds the job up now, or else why part of it stopped for good. */
     public PauseReason pause() {
-        return pause;
+        return pause != PauseReason.NONE ? pause : ended;
+    }
+
+    /** Why part of the job stopped for good; {@link PauseReason#NONE} while nothing has. */
+    public PauseReason ended() {
+        return ended;
     }
 
     /** What is crafting right now, one entry per step with crafts running, the final item first and its ingredients after. */
@@ -512,10 +539,12 @@ public final class CraftingJob {
             running[set.step]++;
             if (steps.get(set.step).card instanceof ProcessingCard card) arrived[set.step] += set.arrived(card);
             if (machine[set.step] == null && steps.get(set.step).card instanceof ProcessingCard card) {
-                // The name the machine had when the card was written; looking it up in the world each time would cost more.
-                String name = card.machines().stream().filter(m -> m.at().equals(set.at())).map(ProcessingCard.Machine::name)
-                        .findFirst().orElse("");
-                machine[set.step] = name.isBlank() ? Component.translatable("screen.jasm.server.machine") : Component.literal(name);
+                // The name the machine had when the set went in; looking it up in the world each time would cost more. A
+                // set saved before names were kept falls back on the name an older card gave its machine.
+                String old = set.name != null ? "" : card.machines().stream().filter(m -> m.at().equals(set.at()))
+                        .map(ProcessingCard.Machine::name).findFirst().orElse("");
+                machine[set.step] = set.name != null ? set.name
+                        : old.isBlank() ? Component.translatable("screen.jasm.server.machine") : Component.literal(old);
             }
         }
         List<Now> now = new ArrayList<>();

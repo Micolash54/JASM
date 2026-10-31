@@ -341,11 +341,6 @@ public class DataCableBlock extends PipeBlock implements EntityBlock, LiquidBloc
     @Override
     protected BlockState updateShape(BlockState state, LevelReader level, ScheduledTickAccess ticks, BlockPos pos, Direction direction,
             BlockPos neighbourPos, BlockState neighbourState, RandomSource random) {
-        if (level instanceof ServerLevel && level.getBlockEntity(pos) instanceof DataCableBlockEntity host && host.port(direction) != null
-                && host.port(direction).face() != null) {
-            // a thin Access Port notes the machine in front of it, for the icons on its item once mined
-            host.port(direction).noteMachine(direction, host.port(direction).hasMachine(direction));
-        }
         return state.setValue(PROPERTY_BY_DIRECTION.get(direction), connects(level, neighbourPos, neighbourState, direction));
     }
 

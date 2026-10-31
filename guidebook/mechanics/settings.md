@@ -183,6 +183,7 @@ These are your own, in `jasm-client.toml`. They don't change with the world.
 | Deck sort ascending | `deckAscending` | Sorts the Deck screen's grid from smallest to largest, or A to Z. |
 | Sync Deck search with JEI | `deckSearchSync` | With JEI installed, the Deck's search and JEI's search show the same text. |
 | Fold bay filters | `bayFilterCollapsed` | Folds the filter away on bay panels. |
+| Fold Access Port recipes | `portRecipesFolded` | Folds the recipe list away on Access Port screens. |
 
 **Sounds**
 

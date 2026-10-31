@@ -11,11 +11,12 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
+import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
  * A button in the JASM look. It shows either its text or, for small toggles, an icon (the text is then read aloud only).
- * It is drawn as a dark key with a lip under it. It sinks in while held and for a moment after any press, and a selected
+ * An item can stand in for the icon. It is drawn as a dark key with a lip under it. It sinks in while held and for a moment after any press, and a selected
  * button (the open tab) stays sunk in.
  */
 public class JasmButton extends Button {
@@ -24,6 +25,7 @@ public class JasmButton extends Button {
     private static final Identifier DISABLED = Jasm.id("button_disabled");
     private static final Identifier PRESSED = Jasm.id("button_pressed");
     private static final Identifier SELECTED = Jasm.id("button_selected");
+    private static final Identifier SELECTED_GREEN = Jasm.id("button_selected_green");
     /** How long a press shows when the button is let go at once, or pressed with the keyboard. */
     private static final long FLASH_MS = 110;
 
@@ -31,6 +33,8 @@ public class JasmButton extends Button {
     public record Icon(Identifier sprite, int width, int height) {}
 
     private final @Nullable Supplier<Icon> icon;
+    private @Nullable ItemStack stack;
+    private Identifier selectedSprite = SELECTED;
     private final boolean wrap;
     private boolean small;
     private boolean held;
@@ -61,6 +65,19 @@ public class JasmButton extends Button {
     /** {@code icon} is asked again every frame, so a toggle can switch icons. */
     public static JasmButton icon(Supplier<Icon> icon, Component narration, OnPress onPress, int x, int y, int width, int height) {
         return (JasmButton) Button.builder(narration, onPress).bounds(x, y, width, height).build(b -> new JasmButton(b, icon, false));
+    }
+
+    /** A key showing an item, 16 px, in the middle. */
+    public static JasmButton item(ItemStack stack, Component narration, OnPress onPress, int x, int y, int width, int height) {
+        JasmButton button = (JasmButton) Button.builder(narration, onPress).bounds(x, y, width, height)
+                .build(b -> new JasmButton(b, null, false));
+        button.stack = stack;
+        return button;
+    }
+
+    /** The chosen key of a group shows a green rim instead of the usual one. */
+    public void setGreenRim() {
+        selectedSprite = SELECTED_GREEN;
     }
 
     /** Marks this as the chosen one of a group, like the open tab. A selected button can't be pressed again. */
@@ -106,13 +123,15 @@ public class JasmButton extends Button {
     protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         // A click leaves the button focused; only show that when the player is moving around with the keyboard.
         boolean lit = isHovered() || isFocused() && Minecraft.getInstance().getLastInputType().isKeyboard();
-        Identifier sprite = selected ? SELECTED : pressed() ? PRESSED : !active ? DISABLED : lit ? HIGHLIGHTED : NORMAL;
+        Identifier sprite = selected ? selectedSprite : pressed() ? PRESSED : !active ? DISABLED : lit ? HIGHLIGHTED : NORMAL;
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, getX(), getY(), getWidth(), getHeight());
         boolean bright = active || selected;
         graphics.pose().pushMatrix();
         // The face sits above a 2px lip, so content is centred 1px high; a pressed cap drops 2px and loses the lip.
         graphics.pose().translate(0, selected || pressed() ? 1 : -1);
-        if (icon != null) {
+        if (stack != null) {
+            graphics.item(stack, getX() + (getWidth() - 16) / 2, getY() + (getHeight() - 16) / 2);
+        } else if (icon != null) {
             Icon shown = icon.get();
             int ix = getX() + (getWidth() - shown.width()) / 2;
             int iy = getY() + (getHeight() - shown.height()) / 2;

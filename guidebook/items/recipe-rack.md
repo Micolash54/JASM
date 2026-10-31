@@ -22,6 +22,8 @@ A Recipe Rack holds 16 filled [Recipe Cards](recipe-cards.md). Every [Crafting S
 
 Without power, the network can't see the cards inside, so autocrafting stops. Jade shows how many cards a rack holds.
 
+Processing cards go in a rack too. An [Access Port](access-port.md) lists the recipes of every rack on its network, so you pick them there.
+
 Need more than 16 recipes? Add another rack.
 
 <br />

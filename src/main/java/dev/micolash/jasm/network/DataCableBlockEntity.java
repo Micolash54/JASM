@@ -17,6 +17,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -322,7 +323,12 @@ public class DataCableBlockEntity extends BlockEntity {
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        return saveCustomOnly(registries);
+        CompoundTag tag = saveCustomOnly(registries);
+        // The recipes a port serves can be many: players get them only through the port's screen.
+        for (Tag child : tag.getListOrEmpty("ports")) {
+            if (child instanceof CompoundTag saved) saved.getCompoundOrEmpty("port").remove("recipes");
+        }
+        return tag;
     }
 
     @Override
@@ -374,7 +380,7 @@ public class DataCableBlockEntity extends BlockEntity {
         @Override
         public Direction face() { return face; }
         @Override
-        protected boolean canPowerSide(Direction side) { return side == face; }
+        protected boolean canPowerSide(Direction side) { return side == face && super.canPowerSide(side); }
         @Override
         public void refreshSides() {
             if (level instanceof ServerLevel && installed()) {

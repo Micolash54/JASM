@@ -20,9 +20,13 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A recipe for a machine behind an Access Port: what goes in (nine slots, any amount each), what comes back (up to
- * three, the first one being what the card makes), which ports it may use, and the machine face each input goes in
- * through (Default, the face the port touches, unless the Advanced Encoder set another). JASM never checks it
- * against the machine: the player says what the machine does.
+ * three, the first one being what the card makes), and the machine face each input goes in through (Default, the face
+ * the port touches, unless the Advanced Encoder set another). JASM never checks it against the machine: the player
+ * says what the machine does.
+ *
+ * <p>The card is its contents: two cards with the same inputs, outputs and faces are one recipe, wherever they are.
+ * Ports pick the recipes they serve. {@code machines} is only what older cards named (the ports they were written
+ * for), read once to select the recipe in those ports; it is never part of what the card is.
  */
 public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines, List<InputFace> faces) implements Card {
     public static final int INPUTS = 9;
@@ -192,8 +196,8 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     }
 
     /**
-     * A machine the card may use: its Access Port, the side of the port it touches, and the name it had when the card
-     * was written (for the tooltip).
+     * A machine an older card was written for: its Access Port, the side of the port it touches, and the name it had
+     * when the card was written.
      */
     public record Machine(BlockPos pos, Direction side, String name) {
         static final Codec<Machine> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -216,7 +220,8 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     public static final Codec<ProcessingCard> CODEC = RecordCodecBuilder.create(i -> i.group(
             Amount.CODEC.listOf().fieldOf("inputs").forGetter(ProcessingCard::inputs),
             Amount.CODEC.listOf().fieldOf("outputs").forGetter(ProcessingCard::outputs),
-            Machine.CODEC.listOf().fieldOf("machines").forGetter(ProcessingCard::machines),
+            // Only older cards have it; cards written now leave it out.
+            Machine.CODEC.listOf().optionalFieldOf("machines", List.of()).forGetter(ProcessingCard::machines),
             // Left out while every input is Default, so cards without faces save exactly as before.
             InputFace.CODEC.listOf().optionalFieldOf("faces", InputFace.NONE).forGetter(ProcessingCard::faces))
             .apply(i, ProcessingCard::new));
@@ -231,6 +236,11 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
     /** A card whose inputs all go in through the face the port touches. */
     public ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines) {
         this(inputs, outputs, machines, InputFace.NONE);
+    }
+
+    /** A card as written now: it names no port. */
+    public static ProcessingCard of(List<Amount> inputs, List<Amount> outputs, List<InputFace> faces) {
+        return new ProcessingCard(inputs, outputs, List.of(), faces);
     }
 
     public ProcessingCard {
@@ -308,8 +318,35 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
         return used;
     }
 
-    /** The machines the card may use. */
+    /** The ports an older card was written for, each once. Empty on cards written now. */
     public List<Machines.At> spots() {
-        return machines.stream().map(Machine::at).toList();
+        return machines.stream().map(Machine::at).distinct().toList();
+    }
+
+    /** Whether this is an older card that still names ports. */
+    public boolean namesPorts() {
+        return !machines.isEmpty();
+    }
+
+    /** The same recipe naming no port. */
+    public ProcessingCard clean() {
+        return machines.isEmpty() ? this : new ProcessingCard(inputs, outputs, List.of(), faces);
+    }
+
+    /** The same recipe with {@code machines} filled in (where it runs now, for looking at the machines). */
+    ProcessingCard at(List<Machine> machines) {
+        return new ProcessingCard(inputs, outputs, machines, faces);
+    }
+
+    // The ports an older card names are no part of the recipe.
+    @Override
+    public boolean equals(Object other) {
+        return this == other || other instanceof ProcessingCard card
+                && inputs.equals(card.inputs) && outputs.equals(card.outputs) && faces.equals(card.faces);
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * (31 * inputs.hashCode() + outputs.hashCode()) + faces.hashCode();
     }
 }

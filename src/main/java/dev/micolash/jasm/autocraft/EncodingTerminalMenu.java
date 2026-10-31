@@ -9,27 +9,18 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.deck.WornDecks;
-import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.LinkWindowCover;
-import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
-import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -65,8 +56,11 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int CARD_IN_Y = 18;
     public static final int CARD_OUT_Y = 54;
     public static final int INVENTORY_Y = 128;
-    /** Where the terminal's messages show, under the grid. */
-    public static final int MESSAGE_Y = 92;
+    /** Where the terminal's messages show, under the Encode row. */
+    public static final int MESSAGE_Y = 98;
+    /** The Encode row: the mode keys and the Encode button, all this tall. */
+    public static final int ENCODE_Y = 74;
+    public static final int KEY_SIZE = 22;
 
     /** Processing mode: the column of what the machine gives back, beside the grid. */
     public static final int OUTPUTS_X = 136;
@@ -83,14 +77,14 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
     public static final int BUTTON_ENCODE = 0;
     public static final int BUTTON_CLEAR = 1;
-    /** Back to crafting cards. */
-    public static final int BUTTON_CRAFTING_SERVER = 2;
+    /** The Crafting key: the terminal writes crafting cards. */
+    public static final int BUTTON_CRAFTING = 2;
+    /** The Processing key: the terminal writes processing cards. */
+    public static final int BUTTON_PROCESSING = 3;
     /** {@code BUTTON_AMOUNT + slot * 4 + op}: processing slot 0-11 (grid, then outputs); op 0 +1, 1 -1, 2 +10, 3 -10. */
     public static final int BUTTON_AMOUNT = 100;
     /** {@code BUTTON_EXACT + amount * 16 + slot}: set processing slot 0-11 to a typed amount (kept within what the slot takes). */
     public static final int BUTTON_EXACT = 10_000;
-    /** {@code BUTTON_MACHINE + i}: choose or drop the {@code i}th machine of the list last sent. */
-    public static final int BUTTON_MACHINE = 1000;
     /** {@code BUTTON_FACE + slot * 8 + face}: the Advanced Encoder paints grid slot 0-8 with an {@link InputFace}. */
     public static final int BUTTON_FACE = 2000;
 
@@ -105,39 +99,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     static final int DATA_DRAIN = DATA_FACES + ProcessingCard.INPUTS;
     static final int DATA_COUNT = DATA_DRAIN + 1;
 
-    /** Ticks between refreshes of the machine list. */
-    private static final int MACHINES_EVERY = 20;
-
     /** Messages the screen can show, by number; 0 is none. */
     public static final List<String> MESSAGES = List.of("", "message.jasm.terminal.no_power", "message.jasm.terminal.no_card",
             "message.jasm.terminal.output_full", "message.jasm.terminal.empty_grid", "message.jasm.terminal.no_recipe",
-            "message.jasm.terminal.encoded", "message.jasm.terminal.no_output", "message.jasm.terminal.no_machine");
-
-    /**
-     * A machine in the list: where, its name, the block's item to show, whether it still stands on the network, and
-     * whether it is chosen.
-     */
-    public record MachineView(Machines.At at, String name, ItemStack icon, boolean present, boolean selected) {
-        public static final StreamCodec<RegistryFriendlyByteBuf, MachineView> STREAM_CODEC = StreamCodec.composite(
-                Machines.At.STREAM_CODEC, MachineView::at,
-                ByteBufCodecs.stringUtf8(128), MachineView::name,
-                ItemStack.OPTIONAL_STREAM_CODEC, MachineView::icon,
-                ByteBufCodecs.BOOL, MachineView::present,
-                ByteBufCodecs.BOOL, MachineView::selected,
-                MachineView::new);
-
-        // Stacks don't compare by content on their own: compare the icon's item, so an unchanged list isn't sent again.
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof MachineView view && at.equals(view.at) && name.equals(view.name)
-                    && ItemStack.matches(icon, view.icon) && present == view.present && selected == view.selected;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(at, name, present, selected);
-        }
-    }
+            "message.jasm.terminal.encoded", "message.jasm.terminal.no_output");
 
     private static final Identifier EMPTY_CARD = Jasm.id("container/empty_card");
     private static final Identifier EMPTY_DECK = Jasm.id("container/empty_deck");
@@ -161,10 +126,6 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     /** Client side: what the server said about trust. */
     private boolean owner;
     private TrustList trust = TrustList.EMPTY;
-    /** The Access Ports in the list: on the server the last list sent, on the client the last received. */
-    private List<MachineView> machines = List.of();
-    /** Server side: send the machine list with the next update (it opened, or the choice changed). */
-    private boolean machinesDue = true;
     /** Most kinds of item the Deck list shows. */
     public static final int MAX_DECK_ITEMS = 4096;
     /** Ticks between looks at the viewer's Deck. */
@@ -180,8 +141,6 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private final LinkWindowCover linkCover = new LinkWindowCover();
     /** Client side: the Deck list shows in place of the inventory, whose slots are then hidden. */
     private boolean deckTab;
-    /** Most machines listed. */
-    public static final int MAX_MACHINES = 256;
 
     /** Server side. */
     public EncodingTerminalMenu(int containerId, Inventory inventory, EncodingTerminalBlockEntity terminal, ContainerLevelAccess access) {
@@ -304,10 +263,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
     }
 
-    /**
-     * The trust list goes to the screen with the first update after opening; the machine list then, whenever the
-     * choice changes, and once a second if the ports changed.
-     */
+    /** The trust list goes to the screen with the first update after opening. */
     @Override
     public void broadcastChanges() {
         super.broadcastChanges();
@@ -321,16 +277,6 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
         if (deckSent == null || serverPlayer.level().getGameTime() % DECK_EVERY == 0) {
             sendDeck(serverPlayer);
-        }
-        if (machinesDue || serverPlayer.level().getGameTime() % MACHINES_EVERY == 0) {
-            machinesDue = false;
-            List<MachineView> now = currentMachines((ServerLevel) serverPlayer.level());
-            if (!now.equals(machines)) {
-                machines = now;
-                if (serverPlayer.connection.hasChannel(CraftPayloads.TerminalMachines.TYPE)) {
-                    PacketDistributor.sendToPlayer(serverPlayer, new CraftPayloads.TerminalMachines(containerId, now));
-                }
-            }
         }
     }
 
@@ -518,13 +464,14 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     }
 
     /**
-     * Processing mode: fills the grid and the outputs from a recipe (JEI's "+"). The same item in several slots is
-     * added up; what doesn't fit (more than nine kinds in, three out) is left out.
+     * Fills the grid and the outputs from a recipe (JEI's "+"), switching the terminal to Processing first. The same
+     * item in several slots is added up; what doesn't fit (more than nine kinds in, three out) is left out.
      */
     public void setProcessing(List<ItemStack> inputs, List<ItemStack> outputs) {
-        if (terminal == null || !processing()) {
+        if (terminal == null) {
             return;
         }
+        terminal.setProcessingMode(true);
         List<ItemStack> in = advanced() ? apart(inputs) : merged(inputs, ProcessingCard.INPUTS);
         List<ItemStack> out = merged(outputs, ProcessingCard.OUTPUTS);
         terminal.resetFaces();
@@ -565,13 +512,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
-        if (terminal == null || !(player instanceof ServerPlayer serverPlayer)) {
+        if (terminal == null || !(player instanceof ServerPlayer serverPlayer) || !terminal.isAuthorized(serverPlayer)) {
             return false;
-        }
-        if (id >= BUTTON_MACHINE && id < BUTTON_MACHINE + machines.size()) {
-            terminal.toggleMachine(machines.get(id - BUTTON_MACHINE).at());
-            machinesDue = true;
-            return true;
         }
         if (id >= BUTTON_FACE && id < BUTTON_FACE + ProcessingCard.INPUTS * 8) {
             int face = (id - BUTTON_FACE) % 8;
@@ -616,9 +558,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 terminal.clearGrid();
                 return true;
             }
-            case BUTTON_CRAFTING_SERVER -> {
-                terminal.selectCraftingServer();
-                machinesDue = true;
+            case BUTTON_CRAFTING, BUTTON_PROCESSING -> {
+                terminal.setProcessingMode(id == BUTTON_PROCESSING);
                 return true;
             }
             default -> {
@@ -627,9 +568,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
     }
 
-    // --- the machine list ---
+    // --- crafting or processing ---
 
-    /** Whether the terminal writes processing cards (some machine is chosen). */
+    /** Whether the terminal writes processing cards (the Processing key is chosen). */
     public boolean processing() {
         return data.get(DATA_PROCESSING) != 0;
     }
@@ -645,41 +586,6 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     /** How many of processing slot {@code slot} (0-8 the grid, 9-11 the outputs); 0 where empty. */
     public int amount(int slot) {
         return slot >= 0 && slot < EncodingTerminalBlockEntity.AMOUNTS ? data.get(DATA_AMOUNTS + slot) : 0;
-    }
-
-    /** The Access Ports on the terminal's network that the viewer may use, and chosen ones that are gone. */
-    public List<MachineView> machines() {
-        return machines;
-    }
-
-    /** Client side: the list the server sent. */
-    public void setMachines(List<MachineView> machines) {
-        this.machines = List.copyOf(machines);
-    }
-
-    /** Server side: the machine list as it is now, one entry per machine touching a port. */
-    private List<MachineView> currentMachines(ServerLevel level) {
-        CableNetwork network = Networks.at(level, terminal.getBlockPos());
-        List<Machines.At> chosen = terminal.selected();
-        List<MachineView> views = new ArrayList<>();
-        if (network != null) {
-            for (AccessPortBlockEntity port : Machines.ports(network)) {
-                if (MachineAccess.canUse(port, player)) {
-                    for (Direction side : port.machineSides()) {
-                        Machines.At at = new Machines.At(port.getBlockPos(), side);
-                        ItemStack icon = new ItemStack(level.getBlockState(port.getBlockPos().relative(side)).getBlock().asItem());
-                        views.add(new MachineView(at, port.machineName(side).getString(), icon, true, chosen.contains(at)));
-                    }
-                }
-            }
-        }
-        views.sort(Comparator.comparing(MachineView::name).thenComparing(v -> v.at().port().asLong()).thenComparing(v -> v.at().side()));
-        for (Machines.At at : chosen) {
-            if (views.stream().noneMatch(v -> v.at().equals(at))) {
-                views.add(new MachineView(at, "", ItemStack.EMPTY, false, true));
-            }
-        }
-        return views.size() > MAX_MACHINES ? views.subList(0, MAX_MACHINES) : views;
     }
 
     /**

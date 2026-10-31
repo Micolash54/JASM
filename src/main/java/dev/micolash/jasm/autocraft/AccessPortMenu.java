@@ -13,15 +13,24 @@ import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
+import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.Networks;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.StringUtil;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -32,20 +41,32 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jspecify.annotations.Nullable;
 
-/** The port's upgrades, item buffer, Deck link, status and player inventory. */
+/**
+ * The port's upgrades, item buffer, Deck link, status and player inventory, the kinds of machine it can serve, and the
+ * processing recipes: those it serves, and those in the Recipe Racks on its network the player may use. Only the
+ * player with the screen open is sent the recipes.
+ */
 public class AccessPortMenu extends AbstractContainerMenu implements MachineView {
     public static final int MAX_NAME = 32;
-    public static final int WIDTH = PortUpgradeLayout.MAIN_WIDTH;
-    /** Where the inventory sits as the server builds it; the screen moves it to match the other ports' height. */
-    public static final int INVENTORY_Y = 156;
-    /** Side keys in the right-hand column: the Deck Link and blocking mode. */
-    public static final int SIDE_KEYS = 2;
+    /** The main panel: as wide as the inventory's own panel. */
+    public static final int WIDTH = 176;
+    public static final int HEIGHT = 222;
+    /** Left edge of the side keys, just past the main panel. */
+    public static final int KEY_X = WIDTH;
+    public static final int INVENTORY_Y = 138;
+    /** Side keys in the right-hand column: the Deck Link, blocking mode and rename. */
+    public static final int SIDE_KEYS = 3;
     public static final int BUFFER_X = (WIDTH - 8 * 18) / 2;
-    public static final int BUFFER_Y = 116;
+    public static final int BUFFER_Y = 106;
+    /** Most recipes the list shows; a network with more lists the first ones its racks hold. */
+    public static final int MAX_LISTED = 1_024;
+    /** Ticks between two looks at the racks while the screen is open. */
+    private static final int RACKS_EVERY = 20;
     public static final int SLOT_BUFFER = 1;
     public static final int SLOT_DECK_IN = SLOT_BUFFER + AccessPortBlockEntity.BUFFER_SLOTS;
     public static final int SLOT_DECK_OUT = SLOT_DECK_IN + 1;
@@ -71,6 +92,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     private final @Nullable AccessPortBlockEntity port;
     /** Client side: the name when the screen opened. */
     private final String label;
+    private @Nullable BlockPos openedAt;
     private List<MachineView> machines;
     private final Player player;
     private final int inventoryStart;
@@ -80,6 +102,15 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     private String linkedPlayer = "";
     /** Server side: the name last sent, so it goes again only when it changes. */
     private final String[] lastPlayer = {null};
+    /** The recipes the player may pick from; on the server, what was last sent. */
+    private List<ProcessingCard> listed = List.of();
+    /** The recipes the port serves; on the server, what was last sent. */
+    private List<ActiveRecipe> active = List.of();
+    /** Server side: every card in the network's racks at the last look, whoever may use them. */
+    private Set<Card> onNetwork = Set.of();
+    /** Server side: whether the recipes went out once yet, and how many times the list did. */
+    private boolean synced;
+    private int listSends;
 
     /** Server side. */
     public AccessPortMenu(int containerId, Inventory inventory, AccessPortBlockEntity port, ContainerLevelAccess access) {
@@ -88,10 +119,18 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
 
     /** Client side. */
     public static AccessPortMenu client(int containerId, Inventory inventory, RegistryFriendlyByteBuf buf) {
-        buf.readBlockPos();
+        BlockPos pos = buf.readBlockPos();
         String label = buf.readUtf(MAX_NAME);
         List<MachineView> machines = MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(6)).decode(buf);
-        return new AccessPortMenu(containerId, inventory, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null, label, machines);
+        AccessPortMenu menu = new AccessPortMenu(containerId, inventory, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL,
+                null, label, machines);
+        menu.openedAt = pos;
+        return menu;
+    }
+
+    /** Client side: where the port stands, as the server said when the screen opened. */
+    public @Nullable BlockPos openedAt() {
+        return openedAt;
     }
 
     private AccessPortMenu(int containerId, Inventory inventory, ContainerData data, ContainerLevelAccess access,
@@ -108,7 +147,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         this.hotbarStart = inventoryStart + 27;
         addDataSlots(data);
         var container = port == null ? new SimpleContainer(AccessPortBlockEntity.INVENTORY_SIZE) : port;
-        addSlot(new Slot(container, AccessPortBlockEntity.POWER_SLOT, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.powerY(SIDE_KEYS)) {
+        addSlot(new Slot(container, AccessPortBlockEntity.POWER_SLOT, KEY_X + 2, PortUpgradeLayout.powerY(SIDE_KEYS)) {
             @Override
             public boolean isActive() { return !linkCover.covers(this); }
             @Override
@@ -141,7 +180,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
             public boolean mayPlace(ItemStack stack) { return false; }
         });
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) {
-            addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, PortUpgradeLayout.SLOT_X, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
+            addSlot(new Slot(container, AccessPortBlockEntity.SPEED_START + i, KEY_X + 2, PortUpgradeLayout.speedY(SIDE_KEYS, i)) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     int from = AccessPortBlockEntity.SPEED_START;
@@ -166,14 +205,6 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     }
 
     public int inventoryY() { return INVENTORY_Y; }
-
-    /** Only on the player's screen, the server never looks at where slots sit. */
-    public void layout(int inventoryY) {
-        for (int i = 0; i < 36; i++) {
-            Slot slot = slots.get(inventoryStart + i);
-            slot.y = i < 27 ? inventoryY + i / 9 * 18 : inventoryY + 58;
-        }
-    }
     public LinkWindowCover linkCover() { return linkCover; }
     public boolean defaultDeck() { return data.get(DATA_DEFAULT_DECK) != 0; }
     public boolean deckLinked() { return data.get(DATA_LINKED) != 0; }
@@ -218,22 +249,156 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         return label;
     }
 
-    public record MachineView(Component name, ItemStack icon) {
+    /** One kind of machine touching the port, and whether the port serves it. */
+    public record MachineView(Component name, ItemStack icon, boolean chosen) {
         public static final StreamCodec<RegistryFriendlyByteBuf, MachineView> STREAM_CODEC = StreamCodec.composite(
                 ComponentSerialization.STREAM_CODEC, MachineView::name,
                 ItemStack.OPTIONAL_STREAM_CODEC, MachineView::icon,
+                ByteBufCodecs.BOOL, MachineView::chosen,
                 MachineView::new);
     }
 
+    /** The kinds of machine touching the port now, in the order of its sides, with the one it serves marked. */
     static List<MachineView> connectedMachines(AccessPortBlockEntity port) {
         if (port.getLevel() == null) return List.of();
-        return port.machineSides().stream().map(side -> {
-            var pos = port.getBlockPos().relative(side);
-            return new MachineView(Machines.blockName(port.getLevel(), pos), new ItemStack(port.getLevel().getBlockState(pos).getBlock()));
-        }).toList();
+        Block served = port.servedType();
+        return port.machineTypesInRange().stream()
+                .map(type -> new MachineView(type.getName(), new ItemStack(type), type == served)).toList();
+    }
+
+    /**
+     * Server side: the player picks which kind of machine the port serves. Refused if the menu is not valid for the player
+     * or no machine of that kind touches the port.
+     */
+    public boolean chooseMachine(Player player, Identifier block) {
+        if (port == null || !stillValid(player)) return false;
+        Block type = BuiltInRegistries.BLOCK.getOptional(block).orElse(null);
+        return type != null && port.chooseMachineType(type);
     }
 
     public List<MachineView> machines() { return machines; }
+
+    // --- recipes ---
+
+    /** A recipe the port serves, and whether its card is missing from every rack on the network. */
+    public record ActiveRecipe(ProcessingCard recipe, boolean missing) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, ActiveRecipe> STREAM_CODEC = StreamCodec.composite(
+                ProcessingCard.STREAM_CODEC, ActiveRecipe::recipe,
+                ByteBufCodecs.BOOL, ActiveRecipe::missing,
+                ActiveRecipe::new);
+    }
+
+    /** The processing recipes the player may pick from, as the server last sent them. */
+    public List<ProcessingCard> listed() { return listed; }
+
+    public void setListed(List<ProcessingCard> recipes) { listed = List.copyOf(recipes); }
+
+    /** The recipes the port serves, as the server last sent them. */
+    public List<ActiveRecipe> active() { return active; }
+
+    public void setActive(List<ActiveRecipe> recipes) { active = List.copyOf(recipes); }
+
+    /** Server side: how many times the recipe list went to the player. */
+    public int listSends() { return listSends; }
+
+    private @Nullable CableNetwork network() {
+        return port != null && port.getLevel() instanceof ServerLevel level ? Networks.at(level, port.getBlockPos()) : null;
+    }
+
+    /**
+     * Looks at every rack on the port's network once: returns the processing recipes in the racks {@code player} may
+     * use (each once, at most {@link #MAX_LISTED}), and fills {@code all} with every card in any rack.
+     */
+    private List<ProcessingCard> usable(Player player, Set<Card> all) {
+        CableNetwork network = network();
+        if (network == null) return List.of();
+        Set<ProcessingCard> found = new LinkedHashSet<>();
+        for (RecipeRackBlockEntity rack : network.machines(RecipeRackBlockEntity.class)) {
+            boolean mayUse = MachineAccess.canUse(rack, player);
+            for (Card card : rack.cards()) {
+                all.add(card);
+                if (mayUse && card instanceof ProcessingCard processing && found.size() < MAX_LISTED) found.add(processing.clean());
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    /** Whether {@code card} is in a powered rack on the port's network that {@code player} may use. */
+    private boolean inUsableRack(Player player, ProcessingCard card) {
+        CableNetwork network = network();
+        if (network == null) return false;
+        for (RecipeRackBlockEntity rack : network.machines(RecipeRackBlockEntity.class)) {
+            if (MachineAccess.canUse(rack, player) && rack.cards().contains(card)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Server side: the port starts serving {@code card}. Refused unless this is the player's open, usable port screen
+     * and the recipe is in a rack on the network they may use.
+     */
+    public boolean addRecipe(Player player, ProcessingCard card) {
+        if (port == null || player.containerMenu != this || !stillValid(player) || !inUsableRack(player, card)) return false;
+        boolean added = port.select(card);
+        if (added && player instanceof ServerPlayer serverPlayer) sendActive(serverPlayer);
+        return added;
+    }
+
+    /** Server side: the port stops serving {@code card}. Any recipe may be taken off, whatever rack it came from. */
+    public boolean removeRecipe(Player player, ProcessingCard card) {
+        if (port == null || player.containerMenu != this || !stillValid(player)) return false;
+        boolean removed = port.unselect(card.clean());
+        if (removed && player instanceof ServerPlayer serverPlayer) sendActive(serverPlayer);
+        return removed;
+    }
+
+    /**
+     * A name the rename panel takes: at most {@link #MAX_NAME} letters once trimmed, none of them a control or
+     * formatting character. Empty clears the name.
+     */
+    public static boolean validName(String name) {
+        String cleaned = name.strip();
+        if (cleaned.length() > MAX_NAME) return false;
+        for (int i = 0; i < cleaned.length(); i++) {
+            if (!StringUtil.isAllowedChatCharacter(cleaned.charAt(i))) return false;
+        }
+        return true;
+    }
+
+    /** Server side: names the port, if this is the player's open, usable screen and the name is valid. */
+    public boolean rename(Player player, String name) {
+        if (port == null || player.containerMenu != this || !stillValid(player) || !validName(name)) return false;
+        port.setLabel(name);
+        return true;
+    }
+
+    /** Looks at the racks again and sends the list if it changed, then the served recipes with their missing marks. */
+    private void syncRecipes(ServerPlayer player) {
+        Set<Card> all = new HashSet<>();
+        List<ProcessingCard> now = usable(player, all);
+        onNetwork = all;
+        if (!synced || !now.equals(listed)) {
+            listed = now;
+            listSends++;
+            if (player.connection.hasChannel(CraftPayloads.PortRecipes.TYPE)) {
+                PacketDistributor.sendToPlayer(player, new CraftPayloads.PortRecipes(containerId, now));
+            }
+        }
+        synced = true;
+        sendActive(player);
+    }
+
+    /** Sends the recipes the port serves if they, or which of them are missing, changed since last time. */
+    private void sendActive(ServerPlayer player) {
+        if (port == null) return;
+        List<ActiveRecipe> now = new ArrayList<>();
+        for (ProcessingCard card : port.recipes()) now.add(new ActiveRecipe(card, !onNetwork.contains(card)));
+        if (now.equals(active)) return;
+        active = List.copyOf(now);
+        if (player.connection.hasChannel(CraftPayloads.PortActive.TYPE)) {
+            PacketDistributor.sendToPlayer(player, new CraftPayloads.PortActive(containerId, active));
+        }
+    }
 
     public void setMachines(List<MachineView> machines) { this.machines = List.copyOf(machines); }
 
@@ -254,12 +419,26 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     @Override
     public void broadcastChanges() {
         super.broadcastChanges();
-        if (port == null || !(player instanceof ServerPlayer serverPlayer) || serverPlayer.level().getGameTime() % 10 != 0) return;
+        if (port == null || !(player instanceof ServerPlayer serverPlayer)) return;
+        long time = serverPlayer.level().getGameTime();
+        // The racks once a second, spread out over open screens. The served recipes twice a second, for changes made
+        // elsewhere (another player's screen); this player's own clicks are answered at once. Nothing about recipes
+        // goes to a player who may no longer use the port: the game shuts their screen.
+        boolean racksDue = !synced || (time + containerId) % RACKS_EVERY == 0;
+        if ((racksDue || time % 10 == 0) && stillValid(serverPlayer)) {
+            if (racksDue) {
+                syncRecipes(serverPlayer);
+            } else {
+                sendActive(serverPlayer);
+            }
+        }
+        if (time % 10 != 0) return;
         sendLinkedPlayer(serverPlayer, containerId, port, lastPlayer);
         List<MachineView> now = connectedMachines(port);
         boolean same = now.size() == machines.size();
         for (int i = 0; same && i < now.size(); i++) {
-            same = now.get(i).name().equals(machines.get(i).name()) && ItemStack.matches(now.get(i).icon(), machines.get(i).icon());
+            same = now.get(i).name().equals(machines.get(i).name()) && ItemStack.matches(now.get(i).icon(), machines.get(i).icon())
+                    && now.get(i).chosen() == machines.get(i).chosen();
         }
         if (!same) {
             machines = now;

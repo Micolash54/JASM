@@ -12,7 +12,6 @@ import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.network.LinkWindowCover;
-import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,17 +34,18 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
  * The Encoding Terminal screen: card in and out, the ghost grid and what it makes, with the charge along the top.
- * Side keys on the right open the Deck Link window for pairing Decks and, for the owner, the access list. The panel on
- * the left lists the machines a card can be written for: the Crafting Server first (ordinary crafting cards), then
- * every Access Port. With a port chosen, the grid takes amounts and what the machine gives back goes in a column of
- * three beside it. The Advanced Encoder adds a third side key, Faces: its window paints ingredient slots with
- * the machine face they go in through. Painted slots show their face's colour on either terminal.
+ * Side keys on the right open the Deck Link window for pairing Decks and, for the owner, the access list. Two keys on
+ * the Encode row choose what the card is: Crafting (an ordinary crafting card) or Processing. With Processing chosen,
+ * the grid takes amounts and what the machine gives back goes in a column of three beside it. The Advanced Encoder
+ * adds a third side key, Faces: its window paints ingredient slots with the machine face they go in through. Painted
+ * slots show their face's colour on either terminal.
  */
 public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
@@ -65,6 +65,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private TrustWindow trustWindow;
     private JasmButton accessButton;
     private JasmButton encodeButton;
+    /** The two keys left of Encode; the chosen one is pressed in with a green rim. */
+    private JasmButton craftingKey;
+    private JasmButton processingKey;
     /** Picks between several recipes that fit the grid. */
     private RecipePicker picker;
     /** The box a middle-click on a processing slot opens, to type its amount. */
@@ -75,19 +78,10 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final Identifier ARROW_RIGHT = Jasm.id("icon/craft_arrow_right");
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final int MESSAGE_TICKS = 80;
-    /** The machine panel, left of the terminal: a list with a scroll bar beside it. */
-    private static final int PANEL_W = 140;
-    private static final int PANEL_X = -PANEL_W - 3;
-    private static final int LIST_X = 8;
-    private static final int LIST_Y = 18;
-    private static final int LIST_W = PANEL_W - 22;
-    private static final int SCROLL_X = PANEL_W - 9;
-    private static final int ROW_H = 18;
-    private static final int ROWS = (HEIGHT - LIST_Y - 8) / ROW_H;
-    private static final int HANDLE_HEIGHT = 15;
+    /** The mode keys sit left of Encode, 2 px apart, starting 8 px in. */
+    private static final int MODE_KEY_X = 8;
     /** Side keys on the right: the Deck Link, then the access list. */
     private static final int KEY_X = WIDTH;
-    private boolean draggingHandle;
     private JasmFrame frame;
     /** Whether the Deck tab shows in place of the inventory; kept while the game runs. */
     private static boolean showDeck;
@@ -110,7 +104,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private final Set<Integer> placed = new HashSet<>();
     private int seenCount;
     private int messageTicks;
-    private int scroll;
 
     public EncodingTerminalScreen(EncodingTerminalMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, HEIGHT);
@@ -126,8 +119,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     @Override
     protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[]{0, 0, imageWidth, imageHeight}, new int[]{PANEL_X, 0, PANEL_W + 6, imageHeight},
-                JasmGui.sideStrip(KEY_X, sideKeys()));
+        frame = JasmFrame.rounded(new int[]{0, 0, imageWidth, imageHeight}, JasmGui.sideStrip(KEY_X, sideKeys()));
         addHelp(WIDTH - 7, "items/encoding-terminal.md");
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
@@ -140,7 +132,12 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         linkKey.setLatched(linkWindow.isOpen());
         encodeButton = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.terminal.encode"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_ENCODE),
-                leftPos + EncodingTerminalMenu.PREVIEW_X + 8 - ENCODE_WIDTH / 2, topPos + 74, ENCODE_WIDTH, 17));
+                leftPos + EncodingTerminalMenu.PREVIEW_X + 8 - ENCODE_WIDTH / 2, topPos + EncodingTerminalMenu.ENCODE_Y, ENCODE_WIDTH,
+                EncodingTerminalMenu.KEY_SIZE));
+        craftingKey = modeKey(new ItemStack(Items.CRAFTING_TABLE), "screen.jasm.terminal.mode_crafting",
+                EncodingTerminalMenu.BUTTON_CRAFTING, MODE_KEY_X);
+        processingKey = modeKey(new ItemStack(Items.FURNACE), "screen.jasm.terminal.mode_processing",
+                EncodingTerminalMenu.BUTTON_PROCESSING, MODE_KEY_X + EncodingTerminalMenu.KEY_SIZE + 2);
         JasmButton clear = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.terminal.clear"),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_CLEAR),
                 leftPos + EncodingTerminalMenu.GRID_X + 3 * 18 + 2, topPos + EncodingTerminalMenu.GRID_Y - 1, 11, 11);
@@ -183,6 +180,16 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         addWidget(deckSearch);
         deckList = new TerminalDeckList(menu, font, deckSearch, leftPos + 8, topPos + EncodingTerminalMenu.INVENTORY_Y);
         showDeckTab(showDeck);
+    }
+
+    /** A square key of the Crafting / Processing pair, with its name as the hover tooltip. */
+    private JasmButton modeKey(ItemStack icon, String nameKey, int button, int x) {
+        Component name = Component.translatable(nameKey);
+        JasmButton key = JasmButton.item(icon, name, b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, button),
+                leftPos + x, topPos + EncodingTerminalMenu.ENCODE_Y, EncodingTerminalMenu.KEY_SIZE, EncodingTerminalMenu.KEY_SIZE);
+        key.setGreenRim();
+        key.setTooltip(Tooltip.create(name));
+        return addRenderableWidget(key);
     }
 
     /** Side keys on the right: Deck Link and Access, and Faces on the Advanced Encoder. */
@@ -346,120 +353,15 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         return ItemStack.EMPTY;
     }
 
-    // --- the machine panel ---
-
     /** The panels that extend beyond the main screen. */
     public List<Rect2i> sidePanelAreas() {
         var areas = new ArrayList<Rect2i>();
-        areas.add(panelArea());
         int[] strip = JasmGui.sideStrip(KEY_X, sideKeys());
         areas.add(new Rect2i(leftPos + strip[0], topPos + strip[1], strip[2], strip[3]));
         if (linkWindow != null) linkWindow.area().ifPresent(areas::add);
         if (facesWindow != null) facesWindow.area().ifPresent(areas::add);
         if (trustWindow != null) trustWindow.area().ifPresent(areas::add);
         return areas;
-    }
-
-    /** Where the machine panel sits on screen. */
-    public Rect2i panelArea() {
-        return new Rect2i(leftPos + PANEL_X, topPos, PANEL_W + 3, imageHeight);
-    }
-
-    private boolean inPanel(double x, double y) {
-        return x >= leftPos + PANEL_X && x < leftPos && y >= topPos && y < topPos + imageHeight;
-    }
-
-    private int maxScroll() {
-        return Math.max(0, rows() - ROWS);
-    }
-
-    private int handleOffset() {
-        int max = maxScroll();
-        return max == 0 ? 0 : Math.round((ROWS * ROW_H - HANDLE_HEIGHT) * (scroll / (float) max));
-    }
-
-    private boolean onScrollBar(double mouseX, double mouseY) {
-        double rx = mouseX - leftPos - PANEL_X - SCROLL_X;
-        double ry = mouseY - topPos - LIST_Y;
-        return rx >= -1 && rx < 9 && ry >= 0 && ry < ROWS * ROW_H;
-    }
-
-    private void scrollToMouse(double mouseY) {
-        double offset = mouseY - topPos - LIST_Y - HANDLE_HEIGHT / 2.0;
-        scroll = (int) Math.round(Math.clamp(offset / (ROWS * ROW_H - HANDLE_HEIGHT), 0.0, 1.0) * maxScroll());
-    }
-
-    /** Rows of the list: the Crafting Server, then the machines. */
-    private int rows() {
-        return 1 + menu.machines().size();
-    }
-
-    /** The list row under the mouse, or -1. */
-    private int rowAt(double x, double y) {
-        int left = leftPos + PANEL_X + LIST_X;
-        int top = topPos + LIST_Y;
-        if (x < left || x >= left + LIST_W || y < top || y >= top + ROWS * ROW_H) {
-            return -1;
-        }
-        int row = scroll + (int) ((y - top) / ROW_H);
-        return row < rows() ? row : -1;
-    }
-
-    private void drawPanel(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
-        int x = leftPos + PANEL_X;
-        int y = topPos;
-        graphics.text(font, Component.translatable("screen.jasm.terminal.machines"), x + LIST_X, y + 6, JasmGui.TEXT, false);
-        JasmGui.inset(graphics, x + LIST_X - 1, y + LIST_Y - 1, LIST_W + 2, ROWS * ROW_H + 2);
-        scroll = Math.clamp(scroll, 0, maxScroll());
-        JasmGui.scrollBar(graphics, x + SCROLL_X, y + LIST_Y - 1, 8, ROWS * ROW_H + 2, handleOffset(), HANDLE_HEIGHT, maxScroll() > 0);
-        int hovered = rowAt(mouseX, mouseY);
-        for (int i = 0; i < ROWS && scroll + i < rows(); i++) {
-            int row = scroll + i;
-            int ry = y + LIST_Y + i * ROW_H;
-            boolean chosen;
-            String name;
-            int color;
-            ItemStack icon;
-            if (row == 0) {
-                chosen = !menu.processing();
-                name = Component.translatable("screen.jasm.terminal.crafting_server").getString();
-                color = JasmGui.TEXT;
-                icon = new ItemStack(JasmBlocks.CRAFTING_SERVER.get());
-            } else {
-                EncodingTerminalMenu.MachineView view = menu.machines().get(row - 1);
-                chosen = view.selected();
-                name = view.present() ? view.name() : Component.translatable("screen.jasm.terminal.machine_missing").getString();
-                color = view.present() ? JasmGui.TEXT : JasmGui.BAD;
-                icon = view.icon();
-            }
-            if (chosen) {
-                graphics.fill(x + LIST_X, ry, x + LIST_X + LIST_W, ry + ROW_H, JasmGui.SELECTED);
-            }
-            if (row == hovered) {
-                graphics.fill(x + LIST_X, ry, x + LIST_X + LIST_W, ry + ROW_H, JasmGui.HOVER);
-            }
-            // A tick box: filled when chosen.
-            int bx = x + LIST_X + 3;
-            int by = ry + 6;
-            graphics.fill(bx, by, bx + 6, by + 6, JasmGui.MUTED);
-            graphics.fill(bx + 1, by + 1, bx + 5, by + 5, chosen ? JasmGui.GOOD : JasmGui.SHADE);
-            // The machine's block, then its name.
-            if (!icon.isEmpty()) {
-                graphics.item(icon, bx + 9, ry + 1);
-            }
-            int textX = bx + 27;
-            int room = x + LIST_X + LIST_W - 3 - textX;
-            String shown = font.width(name) > room ? font.plainSubstrByWidth(name, room - font.width("...")) + "..." : name;
-            graphics.text(font, shown, textX, ry + 5, color, false);
-        }
-    }
-
-    private void clickRow(int row) {
-        if (row == 0) {
-            minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_CRAFTING_SERVER);
-        } else if (row > 0) {
-            minecraft.gameMode.handleInventoryButtonClick(menu.containerId, EncodingTerminalMenu.BUTTON_MACHINE + row - 1);
-        }
     }
 
     @Override
@@ -500,18 +402,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             return trustWindow.mouseClicked(event, doubleClick);
         }
         if (picker.mouseClicked(event.x(), event.y())) {
-            return true;
-        }
-        if (onScrollBar(event.x(), event.y()) && maxScroll() > 0) {
-            draggingHandle = true;
-            scrollToMouse(event.y());
-            return true;
-        }
-        if (inPanel(event.x(), event.y())) {
-            int row = rowAt(event.x(), event.y());
-            if (row >= 0) {
-                clickRow(row);
-            }
             return true;
         }
         boolean left = event.button() == InputConstants.MOUSE_BUTTON_LEFT;
@@ -589,10 +479,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             paint(ghostSlotAt(event.x(), event.y()));
             return true;
         }
-        if (draggingHandle) {
-            scrollToMouse(event.y());
-            return true;
-        }
         if (showDeck && deckList.mouseDragged(event.y())) {
             return true;
         }
@@ -620,10 +506,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
         if (painting() != null) {
             placed.clear();
-        }
-        if (draggingHandle) {
-            draggingHandle = false;
-            return true;
         }
         if (deckList.mouseReleased()) {
             return true;
@@ -659,7 +541,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         return -1;
     }
 
-    /** Over the machine list it scrolls; over a filled processing slot it changes the amount one step. */
+    /** Over a filled processing slot it changes the amount one step. */
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         if (linkWindow.contains(x, y) || facesWindow != null && facesWindow.contains(x, y)) {
@@ -667,10 +549,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
         if (trustWindow.contains(x, y)) {
             return trustWindow.mouseScrolled(scrollY);
-        }
-        if (inPanel(x, y)) {
-            scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, maxScroll());
-            return true;
         }
         if (showDeck && deckList.contains(x, y)) {
             deckList.scroll(scrollY);
@@ -768,18 +646,19 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (showDeck) {
             deckList.drawBackground(graphics);
         }
-        drawPanel(graphics, mouseX, mouseY);
     }
 
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         accessButton.active = menu.owner();
         accessButton.setLatched(trustWindow.isOpen());
+        craftingKey.setLatched(!menu.processing());
+        processingKey.setLatched(menu.processing());
         linkWindow.sync(leftPos, topPos);
         linkKey.setLatched(linkWindow.isOpen());
         picker.update(!menu.processing());
         if (facesWindow != null) {
-            // Faces only mean something on a processing card: without a machine chosen the key rests and the window shuts.
+            // Faces only mean something on a processing card: in Crafting the key rests and the window shuts.
             facesKey.active = menu.processing();
             if (!menu.processing() && facesWindow.isOpen()) {
                 facesWindow.close();
@@ -788,7 +667,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             if (facesTipFor == null || facesTipFor != menu.processing()) {
                 facesTipFor = menu.processing();
                 facesKey.setTooltip(Tooltip.create(Component.translatable("screen.jasm.terminal.faces").append("\n")
-                        .append(Component.translatable(facesTipFor ? "screen.jasm.terminal.faces_hint" : "screen.jasm.terminal.choose_machine")
+                        .append(Component.translatable(facesTipFor ? "screen.jasm.terminal.faces_hint" : "screen.jasm.terminal.need_processing")
                                 .withColor(JasmGui.MUTED & 0xFFFFFF))));
             }
             facesWindow.sync(leftPos, topPos, width, height);
@@ -868,21 +747,6 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
         if (menu.processing() && hoveredSlot != null && !hoveredSlot.hasItem() && processingSlot(hoveredSlot) >= 9 && menu.getCarried().isEmpty()) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.output_hint"), 160), mouseX, mouseY);
-        }
-        int row = rowAt(mouseX, mouseY);
-        if (row > 0) {
-            EncodingTerminalMenu.MachineView view = menu.machines().get(row - 1);
-            graphics.setTooltipForNextFrame(font, List.of(
-                    Component.literal(view.present() ? view.name() : Component.translatable("screen.jasm.terminal.machine_missing").getString())
-                            .getVisualOrderText(),
-                    Component
-                            .translatable("screen.jasm.terminal.machine_at", view.at().port().getX(), view.at().port().getY(),
-                                    view.at().port().getZ())
-                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
-                    realMouseX, realMouseY);
-        } else if (row == 0) {
-            graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.crafting_server_hint"), 160),
-                    realMouseX, realMouseY);
         }
         if (tabAt(realMouseX, realMouseY) == 1) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.terminal.tab_deck_hint"), 170),

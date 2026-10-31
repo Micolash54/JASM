@@ -12,7 +12,7 @@
               "include": [
                 "jasm:energy",
                 "jasm:owner",
-                "jasm:port_memory",
+                "jasm:port_settings",
                 "minecraft:custom_name"
               ],
               "source": "block_entity",

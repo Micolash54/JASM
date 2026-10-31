@@ -69,40 +69,42 @@ public final class Machines {
     }
 
     /**
-     * Where the machine a card names at {@code at} is now: there while a port stands there, or where its port was placed
-     * back on the same network after being mined.
+     * The machines {@code card}'s recipe can run on: every side with a machine of the served kind, on each loaded port on
+     * {@code network} that serves the recipe. A thin port's one face counts, machine or not, and so does a block port's
+     * side facing a machine whose grid keeps that face shut, so a job can say what is wrong there.
      */
-    public static At current(ServerLevel level, @Nullable CableNetwork network, At at) {
-        if (network == null || port(level, network, at.port(), at.side()) != null) {
-            return at;
-        }
-        At moved = PortMemory.moved(network, at);
-        return moved != null ? moved : at;
-    }
-
-    /** {@code card} with each machine where it is now; the card itself when none moved. */
-    public static ProcessingCard located(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
+    public static List<At> spots(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
         if (network == null) {
-            return card;
+            return List.of();
         }
-        List<ProcessingCard.Machine> machines = null;
-        for (int i = 0; i < card.machines().size(); i++) {
-            ProcessingCard.Machine machine = card.machines().get(i);
-            At now = current(level, network, machine.at());
-            if (!now.equals(machine.at())) {
-                if (machines == null) {
-                    machines = new ArrayList<>(card.machines());
+        List<At> spots = new ArrayList<>();
+        for (AccessPortBlockEntity port : ports(network)) {
+            if (!port.serves(card) || port.isRemoved()) {
+                continue;
+            }
+            if (port.face() != null) {
+                spots.add(new At(port.getBlockPos(), port.face()));
+            } else {
+                for (Direction side : port.spotSides()) {
+                    spots.add(new At(port.getBlockPos(), side));
                 }
-                machines.set(i, new ProcessingCard.Machine(now.port(), now.side(), machine.name()));
             }
         }
-        return machines == null ? card : new ProcessingCard(card.inputs(), card.outputs(), machines, card.faces());
+        return spots;
     }
 
-    /** The machines {@code card} may use, where they are now, each once. */
-    public static List<At> spots(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
-        ProcessingCard here = located(level, network, card);
-        return here == card ? card.spots() : here.spots().stream().distinct().toList();
+    /** Whether a JASM machine with an I/O grid stands at {@code pos}: a machine, even while the face is shut. */
+    static boolean shutGrid(Level level, BlockPos pos) {
+        return level.isLoaded(pos) && level.getBlockEntity(pos) instanceof MachineBlockEntity grid && grid.opensToPorts();
+    }
+
+    /** {@code card} with the machines its recipe runs on now filled in, for looking at those machines. */
+    public static ProcessingCard located(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
+        List<ProcessingCard.Machine> machines = new ArrayList<>();
+        for (At at : spots(level, network, card)) {
+            machines.add(new ProcessingCard.Machine(at.port(), at.side(), ""));
+        }
+        return card.at(machines);
     }
 
     /** The Access Ports on {@code network} that are loaded. */

@@ -20,7 +20,7 @@ Leave your machine's own side settings at their defaults, and let the recipe car
 <br />
 ## Picking faces
 
-1. Choose a machine in the encoder's machine list.
+1. Press the furnace key beside **Encode** for Processing.
 2. Open the Faces window with the side key under Deck Link and Access.
 3. Click a face key, then click the ingredient slots that go in through it. Right-click or Esc stops.
 4. Press **Encode** as usual.

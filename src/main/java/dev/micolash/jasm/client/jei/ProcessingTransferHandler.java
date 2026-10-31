@@ -24,9 +24,9 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * JEI's "+" on any recipe, with a machine chosen at the Encoding Terminal, fills the processing grid with the
- * recipe's ingredients and the output column with what it makes, counts included (fluids in millibuckets). Nothing is
- * used up. Ingredients that are neither items nor fluids (energy, chemicals) are left out.
+ * JEI's "+" on any recipe that isn't a crafting one switches the Encoding Terminal to Processing and fills its grid
+ * with the recipe's ingredients and the output column with what it makes, counts included (fluids in millibuckets).
+ * Nothing is used up. Ingredients that are neither items nor fluids (energy, chemicals) are left out.
  */
 final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler<EncodingTerminalMenu> {
     private final IRecipeTransferHandlerHelper helper;
@@ -52,9 +52,6 @@ final class ProcessingTransferHandler implements IUniversalRecipeTransferHandler
     @Override
     public @Nullable IRecipeTransferError transferRecipe(EncodingTerminalMenu menu, Object recipe, IRecipeSlotsView slots, Player player,
             boolean maxTransfer, boolean doTransfer) {
-        if (!menu.processing()) {
-            return helper.createUserErrorWithTooltip(Component.translatable("screen.jasm.terminal.choose_machine"));
-        }
         List<ItemStack> inputs = items(slots, RecipeIngredientRole.INPUT);
         List<ItemStack> outputs = items(slots, RecipeIngredientRole.OUTPUT);
         if (inputs.isEmpty() || outputs.isEmpty()) {

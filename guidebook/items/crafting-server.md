@@ -29,7 +29,7 @@ The Crafting Server does the work. It runs one crafting job at a time. [Processo
 * Broken, it spills whatever its job held.
 * With several servers on a network, a job goes to one that fits and is free.
 * The [Advanced Crafting Server](advanced-crafting-server.md) is a bigger one with ten slots of each.
-* The screen shows what the job is waiting for: power, a card, space or the Deck, or what a machine is doing: waiting for it to take the items (in yellow), not loaded, unreachable, unpowered, paused by redstone or in use by another job. A machine that is only busy or slow shows nothing. The magnifier key lights up the machine in the world.
+* The screen shows what the job is waiting for: power, a card, space or the Deck, no [Access Port](access-port.md) serving the recipe, or what a machine is doing: waiting for it to take the items (in yellow), not loaded, unreachable, unpowered, paused by redstone or in use by another job. A machine that is only busy or slow shows nothing. The magnifier key lights up the machine in the world.
 * A job can be cancelled. What is left comes back.
 
 <br />

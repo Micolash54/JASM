@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import com.mojang.serialization.Codec;
 import java.util.Locale;
 
 /**
@@ -24,9 +25,23 @@ public enum PauseReason {
     MACHINE_SIDE,
     PORT_OFF,
     MACHINE_IN_USE,
-    MACHINE_OFF;
+    MACHINE_OFF,
+    /** No Access Port with a machine serves a recipe the job still has crafts of. */
+    NO_PORT,
+    /** A set stopped being waited on: the Access Port it went through is gone. Kept on the job until it ends. */
+    PORT_GONE;
 
     private static final PauseReason[] ALL = values();
+
+    /** Saved by name; anything unknown reads as {@link #NONE}. */
+    public static final Codec<PauseReason> CODEC = Codec.STRING.xmap(PauseReason::named, reason -> reason.name().toLowerCase(Locale.ROOT));
+
+    private static PauseReason named(String name) {
+        for (PauseReason reason : ALL) {
+            if (reason.name().equalsIgnoreCase(name)) return reason;
+        }
+        return NONE;
+    }
 
     /** The text key shown for this reason. */
     public String key() {

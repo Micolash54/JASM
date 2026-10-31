@@ -75,10 +75,15 @@ public final class CraftNetwork {
                         (payload, context) -> trust((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.PortName.TYPE, CraftPayloads.PortName.STREAM_CODEC,
                         (payload, context) -> portName((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.PortMachineType.TYPE, CraftPayloads.PortMachineType.STREAM_CODEC,
+                        (payload, context) -> portMachineType((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.PortRecipe.TYPE, CraftPayloads.PortRecipe.STREAM_CODEC,
+                        (payload, context) -> portRecipe((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.ProcessingGhost.TYPE, CraftPayloads.ProcessingGhost.STREAM_CODEC,
                         (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
-                .playToClient(CraftPayloads.TerminalMachines.TYPE, CraftPayloads.TerminalMachines.STREAM_CODEC, CraftNetwork::onTerminalMachines)
                 .playToClient(CraftPayloads.PortMachines.TYPE, CraftPayloads.PortMachines.STREAM_CODEC, CraftNetwork::onPortMachines)
+                .playToClient(CraftPayloads.PortRecipes.TYPE, CraftPayloads.PortRecipes.STREAM_CODEC, CraftNetwork::onPortRecipes)
+                .playToClient(CraftPayloads.PortActive.TYPE, CraftPayloads.PortActive.STREAM_CODEC, CraftNetwork::onPortActive)
                 .playToClient(CraftPayloads.PortLinkedPlayer.TYPE, CraftPayloads.PortLinkedPlayer.STREAM_CODEC, CraftNetwork::onPortLinkedPlayer)
                 .playToClient(CraftPayloads.TerminalDeck.TYPE, CraftPayloads.TerminalDeck.STREAM_CODEC, CraftNetwork::onTerminalDeck)
                 .playToClient(CraftPayloads.ServerWaiting.TYPE, CraftPayloads.ServerWaiting.STREAM_CODEC, CraftNetwork::onServerWaiting)
@@ -295,15 +300,21 @@ public final class CraftNetwork {
         }
     }
 
-    private static void onTerminalMachines(CraftPayloads.TerminalMachines payload, IPayloadContext context) {
-        if (context.player().containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()) {
+    private static void onPortMachines(CraftPayloads.PortMachines payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()) {
             menu.setMachines(payload.machines());
         }
     }
 
-    private static void onPortMachines(CraftPayloads.PortMachines payload, IPayloadContext context) {
+    private static void onPortRecipes(CraftPayloads.PortRecipes payload, IPayloadContext context) {
         if (context.player().containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()) {
-            menu.setMachines(payload.machines());
+            menu.setListed(payload.recipes());
+        }
+    }
+
+    private static void onPortActive(CraftPayloads.PortActive payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()) {
+            menu.setActive(payload.recipes());
         }
     }
 
@@ -320,14 +331,24 @@ public final class CraftNetwork {
         }
     }
 
-    /** Names the open Access Port. */
+    /** Names the open Access Port. Refused for a name the rename panel wouldn't take. */
     public static boolean portName(ServerPlayer player, CraftPayloads.PortName payload) {
-        if (player.containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId() && menu.stillValid(player)
-                && menu.port() != null) {
-            menu.port().setLabel(payload.name());
-            return true;
+        return player.containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()
+                && menu.rename(player, payload.name());
+    }
+
+    /** The open Access Port starts or stops serving a recipe; see {@link AccessPortMenu#addRecipe}. */
+    public static boolean portRecipe(ServerPlayer player, CraftPayloads.PortRecipe payload) {
+        if (!(player.containerMenu instanceof AccessPortMenu menu) || menu.containerId != payload.containerId()) {
+            return false;
         }
-        return false;
+        return payload.add() ? menu.addRecipe(player, payload.recipe()) : menu.removeRecipe(player, payload.recipe());
+    }
+
+    /** The open Access Port serves another kind of machine, if one of that kind touches it. */
+    public static boolean portMachineType(ServerPlayer player, CraftPayloads.PortMachineType payload) {
+        return player.containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()
+                && menu.chooseMachine(player, payload.block());
     }
 
     private static void onTrustView(CraftPayloads.TrustView payload, IPayloadContext context) {

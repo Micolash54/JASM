@@ -42,7 +42,12 @@ public final class PortUpgradeLayout {
     }
 
     public static int[] column(int keys, boolean redstone) {
+        return column(KEY_X, keys, redstone);
+    }
+
+    /** The same column for a screen whose main panel is narrower, its keys starting at {@code keyX}. */
+    public static int[] column(int keyX, int keys, boolean redstone) {
         int bottom = redstone ? redstoneY(keys) + 22 : powerY(keys) + 17;
-        return new int[]{KEY_X - 14, KEY_Y - 4, 38, bottom + 5 - (KEY_Y - 4)};
+        return new int[]{keyX - 14, KEY_Y - 4, 38, bottom + 5 - (KEY_Y - 4)};
     }
 }

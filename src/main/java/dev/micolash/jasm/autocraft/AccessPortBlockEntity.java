@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -54,9 +55,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -92,7 +91,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public static final int SPEED_START = DECK_OUT + 1;
     public static final int INVENTORY_SIZE = SPEED_START + PortOperations.UPGRADE_SLOTS;
     public static final int CAPACITY = 5_000;
+    /** Most processing recipes one port serves. */
+    public static final int MAX_RECIPES = 16;
     private static final int[] BUFFER = {0, 1, 2, 3, 4, 5, 6, 7};
+    private static final Direction[] SIDES = Direction.values();
     /** Ticks between checks that the jobs holding locks still exist. */
     private static final int LOCK_CHECK = 40;
 
@@ -117,12 +119,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private @Nullable UUID destinationDeck;
     private @Nullable UUID pendingLinker;
     private final PortOperations operations = new PortOperations();
-    /** What the port's item remembered when it was placed: the machines it served where it was mined. */
-    private @Nullable PortMemory movedFrom;
-    /** The machine last seen on each side, kept after it is taken away until something else stands there. */
-    private final Map<Direction, Item> seen = new EnumMap<>(Direction.class);
-    /** What the item keeps, worked out just before the block goes (once it is gone the network can't be asked). */
-    private @Nullable PortMemory keptOnMining;
+    /** The kind of machine the port serves; null until one is set. */
+    private @Nullable Block machineType;
+    /** What stood on each side when the type was last settled, so a later look only does the work when something changed. */
+    private final @Nullable Block[] around = new Block[SIDES.length];
+    /** The processing recipes the port serves, in the order they were picked. Never sent along with block updates. */
+    private final Set<ProcessingCard> recipes = new LinkedHashSet<>();
 
     /** What machines, hoppers and pipes push in. */
     private final PortIntake intake = new PortIntake(this);
@@ -170,6 +172,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         port.tickIntake();
         if (level.getGameTime() % 10 == 0) {
             // A machine can start taking items without its block changing (a modded one finishing its build, say).
+            port.settleType(true);
             port.refreshSides();
         }
         if (!port.locks.isEmpty() && level.getGameTime() % LOCK_CHECK == 0) {
@@ -393,14 +396,18 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         pendingLinker = null;
     }
 
-    protected boolean canPowerSide(Direction side) { return true; }
+    /** The upgrade powers only blocks of the kind of machine the port serves. */
+    protected boolean canPowerSide(Direction side) {
+        return machineType != null && blockAt(side) == machineType;
+    }
 
     /**
-     * The upgrade sends spare charge to the machines it faces, even without a crafting job: other mods' machines and
-     * JASM ones alike. Without the upgrade a port passes no power on at all.
+     * The upgrade sends spare charge to the machines of the kind the port serves, even without a crafting job: other
+     * mods' machines and JASM ones alike. Without the upgrade a port passes no power on at all.
      */
     protected void sendPower() {
         if (level == null || networkBlocked() || !hasPowerUpgrade() || stopped()) return;
+        settleType(false);
         for (Direction side : Direction.values()) {
             int available = energy.getAmountAsInt() - drainPerTick();
             if (available <= 0) return;
@@ -444,14 +451,29 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     // --- the machines ---
 
-    /** The sides with a machine touching them, in a fixed order. */
+    /** The sides with a machine of the served kind touching them, in a fixed order. */
     public List<Direction> machineSides() {
         List<Direction> sides = new ArrayList<>();
         if (level != null) {
-            for (Direction side : Direction.values()) {
+            for (Direction side : SIDES) {
                 if (hasMachine(side)) {
                     sides.add(side);
                 }
+            }
+        }
+        return sides;
+    }
+
+    /**
+     * The sides a job may send to: those with a machine of the served kind, and those facing a block of it that is a JASM
+     * machine whose grid keeps that face shut, so a job can say what is wrong there.
+     */
+    List<Direction> spotSides() {
+        List<Direction> sides = new ArrayList<>();
+        settleType(false);
+        for (Direction side : SIDES) {
+            if (machineType != null && blockAt(side) == machineType && detects(side)) {
+                sides.add(side);
             }
         }
         return sides;
@@ -462,12 +484,11 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (!(level instanceof ServerLevel) || !(getBlockState().getBlock() instanceof AccessPortBlock)) {
             return;
         }
+        settleType(false);
         BlockState state = getBlockState();
         BlockState shown = state;
-        for (Direction side : Direction.values()) {
-            PortSide looks = sideLooks(side);
-            noteMachine(side, looks == PortSide.MACHINE || looks == PortSide.BUSY);
-            shown = shown.setValue(AccessPortBlock.SIDES.get(side), looks);
+        for (Direction side : SIDES) {
+            shown = shown.setValue(AccessPortBlock.SIDES.get(side), sideLooks(side));
         }
         if (shown != state) {
             level.setBlock(worldPosition, shown, Block.UPDATE_CLIENTS);
@@ -483,6 +504,11 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (shownAsMachine(side)) {
             return locks.containsKey(side) ? PortSide.BUSY : PortSide.MACHINE;
         }
+        // A machine of a kind the port doesn't serve gets no neck, even a JASM one that is also on the network:
+        // the neck reaches into the block and reads as a chute.
+        if (servesRecipes() && detects(side)) {
+            return PortSide.NONE;
+        }
         BlockPos pos = worldPosition.relative(side);
         BlockState there = level.getBlockState(pos);
         boolean hopperIn = there.getBlock() instanceof HopperBlock
@@ -493,22 +519,127 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     /**
-     * Whether a machine touches {@code side}: a block that takes items (or fluids or materials), but not a hopper
-     * pointing into the port (that one brings results back). A block that takes nothing through the face the port
-     * touches counts too if it takes something through another face, since a card may send its ingredients there.
+     * Whether a machine of the served kind touches {@code side}: a block that takes items (or fluids or materials), but
+     * not a hopper pointing into the port (that one brings results back). A block that takes nothing through the face
+     * the port touches counts too if it takes something through another face, since a card may send its ingredients
+     * there. A block of any other kind next to the port is no machine to it.
      */
     public boolean hasMachine(Direction side) {
+        settleType(false);
+        return machineType != null && blockAt(side) == machineType && touches(side);
+    }
+
+    /** The block on {@code side} if the port looks that way and it is loaded; a thin port looks only at its face. */
+    private @Nullable Block blockAt(Direction side) {
+        if (level == null || face() != null && side != face()) {
+            return null;
+        }
+        BlockPos pos = worldPosition.relative(side);
+        return level.isLoaded(pos) ? level.getBlockState(pos).getBlock() : null;
+    }
+
+    /** Whether a block that takes items, fluids or materials touches {@code side}, whatever its kind. */
+    private boolean touches(Direction side) {
         if (level == null) {
             return false;
         }
         BlockPos pos = worldPosition.relative(side);
+        if (!level.isLoaded(pos)) {
+            return false;
+        }
         BlockState there = level.getBlockState(pos);
-        if (there.getBlock() instanceof HopperBlock
+        if (there.isAir() || there.getBlock() instanceof HopperBlock
                 && there.getValue(HopperBlock.FACING) == side.getOpposite()) {
             return false;
         }
         return Machines.inlet(level, pos, side.getOpposite()) != null || Machines.fluidInlet(level, pos, side.getOpposite()) != null
                 || !Machines.materialInlets(level, pos, side.getOpposite()).isEmpty() || Machines.takesAnywhere(level, pos);
+    }
+
+    /** Whether the block on {@code side} can be a machine to the port: one that takes items now, or a JASM machine whose grid shuts that face. */
+    private boolean detects(Direction side) {
+        return touches(side) || Machines.shutGrid(level, worldPosition.relative(side));
+    }
+
+    /** The kinds of machine touching the port, in the order of its sides. */
+    public List<Block> machineTypesInRange() {
+        List<Block> types = new ArrayList<>(2);
+        if (level == null || !servesRecipes()) {
+            return types;
+        }
+        for (Direction side : SIDES) {
+            Block block = blockAt(side);
+            if (block != null && !types.contains(block) && detects(side)) {
+                types.add(block);
+            }
+        }
+        return types;
+    }
+
+    /**
+     * The kind of machine the port serves, after looking at what touches it now; null with none set. The port keeps its
+     * kind while a machine of it touches the port, takes the first machine's kind when none does, and keeps its last kind
+     * while no machine touches at all.
+     */
+    public @Nullable Block servedType() {
+        settleType(false);
+        return machineType;
+    }
+
+    /**
+     * Picks which kind of machine the port serves, from those touching it now.
+     *
+     * @return false if no machine of that kind touches the port
+     */
+    public boolean chooseMachineType(Block type) {
+        if (!machineTypesInRange().contains(type)) {
+            return false;
+        }
+        setMachineType(type);
+        refreshSides();
+        return true;
+    }
+
+    /**
+     * Keeps the served kind pointing at something that touches the port. Nothing is done unless a side's block changed
+     * since the last look, or {@code force} is set. With a kind set and a machine of it still touching, nothing changes
+     * (with two kinds there, the old one stays). With none of it touching, the first machine's kind is taken, unless a
+     * side is in an unloaded chunk, where the old machine may still be.
+     */
+    private void settleType(boolean force) {
+        if (!(level instanceof ServerLevel) || !servesRecipes()) {
+            return;
+        }
+        boolean changed = force;
+        boolean unsure = false;
+        for (Direction side : SIDES) {
+            Block now = blockAt(side);
+            if (now != around[side.ordinal()]) {
+                around[side.ordinal()] = now;
+                changed = true;
+            }
+            unsure |= now == null && (face() == null || side == face());
+        }
+        if (!changed) {
+            return;
+        }
+        if (machineType != null) {
+            for (Direction side : SIDES) {
+                if (around[side.ordinal()] == machineType && detects(side)) {
+                    return;
+                }
+            }
+            if (unsure) {
+                return;
+            }
+        }
+        for (Direction side : SIDES) {
+            Block block = around[side.ordinal()];
+            if (block != null && detects(side)) {
+                setMachineType(block);
+                return;
+            }
+        }
     }
 
     /**
@@ -539,7 +670,6 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return names;
     }
 
-    // --- remembering the machines when mined ---
 
     /** The face a thin port is mounted on; null for the full block, which serves every side. */
     public @Nullable Direction face() {
@@ -568,41 +698,72 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return only;
     }
 
-    /** Only Access Ports remember machines; the other ports built on them serve none. */
-    private boolean remembers() {
+    /** Only Access Ports serve recipes and keep their settings this way; the other ports built on them serve none. */
+    private boolean servesRecipes() {
         return !(this instanceof TransferPortBlockEntity);
     }
 
-    /** What the item remembered when this port was placed, or null. */
-    public @Nullable PortMemory movedFrom() {
-        return movedFrom;
+    // --- the recipes it serves ---
+
+    /** The kind of machine the port serves, or null when none is set yet. */
+    public @Nullable Block machineType() {
+        return machineType;
     }
 
-    /** The machine last seen on {@code side}, or air. */
-    Item seenMachine(Direction side) {
-        return seen.getOrDefault(side, Items.AIR);
+    public void setMachineType(@Nullable Block type) {
+        if (machineType != type) {
+            machineType = type;
+            setChanged();
+        }
     }
 
-    /** Notes what stands on {@code side} after a change there: a machine is kept, anything but air in its place forgets it. */
-    public void noteMachine(Direction side, boolean machine) {
-        if (!(level instanceof ServerLevel) || !remembers()) {
-            return;
-        }
-        BlockPos pos = worldPosition.relative(side);
-        if (!level.isLoaded(pos)) {
-            return;
-        }
-        BlockState there = level.getBlockState(pos);
-        Item now = machine ? there.getBlock().asItem() : Items.AIR;
-        if (now != Items.AIR ? seen.get(side) == now : there.isAir() || !seen.containsKey(side)) {
-            return;
-        }
-        if (now != Items.AIR) {
-            seen.put(side, now);
-        } else {
-            seen.remove(side);
+    /** The processing recipes the port serves, in the order they were picked. */
+    public List<ProcessingCard> recipes() {
+        return List.copyOf(recipes);
+    }
+
+    /** Whether the port serves {@code card}'s recipe. */
+    public boolean serves(ProcessingCard card) {
+        // most ports serve nothing: skip working out the card's hash for them
+        return !recipes.isEmpty() && recipes.contains(card);
+    }
+
+    /** Starts serving {@code card}'s recipe. False if it already did, the port is full, or it serves none. */
+    public boolean select(ProcessingCard card) {
+        if (!servesRecipes() || recipes.size() >= MAX_RECIPES || !recipes.add(card.clean())) {
+            return false;
         }
         setChanged();
+        return true;
+    }
+
+    /** Whether the port serves as many recipes as it can. */
+    public boolean recipesFull() {
+        return recipes.size() >= MAX_RECIPES;
+    }
+
+    /** Stops serving {@code card}'s recipe. */
+    public boolean unselect(ProcessingCard card) {
+        if (!recipes.remove(card)) {
+            return false;
+        }
+        setChanged();
+        return true;
+    }
+
+    /**
+     * The recipes the port serves that no rack holds right now (a card taken out, or edited): kept, and served again
+     * once a card with that recipe is back in a rack. {@code onNetwork} is every card in the network's racks.
+     */
+    public List<ProcessingCard> missingRecipes(Set<Card> onNetwork) {
+        return recipes.stream().filter(card -> !onNetwork.contains(card)).toList();
+    }
+
+    /** What the port's item keeps when it is mined or wrenched. */
+    public PortSettings portSettings() {
+        return servesRecipes()
+                ? new PortSettings(Optional.ofNullable(machineType), List.copyOf(recipes), blockingMode, redstoneMode)
+                : PortSettings.NONE;
     }
 
     // --- the locks ---
@@ -753,9 +914,6 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
         releaseHeldFluids();
-        if (level instanceof ServerLevel server && remembers()) {
-            keptOnMining = PortMemory.of(this, server);
-        }
     }
 
     /** Items can enter the buffer even while the port is idle or unpowered. */
@@ -848,9 +1006,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
-        output.storeNullable("moved_from", PortMemory.CODEC, movedFrom);
-        if (!seen.isEmpty()) {
-            output.store("seen_machines", SEEN_CODEC, seen);
+        output.storeNullable("machine_type", BuiltInRegistries.BLOCK.byNameCodec(), machineType);
+        if (!recipes.isEmpty()) {
+            output.store("recipes", ProcessingCard.CODEC.listOf(), List.copyOf(recipes));
         }
         intake.save(output);
     }
@@ -867,15 +1025,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
-        movedFrom = input.read("moved_from", PortMemory.CODEC).orElse(null);
-        seen.clear();
-        seen.putAll(input.read("seen_machines", SEEN_CODEC).orElse(Map.of()));
+        machineType = input.read("machine_type", BuiltInRegistries.BLOCK.byNameCodec()).orElse(null);
+        recipes.clear();
+        input.read("recipes", ProcessingCard.CODEC.listOf()).orElse(List.of()).forEach(card -> recipes.add(card.clean()));
         intake.load(input);
     }
 
-    private static final Codec<Map<Direction, Item>> SEEN_CODEC = Codec.unboundedMap(Direction.CODEC, BuiltInRegistries.ITEM.byNameCodec());
-
-    /** The mined item keeps the port's name, and the machines its cards name. */
+    /** The mined item keeps the port's name and its settings. */
     @Override
     protected void collectImplicitComponents(DataComponentMap.Builder components) {
         super.collectImplicitComponents(components);
@@ -884,10 +1040,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (!label.isEmpty()) {
             components.set(DataComponents.CUSTOM_NAME, Component.literal(label));
         }
-        PortMemory kept = keptOnMining != null ? keptOnMining
-                : level instanceof ServerLevel server && remembers() ? PortMemory.of(this, server) : null;
-        if (kept != null) {
-            components.set(JasmComponents.PORT_MEMORY.get(), kept);
+        PortSettings settings = portSettings();
+        if (!settings.isDefault()) {
+            components.set(JasmComponents.PORT_SETTINGS.get(), settings);
         }
     }
 
@@ -896,13 +1051,27 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         super.applyImplicitComponents(components);
         Component name = components.get(DataComponents.CUSTOM_NAME);
         label = name == null ? "" : name.getString();
-        movedFrom = remembers() ? components.get(JasmComponents.PORT_MEMORY.get()) : null;
+        // read only so it isn't carried along: what early test builds kept here means nothing now
+        components.get(JasmComponents.PORT_MEMORY.get());
+        if (servesRecipes()) {
+            PortSettings settings = components.getOrDefault(JasmComponents.PORT_SETTINGS.get(), PortSettings.NONE);
+            machineType = settings.machine().orElse(null);
+            recipes.clear();
+            recipes.addAll(settings.recipes());
+            blockingMode = settings.blocking();
+            redstoneMode = settings.redstone();
+        }
     }
 
     @Override
     public void removeComponentsFromTag(ValueOutput output) {
         super.removeComponentsFromTag(output);
         output.discard("label");
-        output.discard("moved_from");
+        if (servesRecipes()) {
+            output.discard("machine_type");
+            output.discard("recipes");
+            output.discard("blocking_mode");
+            output.discard("redstone_mode");
+        }
     }
 }

@@ -107,8 +107,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     private final int[] amounts = new int[AMOUNTS];
     /** Processing mode: the machine face each grid slot's ingredient goes in through. An empty slot is always Default. */
     private final InputFace[] faces = InputFace.NONE.toArray(InputFace[]::new);
-    /** The Access Ports the next processing card is for. Empty means the Crafting Server: an ordinary crafting card. */
-    private final List<Machines.At> selected = new ArrayList<>();
+    /** Whether the next card is a processing card. Off: an ordinary crafting card, made on the Crafting Servers. */
+    private boolean processing;
     /** What the ghost grid makes right now, shown next to it. */
     private final SimpleContainer preview = new SimpleContainer(1);
     private int previewState = STATE_NONE;
@@ -378,29 +378,17 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
 
     // --- processing mode ---
 
-    /** Whether the terminal writes processing cards: some Access Port is chosen instead of the Crafting Server. */
+    /** Whether the terminal writes processing cards (the Processing key) rather than crafting cards. */
     public boolean processing() {
-        return !selected.isEmpty();
+        return processing;
     }
 
-    public List<Machines.At> selected() {
-        return List.copyOf(selected);
-    }
-
-    /** Back to crafting cards. */
-    public void selectCraftingServer() {
-        if (!selected.isEmpty()) {
-            selected.clear();
+    /** Switches between crafting cards and processing cards. The grid keeps what it holds. */
+    public void setProcessingMode(boolean processing) {
+        if (this.processing != processing) {
+            this.processing = processing;
             ghostChanged();
         }
-    }
-
-    /** Adds the port at {@code pos} to the chosen machines, or takes it out again. */
-    public void toggleMachine(Machines.At machine) {
-        if (!selected.remove(machine)) {
-            selected.add(machine);
-        }
-        ghostChanged();
     }
 
     /** How many of processing slot {@code slot} (0-8 the grid, 9-11 the outputs). 0 where the slot is empty. */
@@ -464,8 +452,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         java.util.Arrays.fill(faces, InputFace.DEFAULT);
     }
 
-    /** The processing card the grid describes, for the chosen machines that still stand on the network, or why there is none. */
-    public CardRecipes.Encoding encodeProcessing(ServerLevel level) {
+    /** The processing card the grid describes, or why there is none. The card names no machine or port. */
+    public CardRecipes.Encoding encodeProcessing() {
         List<ProcessingCard.Amount> in = new ArrayList<>();
         for (int i = 0; i < ProcessingCard.INPUTS; i++) {
             in.add(ProcessingCard.Amount.of(ghost.getItem(i), amount(i)));
@@ -480,18 +468,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (out.stream().allMatch(ProcessingCard.Amount::isEmpty)) {
             return new CardRecipes.Encoding.Refused("message.jasm.terminal.no_output");
         }
-        CableNetwork network = Networks.at(level, worldPosition);
-        List<ProcessingCard.Machine> machines = new ArrayList<>();
-        for (Machines.At at : selected) {
-            AccessPortBlockEntity port = Machines.reach(level, network, at);
-            if (port != null) {
-                machines.add(new ProcessingCard.Machine(at.port(), at.side(), port.machineName(at.side()).getString()));
-            }
-        }
-        if (machines.isEmpty()) {
-            return new CardRecipes.Encoding.Refused("message.jasm.terminal.no_machine");
-        }
-        return new CardRecipes.Encoding.Card(new ProcessingCard(in, out, machines, List.of(faces)));
+        return new CardRecipes.Encoding.Card(ProcessingCard.of(in, out, List.of(faces)));
     }
 
     public int previewState() {
@@ -711,7 +688,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         }
         CardRecipes.Encoding encoding;
         if (processing()) {
-            encoding = encodeProcessing(level);
+            encoding = encodeProcessing();
         } else {
             List<ItemStack> grid = new ArrayList<>();
             for (int i = 0; i < 9; i++) {
@@ -736,8 +713,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     }
 
     /**
-     * A Filled card put in the top slot shows its recipe in the grid, ready to change and write again. A processing
-     * card also brings back its amounts, outputs and machines.
+     * A Filled card put in the top slot shows its recipe in the grid, ready to change and write again, and puts the
+     * terminal in the card's mode. A processing card also brings back its amounts, outputs and faces.
      */
     @Override
     public void setItem(int slot, ItemStack stack) {
@@ -749,7 +726,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (found instanceof RecipeCard card) {
             // The card's own recipe comes back as the pick, so writing it again keeps the result it had.
             fill(() -> {
-                selected.clear();
+                processing = false;
                 resetFaces();
                 picked = card.recipe();
                 List<ItemStack> inputs = card.inputs();
@@ -758,9 +735,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
                 }
             });
         } else if (found instanceof ProcessingCard card) {
-            selected.clear();
-            // a machine whose port was mined and placed back shows up ticked where it is now
-            selected.addAll(level instanceof ServerLevel server ? Machines.spots(server, Networks.at(server, worldPosition), card) : card.spots());
+            processing = true;
             for (int i = 0; i < ProcessingCard.INPUTS; i++) {
                 setProcessingSlot(i, card.inputs().get(i).stack(), card.inputs().get(i).count());
             }
@@ -834,7 +809,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (!List.of(faces).equals(InputFace.NONE)) {
             output.store("faces", InputFace.CODEC.listOf(), List.of(faces));
         }
-        output.store("selected_machines", Machines.At.CODEC.listOf(), List.copyOf(selected));
+        output.putBoolean("processing", processing);
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
         output.storeNullable("pending_pairer", UUIDUtil.CODEC, pendingPairer);
         // only until it has moved to the world's list
@@ -867,8 +842,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         for (int f = 0; f < ProcessingCard.INPUTS; f++) {
             faces[f] = ghost.getItem(f).isEmpty() ? InputFace.DEFAULT : savedFaces.get(f);
         }
-        selected.clear();
-        selected.addAll(input.read("selected_machines", Machines.At.CODEC.listOf()).orElse(List.of()));
+        // an older save had machines picked instead: such a terminal wrote processing cards
+        processing = input.getBooleanOr("processing", false)
+                || !input.read("selected_machines", Machines.At.CODEC.listOf()).orElse(List.of()).isEmpty();
         terminalId = input.read("terminal", UUIDUtil.CODEC).orElse(null);
         pendingPairer = input.read("pending_pairer", UUIDUtil.CODEC).orElse(null);
         // older saves kept the list here: it moves to the world's when the terminal first claims its spot

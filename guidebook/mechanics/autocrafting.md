@@ -21,7 +21,7 @@ Ask for anything from your Crafting Deck, and the network crafts what it needs f
 3. A [Crafting Server](../items/crafting-server.md) with a Processor and a Storage Module.
 4. A [Data Cable](../items/data-cables.md) network that joins them, with power.
 
-For a machine instead of a crafting table, add an [Access Port](../items/access-port.md).
+For a machine instead of a crafting table, write a processing card and add an [Access Port](../items/access-port.md). Open the port and pick the recipe there. Several ports with the same recipe share the work.
 
 <br />
 <br />
@@ -44,6 +44,7 @@ Items a recipe hands back, like Mystical Agriculture's Infusion Crystals, are re
 * Requested items come back as each batch finishes.
 * Items made along the way stay with the job until it ends.
 * A job list on the Deck shows every job. Click one to open its server from anywhere.
+* A job whose recipe no Access Port serves waits, and says "No Access Port serving recipe". It carries on once a port picks the recipe.
 * Cancel a job and what is left comes back.
 
 <br />

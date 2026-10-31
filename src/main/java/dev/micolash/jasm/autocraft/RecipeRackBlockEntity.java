@@ -28,6 +28,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import org.jspecify.annotations.Nullable;
 
 /** Holds 16 Filled Recipe Cards for its network. Without power, the network can't see them. */
 public class RecipeRackBlockEntity extends MachineBlockEntity {
@@ -93,16 +94,54 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         return (shownCards & (1 << slot)) != 0;
     }
 
-    /** Marks the processing cards whose machines can't be reached, for the screen. */
+    /** Marks the processing cards no port serves with a machine, for the screen, and brings older cards up to date. */
     private void checkMachines(ServerLevel level) {
         CableNetwork network = Networks.at(level, worldPosition);
         int bits = 0;
         for (int i = 0; i < SLOTS; i++) {
-            if (Card.of(items.get(i)) instanceof ProcessingCard card && !Jobs.reachable(level, network, card)) {
+            if (!(Card.of(items.get(i)) instanceof ProcessingCard card)) {
+                continue;
+            }
+            if (card.namesPorts()) {
+                card = convert(level, network, i, card);
+            }
+            if (!Jobs.reachable(level, network, card)) {
                 bits |= 1 << i;
             }
         }
         missing = bits;
+    }
+
+    /**
+     * An older card in slot {@code slot} names the ports it was written for. Each such port standing on the network
+     * starts serving its recipe. A port in an unloaded spot is waited for; a loaded spot with no port is let go, and
+     * the recipe stays here for a port to pick. The card is written back without the ports it is done with.
+     */
+    private ProcessingCard convert(ServerLevel level, @Nullable CableNetwork network, int slot, ProcessingCard card) {
+        if (network == null) {
+            return card;
+        }
+        List<ProcessingCard.Machine> waiting = new ArrayList<>();
+        for (ProcessingCard.Machine machine : card.machines()) {
+            if (!level.isLoaded(machine.pos())) {
+                waiting.add(machine);
+                continue;
+            }
+            AccessPortBlockEntity port = Machines.port(level, network, machine.pos(), machine.side());
+            // a port already serving its most recipes turns it down: it stays here unpicked, like one with no port
+            if (port != null) {
+                port.select(card);
+            }
+        }
+        if (waiting.size() == card.machines().size()) {
+            return card;
+        }
+        ProcessingCard left = waiting.isEmpty() ? card.clean() : card.at(waiting);
+        ItemStack stack = items.get(slot).copy();
+        Card.set(stack, left);
+        items.set(slot, stack);
+        setChanged();
+        return left;
     }
 
     @Override
@@ -140,6 +179,15 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     @Override
     public int getMaxStackSize() {
         return 1;
+    }
+
+    /** An older card is brought up to date as it goes in; ports still waiting are checked again each second. */
+    @Override
+    public void setItem(int slot, ItemStack stack) {
+        super.setItem(slot, stack);
+        if (level instanceof ServerLevel server && Card.of(stack) instanceof ProcessingCard card && card.namesPorts()) {
+            convert(server, Networks.at(server, worldPosition), slot, card);
+        }
     }
 
     @Override

@@ -1,65 +1,132 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.AccessPortBlock;
+import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftPayloads;
+import dev.micolash.jasm.autocraft.InputFace;
+import dev.micolash.jasm.autocraft.ProcessingCard;
+import dev.micolash.jasm.config.JasmClientConfig;
+import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.transfer.PortOperations;
 import dev.micolash.jasm.transfer.PortUpgradeLayout;
 import dev.micolash.jasm.transfer.RedstoneMode;
+import dev.micolash.jasm.wafer.FluidAmounts;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The port's status, machines and name, its item buffer and the player inventory. A column on the right holds the side
- * keys (Deck Link and blocking mode) above the upgrade slots, and the redstone key under them while a Redstone Upgrade is
- * in. The Deck Link key opens a window with the link slots.
+ * The Access Port's screen. The main panel, always centred, holds the name and power bar, the kinds of machine in range
+ * (click one to serve it) with the port's state, the recipes it serves (click one to take it off), its incoming items
+ * and the inventory. On its left, a list of the processing recipes in the network's Recipe Racks with a search box
+ * (click one to serve it); the list folds away to a thin strip. A column on the right holds the side keys (Deck Link,
+ * blocking mode, rename) above the upgrade slots, and the redstone key under them while a Redstone Upgrade is in.
  */
 public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final int WIDTH = AccessPortMenu.WIDTH;
+    private static final int HEIGHT = AccessPortMenu.HEIGHT;
+    private static final int KEY_X = AccessPortMenu.KEY_X;
     private static final int BAR_WIDTH = 50;
     private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
-    private static final int NAME_Y = 88;
-    private static final int LIST_X = 8;
-    private static final int LIST_Y = 30;
-    private static final int LIST_WIDTH = WIDTH - 28;
-    private static final int ROW_HEIGHT = 18;
-    private static final int ROWS = 3;
-    private static final int SCROLL_X = WIDTH - 15;
-    private static final int HANDLE_HEIGHT = 12;
-    private static final int KEY_X = PortUpgradeLayout.KEY_X;
+    private static final int MACHINE_Y = 23;
+    private static final int MACHINE_KEY_Y = 16;
+    private static final int MACHINE_KEY_WIDTH = 20;
+    private static final int MACHINE_KEY_HEIGHT = 22;
+    /** Served recipes: at most 16, a slot grid under their heading, lined up with the incoming items below. */
+    private static final int ACTIVE_LABEL_Y = 44;
+    private static final int ACTIVE_COLS = 8;
+    private static final int ACTIVE_ROWS = 2;
+    private static final int ACTIVE_X = (WIDTH - ACTIVE_COLS * 18) / 2 - 1;
+    private static final int ACTIVE_Y = 54;
+    /** How long the "port is full" line stays over the served recipes. */
+    private static final long FULL_NOTICE_MS = 3_000;
+    /** The recipe list's panel, left of the main one, and its grid. */
+    private static final int LIST = 113;
+    private static final int LIST_X = -LIST;
+    private static final int GRID_X = LIST_X + 8;
+    private static final int GRID_Y = 36;
+    private static final int COLS = 5;
+    private static final int ROWS = 10;
+    private static final int LIST_SCROLL_X = LIST_X + 100;
+    /** The strip holding the fold key, on the left edge of the list, or of the main panel while the list is folded. */
+    private static final int[] STRIP = {-13, 25, 16, 30};
+    private static final int KNOB = 18;
+    private static final int TICK_X = 11;
+    private static final int MISSING_TINT = 0x66F38BA8;
+    private static final int MISSING_DIM = 0x991E1E2E;
+    private static final Identifier TICK = Jasm.id("icon/recipe_tick");
+    private static final Identifier MISSING = Jasm.id("icon/recipe_missing");
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
     private static final JasmButton.Icon BLOCKING_ON = new JasmButton.Icon(Jasm.id("icon_blocking_on"), 12, 12);
     private static final JasmButton.Icon BLOCKING_OFF = new JasmButton.Icon(Jasm.id("icon_blocking_off"), 12, 12);
-    private int scroll;
-    private boolean draggingHandle;
-    private EditBox name;
-    private Button rename;
+    private static final JasmButton.Icon RENAME = new JasmButton.Icon(Jasm.id("icon/rename"), 12, 12);
+    private static final JasmButton.Icon FOLD = new JasmButton.Icon(Jasm.id("icon/triangle_right"), 4, 6);
+    private static final JasmButton.Icon UNFOLD = new JasmButton.Icon(Jasm.id("icon/triangle_left"), 4, 6);
+
+
     private JasmButton blocking;
     private JasmButton link;
+    private JasmButton renameKey;
     private JasmButton redstone;
+    private JasmButton fold;
+    /** One key per kind of machine while there are several; rebuilt when the kinds change. */
+    private final List<JasmButton> machineKeys = new ArrayList<>();
+    private @Nullable List<AccessPortMenu.MachineView> keysFor;
+    private JasmField search;
     private boolean frameRedstone;
+    private boolean frameFolded;
     private @Nullable RedstoneMode shownRedstoneMode;
     private JasmFrame frame;
     private @Nullable DeckLinkWindow linkWindow;
+    private @Nullable PortRenameWindow renameWindow;
+    /** The name as last set from this screen; the title follows it. */
+    private String label;
+    private Component shownTitle;
+    private int listRow;
+    private boolean draggingList;
+    private long fullNoticeUntil;
+    /** The recipes the search lets through, worked out again only when the list or the search changes. */
+    private List<ProcessingCard> shown = List.of();
+    private @Nullable List<ProcessingCard> shownFrom;
+    private String shownQuery = "";
+    private Set<ProcessingCard> activeSet = Set.of();
+    private @Nullable List<AccessPortMenu.ActiveRecipe> activeFrom;
 
     public AccessPortScreen(AccessPortMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, PortLayout.current().height());
+        super(menu, inventory, title, KEY_X + JasmGui.SIDE_KEY_WIDTH + 3, HEIGHT);
+        label = menu.label();
+        shownTitle = title;
         inventoryLabelX = (WIDTH - 162) / 2;
+        inventoryLabelY = AccessPortMenu.INVENTORY_Y - 10;
     }
 
     @Override
@@ -67,24 +134,24 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         return menu.linkCover();
     }
 
+    private static boolean folded() {
+        return JasmClientConfig.portRecipesFolded();
+    }
+
     @Override
     protected void init() {
-        // Level with the other ports: the extra room at the bottom stays empty panel.
-        PortLayout layout = PortLayout.current();
-        imageHeight = layout.height();
-        inventoryLabelY = layout.inventoryY() - 10;
-        menu.layout(layout.inventoryY());
         super.init();
+        // The main panel stays in the middle whether the recipe list is open or folded; on a window too narrow for the
+        // open list and its fold key, it moves right just enough, the same both ways, as long as the side keys still fit.
+        int leftmost = -(LIST_X + STRIP[0]);
+        leftPos = Math.max((width - WIDTH) / 2, Math.min(leftmost, width - imageWidth));
         frameRedstone = menu.hasRedstoneUpgrade();
-        frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS, frameRedstone));
+        // With the redstone key the side column reaches below the panel: lifted just enough to stay on screen.
+        int[] column = PortUpgradeLayout.column(KEY_X, AccessPortMenu.SIDE_KEYS, true);
+        topPos = Math.max(0, Math.min(topPos, height - (column[1] + column[3])));
+        frameFolded = folded();
+        frame = buildFrame();
         addHelp(WIDTH - 7, "items/access-port.md");
-        name = new JasmField(font, leftPos + 8, topPos + NAME_Y, WIDTH - 16 - 48, 12, Component.translatable("screen.jasm.port.name"));
-        name.setMaxLength(AccessPortMenu.MAX_NAME);
-        name.setValue(menu.label());
-        name.setHint(Component.translatable("screen.jasm.port.name_hint"));
-        addRenderableWidget(name);
-        rename = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.port.rename"), b -> rename(),
-                leftPos + WIDTH - 8 - 44, topPos + NAME_Y - 2, 44, 17));
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         link = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
@@ -93,18 +160,72 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.TOGGLE_BLOCKING),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(1), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         blocking.setTooltip(blockingTooltip());
+        Component renameLabel = Component.translatable("screen.jasm.port.rename");
+        renameKey = addRenderableWidget(JasmButton.icon(() -> RENAME, renameLabel, b -> toggleRename(),
+                leftPos + KEY_X, topPos + JasmGui.sideKeyY(2), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        renameKey.setTooltip(Tooltip.create(renameLabel));
         if (linkWindow == null) {
             linkWindow = new DeckLinkWindow(font, menu.getSlot(AccessPortMenu.SLOT_DECK_IN), menu.getSlot(AccessPortMenu.SLOT_DECK_OUT),
                     menu.linkCover(), Component.translatable("screen.jasm.archive.reset_deck"),
                     () -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.RESET_DECK));
         }
+        if (renameWindow == null) {
+            renameWindow = new PortRenameWindow(menu.containerId, font, this::renamed);
+        }
         link.setLatched(linkWindow.isOpen());
+        renameKey.setLatched(renameWindow.isOpen());
         redstone = addRenderableWidget(JasmButton.icon(
                 () -> new JasmButton.Icon(Jasm.id("icon/redstone_" + menu.redstoneMode().getSerializedName()), 12, 12),
                 redstoneLabel(), b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.CYCLE_REDSTONE),
                 leftPos + KEY_X, topPos + PortUpgradeLayout.redstoneY(AccessPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         shownRedstoneMode = null;
         updateRedstoneButton();
+
+        String query = search == null ? "" : search.getValue();
+        search = new JasmField(font, leftPos + LIST_X + 8, topPos + 18, 102, 14, Component.translatable("screen.jasm.port.search_hint"));
+        search.setHint(Component.translatable("screen.jasm.port.search_hint"));
+        search.setSelectAllOnClick();
+        search.setValue(query);
+        search.setResponder(text -> listRow = 0);
+        addRenderableWidget(search);
+        // One key in the same spot either way, on the left edge of whatever is leftmost; only its arrow flips.
+        fold = addRenderableWidget(JasmButton.icon(() -> folded() ? UNFOLD : FOLD, Component.translatable("screen.jasm.port.fold"),
+                b -> setFolded(!folded()), 0, topPos + 29, 11, 22));
+        machineKeys.clear();
+        keysFor = null;
+        showFold();
+    }
+
+    /** The left edge the fold key's strip hangs from: the list's while it is open, the main panel's while folded. */
+    private static int foldEdge(boolean folded) {
+        return folded ? 0 : LIST_X;
+    }
+
+    private JasmFrame buildFrame() {
+        int edge = foldEdge(frameFolded);
+        int[] strip = {edge + STRIP[0], STRIP[1], STRIP[2], STRIP[3]};
+        int[] column = PortUpgradeLayout.column(KEY_X, AccessPortMenu.SIDE_KEYS, frameRedstone);
+        return frameFolded ? JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, column, strip)
+                : JasmFrame.rounded(new int[]{0, 0, WIDTH, HEIGHT}, column, new int[]{LIST_X, 0, LIST + 3, HEIGHT}, strip);
+    }
+
+    private void setFolded(boolean folded) {
+        JasmClientConfig.setPortRecipesFolded(folded);
+        showFold();
+    }
+
+    private void showFold() {
+        boolean open = !folded();
+        search.visible = open;
+        if (!open) search.setFocused(false);
+        fold.setX(leftPos + foldEdge(!open) - 11);
+        Component label = Component.translatable(open ? "screen.jasm.port.fold" : "screen.jasm.port.unfold");
+        fold.setMessage(label);
+        fold.setTooltip(Tooltip.create(label));
+        if (frameFolded != !open) {
+            frameFolded = !open;
+            frame = buildFrame();
+        }
     }
 
     private Component redstoneLabel() {
@@ -125,7 +246,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         }
         if (frameRedstone != installed) {
             frameRedstone = installed;
-            frame = JasmFrame.rounded(new int[]{0, 0, WIDTH, imageHeight}, PortUpgradeLayout.column(AccessPortMenu.SIDE_KEYS, installed));
+            frame = buildFrame();
         }
     }
 
@@ -136,14 +257,41 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     }
 
     private void toggleLink() {
+        renameWindow.close();
         linkWindow.toggle(leftPos + KEY_X, topPos);
         link.setLatched(linkWindow.isOpen());
-        if (linkWindow.isOpen()) name.setFocused(false);
     }
 
-    /** Where the Deck Link window is, while it is open, so JEI's item list stays clear of it. */
+    private void toggleRename() {
+        if (linkWindow.isOpen()) linkWindow.close();
+        renameWindow.toggle(leftPos + KEY_X, topPos, label);
+        renameKey.setLatched(renameWindow.isOpen());
+        if (renameWindow.isOpen()) search.setFocused(false);
+    }
+
+    /** The name was sent: the title shows it now, or the port's own name for an empty one. */
+    private void renamed(String name) {
+        label = name;
+        shownTitle = name.isEmpty() ? defaultName() : Component.literal(name);
+    }
+
+    private Component defaultName() {
+        BlockPos pos = menu.openedAt();
+        if (pos != null && minecraft.level != null && minecraft.level.getBlockState(pos).getBlock() instanceof AccessPortBlock block) {
+            return block.getName();
+        }
+        return Component.translatable("item.jasm.thin_access_port");
+    }
+
+    /** Where the recipe list (or the strip that brings it back) and any open window are, so JEI's lists stay clear of them. */
     public List<Rect2i> extraAreas() {
-        return linkWindow == null ? List.of() : linkWindow.area().map(List::of).orElse(List.of());
+        List<Rect2i> areas = new ArrayList<>();
+        int edge = foldEdge(folded());
+        areas.add(new Rect2i(leftPos + edge + STRIP[0], topPos + STRIP[1], -STRIP[0], STRIP[3]));
+        if (!folded()) areas.add(new Rect2i(leftPos + LIST_X, topPos, LIST, HEIGHT));
+        if (linkWindow != null) linkWindow.area().ifPresent(areas::add);
+        if (renameWindow != null) renameWindow.area().ifPresent(areas::add);
+        return areas;
     }
 
     /** Clicks on the Deck Link slots belong to the slots, not to a key behind them. */
@@ -154,12 +302,10 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
 
     @Override
     protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
-        return !linkWindow.contains(mouseX, mouseY) && super.hasClickedOutside(mouseX, mouseY, left, top);
-    }
-
-    private void rename() {
-        ClientPacketDistributor.sendToServer(new CraftPayloads.PortName(menu.containerId, name.getValue().strip()));
-        name.setFocused(false);
+        for (Rect2i area : extraAreas()) {
+            if (area.contains((int) mouseX, (int) mouseY)) return false;
+        }
+        return super.hasClickedOutside(mouseX, mouseY, left, top);
     }
 
     private Component blockingLabel() {
@@ -172,46 +318,193 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         return Tooltip.create(blockingLabel().copy().append("\n").append(Component.translatable("screen.jasm.port.blocking_hint")));
     }
 
-    @Override
-    public boolean keyPressed(KeyEvent event) {
-        // Escape shuts the Deck Link window first, then the screen.
-        if (linkWindow.isOpen() && event.isEscape()) {
-            linkWindow.close();
-            link.setLatched(false);
-            return true;
-        }
-        if (name.isFocused() && !event.isEscape()) {
-            if (event.isConfirmation()) {
-                rename();
+    // --- the recipes ---
+
+    private List<ProcessingCard> shown() {
+        String query = search.getValue().strip().toLowerCase(Locale.ROOT);
+        if (shownFrom != menu.listed() || !query.equals(shownQuery)) {
+            shownFrom = menu.listed();
+            shownQuery = query;
+            if (query.isEmpty()) {
+                shown = menu.listed();
             } else {
-                name.keyPressed(event);
+                List<ProcessingCard> found = new ArrayList<>();
+                for (ProcessingCard card : menu.listed()) {
+                    if (matches(card, query)) found.add(card);
+                }
+                shown = found;
             }
-            return true;
         }
-        return super.keyPressed(event);
+        return shown;
     }
+
+    /** A recipe is found by the name of anything it makes. */
+    private static boolean matches(ProcessingCard card, String query) {
+        for (ProcessingCard.Amount output : card.outputs()) {
+            if (!output.isEmpty() && name(output).getString().toLowerCase(Locale.ROOT).contains(query)) return true;
+        }
+        return false;
+    }
+
+    private Set<ProcessingCard> activeSet() {
+        if (activeFrom != menu.active()) {
+            activeFrom = menu.active();
+            Set<ProcessingCard> set = new HashSet<>();
+            for (AccessPortMenu.ActiveRecipe recipe : menu.active()) set.add(recipe.recipe());
+            activeSet = set;
+        }
+        return activeSet;
+    }
+
+    private static Component name(ProcessingCard.Amount amount) {
+        return amount.isMaterial() ? MaterialIcons.name(amount.material()) : amount.stack().getHoverName();
+    }
+
+    /** "8 × Iron Ore", "1 B of Water" or "40 of Mana": one amount as the card's own tooltip writes it. */
+    private static Component amountLine(GridKey key, int count) {
+        boolean fluid = key instanceof GridKey.Fluid;
+        boolean units = fluid || key instanceof GridKey.Material;
+        ProcessingCard.Amount one = ProcessingCard.Amount.of(key, 1);
+        return Component.translatable(units ? "tooltip.jasm.card.input_fluid" : "tooltip.jasm.card.input",
+                fluid ? FluidAmounts.label(count) : String.valueOf(count), name(one));
+    }
+
+    private record FacedInput(GridKey key, InputFace face) {}
+
+    /** The recipe's name, what goes in, what comes out, then {@code hint}. */
+    private List<FormattedCharSequence> details(ProcessingCard card, @Nullable Component hint) {
+        List<Component> lines = new ArrayList<>();
+        lines.add(name(card.main()).copy().withColor(JasmGui.TEXT & 0xFFFFFF));
+        Map<FacedInput, Integer> counts = new LinkedHashMap<>();
+        List<ProcessingCard.Amount> inputs = card.usedInputs();
+        List<InputFace> faces = card.usedFaces();
+        for (int i = 0; i < inputs.size(); i++) {
+            counts.merge(new FacedInput(inputs.get(i).key(), faces.get(i)), inputs.get(i).count(), Integer::sum);
+        }
+        counts.forEach((input, n) -> {
+            Component line = amountLine(input.key(), n);
+            if (input.face() != InputFace.DEFAULT) {
+                line = Component.translatable("tooltip.jasm.card.input_face", line, Component.translatable(input.face().translationKey()));
+            }
+            lines.add(line.copy().withColor(JasmGui.SUBTEXT & 0xFFFFFF));
+        });
+        for (ProcessingCard.Amount output : card.outputs()) {
+            if (output.isEmpty()) continue;
+            lines.add(Component.translatable("screen.jasm.port.recipe_output", amountLine(output.key(), output.count()))
+                    .withColor(JasmGui.GOOD & 0xFFFFFF));
+        }
+        if (hint != null) lines.add(hint.copy().withColor(JasmGui.MUTED & 0xFFFFFF));
+        return lines.stream().map(Component::getVisualOrderText).toList();
+    }
+
+    private List<FormattedCharSequence> missingDetails(ProcessingCard card) {
+        return List.of(
+                name(card.main()).copy().withColor(JasmGui.TEXT & 0xFFFFFF).getVisualOrderText(),
+                Component.translatable("tooltip.jasm.card.recipe_missing").withColor(JasmGui.BAD & 0xFFFFFF).getVisualOrderText(),
+                Component.translatable("screen.jasm.port.missing_hint").withColor(JasmGui.MUTED & 0xFFFFFF).getVisualOrderText(),
+                Component.translatable("screen.jasm.port.click_remove").withColor(JasmGui.MUTED & 0xFFFFFF).getVisualOrderText());
+    }
+
+    private int listMax() {
+        return Math.max(0, (shown().size() + COLS - 1) / COLS - ROWS);
+    }
+
+    /** The recipe list's entry under the mouse, or -1. */
+    private int listIndexAt(double mouseX, double mouseY) {
+        if (folded()) return -1;
+        int x = (int) Math.floor(mouseX) - leftPos - GRID_X;
+        int y = (int) Math.floor(mouseY) - topPos - GRID_Y;
+        if (x < 0 || y < 0 || x >= COLS * 18 || y >= ROWS * 18) return -1;
+        int index = (listRow + y / 18) * COLS + x / 18;
+        return index < shown().size() ? index : -1;
+    }
+
+    /** The served recipe under the mouse, or -1. */
+    private int activeIndexAt(double mouseX, double mouseY) {
+        int x = (int) Math.floor(mouseX) - leftPos - ACTIVE_X;
+        int y = (int) Math.floor(mouseY) - topPos - ACTIVE_Y;
+        if (x < 0 || y < 0 || x >= ACTIVE_COLS * 18 || y >= ACTIVE_ROWS * 18) return -1;
+        int index = y / 18 * ACTIVE_COLS + x / 18;
+        return index < menu.active().size() ? index : -1;
+    }
+
+    // --- the machines ---
+
+    private int machineX() {
+        return 8 + font.width(Component.translatable("screen.jasm.port.machine_row")) + 3;
+    }
+
+    /** How far apart the machine keys stand: a little closer when many kinds would run into the state on the right. */
+    private int machineStep() {
+        int count = menu.machines().size();
+        int room = WIDTH - 8 - font.width(status()) - 3 - machineX();
+        return count <= 1 ? MACHINE_KEY_WIDTH + 1 : Math.clamp(room / count, 17, MACHINE_KEY_WIDTH + 1);
+    }
+
+    /** Whether the mouse is on the icon shown when only one kind of machine is in range. */
+    private boolean overOnlyMachine(double mouseX, double mouseY) {
+        double x = mouseX - leftPos - machineX();
+        double y = mouseY - topPos;
+        return menu.machines().size() == 1 && x >= 0 && x < 16 && y >= MACHINE_KEY_Y + 3 && y < MACHINE_KEY_Y + 19;
+    }
+
+    private void chooseMachine(AccessPortMenu.MachineView machine) {
+        Block block = Block.byItem(machine.icon().getItem());
+        if (machine.chosen() || machine.icon().isEmpty()) return;
+        ClientPacketDistributor.sendToServer(new CraftPayloads.PortMachineType(menu.containerId, BuiltInRegistries.BLOCK.getKey(block)));
+    }
+
+    /**
+     * With several kinds in range, one key per kind, made like the encoder's Crafting / Processing keys: the chosen
+     * one is pressed in and its item sinks with it. Made again when the kinds change, moved when the state beside them
+     * changes width.
+     */
+    private void placeMachineKeys() {
+        List<AccessPortMenu.MachineView> machines = menu.machines();
+        if (keysFor != machines) {
+            keysFor = machines;
+            machineKeys.forEach(this::removeWidget);
+            machineKeys.clear();
+            if (machines.size() > 1) {
+                for (AccessPortMenu.MachineView machine : machines) {
+                    JasmButton key = JasmButton.item(machine.icon(), machine.name(), b -> chooseMachine(machine), 0, 0,
+                            MACHINE_KEY_WIDTH, MACHINE_KEY_HEIGHT);
+                    key.setSelected(machine.chosen());
+                    key.setTooltip(Tooltip.create(machine.name()));
+                    machineKeys.add(addRenderableWidget(key));
+                }
+            }
+        }
+        int step = machineStep();
+        for (int i = 0; i < machineKeys.size(); i++) {
+            JasmButton key = machineKeys.get(i);
+            key.setPosition(leftPos + machineX() + i * step, topPos + MACHINE_KEY_Y);
+            key.setWidth(step - 1);
+        }
+    }
+
+    /** The port's state for the right end of the machine row, and its colour. */
+    private Component status() {
+        if (!menu.running()) {
+            return MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font, WIDTH / 2);
+        }
+        if (menu.paused()) return Component.translatable("screen.jasm.bay.status.paused");
+        return Component.translatable(menu.locked() ? "screen.jasm.port.in_use_short" : "screen.jasm.port.idle");
+    }
+
+    private int statusColor() {
+        if (!menu.running()) return JasmGui.BAD;
+        if (menu.paused()) return JasmGui.WARN;
+        return menu.locked() ? JasmGui.GOOD : JasmGui.MUTED;
+    }
+
+    // --- drawing ---
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractBackground(graphics, mouseX, mouseY, a);
         frame.draw(graphics, leftPos, topPos);
         JasmGui.divider(graphics, leftPos + KEY_X, topPos + PortUpgradeLayout.dividerY(AccessPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH);
-        JasmGui.inset(graphics, leftPos + LIST_X, topPos + LIST_Y, LIST_WIDTH, ROWS * ROW_HEIGHT);
-        scroll = Math.clamp(scroll, 0, maxScroll());
-        int offset = maxScroll() == 0 ? 0 : Math.round((ROWS * ROW_HEIGHT - HANDLE_HEIGHT) * scroll / (float) maxScroll());
-        JasmGui.scrollBar(graphics, leftPos + SCROLL_X, topPos + LIST_Y, 8, ROWS * ROW_HEIGHT,
-                offset, HANDLE_HEIGHT, maxScroll() > 0);
-        for (int row = 0; row < ROWS && scroll + row < menu.machines().size(); row++) {
-            var machine = menu.machines().get(scroll + row);
-            int y = topPos + LIST_Y + row * ROW_HEIGHT + 1;
-            graphics.item(machine.icon(), leftPos + LIST_X + 3, y);
-            graphics.text(font, font.plainSubstrByWidth(machine.name().getString(), LIST_WIDTH - 26),
-                    leftPos + LIST_X + 23, y + 4, JasmGui.TEXT, false);
-        }
-        if (menu.machines().isEmpty()) {
-            graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), leftPos + LIST_X + 4,
-                    topPos + LIST_Y + 5, JasmGui.MUTED, false);
-        }
         JasmGui.bar(graphics, leftPos + BAR_X, topPos + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
         // The Deck Link window draws its own two slots.
         for (var slot : menu.slots) {
@@ -219,28 +512,143 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                 JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
             }
         }
+        for (int row = 0; row < ACTIVE_ROWS; row++) {
+            for (int col = 0; col < ACTIVE_COLS; col++) {
+                JasmGui.slot(graphics, leftPos + ACTIVE_X + 1 + col * 18, topPos + ACTIVE_Y + 1 + row * 18);
+            }
+        }
+        if (!folded()) {
+            listRow = Math.clamp(listRow, 0, listMax());
+            for (int row = 0; row < ROWS; row++) {
+                for (int col = 0; col < COLS; col++) {
+                    JasmGui.slot(graphics, leftPos + GRID_X + 1 + col * 18, topPos + GRID_Y + 1 + row * 18);
+                }
+            }
+            track(graphics, LIST_SCROLL_X, GRID_Y, ROWS * 18, listRow, listMax());
+        }
+    }
+
+    private void track(GuiGraphicsExtractor graphics, int x, int y, int height, int first, int max) {
+        int offset = max == 0 ? 0 : Math.round((height - KNOB) * first / (float) max);
+        JasmGui.track(graphics, leftPos + x, topPos + y, height, offset, KNOB, max > 0);
     }
 
     @Override
     public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
         linkWindow.sync(leftPos, topPos);
         link.setLatched(linkWindow.isOpen());
-        // Under the Deck Link window nothing lights up or shows a tooltip, except its own slots.
-        boolean hidden = linkWindow.hidesMouse(realMouseX, realMouseY);
+        renameKey.setLatched(renameWindow.isOpen());
+        // Under a window nothing lights up or shows a tooltip, except the Deck Link window's own slots.
+        boolean hidden = linkWindow.hidesMouse(realMouseX, realMouseY) || renameWindow.contains(realMouseX, realMouseY);
         int mouseX = hidden ? -1000 : realMouseX;
         int mouseY = hidden ? -1000 : realMouseY;
+        placeMachineKeys();
         super.extractContents(graphics, mouseX, mouseY, a);
         linkWindow.setResetActive(menu.canResetDeck());
-        if (blocking != null) blocking.setLatched(menu.blockingMode());
-        if (blocking != null && !blocking.getMessage().equals(blockingLabel())) {
+        blocking.setLatched(menu.blockingMode());
+        if (!blocking.getMessage().equals(blockingLabel())) {
             blocking.setMessage(blockingLabel());
             blocking.setTooltip(blockingTooltip());
         }
-        if (mouseX >= leftPos + LIST_X && mouseX < leftPos + LIST_X + LIST_WIDTH
-                && mouseY >= topPos + LIST_Y && mouseY < topPos + LIST_Y + ROWS * ROW_HEIGHT) {
-            int index = scroll + (mouseY - topPos - LIST_Y) / ROW_HEIGHT;
-            if (index < menu.machines().size()) graphics.setTooltipForNextFrame(font, menu.machines().get(index).name(), mouseX, mouseY);
+        drawMachines(graphics, mouseX, mouseY);
+        drawRecipes(graphics, mouseX, mouseY);
+        slotHints(graphics, mouseX, mouseY);
+        if (linkWindow.isOpen()) {
+            graphics.nextStratum();
+            linkWindow.draw(graphics, realMouseX, realMouseY, a, DeckLinkWindow.linkedTo(menu.linkedPlayer(), menu.deckLinked()));
         }
+        if (renameWindow.isOpen()) {
+            graphics.nextStratum();
+            renameWindow.draw(graphics, realMouseX, realMouseY, a);
+        }
+    }
+
+    /** The one machine's icon when only one kind is in range; several kinds are keys of their own. */
+    private void drawMachines(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        List<AccessPortMenu.MachineView> machines = menu.machines();
+        if (machines.size() != 1) return;
+        graphics.item(machines.getFirst().icon(), leftPos + machineX(), topPos + MACHINE_KEY_Y + 3);
+        if (overOnlyMachine(mouseX, mouseY)) graphics.setTooltipForNextFrame(font, machines.getFirst().name(), mouseX, mouseY);
+    }
+
+    private void drawRecipes(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        List<AccessPortMenu.ActiveRecipe> active = menu.active();
+        Set<ProcessingCard> served = activeSet();
+        List<ProcessingCard> list = shown();
+        boolean open = !folded();
+        int hoveredActive = activeIndexAt(mouseX, mouseY);
+        int hoveredList = listIndexAt(mouseX, mouseY);
+        // Under the items: the hover tint and the missing tint.
+        int shownActive = Math.min(active.size(), ACTIVE_ROWS * ACTIVE_COLS);
+        for (int i = 0; i < shownActive; i++) {
+            int x = activeX(i);
+            int y = activeY(i);
+            if (i == hoveredActive) JasmGui.slotHover(graphics, x, y);
+            if (active.get(i).missing()) graphics.fill(x, y, x + 16, y + 16, MISSING_TINT);
+            FluidGrid.drawStack(graphics, active.get(i).recipe().result(), x, y);
+        }
+        if (open) {
+            for (int i = listRow * COLS; i < Math.min(list.size(), (listRow + ROWS) * COLS); i++) {
+                int x = listX(i);
+                int y = listY(i);
+                if (i == hoveredList) JasmGui.slotHover(graphics, x, y);
+                FluidGrid.drawStack(graphics, list.get(i).result(), x, y);
+            }
+        }
+        // Over the items: missing recipes dimmed and marked, a tick on recipes already served, the hover rim.
+        graphics.nextStratum();
+        for (int i = 0; i < shownActive; i++) {
+            int x = activeX(i);
+            int y = activeY(i);
+            if (active.get(i).missing()) {
+                graphics.fill(x, y, x + 16, y + 16, MISSING_DIM);
+                graphics.fill(x, y, x + 16, y + 16, MISSING_TINT);
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, MISSING, x, y, 2, 5);
+            }
+            if (i == hoveredActive) JasmGui.slotHoverFrame(graphics, x, y);
+        }
+        if (open) {
+            for (int i = listRow * COLS; i < Math.min(list.size(), (listRow + ROWS) * COLS); i++) {
+                int x = listX(i);
+                int y = listY(i);
+                if (served.contains(list.get(i))) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, TICK, x + TICK_X, y, 5, 5);
+                if (i == hoveredList) JasmGui.slotHoverFrame(graphics, x, y);
+            }
+        }
+        if (Util.getMillis() < fullNoticeUntil) {
+            JasmGui.notice(graphics, font, fullLine(), false, leftPos + ACTIVE_X, topPos + ACTIVE_Y + ACTIVE_ROWS * 18, ACTIVE_COLS * 18);
+        }
+        if (hoveredActive >= 0) {
+            AccessPortMenu.ActiveRecipe recipe = active.get(hoveredActive);
+            graphics.setTooltipForNextFrame(font, recipe.missing() ? missingDetails(recipe.recipe())
+                    : details(recipe.recipe(), Component.translatable("screen.jasm.port.click_remove")), mouseX, mouseY);
+        } else if (hoveredList >= 0) {
+            ProcessingCard card = list.get(hoveredList);
+            List<FormattedCharSequence> lines = new ArrayList<>(details(card, served.contains(card) || full() ? null
+                    : Component.translatable("screen.jasm.port.click_add")));
+            if (!served.contains(card) && full()) lines.add(fullLine().copy().withColor(JasmGui.BAD & 0xFFFFFF).getVisualOrderText());
+            graphics.setTooltipForNextFrame(font, lines, mouseX, mouseY);
+        }
+    }
+
+    private int activeX(int index) { return leftPos + ACTIVE_X + 1 + index % ACTIVE_COLS * 18; }
+
+    private int activeY(int index) { return topPos + ACTIVE_Y + 1 + index / ACTIVE_COLS * 18; }
+
+    /** Whether the port serves as many recipes as it can. */
+    private boolean full() {
+        return menu.active().size() >= AccessPortBlockEntity.MAX_RECIPES;
+    }
+
+    private static Component fullLine() {
+        return Component.translatable("screen.jasm.port.full", AccessPortBlockEntity.MAX_RECIPES);
+    }
+
+    private int listX(int index) { return leftPos + GRID_X + 1 + index % COLS * 18; }
+
+    private int listY(int index) { return topPos + GRID_Y + 1 + (index / COLS - listRow) * 18; }
+
+    private void slotHints(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (hoveredSlot == menu.getSlot(AccessPortMenu.SLOT_DECK_IN) && !hoveredSlot.hasItem()) {
             graphics.setTooltipForNextFrame(font, font.split(Component.translatable("screen.jasm.port.deck_hint"), 180), mouseX, mouseY);
         }
@@ -261,56 +669,69 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                             .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
                     mouseX, mouseY);
         }
-        if (linkWindow.isOpen()) {
-            graphics.nextStratum();
-            linkWindow.draw(graphics, realMouseX, realMouseY, a, DeckLinkWindow.linkedTo(menu.linkedPlayer(), menu.deckLinked()));
-        }
     }
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
-        String shown = font.plainSubstrByWidth(title.getString(), BAR_X - 12 - titleLabelX);
-        graphics.text(font, shown, titleLabelX, titleLabelY, JasmGui.TEXT, false);
-        Component state;
-        int color;
-        if (!menu.running()) {
-            state = MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font,
-                    WIDTH - 16 - font.width(Component.translatable("screen.jasm.port.status", "")));
-            color = JasmGui.BAD;
-        } else if (menu.paused()) {
-            state = Component.translatable("screen.jasm.bay.status.paused");
-            color = JasmGui.WARN;
-        } else if (menu.locked()) {
-            state = Component.translatable("screen.jasm.port.in_use");
-            color = JasmGui.GOOD;
-        } else {
-            state = Component.translatable("screen.jasm.port.idle");
-            color = JasmGui.MUTED;
+        String title = font.plainSubstrByWidth(shownTitle.getString(), BAR_X - 12 - titleLabelX);
+        graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
+        graphics.text(font, Component.translatable("screen.jasm.port.machine_row"), 8, MACHINE_Y, JasmGui.SUBTEXT, false);
+        if (menu.machines().isEmpty()) {
+            graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), machineX(), MACHINE_Y, JasmGui.MUTED, false);
         }
-        graphics.text(font, Component.translatable("screen.jasm.port.status", state), 8, 18, color, false);
+        Component state = status();
+        graphics.text(font, state, WIDTH - 8 - font.width(state) + 1, MACHINE_Y, statusColor(), false);
+        graphics.text(font, Component.translatable("screen.jasm.port.active"), ACTIVE_X + 1, ACTIVE_LABEL_Y, JasmGui.SUBTEXT, false);
+        Component count = recipeCount(menu.active().size());
+        graphics.text(font, count, ACTIVE_X + ACTIVE_COLS * 18 - font.width(count) + 1, ACTIVE_LABEL_Y, JasmGui.MUTED, false);
         graphics.text(font, Component.translatable("screen.jasm.port.buffer"), AccessPortMenu.BUFFER_X, AccessPortMenu.BUFFER_Y - 10,
                 JasmGui.SUBTEXT, false);
+        if (!folded()) {
+            graphics.text(font, Component.translatable("screen.jasm.port.recipes"), LIST_X + 8, 6, JasmGui.TEXT, false);
+            String listed = String.valueOf(shown().size());
+            graphics.text(font, listed, LIST_X + 110 - font.width(listed) + 1, 6, JasmGui.MUTED, false);
+        }
     }
 
-    private int maxScroll() { return Math.max(0, menu.machines().size() - ROWS); }
-
-    private boolean onScrollBar(double x, double y) {
-        return x >= leftPos + SCROLL_X && x < leftPos + SCROLL_X + 8
-                && y >= topPos + LIST_Y && y < topPos + LIST_Y + ROWS * ROW_HEIGHT;
+    private static Component recipeCount(int count) {
+        return count == 1 ? Component.translatable("screen.jasm.port.recipe_count_one")
+                : Component.translatable("screen.jasm.port.recipe_count", count);
     }
 
-    private void scrollToMouse(double y) {
-        double fraction = Math.clamp((y - topPos - LIST_Y - HANDLE_HEIGHT / 2.0)
-                / (ROWS * ROW_HEIGHT - HANDLE_HEIGHT), 0.0, 1.0);
-        scroll = (int) Math.round(fraction * maxScroll());
+    // --- input ---
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (renameWindow.isOpen() && renameWindow.keyPressed(event)) {
+            renameKey.setLatched(renameWindow.isOpen());
+            return true;
+        }
+        // Escape shuts the Deck Link window first, then the screen.
+        if (linkWindow.isOpen() && event.isEscape()) {
+            linkWindow.close();
+            link.setLatched(false);
+            return true;
+        }
+        if (search.isFocused() && !event.isEscape()) {
+            search.keyPressed(event);
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (renameWindow.isOpen() && renameWindow.charTyped(event)) return true;
+        return super.charTyped(event);
     }
 
     @Override
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
-        if (!linkWindow.contains(x, y) && x >= leftPos + LIST_X && x < leftPos + SCROLL_X + 8
-                && y >= topPos + LIST_Y && y < topPos + LIST_Y + ROWS * ROW_HEIGHT) {
-            scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, maxScroll());
+        if (renameWindow.contains(x, y) || linkWindow.contains(x, y)) return true;
+        int step = (int) Math.signum(scrollY);
+        if (!folded() && x >= leftPos + GRID_X && x < leftPos + LIST_SCROLL_X + 10 && y >= topPos + GRID_Y && y < topPos + GRID_Y + ROWS * 18) {
+            listRow = Math.clamp(listRow - step, 0, listMax());
             return true;
         }
         return super.mouseScrolled(x, y, scrollX, scrollY);
@@ -318,24 +739,58 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (linkWindow.contains(event.x(), event.y())) {
+        double x = event.x();
+        double y = event.y();
+        if (renameWindow.contains(x, y)) {
+            renameWindow.mouseClicked(event, doubleClick);
+            renameKey.setLatched(renameWindow.isOpen());
+            return true;
+        }
+        if (linkWindow.contains(x, y)) {
             return linkWindow.mouseClicked(event, doubleClick) || super.mouseClicked(event, doubleClick);
         }
-        if (onScrollBar(event.x(), event.y()) && maxScroll() > 0) {
-            draggingHandle = true;
-            scrollToMouse(event.y());
+        if (menu.getCarried().isEmpty()) {
+            int listed = listIndexAt(x, y);
+            if (listed >= 0) {
+                ProcessingCard card = shown().get(listed);
+                if (activeSet().contains(card)) return true;
+                if (full()) {
+                    fullNoticeUntil = Util.getMillis() + FULL_NOTICE_MS;
+                } else {
+                    ClientPacketDistributor.sendToServer(new CraftPayloads.PortRecipe(menu.containerId, card, true));
+                }
+                return true;
+            }
+            int served = activeIndexAt(x, y);
+            if (served >= 0) {
+                ClientPacketDistributor.sendToServer(new CraftPayloads.PortRecipe(menu.containerId, menu.active().get(served).recipe(), false));
+                return true;
+            }
+        }
+        if (!folded() && onTrack(LIST_SCROLL_X, GRID_Y, ROWS * 18, x, y) && listMax() > 0) {
+            draggingList = true;
+            dragTo(y);
             return true;
         }
         return super.mouseClicked(event, doubleClick);
     }
 
+    private boolean onTrack(int trackX, int trackY, int height, double x, double y) {
+        return x >= leftPos + trackX - 1 && x < leftPos + trackX + 11 && y >= topPos + trackY && y < topPos + trackY + height;
+    }
+
+    private void dragTo(double y) {
+        double fraction = Math.clamp((y - topPos - GRID_Y - KNOB / 2.0) / (ROWS * 18 - KNOB), 0.0, 1.0);
+        listRow = (int) Math.round(fraction * listMax());
+    }
+
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
-        if (linkWindow.mouseDragged(event, width, height)) {
+        if (linkWindow.mouseDragged(event, width, height) || renameWindow.mouseDragged(event, width, height)) {
             return true;
         }
-        if (draggingHandle) {
-            scrollToMouse(event.y());
+        if (draggingList) {
+            dragTo(event.y());
             return true;
         }
         return super.mouseDragged(event, dx, dy);
@@ -343,11 +798,11 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (linkWindow.mouseReleased()) {
+        if (linkWindow.mouseReleased() | renameWindow.mouseReleased()) {
             return true;
         }
-        if (draggingHandle) {
-            draggingHandle = false;
+        if (draggingList) {
+            draggingList = false;
             return true;
         }
         return super.mouseReleased(event);

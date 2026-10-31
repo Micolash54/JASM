@@ -17,7 +17,8 @@ A Recipe Card holds one recipe for autocrafting. Write it at a [Network Encoder]
 
 * An **empty** card has nothing on it. The recipe with an Advanced Logic Chip makes 4.
 * A **filled** card shows what it makes, and what it takes.
-* A card can hold a crafting recipe, or a processing recipe for a machine behind an [Access Port](access-port.md).
+* A card can hold a crafting recipe, or a processing recipe. A processing card names no machine: pick its recipe in the screen of an [Access Port](access-port.md).
+* Cards from older versions that named a port are picked in that port by themselves once their rack has power.
 * A filled card on its own in a crafting grid turns back into an empty one.
 * A card only ever crafts its own recipe. If that recipe is removed or changed (a mod or datapack), the tooltip says **Recipe missing** and the card doesn't craft.
 

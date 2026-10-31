@@ -17,6 +17,7 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
@@ -272,21 +273,6 @@ public final class CraftPayloads {
         }
     }
 
-    /** Server → client: the Access Ports the open terminal can write processing cards for. */
-    public record TerminalMachines(int containerId, List<EncodingTerminalMenu.MachineView> machines) implements CustomPacketPayload {
-        public static final Type<TerminalMachines> TYPE = new Type<>(Jasm.id("terminal_machines"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, TerminalMachines> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.VAR_INT, TerminalMachines::containerId,
-                EncodingTerminalMenu.MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(EncodingTerminalMenu.MAX_MACHINES)),
-                TerminalMachines::machines,
-                TerminalMachines::new);
-
-        @Override
-        public Type<TerminalMachines> type() {
-            return TYPE;
-        }
-    }
-
     /**
      * Server → client: what is on the Deck the viewer of an Encoding Terminal carries (the one in hand, else the first
      * in the inventory), to pick examples from; {@code found} is false when they carry none.
@@ -356,7 +342,7 @@ public final class CraftPayloads {
         }
     }
 
-    /** Server → client: machines touching the open Access Port. */
+    /** Server → client: the kinds of machine touching the open Access Port, with the one it serves marked. */
     public record PortMachines(int containerId, List<AccessPortMenu.MachineView> machines) implements CustomPacketPayload {
         public static final Type<PortMachines> TYPE = new Type<>(Jasm.id("port_machines"));
         public static final StreamCodec<RegistryFriendlyByteBuf, PortMachines> STREAM_CODEC = StreamCodec.composite(
@@ -392,6 +378,60 @@ public final class CraftPayloads {
         public Type<PortName> type() {
             return TYPE;
         }
+    }
+
+    /** Client → server: the open Access Port serves this kind of machine (a block id), one of those touching it. */
+    public record PortMachineType(int containerId, Identifier block) implements CustomPacketPayload {
+        public static final Type<PortMachineType> TYPE = new Type<>(Jasm.id("port_machine_type"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortMachineType> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortMachineType::containerId,
+                Identifier.STREAM_CODEC, PortMachineType::block,
+                PortMachineType::new);
+
+        @Override
+        public Type<PortMachineType> type() {
+            return TYPE;
+        }
+    }
+
+    /**
+     * Server → client: the processing recipes in the Recipe Racks the player may use on the open Access Port's network.
+     * Sent when the screen opens and again only when the racks change.
+     */
+    public record PortRecipes(int containerId, List<ProcessingCard> recipes) implements CustomPacketPayload {
+        public static final Type<PortRecipes> TYPE = new Type<>(Jasm.id("port_recipes"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortRecipes> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortRecipes::containerId,
+                ProcessingCard.STREAM_CODEC.apply(ByteBufCodecs.list(AccessPortMenu.MAX_LISTED)), PortRecipes::recipes,
+                PortRecipes::new);
+
+        @Override
+        public Type<PortRecipes> type() { return TYPE; }
+    }
+
+    /** Server → client: the recipes the open Access Port serves, each marked when no rack holds its card. */
+    public record PortActive(int containerId, List<AccessPortMenu.ActiveRecipe> recipes) implements CustomPacketPayload {
+        public static final Type<PortActive> TYPE = new Type<>(Jasm.id("port_active"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortActive> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortActive::containerId,
+                AccessPortMenu.ActiveRecipe.STREAM_CODEC.apply(ByteBufCodecs.list()), PortActive::recipes,
+                PortActive::new);
+
+        @Override
+        public Type<PortActive> type() { return TYPE; }
+    }
+
+    /** Client → server: the open Access Port starts ({@code add}) or stops serving a recipe. */
+    public record PortRecipe(int containerId, ProcessingCard recipe, boolean add) implements CustomPacketPayload {
+        public static final Type<PortRecipe> TYPE = new Type<>(Jasm.id("port_recipe"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortRecipe> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortRecipe::containerId,
+                ProcessingCard.STREAM_CODEC, PortRecipe::recipe,
+                ByteBufCodecs.BOOL, PortRecipe::add,
+                PortRecipe::new);
+
+        @Override
+        public Type<PortRecipe> type() { return TYPE; }
     }
 
     /** Client → server: open the screen of the server running one of this Deck's jobs. */

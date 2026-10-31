@@ -7,6 +7,7 @@ import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.pool.Material;
@@ -34,6 +35,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -251,7 +253,10 @@ final class JobRunner {
         UNTRIED(PauseReason.NONE),
         DIMENSION(PauseReason.DIMENSION_UPGRADE),
         NO_MATERIAL(PauseReason.NO_MATERIAL),
+        /** The items planned in place of the card's own can't be checked against a machine now. */
         MISSING(PauseReason.NO_MACHINE),
+        /** No port serving the recipe has a machine: the job waits, ingredients kept, until one does. */
+        NO_PORT(PauseReason.NO_PORT),
         UNLOADED(PauseReason.MACHINE_UNLOADED),
         SIDE(PauseReason.MACHINE_SIDE),
         PORT_OFF(PauseReason.PORT_OFF),
@@ -301,16 +306,19 @@ final class JobRunner {
     /** How sending went: how many sets went, and, when the ingredients were there but nothing could go, why. */
     private record Sending(int sent, Wait blocked) {}
 
-    /** Why the machine at {@code at} can't be reached: not loaded, gone, or a grid side that lets nothing in. */
+    /**
+     * Why the machine at {@code at} can't be reached: not loaded, a grid side that lets nothing in, or no machine there
+     * (as good as no port serving the recipe there).
+     */
     private static Wait unreachable(ServerLevel level, @Nullable CableNetwork network, Machines.At at) {
         BlockPos machine = at.port().relative(at.side());
         if (!level.isLoaded(at.port()) || !level.isLoaded(machine)) {
             return Wait.UNLOADED;
         }
         if (Machines.port(level, network, at.port(), at.side()) == null) {
-            return Wait.MISSING;
+            return Wait.NO_PORT;
         }
-        return level.getBlockEntity(machine) instanceof MachineBlockEntity grid && grid.opensToPorts() ? Wait.SIDE : Wait.MISSING;
+        return level.getBlockEntity(machine) instanceof MachineBlockEntity grid && grid.opensToPorts() ? Wait.SIDE : Wait.NO_PORT;
     }
 
     /** A machine a set can go to right now. */
@@ -329,8 +337,9 @@ final class JobRunner {
             int free) {
         CraftingJob.Step step = job.steps.get(stepIndex);
         List<Target> targets = new ArrayList<>();
-        // the first machine that can't be used says why, should none of them take a set
-        Wait problem = card.spots().isEmpty() ? Wait.MISSING : Wait.NONE;
+        // Every port serving the recipe takes sets, each machine of theirs in turn. The first machine that can't be used
+        // says why, should none of them take a set; with none to try at all, no port serves the recipe.
+        Wait problem = Wait.NONE;
         for (Machines.At at : Machines.spots(level, network, card)) {
             AccessPortBlockEntity port = Machines.reach(level, network, at);
             Wait wait = port == null ? unreachable(level, network, at)
@@ -339,9 +348,12 @@ final class JobRunner {
                     : Wait.NONE;
             if (wait == Wait.NONE) {
                 targets.add(new Target(port, at.side()));
-            } else if (problem == Wait.NONE) {
+            } else if (problem == Wait.NONE || problem == Wait.NO_PORT) {
                 problem = wait;
             }
+        }
+        if (targets.isEmpty() && problem == Wait.NONE) {
+            problem = Wait.NO_PORT;
         }
         Map<FluidResource, Long> fluidSet = new HashMap<>();
         Map<MaterialKey, Long> materialSet = new HashMap<>();
@@ -422,7 +434,9 @@ final class JobRunner {
                 step.use(key, n);
             });
             fluidSet.forEach((key, n) -> store.extractFluid(fluids, key, n, false, null));
-            job.sent.add(new CraftingJob.Sent(stepIndex, target.port().getBlockPos(), target.side(), expected, level.getGameTime()));
+            BlockPos machine = target.port().getBlockPos().relative(target.side());
+            job.sent.add(new CraftingJob.Sent(stepIndex, target.port().getBlockPos(), target.side(), expected, level.getGameTime(),
+                    level.getBlockState(machine).getBlock(), target.port().machineName(target.side())));
             out.merge(target.at(), 1L, Long::sum);
             target.port().lock(target.side(), job.id, stepIndex);
             step.left--;
@@ -561,7 +575,7 @@ final class JobRunner {
         if (job.sent.isEmpty()) {
             return false;
         }
-        boolean any = false;
+        boolean any = dropLost(level, job);
         // a port only has allowance now and then, so the "no room" verdict stands until the next time one has
         boolean checked = false;
         boolean[] noRoom = {false};
@@ -614,6 +628,26 @@ final class JobRunner {
             job.noRoom = noRoom[0];
         }
         return any;
+    }
+
+    /**
+     * Stops waiting on sets that can never come back: the Access Port they went through is gone from its loaded spot.
+     * What went in stays in the machine. The job keeps going with the rest and says why for as long as it lasts.
+     * Returns whether any set was dropped. A port in an unloaded spot, or one cut off from the network, may still bring
+     * its set back, so those are waited for.
+     */
+    private static boolean dropLost(ServerLevel level, CraftingJob job) {
+        boolean dropped = job.sent.removeIf(set -> level.isLoaded(set.port) && !portStands(level, set.port, set.side));
+        if (dropped) {
+            job.ended = PauseReason.PORT_GONE;
+        }
+        return dropped;
+    }
+
+    /** Whether an Access Port, block or thin, still stands at {@code pos} for a machine on its {@code side}. */
+    private static boolean portStands(ServerLevel level, BlockPos pos, Direction side) {
+        BlockEntity there = level.getBlockEntity(pos);
+        return there instanceof AccessPortBlockEntity || there instanceof DataCableBlockEntity cable && cable.port(side) != null;
     }
 
     /**

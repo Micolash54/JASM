@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftRule;
 import dev.micolash.jasm.autocraft.PortMemory;
+import dev.micolash.jasm.autocraft.PortSettings;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
 import dev.micolash.jasm.bay.BayRedstone;
@@ -158,9 +159,13 @@ public final class JasmComponents {
     public static final Supplier<DataComponentType<DockedDeck>> DOCKED_DECK = COMPONENTS.registerComponentType(
             "docked_deck", b -> b.persistent(DockedDeck.CODEC).networkSynchronized(DockedDeck.STREAM_CODEC));
 
-    /** The machines a mined Access Port served, so their processing cards find it again when it is placed back on the same network. */
+    /** Left on Access Ports mined in early test builds; read so they still load, never written. */
     public static final Supplier<DataComponentType<PortMemory>> PORT_MEMORY = COMPONENTS.registerComponentType(
             "port_memory", b -> b.persistent(PortMemory.CODEC).networkSynchronized(PortMemory.STREAM_CODEC));
+
+    /** A mined Access Port's machine type, recipes, Blocking Mode and Redstone mode, taken back when it is placed again. */
+    public static final Supplier<DataComponentType<PortSettings>> PORT_SETTINGS = COMPONENTS.registerComponentType(
+            "port_settings", b -> b.persistent(PortSettings.CODEC).networkSynchronized(PortSettings.STREAM_CODEC));
 
     private JasmComponents() {}
 }
