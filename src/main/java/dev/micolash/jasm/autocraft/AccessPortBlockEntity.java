@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
@@ -360,10 +361,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (target == null) return;
         ServerPlayer player = target.player();
         ItemStack deck = target.deck();
-        Set<ItemResource> expected = Jobs.expectedPortReturns(serverLevel, this);
+        Predicate<ItemResource> expected = Jobs.expectedPortReturns(serverLevel, this);
         if (expected == null) return;
         for (int i = 0; i < SLOTS; i++) {
-            if (!items.get(i).isEmpty() && expected.contains(ItemResource.of(items.get(i)))) return;
+            if (!items.get(i).isEmpty() && expected.test(ItemResource.of(items.get(i)))) return;
         }
         var store = WaferStore.get(serverLevel.getServer());
         var storage = DeckStorage.checked(store, deck, player);
@@ -371,14 +372,14 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         var incoming = new LinkedHashMap<ItemResource, Long>();
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
-            if (!stack.isEmpty() && !expected.contains(ItemResource.of(stack)))
+            if (!stack.isEmpty() && !expected.test(ItemResource.of(stack)))
                 incoming.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
         }
         var accepted = storage.depositAmounts(incoming, budget, DeckStorage.Excess.VOID);
         transferred((int) accepted.values().stream().mapToLong(Long::longValue).sum());
         for (int i = 0; i < SLOTS; i++) {
             ItemStack stack = items.get(i);
-            if (stack.isEmpty() || expected.contains(ItemResource.of(stack))) continue;
+            if (stack.isEmpty() || expected.test(ItemResource.of(stack))) continue;
             ItemResource key = ItemResource.of(stack);
             long moved = Math.min(stack.getCount(), accepted.getOrDefault(key, 0L));
             if (moved > 0) {

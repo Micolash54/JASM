@@ -7,9 +7,11 @@ import dev.micolash.jasm.storage.WaferStore;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -102,9 +104,13 @@ final class JobRecovery {
         }
     }
 
-    /** Null means a locked job is unloaded: keep its possible returns until it can be checked. */
-    static @Nullable Set<ItemResource> expectedPortReturns(ServerLevel level, AccessPortBlockEntity port) {
+    /**
+     * What the jobs using {@code port} wait for back through it: the items themselves, and any copy of an item a card
+     * hands back. Null means a locked job is unloaded: keep its possible returns until it can be checked.
+     */
+    static @Nullable Predicate<ItemResource> expectedPortReturns(ServerLevel level, AccessPortBlockEntity port) {
         Set<ItemResource> expected = new HashSet<>();
+        Set<Item> copies = new HashSet<>();
         var state = AutocraftState.get(level.getServer());
         for (UUID id : port.lockedJobs()) {
             var entry = state.job(id).orElse(null);
@@ -116,10 +122,14 @@ final class JobRecovery {
                 return null;
             for (var sent : server.job().sent) {
                 if (sent.port.equals(port.getBlockPos()) && port.lock(sent.side) != null) {
-                    sent.waiting.stream().filter(amount -> !amount.isFluid() && !amount.isMaterial()).forEach(amount -> expected.add(amount.item()));
+                    Set<Item> returned = server.job().returnedItems(sent.step);
+                    sent.waiting.stream().filter(amount -> !amount.isFluid() && !amount.isMaterial()).forEach(amount -> {
+                        expected.add(amount.item());
+                        if (returned.contains(amount.item().getItem())) copies.add(amount.item().getItem());
+                    });
                 }
             }
         }
-        return expected;
+        return key -> expected.contains(key) || !key.isEmpty() && copies.contains(key.getItem());
     }
 }

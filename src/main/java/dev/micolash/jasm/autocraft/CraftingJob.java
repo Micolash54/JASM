@@ -25,6 +25,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.level.block.Block;
@@ -73,20 +74,42 @@ public final class CraftingJob {
                 Card.CODEC.fieldOf("card").forGetter(s -> s.card),
                 Codec.LONG.fieldOf("left").forGetter(s -> s.left),
                 Codec.LONG.fieldOf("total").forGetter(s -> s.total),
-                Use.CODEC.listOf().optionalFieldOf("uses").forGetter(s -> Optional.ofNullable(s.uses).map(Step::list)))
-                .apply(i, (card, left, total, uses) -> new Step(card, left, total, uses.map(Step::map).orElse(null))));
+                Use.CODEC.listOf().optionalFieldOf("uses").forGetter(s -> Optional.ofNullable(s.uses).map(Step::list)),
+                Use.CODEC.listOf().optionalFieldOf("returned", List.of()).forGetter(s -> list(s.returned)))
+                .apply(i, (card, left, total, uses, returned) -> new Step(card, left, total, uses.map(Step::map).orElse(null), map(returned))));
 
         final Card card;
         long left;
         final long total;
         /** What is left of the plan's share, by item; null for a job planned before shares were kept. */
         final @Nullable Map<ItemResource, Long> uses;
+        /**
+         * Copies of the card's returned items that came back from its sets with other data (worn, or without their
+         * name), by item. The step's next sets may use them in place of the card's own copy; nothing else may.
+         */
+        final Map<ItemResource, Long> returned;
 
-        Step(Card card, long left, long total, @Nullable Map<ItemResource, Long> uses) {
+        Step(Card card, long left, long total, @Nullable Map<ItemResource, Long> uses, Map<ItemResource, Long> returned) {
             this.card = card;
             this.left = left;
             this.total = total;
             this.uses = uses;
+            this.returned = returned;
+        }
+
+        /** How many copies of {@code key} came back to the step that it hasn't used again yet. */
+        long returned(ItemResource key) {
+            return returned.getOrDefault(key, 0L);
+        }
+
+        /** Counts {@code amount} of {@code key} as came back to the step, or as used again when negative. */
+        void cameBack(ItemResource key, long amount) {
+            long now = returned(key) + amount;
+            if (now > 0) {
+                returned.put(key, now);
+            } else {
+                returned.remove(key);
+            }
         }
 
         private static List<Use> list(Map<ItemResource, Long> uses) {
@@ -158,9 +181,10 @@ public final class CraftingJob {
                 Codec.LONG.optionalFieldOf("since", 0L).forGetter(s -> s.since),
                 // sets sent before these were kept have neither
                 BuiltInRegistries.BLOCK.byNameCodec().optionalFieldOf("machine").forGetter(s -> Optional.ofNullable(s.machine)),
-                ComponentSerialization.CODEC.optionalFieldOf("machine_name").forGetter(s -> Optional.ofNullable(s.name)))
-                .apply(i, (step, port, side, waiting, since, machine, name) -> new Sent(step, port, side, waiting, since,
-                        machine.orElse(null), name.orElse(null))));
+                ComponentSerialization.CODEC.optionalFieldOf("machine_name").forGetter(s -> Optional.ofNullable(s.name)),
+                Use.CODEC.listOf().optionalFieldOf("copies", List.of()).forGetter(s -> Step.list(s.copies)))
+                .apply(i, (step, port, side, waiting, since, machine, name, copies) -> new Sent(step, port, side, waiting, since,
+                        machine.orElse(null), name.orElse(null), Step.map(copies))));
 
         final int step;
         final BlockPos port;
@@ -173,9 +197,19 @@ public final class CraftingJob {
         /** The machine that took the set, and the name it had then; null on sets saved before they were kept. */
         final @Nullable Block machine;
         final @Nullable Component name;
+        /**
+         * Copies of a returned item that came back for this set with other data, by item. They go to the step for its
+         * next sets once this set is done, so a copy never serves two sets at once.
+         */
+        final Map<ItemResource, Long> copies;
 
         Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
                 @Nullable Component name) {
+            this(step, port, side, waiting, since, machine, name, new LinkedHashMap<>());
+        }
+
+        private Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
+                @Nullable Component name, Map<ItemResource, Long> copies) {
             this.step = step;
             this.port = port.immutable();
             this.side = side;
@@ -183,6 +217,7 @@ public final class CraftingJob {
             this.since = since;
             this.machine = machine;
             this.name = name;
+            this.copies = copies;
         }
 
         /** Counts {@code amount} of {@code key} as arrived. Returns how many of them this set was waiting for. */
@@ -234,6 +269,42 @@ public final class CraftingJob {
 
         long wants(ItemResource key) {
             return wants(new GridKey.Item(key));
+        }
+
+        /**
+         * How many of the returned items this set waits for that {@code key} counts toward as a copy: the same item with
+         * other data, of an item in {@code returned}. The exact item isn't counted here.
+         */
+        long wantsCopy(ItemResource key, Set<Item> returned) {
+            return waiting.stream().filter(a -> copyOf(a, key, returned)).mapToLong(ProcessingCard.Amount::count).sum();
+        }
+
+        /** Counts up to {@code amount} of {@code key} as copies of returned items this set waits for. Returns how many it took. */
+        long arriveCopy(ItemResource key, long amount, Set<Item> returned) {
+            long used = 0;
+            for (int i = 0; i < waiting.size() && used < amount; ) {
+                ProcessingCard.Amount wanted = waiting.get(i);
+                if (!copyOf(wanted, key, returned)) {
+                    i++;
+                    continue;
+                }
+                long n = Math.min(amount - used, wanted.count());
+                used += n;
+                copies.merge(key, n, Long::sum);
+                int rest = (int) (wanted.count() - n);
+                if (rest <= 0) {
+                    waiting.remove(i);
+                } else {
+                    waiting.set(i, wanted.withCount(rest));
+                    i++;
+                }
+            }
+            return used;
+        }
+
+        private static boolean copyOf(ProcessingCard.Amount wanted, ItemResource key, Set<Item> returned) {
+            return !wanted.isFluid() && !wanted.isMaterial() && !key.isEmpty() && returned.contains(key.getItem())
+                    && wanted.item().getItem() == key.getItem() && !wanted.item().equals(key);
         }
     }
 
@@ -333,6 +404,8 @@ public final class CraftingJob {
     private final Map<Integer, Long> machineRetry = new HashMap<>();
     /** Steps a machine turned a planned item away from; not saved. */
     private final Set<Integer> turnedAway = new HashSet<>();
+    /** The items each step's processing card hands back; not saved. */
+    private final Map<Integer, Set<Item>> returnedItems = new HashMap<>();
 
     /** Which item each step makes from copies of itself, if any; not saved. */
     private final Map<Integer, Optional<Growing>> growing = new HashMap<>();
@@ -455,14 +528,25 @@ public final class CraftingJob {
         return turnedAway.contains(step);
     }
 
+    /** Whether a machine turned {@code key} away from used input slot {@code slot} of step {@code step}. */
+    boolean refused(int step, int slot, ItemResource key) {
+        return Boolean.FALSE.equals(accepted.get(new SlotKey(step, -1 - slot, key)));
+    }
+
+    /** The items step {@code index}'s processing card hands back (see {@link ProcessingCard#returnedItems()}); found once. */
+    Set<Item> returnedItems(int index) {
+        return returnedItems.computeIfAbsent(index, i -> i < steps.size() && steps.get(i).card instanceof ProcessingCard card
+                ? card.returnedItems() : Set.of());
+    }
+
     /** A step with no share: it picks from what the job holds, as steps did before shares were kept. */
     static Step step(Card card, long crafts) {
-        return new Step(card, crafts, crafts, null);
+        return new Step(card, crafts, crafts, null, new LinkedHashMap<>());
     }
 
     /** A step of a new job; {@code uses} is every item the plan gave it. */
     static Step step(Card card, long crafts, Map<ItemResource, Long> uses) {
-        return new Step(card, crafts, crafts, new LinkedHashMap<>(uses));
+        return new Step(card, crafts, crafts, new LinkedHashMap<>(uses), new LinkedHashMap<>());
     }
 
     public UUID id() {

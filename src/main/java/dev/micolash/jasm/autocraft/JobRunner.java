@@ -431,7 +431,10 @@ final class JobRunner {
             }
             set.forEach((key, n) -> {
                 store.extract(record, key, n, false, null);
+                // what the plan didn't give the step came from the copies its sets handed back
+                long planned = Math.min(n, step.share(key));
                 step.use(key, n);
+                step.cameBack(key, -Math.min(n - planned, step.returned(key)));
             });
             fluidSet.forEach((key, n) -> store.extractFluid(fluids, key, n, false, null));
             BlockPos machine = target.port().getBlockPos().relative(target.side());
@@ -498,6 +501,9 @@ final class JobRunner {
             long n = input.count();
             ItemResource own = input.item();
             ItemResource pick = own;
+            int slot = i;
+            // an item the machine hands back: any copy of it serves, whatever its wear or data
+            boolean returned = returned(job, stepIndex, own);
             if (step.uses != null && (left(step, using, own) < n || free(record, reserved, keep, using,own) < n)) {
                 List<ItemResource> others = new ArrayList<>();
                 for (ItemResource key : step.uses.keySet()) {
@@ -505,13 +511,26 @@ final class JobRunner {
                         others.add(key);
                     }
                 }
-                if (!others.isEmpty()) {
+                ItemResource copy = !returned ? null : others.stream()
+                        .filter(key -> key.getItem() == own.getItem() && !job.refused(stepIndex, slot, key)).findFirst().orElse(null);
+                if (copy != null) {
+                    pick = copy;
+                } else if (!others.isEmpty()) {
                     MachineRecipes.Match recipe = job.machineRecipe(level, network, stepIndex);
                     if (recipe == null) {
                         unchecked = true;
                     } else if (recipe.opens(i)) {
-                        int slot = i;
                         pick = others.stream().filter(key -> job.takes(level, stepIndex, recipe, slot, key)).findFirst().orElse(own);
+                    }
+                }
+            }
+            if (returned && free(record, reserved, keep, using, pick) < n) {
+                // a copy that came back from one of the step's own sets, worn or without its data
+                for (ItemResource key : step.returned.keySet()) {
+                    if (step.returned(key) - using.getOrDefault(key, 0L) >= n && free(record, reserved, keep, using, key) >= n
+                            && !job.refused(stepIndex, slot, key)) {
+                        pick = key;
+                        break;
                     }
                 }
             }
@@ -522,6 +541,11 @@ final class JobRunner {
             chosen.add(pick.equals(own) ? input : ProcessingCard.Amount.of(pick, (int) n));
         }
         return new Choice(chosen, false);
+    }
+
+    /** Whether step {@code stepIndex}'s card hands {@code item} back after each set. */
+    private static boolean returned(CraftingJob job, int stepIndex, ItemResource item) {
+        return !item.isEmpty() && job.returnedItems(stepIndex).contains(item.getItem());
     }
 
     /** What is left of the step's share of {@code key} once this set's other slots have had theirs. */
@@ -598,8 +622,11 @@ final class JobRunner {
             for (Map.Entry<ItemResource, Long> held : port.intake().entrySet()) {
                 ItemResource key = held.getKey();
                 long wanted = here.stream().mapToLong(s -> s.wants(key)).sum();
-                if (wanted == 0) continue;
-                long taken = port.take(key, alone ? held.getValue() : Math.min(held.getValue(), wanted));
+                // a returned item may come back worn or without its data: such a copy counts, but never past what was sent
+                long copies = here.stream().mapToLong(s -> s.wantsCopy(key, job.returnedItems(s.step))).sum();
+                if (wanted == 0 && copies == 0) continue;
+                long most = alone && wanted > 0 ? held.getValue() : Math.min(held.getValue(), wanted + copies);
+                long taken = port.take(key, most);
                 if (taken <= 0) {
                     continue;
                 }
@@ -612,10 +639,23 @@ final class JobRunner {
                     }
                     left -= set.arrive(key, left);
                 }
+                for (CraftingJob.Sent set : here) {
+                    if (left <= 0) {
+                        break;
+                    }
+                    left -= set.arriveCopy(key, left, job.returnedItems(set.step));
+                }
             }
             any |= pullFluids(port, here, fluids, store);
             checked = true;
             any |= pullMaterials(port, here, level, network, noRoom);
+            for (CraftingJob.Sent set : job.sent) {
+                if (set.done() && set.step < job.steps.size()) {
+                    // the set is over: the copies that came back for it serve the step's next sets
+                    set.copies.forEach(job.steps.get(set.step)::cameBack);
+                    set.copies.clear();
+                }
+            }
             job.sent.removeIf(CraftingJob.Sent::done);
             for (CraftingJob.Sent set : here) {
                 AccessPortBlockEntity.Lock lock = port.lock(set.side);

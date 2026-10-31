@@ -207,10 +207,21 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
             this.card = card;
             MachineRecipes.Match recipe = MachineRecipes.of(level, Machines.located(level, network, card));
             List<ProcessingCard.Amount> inputs = card.usedInputs();
+            Set<Item> returned = card.returnedItems();
             for (int i = 0; i < inputs.size(); i++) {
                 ProcessingCard.Amount input = inputs.get(i);
                 List<GridKey> options = new ArrayList<>();
                 options.add(input.key());
+                if (!input.isFluid() && !input.isMaterial() && returned.contains(input.item().getItem())) {
+                    // an item the machine hands back: any copy of it serves, worn or without its data
+                    for (ItemResource candidate : candidates) {
+                        GridKey key = new GridKey.Item(candidate);
+                        boolean written = inputs.stream().anyMatch(other -> candidate.equals(other.item()));
+                        if (!written && !options.contains(key) && candidate.getItem() == input.item().getItem()) {
+                            options.add(key);
+                        }
+                    }
+                }
                 if (recipe != null && recipe.opens(i)) {
                     for (ItemResource candidate : candidates) {
                         GridKey key = new GridKey.Item(candidate);

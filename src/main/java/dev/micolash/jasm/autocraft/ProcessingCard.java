@@ -3,8 +3,10 @@ package dev.micolash.jasm.autocraft;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.wafer.FluidAmounts;
@@ -13,6 +15,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -300,6 +303,26 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
             }
         }
         return extras;
+    }
+
+    /**
+     * The items the machine hands back: an output after the main one that is the same item as one of the inputs (a
+     * crystal that comes back after each set). Any copy of such an item counts as it, whatever its wear, name or other
+     * data, the way a crafting card treats a returned item. The main output never counts, nor does another item.
+     */
+    public Set<Item> returnedItems() {
+        Set<Item> inputItems = new HashSet<>();
+        for (Amount input : usedInputs()) {
+            if (!input.isFluid() && !input.isMaterial()) inputItems.add(input.item().getItem());
+        }
+        Amount main = main();
+        Set<Item> returned = new HashSet<>();
+        for (Amount extra : extras()) {
+            if (extra.isFluid() || extra.isMaterial()) continue;
+            Item item = extra.item().getItem();
+            if (inputItems.contains(item) && (main.isFluid() || main.isMaterial() || main.item().getItem() != item)) returned.add(item);
+        }
+        return returned;
     }
 
     /** The used input slots, in grid order. */

@@ -4,8 +4,8 @@ import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.network.CableNetwork;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -149,7 +149,7 @@ public final class Jobs {
     }
 
     /** Null means a locked job is unloaded: keep its possible returns until it can be checked. */
-    static @Nullable Set<ItemResource> expectedPortReturns(ServerLevel level, AccessPortBlockEntity port) {
+    static @Nullable Predicate<ItemResource> expectedPortReturns(ServerLevel level, AccessPortBlockEntity port) {
         return JobRecovery.expectedPortReturns(level, port);
     }
 }
