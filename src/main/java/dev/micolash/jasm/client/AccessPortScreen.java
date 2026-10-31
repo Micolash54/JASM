@@ -8,6 +8,7 @@ import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.InputFace;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.config.JasmClientConfig;
+import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.transfer.PortOperations;
@@ -45,7 +46,8 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Access Port's screen. The main panel, always centred, holds the name and power bar, the kinds of machine in range
+ * The Access Port's screen. The main panel, always centred, holds the name and, with a Power Upgrade in, the FE a tick
+ * the port passes on to its machines, the kinds of machine in range
  * (click one to serve it) with the port's state, the recipes it serves (click one to take it off), its incoming items
  * and the inventory. On its left, a list of the processing recipes in the network's Recipe Racks with a search box
  * (click one to serve it); the list folds away to a thin strip. A column on the right holds the side keys (Deck Link,
@@ -595,7 +597,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     /** The port's state for the right end of the machine row, and its colour. */
     private Component status() {
         if (!menu.running()) {
-            return MachineStatusText.noPower(menu.containerId, "screen.jasm.machine.no_power", font, WIDTH / 2);
+            // A port uses no power, so the only thing that stops it is a network over its machine limit.
+            return MachineStatusText.noPower(menu.containerId, "screen.jasm.server.pause.network_full", font, WIDTH / 2);
         }
         if (menu.paused()) return Component.translatable("screen.jasm.bay.status.paused");
         return Component.translatable(menu.locked() ? "screen.jasm.port.in_use_short" : "screen.jasm.port.idle");
@@ -614,7 +617,6 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         frame.draw(graphics, leftPos, topPos);
         JasmGui.divider(graphics, leftPos + KEY_X, topPos + PortUpgradeLayout.dividerY(AccessPortMenu.SIDE_KEYS), JasmGui.SIDE_KEY_WIDTH);
-        JasmGui.bar(graphics, leftPos + BAR_X, topPos + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
         // The Deck Link window draws its own two slots.
         for (var slot : menu.slots) {
             if (slot.isActive() && slot.index != AccessPortMenu.SLOT_DECK_IN && slot.index != AccessPortMenu.SLOT_DECK_OUT) {
@@ -769,14 +771,12 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                 graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.transfer.speed_hint"), mouseX, mouseY);
             }
         }
-        if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH
-                && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
-            graphics.setTooltipForNextFrame(font, List.of(
-                    Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
-                            String.format("%,d", menu.capacity())).getVisualOrderText(),
-                    Component.translatable("screen.jasm.archive.drain", menu.drain())
-                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
-                    mouseX, mouseY);
+        if (menu.hasPowerUpgrade() && mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH
+                && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 8) {
+            List<FormattedCharSequence> lines = new ArrayList<>();
+            lines.add(Component.translatable("screen.jasm.port.power_flow.hover", String.format("%,d", menu.powerFlow())).getVisualOrderText());
+            lines.addAll(font.split(Component.translatable("screen.jasm.port.power_flow.note").withStyle(ChatFormatting.GRAY), 180));
+            graphics.setTooltipForNextFrame(font, lines, mouseX, mouseY);
         }
     }
 
@@ -785,6 +785,15 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         String title = font.plainSubstrByWidth(shownTitle.getString(), BAR_X - 12 - titleLabelX);
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
+        if (menu.hasPowerUpgrade()) {
+            // Where the charge bar used to be: what the port is passing on now, right-aligned to the bar's old end.
+            int flow = menu.powerFlow();
+            Component shown = Component.translatable("screen.jasm.port.power_flow", String.format("%,d", flow));
+            if (font.width(shown) > BAR_WIDTH) {
+                shown = Component.translatable("screen.jasm.port.power_flow", GridEntries.abbreviate(flow));
+            }
+            graphics.text(font, shown, BAR_X + BAR_WIDTH - font.width(shown), BAR_Y, flow > 0 ? JasmGui.TEXT : JasmGui.MUTED, false);
+        }
         graphics.text(font, Component.translatable("screen.jasm.port.machine_row"), 8, MACHINE_Y, JasmGui.SUBTEXT, false);
         if (menu.machines().isEmpty()) {
             graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), machineX(), MACHINE_Y, JasmGui.MUTED, false);

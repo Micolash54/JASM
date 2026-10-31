@@ -24,8 +24,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * A port that lends the block in front of it (a chest, a tank, a cauldron) to the network's storage. A full port lends
  * every such block it touches. It does no work
- * of its own: it pays its standing power use each tick, and the network pool reads the block when a Deck, port or job
- * asks.
+ * of its own and uses no power: the network pool reads the block when a Deck, port or job asks.
  */
 public class StoragePortBlockEntity extends TransferPortBlockEntity {
     // one store per lent face, rebuilt only when the faces change
@@ -71,7 +70,7 @@ public class StoragePortBlockEntity extends TransferPortBlockEntity {
     }
 
     public boolean storeActive(Direction side) {
-        return installed() && running() && !networkBlocked() && level != null && works(side)
+        return installed() && !stopped() && !networkBlocked() && level != null && works(side)
                 && level.isLoaded(worldPosition.relative(side));
     }
 
@@ -91,7 +90,7 @@ public class StoragePortBlockEntity extends TransferPortBlockEntity {
 
     @Override
     public void tickTransfer() {
-        payForTick();
+        checkStopped();
     }
 
     @Override

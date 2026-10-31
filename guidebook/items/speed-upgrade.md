@@ -12,7 +12,7 @@ item_ids:
 
 <ItemImage id="speed_upgrade" scale="4" />
 
-Makes a port, a bay, the Crystal Foundry or the Chip Workshop work faster. The same job costs more power the faster it goes: twice as fast, twice the power.
+Makes a port, a bay, the Crystal Foundry or the Chip Workshop work faster. In a machine that uses power, the same job costs more the faster it goes: twice as fast, twice the power. Ports use no power, with or without them.
 
 * All of them have five upgrade slots, and a machine takes at most four Speed Upgrades. The other slots are for other upgrades, like the [Redstone Upgrade](redstone-upgrade.md).
 * A port with four of them moves 96 items every operation, up from 1. See [item ports](item-ports.md) and the [Access Port](access-port.md).

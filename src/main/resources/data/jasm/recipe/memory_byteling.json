@@ -2,8 +2,8 @@
   "type": "jasm:evolve",
   "key": {
     "C": "jasm:advanced_memory_chip",
-    "B": "jasm:memory_nibbling",
-    "N": "minecraft:netherite_scrap"
+    "N": "minecraft:netherite_ingot",
+    "B": "jasm:memory_nibbling"
   },
   "pattern": [
     "CNC",

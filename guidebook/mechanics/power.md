@@ -28,6 +28,7 @@ Most JASM blocks run on FE.
 * [Data Cables](../items/data-cables.md) carry it through a network, as fast as it comes in.
 * A machine that touches a generator needs no cable.
 * Machines don't pass power on to each other. Each one needs a cable, a generator or a Power Interface touching it.
+* Ports use no power. A port with a [Power Upgrade](../items/power-upgrade.md) passes power straight on to its machines.
 
 <br />
 <br />
@@ -39,7 +40,6 @@ Most JASM blocks run on FE.
 | Recipe Rack | 2 FE a tick |
 | Crafting Server | what its Processors use, only while it has a job |
 | Advanced Crafting Server | what its Processors use, only while it has a job |
-| Access Port | 2 FE a tick |
 | Network Brain | 8 FE a tick alone, 24 with one floor, up to 5,000 with 8 floors |
 | Crystal Resonator | 10 FE a tick |
 | Crystal Foundry | 40 FE a tick while it grows |

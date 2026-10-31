@@ -112,6 +112,8 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     protected PortOperations.Saving saving() { return takesPushes() ? PortOperations.Saving.PUSHES : PortOperations.Saving.NONE; }
     @Override
     protected boolean canPowerSide(Direction side) { return works(side); }
+    @Override
+    protected List<Direction> powerFaces() { return face != null ? ownFace : List.of(Direction.values()); }
 
     @Override
     protected boolean shownAsMachine(Direction side) { return full() && served.contains(side); }
@@ -223,11 +225,10 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     }
 
     public void tickTransfer() {
-        payForTick();
-        sendPower();
+        checkStopped();
         processDeckLink();
         tickIntake();
-        if (!(level instanceof ServerLevel world) || !running() || networkBlocked()) return;
+        if (!(level instanceof ServerLevel world) || stopped() || networkBlocked()) return;
         if (redstonePaused()) return;
         int budget = transferBudget();
         // The Crafting Upgrade looks once a second, each port on its own tick.

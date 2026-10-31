@@ -69,7 +69,6 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | --- | --- | --- |
 | Encoder drain (FE/t) | `terminalDrain` | FE a Network Encoder uses each tick. |
 | Rack drain (FE/t) | `rackDrain` | FE a Recipe Rack uses each tick. |
-| Port drain (FE/t) | `portDrain` | FE an Access Port uses each tick. |
 | Basic Processor use (FE/t) | `basicProcessorDrain` | FE a Basic Processor uses each tick while its server has a job. |
 | Adv. Processor use (FE/t) | `advancedProcessorDrain` | FE an Advanced Processor uses each tick while its server has a job. |
 | Elite Processor use (FE/t) | `eliteProcessorDrain` | FE an Elite Processor uses each tick while its server has a job. |

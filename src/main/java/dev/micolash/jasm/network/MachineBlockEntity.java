@@ -2,6 +2,7 @@ package dev.micolash.jasm.network;
 
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,6 +20,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -222,6 +224,16 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
 
     public SimpleEnergyHandler energy() {
         return energy;
+    }
+
+    /** What a power source touching the block hands power to: its own buffer, unless the block passes power on. */
+    public EnergyHandler powerIn() {
+        return energy();
+    }
+
+    /** What a cable of its network hands power to, each fed its own share: the block's buffer, unless it passes power on. */
+    public List<? extends EnergyHandler> powerInlets() {
+        return List.of(energy());
     }
 
     public int capacity() {

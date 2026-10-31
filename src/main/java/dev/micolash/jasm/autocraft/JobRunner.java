@@ -343,7 +343,7 @@ final class JobRunner {
         for (Machines.At at : Machines.spots(level, network, card)) {
             AccessPortBlockEntity port = Machines.reach(level, network, at);
             Wait wait = port == null ? unreachable(level, network, at)
-                    : !port.running() || port.networkBlocked() || port.redstonePaused() ? Wait.PORT_OFF
+                    : port.stopped() || port.networkBlocked() || port.redstonePaused() ? Wait.PORT_OFF
                     : !port.freeFor(at.side(), job.id, stepIndex) ? Wait.IN_USE
                     : Wait.NONE;
             if (wait == Wait.NONE) {

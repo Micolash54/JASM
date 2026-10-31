@@ -67,6 +67,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public static final int MAX_LISTED = 1_024;
     /** Ticks between two looks at the racks while the screen is open. */
     private static final int RACKS_EVERY = 20;
+    public static final int SLOT_POWER = 0;
     public static final int SLOT_BUFFER = 1;
     public static final int SLOT_DECK_IN = SLOT_BUFFER + AccessPortBlockEntity.BUFFER_SLOTS;
     public static final int SLOT_DECK_OUT = SLOT_DECK_IN + 1;
@@ -75,8 +76,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public static final int TOGGLE_BLOCKING = 1;
     public static final int CYCLE_REDSTONE = 2;
 
-    static final int DATA_ENERGY_LOW = 0;
-    static final int DATA_ENERGY_HIGH = 1;
+    static final int DATA_FLOW_LOW = 0;
+    static final int DATA_FLOW_HIGH = 1;
     static final int DATA_RUNNING = 2;
     static final int DATA_LOCKED = 3;
     static final int DATA_DEFAULT_DECK = 4;
@@ -84,8 +85,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     static final int DATA_BLOCKING = 6;
     static final int DATA_PAUSED = 7;
     static final int DATA_REDSTONE = 8;
-    static final int DATA_DRAIN = 9;
-    public static final int DATA_COUNT = 10;
+    public static final int DATA_COUNT = 9;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -515,16 +515,14 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         }
     }
 
-    public int energy() {
-        return ContainerWords.join(data.get(DATA_ENERGY_HIGH), data.get(DATA_ENERGY_LOW));
+    /** FE a tick the Power Upgrade passes on to the port's machines, averaged over the last second. */
+    public int powerFlow() {
+        return ContainerWords.join(data.get(DATA_FLOW_HIGH), data.get(DATA_FLOW_LOW));
     }
 
-    public int drain() {
-        return data.get(DATA_DRAIN);
-    }
-
-    public int capacity() {
-        return AccessPortBlockEntity.CAPACITY;
+    /** Whether the port holds a Power Upgrade. */
+    public boolean hasPowerUpgrade() {
+        return getSlot(SLOT_POWER).getItem().is(JasmItems.POWER_UPGRADE.get());
     }
 
     public boolean running() {

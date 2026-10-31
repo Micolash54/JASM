@@ -25,7 +25,7 @@ public final class PowerReceiver implements EnergyHandler {
 
     public static @Nullable PowerReceiver of(BlockEntity entity) {
         if (entity instanceof DataCableBlockEntity cable) return new PowerReceiver(cable, null);
-        if (entity instanceof MachineBlockEntity machine) return new PowerReceiver(machine, machine.energy());
+        if (entity instanceof MachineBlockEntity machine) return new PowerReceiver(machine, machine.powerIn());
         if (entity instanceof ArchiveBlockEntity archive) return new PowerReceiver(archive, archive.energy());
         if (entity instanceof BatteryBlockEntity battery) return new PowerReceiver(battery, battery.groupEnergy());
         return null;

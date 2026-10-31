@@ -149,7 +149,7 @@ final class PortIntake {
 
     /** Fluid a push handed over that found no room when it was stored, tried again once a second. */
     void storeHeldFluids() {
-        if (heldFluids.isEmpty() || port.stopped() || !port.running() || port.networkBlocked() || port.redstonePaused()) return;
+        if (heldFluids.isEmpty() || port.stopped() || port.networkBlocked() || port.redstonePaused()) return;
         for (FluidResource fluid : List.copyOf(heldFluids.keySet())) {
             Long amount = heldFluids.remove(fluid);
             long left = amount == null ? 0 : storeFluid(null, fluid, amount);

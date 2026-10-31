@@ -69,10 +69,6 @@ public final class JasmConfig {
             .comment("FE a Recipe Rack uses each tick")
             .defineInRange("rackDrain", 2, 0, 1_000_000);
 
-    public static final ModConfigSpec.IntValue PORT_DRAIN = BUILDER
-            .comment("FE an Access Port uses each tick")
-            .defineInRange("portDrain", 2, 0, 1_000_000);
-
     public static final ModConfigSpec.IntValue PROCESSOR_DRAIN_BASIC = BUILDER
             .comment("FE a Basic Processor uses each tick while its server has a job")
             .defineInRange("basicProcessorDrain", 10, 0, 1_000_000);

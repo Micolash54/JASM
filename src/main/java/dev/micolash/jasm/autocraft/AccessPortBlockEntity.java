@@ -3,7 +3,6 @@ package dev.micolash.jasm.autocraft;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
-import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -65,12 +64,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
-import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -91,7 +90,6 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public static final int DECK_OUT = DECK_IN + 1;
     public static final int SPEED_START = DECK_OUT + 1;
     public static final int INVENTORY_SIZE = SPEED_START + PortOperations.UPGRADE_SLOTS;
-    public static final int CAPACITY = 5_000;
     /** Most processing recipes one port serves. */
     public static final int MAX_RECIPES = 16;
     private static final int[] BUFFER = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -129,13 +127,17 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** What machines, hoppers and pipes push in. */
     private final PortIntake intake = new PortIntake(this);
+    /** How the Power Upgrade passes power on: the port itself holds none. */
+    private final PortPower power = new PortPower(this);
+    /** What other mods' machines take power through, one per side, made when first needed. */
+    private final @Nullable BlockCapabilityCache<EnergyHandler, @Nullable Direction>[] energyCaps = newCaches();
 
     private final ContainerData data = new ContainerData() {
         @Override
         public int get(int index) {
             return switch (index) {
-                case AccessPortMenu.DATA_ENERGY_LOW -> ContainerWords.low(energy.getAmountAsInt());
-                case AccessPortMenu.DATA_ENERGY_HIGH -> ContainerWords.high(energy.getAmountAsInt());
+                case AccessPortMenu.DATA_FLOW_LOW -> ContainerWords.low(powerFlow());
+                case AccessPortMenu.DATA_FLOW_HIGH -> ContainerWords.high(powerFlow());
                 case AccessPortMenu.DATA_RUNNING -> running() ? 1 : 0;
                 case AccessPortMenu.DATA_LOCKED -> locks.size();
                 case AccessPortMenu.DATA_DEFAULT_DECK -> defaultDeck() ? 1 : 0;
@@ -143,7 +145,6 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_BLOCKING -> blockingMode ? 1 : 0;
                 case AccessPortMenu.DATA_PAUSED -> redstonePaused() ? 1 : 0;
                 case AccessPortMenu.DATA_REDSTONE -> redstoneMode.ordinal();
-                case AccessPortMenu.DATA_DRAIN -> drainPerTick();
                 default -> 0;
             };
         }
@@ -158,16 +159,20 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     };
 
     public AccessPortBlockEntity(BlockPos pos, BlockState state) {
-        super(JasmBlocks.ACCESS_PORT_ENTITY.get(), pos, state, CAPACITY);
+        super(JasmBlocks.ACCESS_PORT_ENTITY.get(), pos, state, 0);
     }
 
     protected AccessPortBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
-        super(type, pos, state, CAPACITY);
+        super(type, pos, state, 0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static @Nullable BlockCapabilityCache<EnergyHandler, @Nullable Direction>[] newCaches() {
+        return new BlockCapabilityCache[SIDES.length];
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
-        port.payForTick();
-        port.sendPower();
+        port.checkStopped();
         port.processDeckLink();
         port.forwardItems();
         port.tickIntake();
@@ -222,7 +227,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     private boolean working() {
-        return level != null && running() && !networkBlocked() && !redstonePaused();
+        return level != null && !stopped() && !networkBlocked() && !redstonePaused();
     }
 
     /** What the port's own work may move now. */
@@ -354,7 +359,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** Items a processing job still expects stay here for its server to collect first. */
     private void forwardItems() {
-        if (!(level instanceof ServerLevel serverLevel) || stopped() || !running() || networkBlocked()) return;
+        if (!(level instanceof ServerLevel serverLevel) || stopped() || networkBlocked()) return;
         int budget = transferBudget();
         if (budget <= 0) return;
         DeckTarget target = deckTarget(serverLevel);
@@ -402,33 +407,66 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return machineType != null && blockAt(side) == machineType;
     }
 
+    /** The sides the Power Upgrade may ever reach: every side of a full port, the mounted face of a thin one. */
+    protected List<Direction> powerFaces() {
+        Direction face = face();
+        return face == null ? List.of(SIDES) : List.of(face);
+    }
+
     /**
-     * The upgrade sends spare charge to the machines of the kind the port serves, even without a crafting job: other
-     * mods' machines and JASM ones alike. Without the upgrade a port passes no power on at all.
+     * What the Power Upgrade hands power to on {@code side} right now, or null: the machine there if it is of the kind
+     * the port serves, other mods' machines and JASM ones alike, even without a crafting job. Nothing without the upgrade,
+     * while the network is blocked or over its machine limit, or where the block isn't loaded. Redstone doesn't stop it.
      */
-    protected void sendPower() {
-        if (level == null || networkBlocked() || !hasPowerUpgrade() || stopped()) return;
-        settleType(false);
-        for (Direction side : Direction.values()) {
-            int available = energy.getAmountAsInt() - drainPerTick();
-            if (available <= 0) return;
-            if (!canPowerSide(side)) continue;
-            BlockPos targetPos = worldPosition.relative(side);
-            if (!level.isLoaded(targetPos)) continue;
-            var targetBlock = level.getBlockState(targetPos).getBlock();
-            var entity = level.getBlockEntity(targetPos);
-            // Cables hold no power and power sources take none.
-            if (targetBlock instanceof DataCableBlock || entity instanceof NetworkPowerSource) continue;
-            // JASM machines and Archives show other mods no power input, so they are handed it directly.
-            EnergyHandler target = entity instanceof MachineBlockEntity machine ? machine.energy()
-                    : entity instanceof ArchiveBlockEntity archive ? archive.energy()
-                    : level.getCapability(Capabilities.Energy.BLOCK, targetPos, side.getOpposite());
-            if (target == null) continue;
-            try (Transaction tx = Transaction.openRoot()) {
-                int accepted = target.insert(available, tx);
-                if (accepted > 0 && energy.extract(accepted, tx) == accepted) tx.commit();
-            }
+    @Nullable EnergyHandler powerTarget(Direction side) {
+        if (!(level instanceof ServerLevel serverLevel) || !passesPower()) {
+            return null;
         }
+        settleType(false);
+        if (!canPowerSide(side)) return null;
+        BlockPos targetPos = worldPosition.relative(side);
+        if (!level.isLoaded(targetPos)) return null;
+        var entity = level.getBlockEntity(targetPos);
+        // Cables hold no power and power sources take none.
+        if (level.getBlockState(targetPos).getBlock() instanceof DataCableBlock || entity instanceof NetworkPowerSource) return null;
+        // JASM machines and Archives show other mods no power input, so they are handed it directly. Another port holds
+        // no power, so ports never pass it to each other.
+        if (entity instanceof MachineBlockEntity machine) return machine.energy();
+        if (entity instanceof ArchiveBlockEntity archive) return archive.energy();
+        var cache = energyCaps[side.ordinal()];
+        if (cache == null) {
+            cache = BlockCapabilityCache.create(Capabilities.Energy.BLOCK, serverLevel, targetPos, side.getOpposite());
+            energyCaps[side.ordinal()] = cache;
+        }
+        return cache.getCapability();
+    }
+
+    /** Whether the Power Upgrade passes power on at all: it is in, and the network is neither blocked nor over its limit. */
+    boolean passesPower() {
+        return level != null && !isRemoved() && !networkBlocked() && !stopped() && hasPowerUpgrade();
+    }
+
+    /** A source touching the port hands power straight on to its machines. */
+    @Override
+    public EnergyHandler powerIn() {
+        return power.whole();
+    }
+
+    /** The cables hand power to each machine side on its own, so short supply is split evenly between them. */
+    @Override
+    public List<? extends EnergyHandler> powerInlets() {
+        return power.inlets();
+    }
+
+    /** FE a tick the Power Upgrade passed on to the machines, averaged over the last second. */
+    public int powerFlow() {
+        return power.flow();
+    }
+
+    /** A port uses no power of its own: it works unless its network is over the machine limit. */
+    @Override
+    public boolean running() {
+        return !stopped();
     }
 
     @Override
@@ -443,7 +481,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public int drainPerTick() {
-        return SpeedUpgradeItem.power(JasmConfig.PORT_DRAIN.getAsInt(), speedUpgrades());
+        return 0;
     }
 
     public boolean installed() {
@@ -935,9 +973,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         releaseHeldFluids();
     }
 
-    /** Items can enter the buffer even while the port is idle or unpowered. */
+    /** Items can enter the buffer even while the port is idle or stopped. */
     public boolean open() {
-        return acceptsOrdinaryItems() || !locks.isEmpty() && running();
+        return acceptsOrdinaryItems() || !locks.isEmpty() && !stopped();
     }
 
     @Override

@@ -19,7 +19,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
-import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
@@ -33,8 +32,8 @@ import org.jspecify.annotations.Nullable;
  * entities sit where, which cables touch, which machines are of which kind) is kept and reused every tick.
  */
 public final class CableNetwork {
-    /** A loaded block of the network that isn't a cable, with its power buffer if it has one. */
-    private record Member(BlockPos pos, BlockEntity entity, @Nullable SimpleEnergyHandler energy) {}
+    /** A loaded block of the network that isn't a cable, with what power is handed to (none for most blocks). */
+    private record Member(BlockPos pos, BlockEntity entity, List<? extends EnergyHandler> inlets) {}
 
     private final ServerLevel level;
     private final Set<BlockPos> cables;
@@ -114,10 +113,10 @@ public final class CableNetwork {
                 if (!level.isLoaded(pos)) continue;
                 BlockEntity entity = level.getBlockEntity(pos);
                 if (entity == null) continue;
-                SimpleEnergyHandler energy = entity instanceof MachineBlockEntity machine
-                        ? machine.energy()
-                        : entity instanceof ArchiveBlockEntity archive ? archive.energy() : null;
-                Member member = new Member(pos, entity, energy);
+                List<? extends EnergyHandler> inlets = entity instanceof MachineBlockEntity machine
+                        ? machine.powerInlets()
+                        : entity instanceof ArchiveBlockEntity archive ? List.of(archive.energy()) : List.of();
+                Member member = new Member(pos, entity, inlets);
                 found.add(member);
                 byPos.put(pos, member);
             }
@@ -268,24 +267,7 @@ public final class CableNetwork {
 
     /** An equal part to each that still has room first, and the rest to whoever can take it. */
     private int spread(List<EnergyHandler> targets, int amount, TransactionContext transaction) {
-        int wanting = 0;
-        for (EnergyHandler target : targets) {
-            if (target.getAmountAsLong() < target.getCapacityAsLong()) wanting++;
-        }
-        if (wanting == 0) {
-            return 0;
-        }
-        // Whoever starts goes round, so the odd FE left over doesn't always land on the same block.
-        int start = (int) Math.floorMod(level.getGameTime(), (long) targets.size());
-        int share = Math.max(1, amount / wanting);
-        int taken = 0;
-        for (int i = 0; i < targets.size() && taken < amount; i++) {
-            taken += targets.get((start + i) % targets.size()).insert(Math.min(share, amount - taken), transaction);
-        }
-        for (int i = 0; i < targets.size() && taken < amount; i++) {
-            taken += targets.get((start + i) % targets.size()).insert(amount - taken, transaction);
-        }
-        return taken;
+        return PowerShare.spread(targets, amount, level.getGameTime(), transaction);
     }
 
     /** The Battery blocks touching the network's cables, found with the machines. A port's face gives a battery nothing. */
@@ -295,8 +277,9 @@ public final class CableNetwork {
     }
 
     /**
-     * Machines and Archives touching a cable, and the ports on cables. Each buffer once. Found once and kept. A block in
-     * front of a port gets nothing from here: only a port with a Power Upgrade passes power on to it.
+     * Machines and Archives touching a cable, and the ports on cables. Each buffer once. Found once and kept. A port holds
+     * no power: it is here as one target per side it may power, each working out its room as it is asked, so the list
+     * stays right when the port's machines or upgrade change.
      */
     private List<EnergyHandler> consumers() {
         if (consumers == null) {
@@ -308,7 +291,9 @@ public final class CableNetwork {
                 for (Direction side : Direction.values()) {
                     var port = cable.port(side);
                     if (port != null) {
-                        if (seen.add(port.energy())) found.add(port.energy());
+                        for (EnergyHandler inlet : port.powerInlets()) {
+                            if (seen.add(inlet)) found.add(inlet);
+                        }
                         continue;
                     }
                     // What is in front of a thin acceptor is the acceptor's to trade with, not the cable's to feed.
@@ -319,8 +304,11 @@ public final class CableNetwork {
                         continue;
                     }
                     // Two chambers of one floor both hand over to their brain: count it once.
-                    SimpleEnergyHandler target = machines.contains(next) ? energyAt(next) : null;
-                    if (target != null && seen.add(target)) found.add(target);
+                    if (machines.contains(next)) {
+                        for (EnergyHandler target : inletsAt(next)) {
+                            if (seen.add(target)) found.add(target);
+                        }
+                    }
                 }
             }
             consumers = Collections.unmodifiableList(found);
@@ -333,8 +321,8 @@ public final class CableNetwork {
         return level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? cable : null;
     }
 
-    private @Nullable SimpleEnergyHandler energyAt(BlockPos pos) {
+    private List<? extends EnergyHandler> inletsAt(BlockPos pos) {
         Member member = memberAt(pos);
-        return member == null ? null : member.energy();
+        return member == null ? List.of() : member.inlets();
     }
 }
