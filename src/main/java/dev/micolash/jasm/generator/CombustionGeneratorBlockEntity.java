@@ -78,6 +78,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
                 case CombustionGeneratorMenu.DATA_CAPACITY_LOW -> ContainerWords.low(tier.capacity());
                 case CombustionGeneratorMenu.DATA_CAPACITY_HIGH -> ContainerWords.high(tier.capacity());
                 case CombustionGeneratorMenu.DATA_POTENTIAL -> tier.fePerTick();
+                case CombustionGeneratorMenu.DATA_SWITCHED_OFF -> Feature.GENERATORS.on() && !switchedOn() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -120,11 +121,16 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
         }
     }
 
+    /** Whether this world lets this generator run: the Elite one has its own switch on top of the generators one. */
+    public boolean switchedOn() {
+        return (tier == GeneratorTier.ELITE ? Feature.ELITE_GENERATOR : Feature.GENERATORS).on();
+    }
+
     /** One tick of burning. Starts the next fuel item only when the buffer has room for what it makes. */
     public void burn(ServerLevel level) {
         int rate = tier.fePerTick();
         lastOutput = 0;
-        if (!Feature.GENERATORS.on()) {
+        if (!switchedOn()) {
             return;
         }
         if (tier.capacity() - energy.getAmountAsInt() < rate) {

@@ -52,7 +52,7 @@ The old generator is used up. The new one keeps its stored power.
 <br />
 ## Recipes
 
-A server can turn off the Elite recipe. Elite generators already placed keep working.
+A server can turn off the Elite generator. Elite generators already placed don't burn, and keep their fuel and charge.
 
 <Column>
   <Row>
