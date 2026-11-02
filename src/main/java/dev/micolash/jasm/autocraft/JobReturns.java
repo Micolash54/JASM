@@ -22,6 +22,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
@@ -32,8 +33,13 @@ final class JobReturns {
     /** Requested products can leave during a job; ingredients and other products stay until it ends. */
     static boolean deliverTarget(ServerLevel level, CraftingServerBlockEntity server, CraftingJob job, WaferRecord record, WaferStore store) {
         if (job.target == null) return false;
-        ItemResource target = ItemResource.of(job.target.create());
-        long available = record.count(target) - targetNeeded(level, job, target);
+        ItemStack made = job.target.create();
+        ItemResource target = ItemResource.of(made);
+        // a job asked for a fluid keeps it with its other fluids
+        FluidResource fluid = FluidMarkerItem.fluidOf(made);
+        WaferRecord fluids = fluid == null ? null : JobRunner.fluidRecord(store, job);
+        long available = fluid == null ? record.count(target) - targetNeeded(level, job, target)
+                : fluids == null ? 0 : fluids.countFluid(fluid) - fluidNeeded(job, fluid);
         if (available <= 0) return false;
         DeckReach reach = DeckReach.find(level.getServer(), job.requester, job.deck);
         if (reach == null) return false;
@@ -42,6 +48,8 @@ final class JobReturns {
         if (!DeckItem.worksIn(deck, player.level()) || !DeckItem.worksIn(deck, level)
                 || !JobPlanning.onDeckNetwork(deck, level, server.getBlockPos()))
             return false;
+        // Fluids never go into an inventory: they go onto the Deck's fluid wafers.
+        if (fluid != null) return moveFluidsToDeck(player, deck, fluids, store, Map.of(fluid, available)) > 0;
         Map<ItemResource, Long> products = Map.of(target, available);
         if (!job.toPlayer) return moveToDeck(player, deck, record, store, products) > 0;
         ServerPlayer requester = inventoryOf(level, job, reach);
@@ -75,6 +83,20 @@ final class JobReturns {
         return needed;
     }
 
+    /** The fluid that crafts still to start take in, kept back while the job crafts. */
+    static long fluidNeeded(CraftingJob job, FluidResource fluid) {
+        if (job.phase != CraftingJob.Phase.CRAFTING) return 0;
+        long needed = 0;
+        for (CraftingJob.Step step : job.steps) {
+            if (step.left <= 0 || !(step.card instanceof ProcessingCard card)) continue;
+            long perCraft = card.usedInputs().stream().filter(input -> input.isFluid() && input.fluid().equals(fluid))
+                    .mapToLong(ProcessingCard.Amount::count).sum();
+            if (perCraft > 0 && step.left > (Long.MAX_VALUE - needed) / perCraft) return Long.MAX_VALUE;
+            needed += step.left * perCraft;
+        }
+        return needed;
+    }
+
     static long moveToDeck(ServerPlayer player, ItemStack deck, WaferRecord record, WaferStore store, Map<ItemResource, Long> items) {
         var storage = DeckStorage.checked(store, deck, player);
         long moved = 0;
@@ -87,9 +109,14 @@ final class JobReturns {
 
     /** Moves the job's fluids onto the Deck's fluid wafers, as far as they have room and the Deck has charge. Returns the millibuckets moved. */
     static long moveFluidsToDeck(ServerPlayer player, ItemStack deck, WaferRecord fluids, WaferStore store) {
+        return moveFluidsToDeck(player, deck, fluids, store, new LinkedHashMap<>(fluids.fluids()));
+    }
+
+    /** As above, up to the given amounts. */
+    static long moveFluidsToDeck(ServerPlayer player, ItemStack deck, WaferRecord fluids, WaferStore store, Map<FluidResource, Long> amounts) {
         var storage = DeckStorage.checked(store, deck, player);
         long moved = 0;
-        for (var held : List.copyOf(fluids.fluids().entrySet())) {
+        for (var held : amounts.entrySet()) {
             long in = storage.depositFluidResult(held.getKey(), held.getValue(), DeckStorage.Excess.VOID).total();
             if (in > 0) {
                 store.extractFluid(fluids, held.getKey(), in, false, player);

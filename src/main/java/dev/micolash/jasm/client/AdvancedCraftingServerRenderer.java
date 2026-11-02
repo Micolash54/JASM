@@ -1,9 +1,11 @@
 package dev.micolash.jasm.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.AdvancedCraftingServerBlockEntity;
+import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.network.MachineBlock;
@@ -14,6 +16,7 @@ import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
+import net.minecraft.client.renderer.block.FluidModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -21,8 +24,10 @@ import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,6 +41,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
 import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -113,6 +119,8 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
         int seed = (int) server.getBlockPos().asLong();
         item(state.target, server.shownTarget(), level, seed);
         item(state.now, server.shownNow(), level, seed + 1);
+        state.targetFluid = fluid(server.shownTarget());
+        state.nowFluid = fluid(server.shownNow());
         // Both halves are solid, so their own spots are dark: light each half's parts from the block in front of it, and
         // each face's fans from the brighter of the two blocks beside that face.
         if (level != null) {
@@ -135,6 +143,18 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
             itemModelResolver.updateForTopItem(state, stack, ItemDisplayContext.GUI, level, null, seed);
         }
     }
+
+    /** A fluid has no item model: the screen shows its still texture, tinted as in the world, like icons elsewhere. */
+    private static @Nullable ScreenFluid fluid(ItemStack stack) {
+        FluidResource fluid = FluidMarkerItem.fluidOf(stack);
+        if (fluid == null) return null;
+        FluidModel model = Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.getFluid().defaultFluidState());
+        var tint = model.fluidTintSource();
+        int color = tint == null ? 0xFFFFFFFF : tint.colorAsStack(fluid.toStack(1)) | 0xFF000000;
+        return new ScreenFluid(model.stillMaterial().sprite(), color);
+    }
+
+    record ScreenFluid(TextureAtlasSprite sprite, int color) {}
 
     @Override
     public void submit(State state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {
@@ -166,22 +186,39 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
                 draw(models.getStandaloneModel(FANS.get(i)), poseStack, collector, state.fanLight[i]);
             }
         }
-        screenItem(state.target, TARGET_X, TARGET_SIZE, poseStack, collector);
-        screenItem(state.now, NOW_X, NOW_SIZE, poseStack, collector);
+        screenItem(state.target, state.targetFluid, TARGET_X, TARGET_SIZE, poseStack, collector);
+        screenItem(state.now, state.nowFluid, NOW_X, NOW_SIZE, poseStack, collector);
         poseStack.popPose();
     }
 
-    /** One item on the screen, flat like an icon and facing out of the front, at full brightness. */
-    private static void screenItem(ItemStackRenderState item, float x, float size, PoseStack poseStack, SubmitNodeCollector collector) {
-        if (item.isEmpty()) {
+    /** One item (or fluid) on the screen, flat like an icon and facing out of the front, at full brightness. */
+    private static void screenItem(ItemStackRenderState item, @Nullable ScreenFluid fluid, float x, float size, PoseStack poseStack,
+            SubmitNodeCollector collector) {
+        if (item.isEmpty() && fluid == null) {
             return;
         }
         poseStack.pushPose();
         poseStack.translate(x / 16, ITEMS_Y / 16, ITEM_Z);
         poseStack.mulPose(Axis.YP.rotationDegrees(180));
         poseStack.scale(size / 16, size / 16, FLAT);
-        item.submit(poseStack, collector, LightCoordsUtil.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
+        if (fluid != null) {
+            TextureAtlasSprite sprite = fluid.sprite();
+            collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(sprite.atlasLocation()), (pose, buffer) -> {
+                // the square an item fills, on its front face
+                vertex(pose, buffer, -0.5F, -0.5F, sprite.getU0(), sprite.getV1(), fluid.color());
+                vertex(pose, buffer, 0.5F, -0.5F, sprite.getU1(), sprite.getV1(), fluid.color());
+                vertex(pose, buffer, 0.5F, 0.5F, sprite.getU1(), sprite.getV0(), fluid.color());
+                vertex(pose, buffer, -0.5F, 0.5F, sprite.getU0(), sprite.getV0(), fluid.color());
+            });
+        } else {
+            item.submit(poseStack, collector, LightCoordsUtil.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, 0);
+        }
         poseStack.popPose();
+    }
+
+    private static void vertex(PoseStack.Pose pose, VertexConsumer buffer, float x, float y, float u, float v, int color) {
+        buffer.addVertex(pose, x, y, 0.5F).setColor(color).setUv(u, v).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, 1);
     }
 
     private static void draw(@Nullable BlockStateModelPart part, PoseStack poseStack, SubmitNodeCollector collector, int light) {
@@ -207,5 +244,7 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
         final int[] fanLight = new int[2];
         final ItemStackRenderState target = new ItemStackRenderState();
         final ItemStackRenderState now = new ItemStackRenderState();
+        @Nullable ScreenFluid targetFluid;
+        @Nullable ScreenFluid nowFluid;
     }
 }
