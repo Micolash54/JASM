@@ -1,5 +1,6 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.relay.RelayChatterboxBlockEntity;
 import dev.micolash.jasm.relay.RelayChatterboxMenu;
 import dev.micolash.jasm.relay.RelayEnd;
 import dev.micolash.jasm.relay.RelayPayloads;
@@ -21,9 +22,9 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  * inventory. With no Link Byteling seated there is no bubble. The server checks every change and quietly drops any it
  * won't allow.
  *
- * <p>Layout, in GUI pixels: 176 wide, title on row 6, frequency keys 20 to 36, slots 44 to 60, bubble from 66 (its tail
- * from 63), one or two lines wrapped to 154 pixels, so at most 66 to 92; inventory label 93, inventory from 104. Every
- * line the operator says fits two lines at that width.
+ * <p>Layout, in GUI pixels: 176 wide, title on row 6 with the power the Link Byteling is paying right-aligned on it,
+ * frequency keys 20 to 36, slots 44 to 60, bubble from 66 (its tail from 63), one or two lines wrapped to 154 pixels, so
+ * at most 66 to 92; inventory label 96, inventory from 107. Every line the operator says fits two lines at that width.
  */
 public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
     private static final int WIDTH = RelayChatterboxMenu.WIDTH;
@@ -179,16 +180,24 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
-        int labelY = RelayChatterboxMenu.SLOTS_Y + 4;
-        graphics.text(font, Component.translatable("screen.jasm.relay_chatterbox.operator"), RelayChatterboxMenu.OPERATOR_X + 20, labelY,
-                JasmGui.SUBTEXT, false);
-        Component upgrade = Component.translatable("screen.jasm.relay_chatterbox.upgrade");
-        graphics.text(font, upgrade, RelayChatterboxMenu.UPGRADE_X - 4 - font.width(upgrade), labelY, JasmGui.SUBTEXT, false);
+        Component power = Component.translatable("screen.jasm.relay_chatterbox.power", menu.powerUse());
+        JasmGui.smallText(graphics, font, power, imageWidth - 8 - JasmGui.smallWidth(font, power), titleLabelY + 1, JasmGui.SUBTEXT);
+        graphics.text(font, Component.translatable("screen.jasm.relay_chatterbox.operator"), RelayChatterboxMenu.OPERATOR_X + 20,
+                RelayChatterboxMenu.SLOTS_Y + 4, JasmGui.SUBTEXT, false);
         if (menu.operator().isEmpty()) return;
         List<FormattedCharSequence> parts = speech();
         for (int i = 0; i < parts.size(); i++) {
             FormattedCharSequence part = parts.get(i);
             graphics.text(font, part, (imageWidth - font.width(part)) / 2, BUBBLE_Y + BUBBLE_PAD - 1 + i * LINE_HEIGHT, BUBBLE_TEXT, false);
+        }
+    }
+
+    /** The empty upgrade slot names what goes in it; with an item in, the item's own tooltip shows. */
+    @Override
+    public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        super.extractContents(graphics, mouseX, mouseY, a);
+        if (hoveredSlot != null && hoveredSlot.index == RelayChatterboxBlockEntity.UPGRADE && !hoveredSlot.hasItem()) {
+            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.relay_chatterbox.upgrade"), mouseX, mouseY);
         }
     }
 

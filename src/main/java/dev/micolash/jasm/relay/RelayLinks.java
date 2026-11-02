@@ -20,6 +20,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -36,6 +37,10 @@ import org.jspecify.annotations.Nullable;
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class RelayLinks {
+    /** FE each Chatterbox of a running link costs each tick. */
+    public static final int COST_PER_BLOCK = 200;
+    /** A Chatterbox with a Dimension Upgrade in its slot costs this many times as much. */
+    public static final int UPGRADE_MULTIPLIER = 2;
     /** Loaded ends by where they stand. Each joins on load and leaves on unload or removal; cleared when the server stops. */
     private static final Map<NetworkNode, RelayEnd> LOADED = new HashMap<>();
     /** The far link each frequency runs right now; cleared when the server stops. */
@@ -121,7 +126,7 @@ public final class RelayLinks {
             return RelayStatus.NEEDS_DIMENSION_UPGRADE;
         }
         if (!LIVE.containsKey(channel)) {
-            return RelayStatus.NEEDS_POWER;
+            return end.canRun() ? RelayStatus.FAR_BATTERY_FLAT : RelayStatus.NEEDS_POWER;
         }
         return end.canRun() && partner.canRun() ? RelayStatus.LINKED : RelayStatus.LINKED_ONE_SIDE;
     }
@@ -328,6 +333,53 @@ public final class RelayLinks {
             }
         }
         work.finish(false, null);
+    }
+
+    /**
+     * Each running link pays for each of its two blocks once a tick, from their Link Bytelings, after topping them up
+     * from their blocks: each its own {@link #cost} while both have charge, one paying for both when the other is flat.
+     * A battery short of its share gives what it has and the other pays the rest. An end whose battery runs flat or comes back is told to the
+     * pairing afterwards, which stops the link once neither can run.
+     */
+    @SubscribeEvent
+    static void onServerTick(ServerTickEvent.Post event) {
+        if (LIVE.isEmpty()) {
+            return;
+        }
+        List<RelayEnd> flipped = new ArrayList<>();
+        for (Edge edge : LIVE.values()) {
+            pay(LOADED.get(edge.a()), LOADED.get(edge.b()), flipped);
+        }
+        for (RelayEnd end : flipped) {
+            changed(end);
+        }
+    }
+
+    private static void pay(@Nullable RelayEnd a, @Nullable RelayEnd b, List<RelayEnd> flipped) {
+        boolean ranA = a != null && a.canRun();
+        boolean ranB = b != null && b.canRun();
+        if (a != null) a.topUp();
+        if (b != null) b.topUp();
+        int chargeA = a == null ? 0 : a.charge();
+        int chargeB = b == null ? 0 : b.charge();
+        int costA = a == null ? 0 : cost(a);
+        int cost = costA + (b == null ? 0 : cost(b));
+        int fromA = Math.min(chargeA, chargeA > 0 && chargeB > 0 ? costA : cost);
+        int fromB = Math.min(chargeB, cost - fromA);
+        fromA = Math.min(chargeA, cost - fromB);
+        if (a != null) {
+            if (fromA > 0) a.spend(fromA);
+            if (a.canRun() != ranA) flipped.add(a);
+        }
+        if (b != null) {
+            if (fromB > 0) b.spend(fromB);
+            if (b.canRun() != ranB) flipped.add(b);
+        }
+    }
+
+    /** FE {@code end} costs each tick while linked: double with a Dimension Upgrade in its slot, linking across or not. */
+    public static int cost(RelayEnd end) {
+        return end.hasDimensionUpgrade() ? COST_PER_BLOCK * UPGRADE_MULTIPLIER : COST_PER_BLOCK;
     }
 
     @SubscribeEvent

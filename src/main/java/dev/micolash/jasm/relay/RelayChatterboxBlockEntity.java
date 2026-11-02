@@ -25,6 +25,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -44,6 +45,9 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     private int frequency = NO_FREQUENCY;
     /** Set once the block, being removed, has dropped itself with its items inside, so the loot table drops nothing more. */
     private boolean droppedItself;
+    /** FE this end's battery last paid for the link, and on which game tick; not saved. Server only. */
+    private int paid;
+    private long paidAt = Long.MIN_VALUE;
     /** Where the pairing last said this end stands; worked out again after the pairing says it changed. Server only. */
     private @Nullable RelayStatus status;
 
@@ -80,8 +84,86 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     /** A seated Link Byteling with any charge in its battery. */
     @Override
     public boolean canRun() {
+        return charge() > 0;
+    }
+
+    // --- the battery: the network tops up the Link Byteling, the Byteling pays for the link ---
+
+    /** FE in the seated Link Byteling's battery, or 0 without one. */
+    @Override
+    public int charge() {
         ItemStack operator = operator();
-        return accepts(OPERATOR, operator) && BitlingItem.energy(operator) > 0;
+        return accepts(OPERATOR, operator) ? BitlingItem.energy(operator) : 0;
+    }
+
+    /** Moves the power the block was given into the Link Byteling's battery, as the Chip Workshop charges its critter. */
+    @Override
+    public void topUp() {
+        ItemStack operator = operator();
+        if (!(accepts(OPERATOR, operator) && operator.getItem() instanceof BitlingItem bitling)) {
+            return;
+        }
+        int amount = energy.getAmountAsInt();
+        int charge = BitlingItem.energy(operator);
+        int moved = Math.min(amount, bitling.battery() - charge);
+        if (moved > 0) {
+            energy.set(amount - moved);
+            operator.set(JasmComponents.ENERGY.get(), charge + moved);
+            batteryChanged();
+        }
+    }
+
+    @Override
+    public void spend(int amount) {
+        int charge = charge();
+        int taken = Math.min(amount, charge);
+        if (taken > 0) {
+            operator().set(JasmComponents.ENERGY.get(), charge - taken);
+            batteryChanged();
+        }
+        if (level != null) {
+            paid = taken;
+            paidAt = level.getGameTime();
+        }
+    }
+
+    /** FE a tick this end's battery is paying for the link right now: 0 when it paid nothing on the last tick. Server only. */
+    public int powerUse() {
+        return level != null && level.getGameTime() - paidAt <= 1 ? paid : 0;
+    }
+
+    /** The charge changes no comparator signal, so only saving needs to hear about it. */
+    private void batteryChanged() {
+        if (level != null) level.blockEntityChanged(worldPosition);
+    }
+
+    /**
+     * Lets in as much power as the Link Byteling's battery has room for, so charging is only as quick as the supply. Set
+     * after each tick, ready for what cables give before the next one.
+     */
+    private void sizeIntake() {
+        ItemStack operator = operator();
+        int room = accepts(OPERATOR, operator) && operator.getItem() instanceof BitlingItem bitling
+                ? Math.max(0, bitling.battery() - BitlingItem.energy(operator)) : 0;
+        if (energy.getCapacityAsInt() != room) {
+            energy.resize(room);
+        }
+    }
+
+    /**
+     * Tops up the Link Byteling. While linked, the pairing does that itself, just before the pair pays, and tells
+     * itself when a battery runs flat or comes back; otherwise a battery coming back is told here.
+     */
+    public static void serverTick(Level level, BlockPos pos, BlockState state, RelayChatterboxBlockEntity relay) {
+        RelayStatus now = relay.status();
+        if (now != RelayStatus.LINKED && now != RelayStatus.LINKED_ONE_SIDE) {
+            boolean ran = relay.canRun();
+            relay.topUp();
+            if (relay.canRun() != ran) {
+                relay.tellPairing();
+            }
+        }
+        relay.sizeIntake();
     }
 
     /** Sets the frequency: 0 to {@link #MAX_FREQUENCY}, or {@link #NO_FREQUENCY} to clear it. Anything else is ignored. */
@@ -171,7 +253,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
 
     // --- the machine ---
 
-    /** Nothing to pay for yet. */
+    /** The block uses none itself: the Link Byteling's battery pays for the link. */
     @Override
     public int drainPerTick() {
         return 0;
@@ -265,6 +347,8 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
 
     @Override
     protected void loadAdditional(ValueInput input) {
+        // Power that came in after the last tick may be more than the intake is sized for now: keep all of it.
+        energy.resize(Math.max(0, input.getIntOr("energy", 0)));
         super.loadAdditional(input);
         items = NonNullList.withSize(2, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);

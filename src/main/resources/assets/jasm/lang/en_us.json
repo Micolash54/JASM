@@ -1102,13 +1102,15 @@
   "screen.jasm.relay_chatterbox.set": "Set",
   "screen.jasm.relay_chatterbox.clear": "Clear",
   "screen.jasm.relay_chatterbox.operator": "Operator",
-  "screen.jasm.relay_chatterbox.upgrade": "Upgrade",
+  "screen.jasm.relay_chatterbox.upgrade": "Dimension Upgrade",
+  "screen.jasm.relay_chatterbox.power": "%s FE/t",
   "screen.jasm.relay_chatterbox.status.linked": "Networks linked and ready, boss!",
-  "screen.jasm.relay_chatterbox.status.linked_one_side": "We're linked, boss, but the other end has no power!",
+  "screen.jasm.relay_chatterbox.status.linked_one_side": "Running on fumes, boss!",
   "screen.jasm.relay_chatterbox.status.far_end_not_loaded": "Hello? Hello? Nobody's picking up on the other end, boss.",
   "screen.jasm.relay_chatterbox.status.waiting": "This one's taken, boss. Two's company, three's a crowd!",
   "screen.jasm.relay_chatterbox.status.needs_dimension_upgrade": "Another dimension, boss! I need a Dimension Upgrade!",
   "screen.jasm.relay_chatterbox.status.needs_power": "My battery's flat, boss. Can't talk without power!",
+  "screen.jasm.relay_chatterbox.status.far_battery_flat": "Their battery's flat, boss. Nobody to talk to!",
   "screen.jasm.relay_chatterbox.status.no_frequency": "Give me a frequency and I'll start dialling, boss!",
   "screen.jasm.relay_chatterbox.status.no_partner": "Dialling... no one else on this frequency yet, boss."
 }

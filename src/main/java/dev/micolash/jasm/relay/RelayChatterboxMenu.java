@@ -32,11 +32,12 @@ public class RelayChatterboxMenu extends AbstractContainerMenu implements Machin
     public static final int OPERATOR_X = 8;
     public static final int UPGRADE_X = WIDTH - 8 - 16;
     public static final int INVENTORY_X = 8;
-    public static final int INVENTORY_Y = 104;
+    public static final int INVENTORY_Y = 107;
 
     static final int DATA_FREQUENCY = 0;
     static final int DATA_STATUS = 1;
-    static final int DATA_COUNT = 2;
+    static final int DATA_POWER = 2;
+    static final int DATA_COUNT = 3;
 
     private static final Identifier EMPTY_UPGRADE = Jasm.id("container/empty_upgrade");
 
@@ -80,6 +81,7 @@ public class RelayChatterboxMenu extends AbstractContainerMenu implements Machin
                 return switch (index) {
                     case DATA_FREQUENCY -> relay.frequency();
                     case DATA_STATUS -> relay.status().ordinal();
+                    case DATA_POWER -> relay.powerUse();
                     default -> 0;
                 };
             }
@@ -105,6 +107,11 @@ public class RelayChatterboxMenu extends AbstractContainerMenu implements Machin
         RelayStatus[] all = RelayStatus.values();
         int index = data.get(DATA_STATUS);
         return index >= 0 && index < all.length ? all[index] : RelayStatus.NO_FREQUENCY;
+    }
+
+    /** FE a tick this Chatterbox's Link Byteling is paying for the link right now. */
+    public int powerUse() {
+        return data.get(DATA_POWER);
     }
 
     public ItemStack operator() {

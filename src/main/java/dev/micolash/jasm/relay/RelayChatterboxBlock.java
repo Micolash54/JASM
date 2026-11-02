@@ -2,6 +2,7 @@ package dev.micolash.jasm.relay;
 
 import com.mojang.serialization.MapCodec;
 import dev.micolash.jasm.network.MachineBlock;
+import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,6 +19,8 @@ import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -124,6 +127,13 @@ public class RelayChatterboxBlock extends MachineBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         BlockPos lower = lowerPos(state, pos);
         return super.useWithoutItem(level.getBlockState(lower), level, lower, player, hitResult);
+    }
+
+    /** The lower half tops up its Link Byteling; the upper half has nothing to do. */
+    @Override
+    public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        return level.isClientSide() || !isLower(state) ? null
+                : createTickerHelper(type, JasmBlocks.RELAY_CHATTERBOX_ENTITY.get(), RelayChatterboxBlockEntity::serverTick);
     }
 
     @Override

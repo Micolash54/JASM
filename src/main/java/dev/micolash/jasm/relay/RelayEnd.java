@@ -37,6 +37,17 @@ public interface RelayEnd {
     /** Whether this end can run the link right now: its Link Byteling has charge. Both must, to start a link. */
     boolean canRun();
 
+    /** FE in this end's battery, which pays for the link. An end without a battery pays nothing. */
+    default int charge() {
+        return 0;
+    }
+
+    /** Moves the power this end's block was given into its battery. Must not call back into {@link RelayLinks}. */
+    default void topUp() {}
+
+    /** Takes {@code amount} FE, no more than {@link #charge()}, from this end's battery. Must not call back into {@link RelayLinks}. */
+    default void spend(int amount) {}
+
     /** Called after this end's pairing or status may have changed. Must not call back into {@link RelayLinks}. */
     default void pairingChanged() {}
 }
