@@ -553,7 +553,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static void networkSeen(ServerLevel level, CableNetwork network) {
         Map<UUID, UUID> owners = new LinkedHashMap<>();
         for (EncodingTerminalBlockEntity terminal : network.machines(EncodingTerminalBlockEntity.class)) {
-            terminal.claimPlaceOnce(level);
+            // A network may reach into another dimension: each terminal is placed where it stands.
+            terminal.claimPlaceOnce(terminal.getLevel() instanceof ServerLevel own ? own : level);
             if (terminal.owner() != null) owners.put(terminal.ensureId(), terminal.owner());
         }
         if (network.complete() && !owners.isEmpty()) {

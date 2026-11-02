@@ -16,66 +16,108 @@ import java.util.Set;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One crafting network: Data Cables, machines and Archives joined face to face. Cables hold no power: what a source
- * pushes into a cable goes straight to the machines on the network that want it, and what they don't take to the
- * Batteries touching its cables. Machines only get power through a cable, or from a generator, Power Acceptor or Battery
- * they touch; they never pass it on to each other.
+ * One crafting network: Data Cables, machines and Archives joined face to face, and blocks joined by a far link. Cables
+ * hold no power: what a source pushes into a cable goes straight to the machines on the network that want it, and what
+ * they don't take to the Batteries touching its cables. Machines only get power through a cable, or from a generator,
+ * Power Acceptor or Battery they touch; they never pass it on to each other.
+ *
+ * <p>A network may stand in more than one dimension. Its blocks are kept by dimension ({@link #parts()}), and each is
+ * only ever looked up in its own.
  *
  * <p>A network lives until something on it changes, so what it finds about its blocks the first time (which block
  * entities sit where, which cables touch, which machines are of which kind) is kept and reused every tick.
  */
 public final class CableNetwork {
+    /** The blocks of the network that stand in one dimension. */
+    public record Part(ServerLevel level, Set<BlockPos> cables, Set<BlockPos> machines) {
+        public Part {
+            cables = Collections.unmodifiableSet(cables);
+            machines = Collections.unmodifiableSet(machines);
+        }
+    }
+
+    /** Two blocks of the network that don't touch but are joined as if a cable ran between them. */
+    public record Link(NetworkNode from, NetworkNode to) {}
+
     /** A loaded block of the network that isn't a cable, with what power is handed to (none for most blocks). */
     private record Member(BlockPos pos, BlockEntity entity, List<? extends EnergyHandler> inlets) {}
 
-    private final ServerLevel level;
-    private final Set<BlockPos> cables;
-    private final Set<BlockPos> machines;
+    private final List<Part> parts;
+    private final Map<ResourceKey<Level>, Part> byDimension = new HashMap<>();
+    private final List<Link> links;
     private final boolean complete;
     private @Nullable List<Member> members;
-    private @Nullable Map<BlockPos, Member> memberByPos;
-    private @Nullable Map<BlockPos, DataCableBlockEntity> loadedCables;
+    /** Per part, in the order of {@link #parts}. */
+    private @Nullable List<Map<BlockPos, Member>> memberByPos;
+    private @Nullable List<Map<BlockPos, DataCableBlockEntity>> loadedCables;
     private @Nullable List<EnergyHandler> consumers;
+    private @Nullable List<List<BatteryBlockEntity>> batteriesByPart;
     private @Nullable List<BatteryBlockEntity> batteries;
     private final Map<Class<?>, List<?>> byKind = new HashMap<>();
     private final Map<Function<CableNetwork, ?>, Object> derived = new HashMap<>();
     private long checkedTick = -1;
     private long leaderTick = -1;
     private @Nullable NetworkBrainBlockEntity leader;
-    private @Nullable List<BlockPos> brainSpots;
+    private @Nullable List<Member> brainSpots;
     private int counted = -1;
     private long stateTick = -1;
     private NetworkLimit.@Nullable State state;
 
-    CableNetwork(ServerLevel level, Set<BlockPos> cables, Set<BlockPos> machines, boolean complete) {
-        this.level = level;
-        this.cables = Collections.unmodifiableSet(cables);
-        this.machines = Collections.unmodifiableSet(machines);
+    CableNetwork(List<Part> parts, List<Link> links, boolean complete) {
+        this.parts = List.copyOf(parts);
+        this.links = List.copyOf(links);
         this.complete = complete;
+        for (Part part : this.parts) {
+            byDimension.put(part.level().dimension(), part);
+        }
     }
 
+    /** The network's blocks, one part per dimension it stands in. Never empty. */
+    public List<Part> parts() {
+        return parts;
+    }
+
+    /** The network's blocks in {@code dimension}, or null when it has none there. */
+    @Nullable Part part(ResourceKey<Level> dimension) {
+        return byDimension.get(dimension);
+    }
+
+    /** The far links joining this network, each once. Empty for a network made of touching blocks only. */
+    public List<Link> links() {
+        return links;
+    }
+
+    /**
+     * Positions of the network's cables. A bare position can't say which dimension it is in, so a network standing in
+     * more than one gives none here; use {@link #parts()} for those.
+     */
     public Set<BlockPos> cables() {
-        return cables;
+        return parts.size() == 1 ? parts.getFirst().cables() : Set.of();
     }
 
-    /** False when the walk stopped at an unloaded chunk. */
+    /** False when the walk stopped at an unloaded chunk, or at a far link whose other end isn't loaded. */
     public boolean complete() {
         return complete;
     }
 
-    /** Positions of the blocks on this network that aren't cables: machines and Archives. */
+    /**
+     * Positions of the blocks on this network that aren't cables: machines and Archives. Like {@link #cables()}, none
+     * for a network standing in more than one dimension.
+     */
     public Set<BlockPos> machines() {
-        return machines;
+        return parts.size() == 1 ? parts.getFirst().machines() : Set.of();
     }
 
-    /** The machines on this network that are loaded, of the given kind. Found once per kind and kept. */
+    /** The machines on this network that are loaded, of the given kind, in every dimension. Found once per kind and kept. */
     @SuppressWarnings("unchecked")
     public <T extends MachineBlockEntity> List<T> machines(Class<T> kind) {
         List<T> known = (List<T>) byKind.get(kind);
@@ -84,8 +126,10 @@ public final class CableNetwork {
             for (Member member : members()) {
                 if (kind.isInstance(member.entity())) found.add(kind.cast(member.entity()));
             }
-            for (DataCableBlockEntity cable : loadedCables().values()) {
-                for (var port : cable.ports()) if (kind.isInstance(port)) found.add(kind.cast(port));
+            for (Map<BlockPos, DataCableBlockEntity> cables : loadedCables()) {
+                for (DataCableBlockEntity cable : cables.values()) {
+                    for (var port : cable.ports()) if (kind.isInstance(port)) found.add(kind.cast(port));
+                }
             }
             known = Collections.unmodifiableList(found);
             byKind.put(kind, known);
@@ -104,42 +148,51 @@ public final class CableNetwork {
         return (T) known;
     }
 
-    /** The loaded blocks of the network that aren't cables, looked up once. */
+    /** The loaded blocks of the network that aren't cables, each looked up once in its own dimension. */
     private List<Member> members() {
         if (members == null) {
-            List<Member> found = new ArrayList<>(machines.size());
-            Map<BlockPos, Member> byPos = new HashMap<>();
-            for (BlockPos pos : machines) {
-                if (!level.isLoaded(pos)) continue;
-                BlockEntity entity = level.getBlockEntity(pos);
-                if (entity == null) continue;
-                List<? extends EnergyHandler> inlets = entity instanceof MachineBlockEntity machine
-                        ? machine.powerInlets()
-                        : entity instanceof ArchiveBlockEntity archive ? List.of(archive.energy()) : List.of();
-                Member member = new Member(pos, entity, inlets);
-                found.add(member);
-                byPos.put(pos, member);
+            List<Member> found = new ArrayList<>();
+            List<Map<BlockPos, Member>> byPart = new ArrayList<>(parts.size());
+            for (Part part : parts) {
+                ServerLevel level = part.level();
+                Map<BlockPos, Member> byPos = new HashMap<>();
+                for (BlockPos pos : part.machines()) {
+                    if (!level.isLoaded(pos)) continue;
+                    BlockEntity entity = level.getBlockEntity(pos);
+                    if (entity == null) continue;
+                    List<? extends EnergyHandler> inlets = entity instanceof MachineBlockEntity machine
+                            ? machine.powerInlets()
+                            : entity instanceof ArchiveBlockEntity archive ? List.of(archive.energy()) : List.of();
+                    Member member = new Member(pos, entity, inlets);
+                    found.add(member);
+                    byPos.put(pos, member);
+                }
+                byPart.add(byPos);
             }
             members = found;
-            memberByPos = byPos;
+            memberByPos = byPart;
         }
         return members;
     }
 
-    private @Nullable Member memberAt(BlockPos pos) {
+    private @Nullable Member memberAt(int part, BlockPos pos) {
         members();
-        return memberByPos.get(pos);
+        return memberByPos.get(part).get(pos);
     }
 
-    /** The loaded cables of the network, looked up once. */
-    private Map<BlockPos, DataCableBlockEntity> loadedCables() {
+    /** The loaded cables of the network, per part, looked up once. */
+    private List<Map<BlockPos, DataCableBlockEntity>> loadedCables() {
         if (loadedCables == null) {
-            Map<BlockPos, DataCableBlockEntity> found = new HashMap<>();
-            for (BlockPos pos : cables) {
-                DataCableBlockEntity cable = cableAt(pos);
-                if (cable != null) found.put(pos, cable);
+            List<Map<BlockPos, DataCableBlockEntity>> byPart = new ArrayList<>(parts.size());
+            for (Part part : parts) {
+                Map<BlockPos, DataCableBlockEntity> found = new HashMap<>();
+                for (BlockPos pos : part.cables()) {
+                    DataCableBlockEntity cable = cableAt(part.level(), pos);
+                    if (cable != null) found.put(pos, cable);
+                }
+                byPart.add(found);
             }
-            loadedCables = found;
+            loadedCables = byPart;
         }
         return loadedCables;
     }
@@ -149,8 +202,10 @@ public final class CableNetwork {
      * change forgets the network, but a network that kept a dead block would hand power to nothing, so it is checked.
      */
     private boolean stale() {
-        for (DataCableBlockEntity cable : loadedCables().values()) {
-            if (cable.isRemoved()) return true;
+        for (Map<BlockPos, DataCableBlockEntity> cables : loadedCables()) {
+            for (DataCableBlockEntity cable : cables.values()) {
+                if (cable.isRemoved()) return true;
+            }
         }
         for (Member member : members()) {
             if (member.entity().isRemoved()) return true;
@@ -162,9 +217,14 @@ public final class CableNetwork {
         return false;
     }
 
+    /** Every dimension shares one clock. */
+    private long now() {
+        return parts.getFirst().level().getGameTime();
+    }
+
     /** The brain that runs this network this tick, or null when none is working. */
     public @Nullable NetworkBrainBlockEntity leader() {
-        long now = level.getGameTime();
+        long now = now();
         if (now != leaderTick) {
             leaderTick = now;
             leader = NetworkLimit.leader(brains());
@@ -178,16 +238,15 @@ public final class CableNetwork {
      */
     private List<NetworkBrainBlockEntity> brains() {
         if (brainSpots == null) {
-            List<BlockPos> spots = new ArrayList<>();
+            List<Member> spots = new ArrayList<>();
             for (Member member : members()) {
-                if (member.entity().getBlockState().getBlock() instanceof NetworkBrainBlock) spots.add(member.pos());
+                if (member.entity().getBlockState().getBlock() instanceof NetworkBrainBlock) spots.add(member);
             }
             brainSpots = spots;
         }
         List<NetworkBrainBlockEntity> found = new ArrayList<>(brainSpots.size());
-        for (BlockPos pos : brainSpots) {
-            Member member = memberAt(pos);
-            if (member != null && member.entity() instanceof NetworkBrainBlockEntity brain) found.add(brain);
+        for (Member spot : brainSpots) {
+            if (spot.entity() instanceof NetworkBrainBlockEntity brain) found.add(brain);
         }
         return found;
     }
@@ -202,8 +261,10 @@ public final class CableNetwork {
                     count++;
                 }
             }
-            for (DataCableBlockEntity cable : loadedCables().values()) {
-                count += cable.ports().size();
+            for (Map<BlockPos, DataCableBlockEntity> cables : loadedCables()) {
+                for (DataCableBlockEntity cable : cables.values()) {
+                    count += cable.ports().size();
+                }
             }
             counted = count;
         }
@@ -212,19 +273,33 @@ public final class CableNetwork {
 
     /** Whether the network holds more machines than its brain allows, this tick. */
     public NetworkLimit.State limitState() {
-        long now = level.getGameTime();
+        long now = now();
         if (state == null || now != stateTick) {
             stateTick = now;
             NetworkBrainBlockEntity lead = leader();
             int limit = BrainBalance.fromConfig().limit(lead != null, lead == null ? 0 : lead.floors());
             int count = machineCount();
-            state = new NetworkLimit.State(count, limit, lead == null ? null : lead.getBlockPos(), count > limit);
+            state = new NetworkLimit.State(count, limit, lead == null ? null : NetworkNode.of(lead.getLevel(), lead.getBlockPos()), count > limit);
         }
         return state;
     }
 
+    /**
+     * Whether a cable, machine or Archive at {@code pos} is part of this network. Like {@link #cables()}, false for every
+     * position on a network standing in more than one dimension; use {@link #contains(NetworkNode)} there.
+     */
     public boolean contains(BlockPos pos) {
-        return cables.contains(pos) || machines.contains(pos);
+        return parts.size() == 1 && inPart(parts.getFirst(), pos);
+    }
+
+    /** Whether the block at {@code node}, in its own dimension, is part of this network. */
+    public boolean contains(NetworkNode node) {
+        Part part = byDimension.get(node.dimension());
+        return part != null && inPart(part, node.pos());
+    }
+
+    private static boolean inPart(Part part, BlockPos pos) {
+        return part.cables().contains(pos) || part.machines().contains(pos);
     }
 
     /**
@@ -239,7 +314,7 @@ public final class CableNetwork {
         }
         int taken = spread(consumers(), amount, transaction);
         if (taken < amount && !batteries.isEmpty()) {
-            taken += spread(BatteryGroup.distinct(level, batteries), amount - taken, transaction);
+            taken += spread(batteryGroups(), amount - taken, transaction);
         }
         return taken;
     }
@@ -254,11 +329,12 @@ public final class CableNetwork {
 
     /** Checked once a tick: false when a block it remembers has gone, and the network is thrown away. */
     private boolean current() {
-        long now = level.getGameTime();
+        long now = now();
         if (now != checkedTick) {
             checkedTick = now;
             if (stale()) {
-                Networks.invalidate(level, machines.isEmpty() ? cables.iterator().next() : machines.iterator().next());
+                Part first = parts.getFirst();
+                Networks.invalidate(first.level(), first.machines().isEmpty() ? first.cables().iterator().next() : first.machines().iterator().next());
                 return false;
             }
         }
@@ -267,13 +343,28 @@ public final class CableNetwork {
 
     /** An equal part to each that still has room first, and the rest to whoever can take it. */
     private int spread(List<EnergyHandler> targets, int amount, TransactionContext transaction) {
-        return PowerShare.spread(targets, amount, level.getGameTime(), transaction);
+        return PowerShare.spread(targets, amount, now(), transaction);
     }
 
-    /** The Battery blocks touching the network's cables, found with the machines. A port's face gives a battery nothing. */
+    /** Each battery once, grouped with the blocks it touches in its own dimension. */
+    private List<EnergyHandler> batteryGroups() {
+        if (parts.size() == 1) {
+            return BatteryGroup.distinct(parts.getFirst().level(), batteriesByPart.getFirst());
+        }
+        List<EnergyHandler> found = new ArrayList<>();
+        for (int i = 0; i < parts.size(); i++) {
+            found.addAll(BatteryGroup.distinct(parts.get(i).level(), batteriesByPart.get(i)));
+        }
+        return found;
+    }
+
+    /**
+     * The Battery blocks touching the network's cables, found with the machines. A port's face gives a battery nothing.
+     * A caller groups them in its own dimension, so a network standing in more than one gives none here.
+     */
     public List<BatteryBlockEntity> batteries() {
         consumers();
-        return batteries;
+        return parts.size() == 1 ? batteries : List.of();
     }
 
     /**
@@ -285,44 +376,49 @@ public final class CableNetwork {
         if (consumers == null) {
             Set<EnergyHandler> seen = Collections.newSetFromMap(new IdentityHashMap<>());
             List<EnergyHandler> found = new ArrayList<>();
-            List<BatteryBlockEntity> foundBatteries = new ArrayList<>();
-            for (var entry : loadedCables().entrySet()) {
-                DataCableBlockEntity cable = entry.getValue();
-                for (Direction side : Direction.values()) {
-                    var port = cable.port(side);
-                    if (port != null) {
-                        for (EnergyHandler inlet : port.powerInlets()) {
-                            if (seen.add(inlet)) found.add(inlet);
+            List<List<BatteryBlockEntity>> foundBatteries = new ArrayList<>(parts.size());
+            List<BatteryBlockEntity> allBatteries = new ArrayList<>();
+            for (int i = 0; i < parts.size(); i++) {
+                Part part = parts.get(i);
+                ServerLevel level = part.level();
+                List<BatteryBlockEntity> here = new ArrayList<>();
+                for (var entry : loadedCables().get(i).entrySet()) {
+                    DataCableBlockEntity cable = entry.getValue();
+                    for (Direction side : Direction.values()) {
+                        var port = cable.port(side);
+                        if (port != null) {
+                            for (EnergyHandler inlet : port.powerInlets()) {
+                                if (seen.add(inlet)) found.add(inlet);
+                            }
+                            continue;
                         }
-                        continue;
-                    }
-                    // What is in front of a thin acceptor is the acceptor's to trade with, not the cable's to feed.
-                    if (cable.acceptor(side) != null) continue;
-                    BlockPos next = entry.getKey().relative(side);
-                    if (level.isLoaded(next) && level.getBlockEntity(next) instanceof BatteryBlockEntity battery) {
-                        foundBatteries.add(battery);
-                        continue;
-                    }
-                    // Two chambers of one floor both hand over to their brain: count it once.
-                    if (machines.contains(next)) {
-                        for (EnergyHandler target : inletsAt(next)) {
-                            if (seen.add(target)) found.add(target);
+                        // What is in front of a thin acceptor is the acceptor's to trade with, not the cable's to feed.
+                        if (cable.acceptor(side) != null) continue;
+                        BlockPos next = entry.getKey().relative(side);
+                        if (level.isLoaded(next) && level.getBlockEntity(next) instanceof BatteryBlockEntity battery) {
+                            here.add(battery);
+                            continue;
+                        }
+                        // Two chambers of one floor both hand over to their brain: count it once.
+                        if (part.machines().contains(next)) {
+                            Member member = memberAt(i, next);
+                            for (EnergyHandler target : member == null ? List.<EnergyHandler>of() : member.inlets()) {
+                                if (seen.add(target)) found.add(target);
+                            }
                         }
                     }
                 }
+                foundBatteries.add(Collections.unmodifiableList(here));
+                allBatteries.addAll(here);
             }
             consumers = Collections.unmodifiableList(found);
-            batteries = Collections.unmodifiableList(foundBatteries);
+            batteriesByPart = foundBatteries;
+            batteries = Collections.unmodifiableList(allBatteries);
         }
         return consumers;
     }
 
-    private @Nullable DataCableBlockEntity cableAt(BlockPos pos) {
+    private static @Nullable DataCableBlockEntity cableAt(ServerLevel level, BlockPos pos) {
         return level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? cable : null;
-    }
-
-    private List<? extends EnergyHandler> inletsAt(BlockPos pos) {
-        Member member = memberAt(pos);
-        return member == null ? List.of() : member.inlets();
     }
 }
