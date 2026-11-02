@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "G": "minecraft:gold_block",
+    "D": "minecraft:diamond_block",
+    "E": "minecraft:ender_eye",
+    "N": "jasm:network_brain",
+    "B": "jasm:battery"
+  },
+  "pattern": [
+    "GDG",
+    "ENE",
+    "BDB"
+  ],
+  "result": {
+    "id": "jasm:relay_chatterbox"
+  }
+}

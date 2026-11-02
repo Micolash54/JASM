@@ -16,6 +16,7 @@ import dev.micolash.jasm.dock.DockedDeck;
 import dev.micolash.jasm.network.MachineOwner;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.StorageSettings;
+import dev.micolash.jasm.relay.RelayContents;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.TransferFilters;
@@ -158,6 +159,10 @@ public final class JasmComponents {
     /** The Deck a mined Docking Station still holds, with its lock and owner, given back when the dock is placed again. */
     public static final Supplier<DataComponentType<DockedDeck>> DOCKED_DECK = COMPONENTS.registerComponentType(
             "docked_deck", b -> b.persistent(DockedDeck.CODEC).networkSynchronized(DockedDeck.STREAM_CODEC));
+
+    /** The frequency, Link Byteling and Dimension Upgrade a mined Relay Chatterbox keeps, given back when it is placed again. */
+    public static final Supplier<DataComponentType<RelayContents>> RELAY_CONTENTS = COMPONENTS.registerComponentType(
+            "relay_contents", b -> b.persistent(RelayContents.CODEC).networkSynchronized(RelayContents.STREAM_CODEC));
 
     /** Left on Access Ports mined in early test builds; read so they still load, never written. */
     public static final Supplier<DataComponentType<PortMemory>> PORT_MEMORY = COMPONENTS.registerComponentType(

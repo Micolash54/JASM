@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "jasm:docking_station"
+    "jasm:docking_station",
+    "jasm:relay_chatterbox"
   ]
 }

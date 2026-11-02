@@ -55,6 +55,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.DOCKING_STATION);
                 output.accept(JasmItems.CRAFTING_SERVER);
                 output.accept(JasmItems.ADVANCED_CRAFTING_SERVER);
+                output.accept(JasmItems.RELAY_CHATTERBOX);
                 output.accept(JasmItems.ACCESS_PORT);
                 output.accept(JasmItems.THIN_ACCESS_PORT);
                 output.accept(JasmItems.FULL_INPUT_PORT);

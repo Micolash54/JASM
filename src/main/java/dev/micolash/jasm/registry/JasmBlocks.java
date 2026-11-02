@@ -42,6 +42,9 @@ import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.pool.StoragePortBlockEntity;
+import dev.micolash.jasm.relay.RelayChatterboxBlock;
+import dev.micolash.jasm.relay.RelayChatterboxBlockEntity;
+import dev.micolash.jasm.relay.RelayChatterboxTopBlockEntity;
 import dev.micolash.jasm.station.BitlingStationBlock;
 import dev.micolash.jasm.station.BitlingStationBlockEntity;
 import dev.micolash.jasm.transfer.FullPortBlock;
@@ -154,6 +157,16 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<AdvancedCraftingServerTopBlockEntity>> ADVANCED_CRAFTING_SERVER_TOP_ENTITY = BLOCK_ENTITIES.register(
             "advanced_crafting_server_top", () -> new BlockEntityType<>(AdvancedCraftingServerTopBlockEntity::new, ADVANCED_CRAFTING_SERVER.get()));
+
+    /** As blast-proof as the Docking Station: what it holds is kept, never scattered. */
+    public static final DeferredBlock<RelayChatterboxBlock> RELAY_CHATTERBOX = BLOCKS.registerBlock("relay_chatterbox",
+            RelayChatterboxBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<RelayChatterboxBlockEntity>> RELAY_CHATTERBOX_ENTITY = BLOCK_ENTITIES.register(
+            "relay_chatterbox", () -> new BlockEntityType<>(RelayChatterboxBlockEntity::new, RELAY_CHATTERBOX.get()));
+
+    public static final Supplier<BlockEntityType<RelayChatterboxTopBlockEntity>> RELAY_CHATTERBOX_TOP_ENTITY = BLOCK_ENTITIES.register(
+            "relay_chatterbox_top", () -> new BlockEntityType<>(RelayChatterboxTopBlockEntity::new, RELAY_CHATTERBOX.get()));
 
     public static final DeferredBlock<AccessPortBlock> ACCESS_PORT = BLOCKS.registerBlock("access_port",
             AccessPortBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)

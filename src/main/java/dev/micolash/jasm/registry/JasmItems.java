@@ -22,6 +22,7 @@ import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.dock.DockingStationItem;
 import dev.micolash.jasm.generator.GeneratorTier;
 import dev.micolash.jasm.guide.GuideBookItem;
+import dev.micolash.jasm.relay.RelayChatterboxItem;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import dev.micolash.jasm.transfer.TransferPortItem;
@@ -64,6 +65,8 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> DATA_CABLE = ITEMS.registerSimpleBlockItem(JasmBlocks.DATA_CABLE);
     public static final DeferredItem<BlockItem> CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.CRAFTING_SERVER);
     public static final DeferredItem<BlockItem> ADVANCED_CRAFTING_SERVER = ITEMS.registerSimpleBlockItem(JasmBlocks.ADVANCED_CRAFTING_SERVER);
+    public static final DeferredItem<RelayChatterboxItem> RELAY_CHATTERBOX = ITEMS.registerItem("relay_chatterbox",
+            properties -> new RelayChatterboxItem(JasmBlocks.RELAY_CHATTERBOX.get(), properties.useBlockDescriptionPrefix()));
     public static final DeferredItem<BlockItem> ACCESS_PORT = ITEMS.registerSimpleBlockItem(JasmBlocks.ACCESS_PORT);
     public static final DeferredItem<ThinAccessPortItem> THIN_ACCESS_PORT = ITEMS.registerItem("thin_access_port", ThinAccessPortItem::new);
     public static final DeferredItem<TransferPortItem> INPUT_PORT = ITEMS.registerItem("input_port", TransferPortItem::new);
