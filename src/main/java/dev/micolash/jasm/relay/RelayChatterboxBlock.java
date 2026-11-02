@@ -1,13 +1,11 @@
 package dev.micolash.jasm.relay;
 
 import com.mojang.serialization.MapCodec;
-import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlock;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -121,14 +119,11 @@ public class RelayChatterboxBlock extends MachineBlock {
         return super.getDrops(state, params);
     }
 
-    /** Either half opens the screen, for those trusted on the network; anyone else gets nothing. */
+    /** Either half opens the lower half's screen, as any machine does: for those trusted on the network, and anyone else is told whose it is. */
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
-        if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(lowerPos(state, pos)) instanceof RelayChatterboxBlockEntity relay
-                && MachineAccess.canUse(relay, serverPlayer)) {
-            serverPlayer.openMenu(relay);
-        }
-        return InteractionResult.SUCCESS;
+        BlockPos lower = lowerPos(state, pos);
+        return super.useWithoutItem(level.getBlockState(lower), level, lower, player, hitResult);
     }
 
     @Override

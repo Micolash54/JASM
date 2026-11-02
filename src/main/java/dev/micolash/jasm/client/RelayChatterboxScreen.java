@@ -15,13 +15,15 @@ import net.minecraft.world.inventory.Slot;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * The Relay Chatterbox screen, plain for now: the frequency with its - and + keys, a box to type one and the Clear
- * frequency key; the Link Byteling slot on the left, the Dimension Upgrade slot on the right; then what the operator
- * says about the pair, in a recessed section two lines tall; then the inventory. With no Link Byteling seated the
- * section stays empty. The server checks every change and quietly drops any it won't allow.
+ * The Relay Chatterbox screen: the frequency with its - and + keys, a box to type one, and the Set and Clear keys; the
+ * Link Byteling slot on the left, the Dimension Upgrade slot on the right; then what the operator says about the pair,
+ * in the Chip Workshop's speech bubble, its tail pointing up at the operator, coloured by how the pair stands; then the
+ * inventory. With no Link Byteling seated there is no bubble. The server checks every change and quietly drops any it
+ * won't allow.
  *
- * <p>Layout, in GUI pixels: 176 wide, title on row 6, frequency keys 20 to 36, slots 44 to 60, section 66 to 92 with its
- * lines wrapped to 154 pixels, inventory label 93, inventory from 104.
+ * <p>Layout, in GUI pixels: 176 wide, title on row 6, frequency keys 20 to 36, slots 44 to 60, bubble from 66 (its tail
+ * from 63), one or two lines wrapped to 154 pixels, so at most 66 to 92; inventory label 93, inventory from 104. Every
+ * line the operator says fits two lines at that width.
  */
 public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
     private static final int WIDTH = RelayChatterboxMenu.WIDTH;
@@ -30,19 +32,33 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
     private static final int FIELD_X = 8 + KEY + 2;
     private static final int FIELD_WIDTH = 30;
     private static final int PLUS_X = FIELD_X + FIELD_WIDTH + 2;
-    private static final int CLEAR_X = PLUS_X + KEY + 6;
-    private static final int SECTION_X = 7;
-    private static final int SECTION_Y = 66;
-    private static final int SECTION_WIDTH = WIDTH - 2 * SECTION_X;
-    private static final int SECTION_PAD = 4;
+    private static final int SET_X = PLUS_X + KEY + 6;
+    /** Set and Clear share the room right of the + key: the same size, two pixels apart. */
+    private static final int SET_WIDTH = (WIDTH - 8 - SET_X - 2) / 2;
+    private static final int CLEAR_X = SET_X + SET_WIDTH + 2;
+    private static final int BUBBLE_X = 7;
+    private static final int BUBBLE_Y = 66;
+    private static final int BUBBLE_WIDTH = WIDTH - 2 * BUBBLE_X;
+    private static final int BUBBLE_PAD = 4;
     private static final int LINE_HEIGHT = 10;
-    private static final int SECTION_LINES = 2;
-    private static final int SECTION_HEIGHT = SECTION_LINES * LINE_HEIGHT + 2 * SECTION_PAD - 2;
-    private static final int TEXT_WIDTH = SECTION_WIDTH - 2 * SECTION_PAD;
+    private static final int BUBBLE_LINES = 2;
+    private static final int TEXT_WIDTH = BUBBLE_WIDTH - 2 * BUBBLE_PAD;
+    /** The text is always dark; the bubble's fill and edge follow the pair. */
+    private static final int BUBBLE_TEXT = 0xFF1E1E2E;
+    /** The Chip Workshop's own bubble: linked, no frequency set, or no one else on it yet. */
+    private static final int CALM_FILL = 0xFFCDD6F4;
+    private static final int CALM_EDGE = 0xFF9399B2;
+    /** Linked, with one side unpowered. */
+    private static final int WARN_FILL = 0xFFF9E2AF;
+    private static final int WARN_EDGE = 0xFFB8A06E;
+    /** Not linked. */
+    private static final int BAD_FILL = 0xFFF5C2CB;
+    private static final int BAD_EDGE = 0xFFB5868F;
 
     private JasmField field;
     private JasmButton minus;
     private JasmButton plus;
+    private JasmButton set;
     private JasmButton clear;
 
     public RelayChatterboxScreen(RelayChatterboxMenu menu, Inventory inventory, Component title) {
@@ -62,8 +78,10 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
         field.setHint(Component.literal("---"));
         addRenderableWidget(field);
         plus = addRenderableWidget(JasmButton.text(Component.literal("+"), b -> step(1), leftPos + PLUS_X, y, KEY, KEY));
+        set = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.relay_chatterbox.set"), b -> submit(),
+                leftPos + SET_X, y, SET_WIDTH, KEY));
         clear = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.relay_chatterbox.clear"), b -> send(RelayEnd.NO_FREQUENCY),
-                leftPos + CLEAR_X, y, WIDTH - 8 - CLEAR_X, KEY));
+                leftPos + CLEAR_X, y, SET_WIDTH, KEY));
         showFrequency();
     }
 
@@ -79,7 +97,7 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
         }
     }
 
-    /** Enter sends the number typed; an empty box changes nothing. */
+    /** Set or Enter sends the number typed; an empty box changes nothing. */
     private void submit() {
         String text = field.getValue();
         if (!text.isEmpty()) send(Integer.parseInt(text));
@@ -101,6 +119,8 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
         }
         minus.active = now != 0;
         plus.active = now != RelayEnd.MAX_FREQUENCY;
+        String typed = field.getValue();
+        set.active = !typed.isEmpty() && Integer.parseInt(typed) != now;
         clear.active = now != RelayEnd.NO_FREQUENCY;
     }
 
@@ -124,7 +144,35 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
         for (Slot slot : menu.slots) {
             JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
         }
-        JasmGui.inset(graphics, leftPos + SECTION_X, topPos + SECTION_Y, SECTION_WIDTH, SECTION_HEIGHT);
+        if (!menu.operator().isEmpty()) {
+            RelayStatus status = menu.status();
+            bubble(graphics, leftPos + BUBBLE_X, topPos + BUBBLE_Y, speech().size(), fill(status), edge(status));
+        }
+    }
+
+    /** The operator's line, wrapped, at most {@link #BUBBLE_LINES} lines. */
+    private List<FormattedCharSequence> speech() {
+        List<FormattedCharSequence> lines = font.split(Component.translatable(line(menu.status())), TEXT_WIDTH);
+        return lines.subList(0, Math.min(BUBBLE_LINES, lines.size()));
+    }
+
+    /** The Chip Workshop's speech bubble, {@code lines} lines tall, its tail pointing up at the operator slot. */
+    private static void bubble(GuiGraphicsExtractor graphics, int x, int y, int lines, int fill, int edge) {
+        int w = BUBBLE_WIDTH;
+        int h = lines * LINE_HEIGHT + 2 * BUBBLE_PAD - 2;
+        // Edge, then fill, each with its corners cut off.
+        graphics.fill(x + 1, y, x + w - 1, y + h, edge);
+        graphics.fill(x, y + 1, x + w, y + h - 1, edge);
+        graphics.fill(x + 2, y + 1, x + w - 2, y + h - 1, fill);
+        graphics.fill(x + 1, y + 2, x + w - 1, y + h - 2, fill);
+        // The tail: a small step up on the left.
+        int tail = x + 10;
+        graphics.fill(tail, y - 3, tail + 1, y + 1, edge);
+        graphics.fill(tail + 1, y - 2, tail + 2, y + 1, fill);
+        graphics.fill(tail + 1, y - 3, tail + 3, y - 2, edge);
+        graphics.fill(tail + 2, y - 2, tail + 3, y + 1, fill);
+        graphics.fill(tail + 3, y - 2, tail + 4, y, edge);
+        graphics.fill(tail + 3, y, tail + 5, y + 1, fill);
     }
 
     @Override
@@ -137,11 +185,10 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
         Component upgrade = Component.translatable("screen.jasm.relay_chatterbox.upgrade");
         graphics.text(font, upgrade, RelayChatterboxMenu.UPGRADE_X - 4 - font.width(upgrade), labelY, JasmGui.SUBTEXT, false);
         if (menu.operator().isEmpty()) return;
-        RelayStatus status = menu.status();
-        List<FormattedCharSequence> parts = font.split(Component.translatable(line(status)), TEXT_WIDTH);
-        for (int i = 0; i < Math.min(SECTION_LINES, parts.size()); i++) {
+        List<FormattedCharSequence> parts = speech();
+        for (int i = 0; i < parts.size(); i++) {
             FormattedCharSequence part = parts.get(i);
-            graphics.text(font, part, (imageWidth - font.width(part)) / 2, SECTION_Y + SECTION_PAD + i * LINE_HEIGHT, colour(status), false);
+            graphics.text(font, part, (imageWidth - font.width(part)) / 2, BUBBLE_Y + BUBBLE_PAD - 1 + i * LINE_HEIGHT, BUBBLE_TEXT, false);
         }
     }
 
@@ -150,12 +197,20 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
         return "screen.jasm.relay_chatterbox.status." + status.name().toLowerCase(Locale.ROOT);
     }
 
-    /** White when linked or with no frequency, yellow when linked with one side unpowered, red when not linked. */
-    private static int colour(RelayStatus status) {
+    /** Lavender when linked, with no frequency or no one else on it yet; yellow when linked with one side unpowered; red otherwise. */
+    private static int fill(RelayStatus status) {
         return switch (status) {
-            case LINKED, NO_FREQUENCY -> JasmGui.TEXT;
-            case LINKED_ONE_SIDE -> JasmGui.WARN;
-            default -> JasmGui.BAD;
+            case LINKED, NO_FREQUENCY, NO_PARTNER -> CALM_FILL;
+            case LINKED_ONE_SIDE -> WARN_FILL;
+            default -> BAD_FILL;
+        };
+    }
+
+    private static int edge(RelayStatus status) {
+        return switch (status) {
+            case LINKED, NO_FREQUENCY, NO_PARTNER -> CALM_EDGE;
+            case LINKED_ONE_SIDE -> WARN_EDGE;
+            default -> BAD_EDGE;
         };
     }
 }
