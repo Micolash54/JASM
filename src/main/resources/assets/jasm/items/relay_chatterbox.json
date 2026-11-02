@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "jasm:block/relay_chatterbox_lower"
+    "model": "jasm:item/relay_chatterbox"
   }
 }
