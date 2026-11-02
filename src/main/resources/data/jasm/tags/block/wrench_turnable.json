@@ -7,6 +7,8 @@
     "jasm:advanced_combustion_generator",
     "jasm:elite_combustion_generator",
     "jasm:crafting_server",
+    "jasm:advanced_crafting_server",
+    "jasm:relay_chatterbox",
     "jasm:encoding_terminal",
     "jasm:advanced_encoder",
     "jasm:recipe_rack",

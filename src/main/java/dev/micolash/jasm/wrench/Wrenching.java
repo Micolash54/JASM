@@ -20,6 +20,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -144,11 +145,14 @@ public final class Wrenching {
         event.setCancellationResult(InteractionResult.SUCCESS);
         if (player instanceof ServerPlayer serverPlayer) {
             if (pickUp) {
+                // A tall machine comes up from its bottom half whichever half was clicked, so the block is the one that drops.
+                BlockPos base = state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)
+                        && state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER ? pos.below() : pos;
                 // The normal break: claim mods can stop it, ports come off one at a time, slots spill.
                 pickingUp = serverPlayer;
-                pickingUpAt = new AABB(pos).inflate(0.5);
+                pickingUpAt = new AABB(base).inflate(0.5);
                 try {
-                    if (serverPlayer.gameMode.destroyBlock(pos)) {
+                    if (serverPlayer.gameMode.destroyBlock(base)) {
                         level.playSound(null, pos, SoundEvents.SLIME_JUMP_SMALL, SoundSource.BLOCKS, 1.0F, 1.0F);
                     }
                 } finally {
@@ -157,7 +161,17 @@ public final class Wrenching {
                     giveSpilled(serverPlayer);
                 }
             } else {
-                level.setBlock(pos, turned(state, event.getFace()), Block.UPDATE_ALL);
+                BlockState to = turned(state, event.getFace());
+                level.setBlock(pos, to, Block.UPDATE_ALL);
+                // A tall machine turns as one: the other half takes the same front.
+                if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF) && to.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+                    BlockPos other = state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.UPPER ? pos.below() : pos.above();
+                    BlockState otherState = level.getBlockState(other);
+                    if (otherState.is(state.getBlock())) {
+                        level.setBlock(other, otherState.setValue(BlockStateProperties.HORIZONTAL_FACING, to.getValue(BlockStateProperties.HORIZONTAL_FACING)),
+                                Block.UPDATE_ALL);
+                    }
+                }
                 level.playSound(null, pos, SoundEvents.ITEM_FRAME_ROTATE_ITEM, SoundSource.BLOCKS, 1.0F, 1.0F);
             }
         }
