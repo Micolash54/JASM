@@ -1,0 +1,87 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "jasm:block/relay_chatterbox",
+    "room": "jasm:block/relay_chatterbox"
+  },
+  "elements": [
+    {
+      "name": "status_light",
+      "rotation": {
+        "angle": 32,
+        "axis": "x",
+        "origin": [
+          8,
+          3.4,
+          1.4
+        ]
+      },
+      "from": [
+        2.2,
+        4,
+        1.2
+      ],
+      "to": [
+        4.2,
+        6,
+        1.4
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            11,
+            4.5,
+            11.5
+          ],
+          "texture": "#room"
+        },
+        "east": {
+          "uv": [
+            4.125,
+            11.875,
+            4.375,
+            12.125
+          ],
+          "texture": "#room"
+        },
+        "south": {
+          "uv": [
+            4.125,
+            11.875,
+            4.375,
+            12.125
+          ],
+          "texture": "#room"
+        },
+        "west": {
+          "uv": [
+            4.125,
+            11.875,
+            4.375,
+            12.125
+          ],
+          "texture": "#room"
+        },
+        "up": {
+          "uv": [
+            4.125,
+            11.875,
+            4.375,
+            12.125
+          ],
+          "texture": "#room"
+        },
+        "down": {
+          "uv": [
+            4.125,
+            11.875,
+            4.375,
+            12.125
+          ],
+          "texture": "#room"
+        }
+      }
+    }
+  ]
+}

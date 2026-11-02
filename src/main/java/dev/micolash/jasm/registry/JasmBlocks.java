@@ -160,7 +160,8 @@ public final class JasmBlocks {
 
     /** As blast-proof as the Docking Station: what it holds is kept, never scattered. */
     public static final DeferredBlock<RelayChatterboxBlock> RELAY_CHATTERBOX = BLOCKS.registerBlock("relay_chatterbox",
-            RelayChatterboxBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
+            RelayChatterboxBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL)
+                    .noOcclusion());
 
     public static final Supplier<BlockEntityType<RelayChatterboxBlockEntity>> RELAY_CHATTERBOX_ENTITY = BLOCK_ENTITIES.register(
             "relay_chatterbox", () -> new BlockEntityType<>(RelayChatterboxBlockEntity::new, RELAY_CHATTERBOX.get()));

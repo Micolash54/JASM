@@ -27,8 +27,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * One crafting network: Data Cables, machines and Archives joined face to face, and blocks joined by a far link. Cables
  * hold no power: what a source pushes into a cable goes straight to the machines on the network that want it, and what
- * they don't take to the Batteries touching its cables. Machines only get power through a cable, or from a generator,
- * Power Acceptor or Battery they touch; they never pass it on to each other.
+ * they don't take to the Batteries touching its cables. Machines only get power through a cable or a far link (which
+ * stands in for one), or from a generator, Power Acceptor or Battery they touch; they never pass it on to each other.
  *
  * <p>A network may stand in more than one dimension. Its blocks are kept by dimension ({@link #parts()}), and each is
  * only ever looked up in its own.
@@ -410,6 +410,16 @@ public final class CableNetwork {
                 }
                 foundBatteries.add(Collections.unmodifiableList(here));
                 allBatteries.addAll(here);
+            }
+            // A far link stands in for a cable: the two blocks it joins are fed as if one touched them.
+            for (Link link : links) {
+                for (NetworkNode end : List.of(link.from(), link.to())) {
+                    int i = parts.indexOf(byDimension.get(end.dimension()));
+                    Member member = i < 0 ? null : memberAt(i, end.pos());
+                    for (EnergyHandler target : member == null ? List.<EnergyHandler>of() : member.inlets()) {
+                        if (seen.add(target)) found.add(target);
+                    }
+                }
             }
             consumers = Collections.unmodifiableList(found);
             batteriesByPart = foundBatteries;

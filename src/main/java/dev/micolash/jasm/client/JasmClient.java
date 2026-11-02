@@ -69,6 +69,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.DEPLOYMENT_BAY_ENTITY.get(), BayRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.DEMOLITION_BAY_ENTITY.get(), BayRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.DOCKING_STATION_ENTITY.get(), DockingStationRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.RELAY_CHATTERBOX_ENTITY.get(), RelayChatterboxRenderer::new);
         event.registerEntityRenderer(JasmEntities.STATION_BITLING.get(), BitlingBodyRenderer::new);
         event.registerEntityRenderer(JasmEntities.WILD_BITLING.get(), BitlingBodyRenderer::new);
     }
@@ -87,6 +88,7 @@ public final class JasmClient {
         NetworkBrainRenderer.registerModels(event);
         CrystalFoundryRenderer.registerModels(event);
         BayRenderer.registerModels(event);
+        RelayChatterboxRenderer.registerModels(event);
     }
 
     @SubscribeEvent

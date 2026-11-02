@@ -1,0 +1,78 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "jasm:block/relay_chatterbox",
+    "room": "jasm:block/relay_chatterbox"
+  },
+  "elements": [
+    {
+      "name": "cord_fill",
+      "from": [
+        7.25,
+        6.15,
+        12
+      ],
+      "to": [
+        9.25,
+        6.65,
+        12.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4.125,
+            12.625,
+            4.375,
+            12.875
+          ],
+          "texture": "#room"
+        },
+        "east": {
+          "uv": [
+            4.625,
+            12.625,
+            4.875,
+            12.875
+          ],
+          "texture": "#room"
+        },
+        "south": {
+          "uv": [
+            4.625,
+            12.625,
+            4.875,
+            12.875
+          ],
+          "texture": "#room"
+        },
+        "west": {
+          "uv": [
+            4.625,
+            12.625,
+            4.875,
+            12.875
+          ],
+          "texture": "#room"
+        },
+        "up": {
+          "uv": [
+            4.125,
+            12.625,
+            4.375,
+            12.875
+          ],
+          "texture": "#room"
+        },
+        "down": {
+          "uv": [
+            4.625,
+            12.625,
+            4.875,
+            12.875
+          ],
+          "texture": "#room"
+        }
+      }
+    }
+  ]
+}

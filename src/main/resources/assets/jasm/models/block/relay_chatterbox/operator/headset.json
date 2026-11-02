@@ -1,0 +1,1145 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "operator": "jasm:block/relay_chatterbox_operator",
+    "particle": "jasm:block/relay_chatterbox"
+  },
+  "elements": [
+    {
+      "name": "headset_pad_left",
+      "from": [
+        4.5702,
+        8.8953,
+        7.865
+      ],
+      "to": [
+        4.7955,
+        10.247,
+        9.4982
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            7.25,
+            7.75,
+            7.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            2.75,
+            7.75,
+            3.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            6.75,
+            7.75,
+            7,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            1.75,
+            7.75,
+            2.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            7.75,
+            7.75,
+            8,
+            8.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            8.25,
+            7.75,
+            8.5,
+            8.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_pad_right",
+      "from": [
+        12.0045,
+        8.8953,
+        7.865
+      ],
+      "to": [
+        12.2298,
+        10.247,
+        9.4982
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            7.25,
+            7.75,
+            7.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            2.75,
+            7.75,
+            3.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            6.75,
+            7.75,
+            7,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            1.75,
+            7.75,
+            2.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            7.75,
+            7.75,
+            8,
+            8.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            8.25,
+            7.75,
+            8.5,
+            8.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_band_top",
+      "from": [
+        5.1334,
+        12.2745,
+        7.6397
+      ],
+      "to": [
+        11.6666,
+        12.9503,
+        8.3155
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            7.5,
+            10,
+            10.75,
+            10.25
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            8.5,
+            13.75,
+            8.75,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            4,
+            10,
+            7.25,
+            10.25
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            8,
+            13.75,
+            8.25,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            11,
+            10,
+            14.25,
+            10.25
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            0,
+            10.75,
+            3.25,
+            11
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_cup_left",
+      "from": [
+        4.7955,
+        8.4447,
+        7.4144
+      ],
+      "to": [
+        5.8656,
+        10.6975,
+        9.9488
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            14.75,
+            6.25,
+            15.25,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            12.5,
+            6.25,
+            13.75,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            14,
+            6.25,
+            14.5,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            11,
+            6.25,
+            12.25,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            15.5,
+            6.25,
+            16,
+            7.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            0,
+            7.75,
+            0.5,
+            9
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_cup_right",
+      "from": [
+        10.9344,
+        8.4447,
+        7.4144
+      ],
+      "to": [
+        12.0045,
+        10.6975,
+        9.9488
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            14.75,
+            6.25,
+            15.25,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            12.5,
+            6.25,
+            13.75,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            14,
+            6.25,
+            14.5,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            11,
+            6.25,
+            12.25,
+            7.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            15.5,
+            6.25,
+            16,
+            7.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            0,
+            7.75,
+            0.5,
+            9
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic",
+      "from": [
+        5.584,
+        8.0505,
+        11.1878
+      ],
+      "to": [
+        6.5978,
+        8.7826,
+        11.5258
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            3,
+            12.75,
+            3.5,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            9.5,
+            13.75,
+            9.75,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            2.25,
+            12.75,
+            2.75,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            9,
+            13.75,
+            9.25,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            3.75,
+            12.75,
+            4.25,
+            13
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            4.5,
+            12.75,
+            5,
+            13
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_band_left",
+      "from": [
+        5.1334,
+        10.6975,
+        7.6397
+      ],
+      "to": [
+        5.8093,
+        12.2745,
+        8.3155
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            10.25,
+            7.75,
+            10.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            11.25,
+            7.75,
+            11.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            9.75,
+            7.75,
+            10,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            10.75,
+            7.75,
+            11,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            10,
+            13.75,
+            10.25,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            10.5,
+            13.75,
+            10.75,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_band_right",
+      "from": [
+        10.9907,
+        10.6975,
+        7.6397
+      ],
+      "to": [
+        11.6666,
+        12.2745,
+        8.3155
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            10.25,
+            7.75,
+            10.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            11.25,
+            7.75,
+            11.5,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            9.75,
+            7.75,
+            10,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            10.75,
+            7.75,
+            11,
+            8.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            10,
+            13.75,
+            10.25,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            10.5,
+            13.75,
+            10.75,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic_boom",
+      "from": [
+        5.3587,
+        8.2194,
+        9.8362
+      ],
+      "to": [
+        5.8093,
+        8.4447,
+        9.9488
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            11.5,
+            13.75,
+            11.75,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            12.5,
+            13.75,
+            12.75,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            11,
+            13.75,
+            11.25,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            12,
+            13.75,
+            12.25,
+            14
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            13,
+            13.75,
+            13.25,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            13.5,
+            13.75,
+            13.75,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic",
+      "from": [
+        5.584,
+        8.0505,
+        11.0752
+      ],
+      "to": [
+        6.5978,
+        8.3884,
+        11.1878
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            9,
+            12.75,
+            9.5,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            11.5,
+            14.25,
+            11.75,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            8.25,
+            12.75,
+            8.75,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            11,
+            14.25,
+            11.25,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            9.75,
+            12.75,
+            10.25,
+            13
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            10.5,
+            12.75,
+            11,
+            13
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic",
+      "from": [
+        5.584,
+        8.0505,
+        10.8499
+      ],
+      "to": [
+        6.288,
+        8.3884,
+        11.0752
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            12.5,
+            14.25,
+            12.75,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            13.5,
+            14.25,
+            13.75,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            12,
+            14.25,
+            12.25,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            13,
+            14.25,
+            13.25,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            14,
+            14.25,
+            14.25,
+            14.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            14.5,
+            14.25,
+            14.75,
+            14.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic",
+      "from": [
+        5.584,
+        8.3884,
+        11.0752
+      ],
+      "to": [
+        6.4288,
+        8.7826,
+        11.1878
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            12,
+            12.75,
+            12.5,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            15.5,
+            14.25,
+            15.75,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            11.25,
+            12.75,
+            11.75,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            15,
+            14.25,
+            15.25,
+            14.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            12.75,
+            12.75,
+            13.25,
+            13
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            13.5,
+            12.75,
+            14,
+            13
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic",
+      "from": [
+        5.584,
+        8.3884,
+        10.8499
+      ],
+      "to": [
+        6.288,
+        8.7826,
+        11.0752
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            0.5,
+            14.75,
+            0.75,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            1.5,
+            14.75,
+            1.75,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            0,
+            14.75,
+            0.25,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            1,
+            14.75,
+            1.25,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            2,
+            14.75,
+            2.25,
+            15
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            2.5,
+            14.75,
+            2.75,
+            15
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic_boom",
+      "from": [
+        5.3587,
+        8.2194,
+        9.9488
+      ],
+      "to": [
+        5.584,
+        8.6137,
+        10.9626
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            3.5,
+            14.75,
+            3.75,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            15,
+            12.75,
+            15.5,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            3,
+            14.75,
+            3.25,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            14.25,
+            12.75,
+            14.75,
+            13
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            1,
+            10,
+            1.25,
+            10.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            1.5,
+            10,
+            1.75,
+            10.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic_boom",
+      "from": [
+        5.584,
+        8.2194,
+        9.9488
+      ],
+      "to": [
+        5.8093,
+        8.3884,
+        10.8499
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            4.5,
+            14.75,
+            4.75,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            0.75,
+            13.25,
+            1.25,
+            13.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            4,
+            14.75,
+            4.25,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            0,
+            13.25,
+            0.5,
+            13.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            2,
+            10,
+            2.25,
+            10.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            2.5,
+            10,
+            2.75,
+            10.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "headset_mic_boom",
+      "from": [
+        5.584,
+        8.3884,
+        9.9488
+      ],
+      "to": [
+        5.8093,
+        8.6137,
+        10.8499
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            11.5,
+            14.75,
+            11.75,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            2.25,
+            13.25,
+            2.75,
+            13.5
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            11,
+            14.75,
+            11.25,
+            15
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            1.5,
+            13.25,
+            2,
+            13.5
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            3,
+            10,
+            3.25,
+            10.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            3.5,
+            10,
+            3.75,
+            10.5
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    }
+  ]
+}

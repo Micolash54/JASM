@@ -26,9 +26,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * Pairs Relay Chatterboxes by frequency and runs the far link between each pair. Each owner's frequency is held by two
  * ends at most; a third set to it waits, and when one of the two is broken, retuned or found gone, the end that has
- * waited longest takes its place. A pair links once both ends are loaded, both can run and, across dimensions, one has
- * a Dimension Upgrade. Once linked, the pair reconnects on its own after a restart or an unload, as long as either end
- * can run.
+ * waited longest takes its place. A pair links once both ends are loaded, either one can run and, across dimensions,
+ * one has a Dimension Upgrade; the end that can run pays for both, and the network power the link carries charges the
+ * other. The link stops only when neither can run, and starts again once either can.
  *
  * <p>The block calls {@link #loaded} when it loads or is placed, {@link #changed} when its frequency, owner, upgrade or
  * ability to run changes, {@link #unloaded} when its chunk unloads and {@link #destroyed} when it is broken or replaced.
@@ -126,7 +126,8 @@ public final class RelayLinks {
             return RelayStatus.NEEDS_DIMENSION_UPGRADE;
         }
         if (!LIVE.containsKey(channel)) {
-            return end.canRun() ? RelayStatus.FAR_BATTERY_FLAT : RelayStatus.NEEDS_POWER;
+            // Either end able to run starts the link, so a pair that is there and not linked has two flat batteries.
+            return RelayStatus.NEEDS_POWER;
         }
         return end.canRun() && partner.canRun() ? RelayStatus.LINKED : RelayStatus.LINKED_ONE_SIDE;
     }
@@ -301,14 +302,7 @@ public final class RelayLinks {
                 // An end away keeps the pair as it was.
                 return null;
             }
-            boolean run;
-            if (!reaches(ends.get(0), ends.get(1), a, b)) {
-                run = false;
-            } else if (data.established(channel)) {
-                run = a.canRun() || b.canRun();
-            } else {
-                run = a.canRun() && b.canRun();
-            }
+            boolean run = reaches(ends.get(0), ends.get(1), a, b) && (a.canRun() || b.canRun());
             data.setEstablished(channel, run);
             return run ? new Edge(ends.get(0), ends.get(1)) : null;
         }

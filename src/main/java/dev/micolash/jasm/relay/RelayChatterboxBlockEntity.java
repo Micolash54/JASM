@@ -9,12 +9,16 @@ import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.workshop.BitlingItem;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -26,6 +30,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -50,6 +55,12 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     private long paidAt = Long.MIN_VALUE;
     /** Where the pairing last said this end stands; worked out again after the pairing says it changed. Server only. */
     private @Nullable RelayStatus status;
+    /** The front as players' games were last told it, so it is only sent again once it looks different. Server only. */
+    private int sentLook = UNSENT;
+    private int looksSent;
+    /** The front as this player's game was told it. Client only. */
+    private int shownLook = look(RelayStatus.Light.OFF, NO_FREQUENCY, false);
+    private static final int UNSENT = -1;
 
     public RelayChatterboxBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.RELAY_CHATTERBOX_ENTITY.get(), pos, state, 0);
@@ -164,6 +175,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
             }
         }
         relay.sizeIntake();
+        relay.showLook();
     }
 
     /** Sets the frequency: 0 to {@link #MAX_FREQUENCY}, or {@link #NO_FREQUENCY} to clear it. Anything else is ignored. */
@@ -249,6 +261,75 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     /** Whether this block drops itself (holding an item), so its loot table must drop nothing. */
     public boolean dropsItself() {
         return droppedItself || holdsItems();
+    }
+
+    // --- what players' games are told: the console light, the number and whether the operator sits ---
+
+    /** The front packed in one number: the light, whether a Link Byteling sits, and the frequency. */
+    private static int look(RelayStatus.Light light, int frequency, boolean seated) {
+        return light.ordinal() | (seated ? 4 : 0) | (frequency + 1) << 3;
+    }
+
+    private int look() {
+        return look(status().light(), frequency, accepts(OPERATOR, operator()));
+    }
+
+    /** Tells players' games when the front would be drawn differently, and only then: never for a change of charge alone. */
+    private void showLook() {
+        int now = look();
+        if (sentLook == UNSENT) {
+            // nobody has been told anything yet, so nobody needs telling
+            sentLook = now;
+        } else if (now != sentLook && level != null) {
+            sentLook = now;
+            looksSent++;
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** How many times players' games were sent a new look of the front. */
+    public int looksSent() {
+        return looksSent;
+    }
+
+    /** The console light as this player's game knows it. */
+    public RelayStatus.Light shownLight() {
+        return RelayStatus.Light.values()[shownLook & 3];
+    }
+
+    /** The frequency on the console as this player's game knows it, or {@link #NO_FREQUENCY}. */
+    public int shownFrequency() {
+        return (shownLook >> 3) - 1;
+    }
+
+    /** Whether a Link Byteling sits at the switchboard, as this player's game knows it. */
+    public boolean shownSeated() {
+        return (shownLook & 4) != 0;
+    }
+
+    // Players only get the look of the front, not the slots or the charge.
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        int now = look();
+        sentLook = now;
+        tag.putInt("look", now);
+        return tag;
+    }
+
+    @Override
+    public void handleUpdateTag(ValueInput input) {
+        shownLook = input.getIntOr("look", shownLook);
+    }
+
+    @Override
+    public void onDataPacket(Connection connection, ValueInput input) {
+        handleUpdateTag(input);
     }
 
     // --- the machine ---

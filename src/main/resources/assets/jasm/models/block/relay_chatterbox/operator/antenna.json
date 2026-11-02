@@ -1,0 +1,151 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "operator": "jasm:block/relay_chatterbox_operator",
+    "particle": "jasm:block/relay_chatterbox"
+  },
+  "elements": [
+    {
+      "name": "antenna",
+      "from": [
+        8.2592,
+        12.0492,
+        8.6816
+      ],
+      "to": [
+        8.5408,
+        13.0348,
+        8.9632
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            12.5,
+            9.25,
+            12.75,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            13.5,
+            9.25,
+            13.75,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            12,
+            9.25,
+            12.25,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            13,
+            9.25,
+            13.25,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            7,
+            13.75,
+            7.25,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            7.5,
+            13.75,
+            7.75,
+            14
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    },
+    {
+      "name": "antenna_ball",
+      "from": [
+        7.9776,
+        13.0348,
+        8.4
+      ],
+      "to": [
+        8.8224,
+        13.8796,
+        9.2448
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            6.25,
+            9.25,
+            6.75,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "west": {
+          "uv": [
+            7.75,
+            9.25,
+            8.25,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "north": {
+          "uv": [
+            5.5,
+            9.25,
+            6,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "east": {
+          "uv": [
+            7,
+            9.25,
+            7.5,
+            9.75
+          ],
+          "texture": "#operator"
+        },
+        "up": {
+          "uv": [
+            8.5,
+            9.25,
+            9,
+            9.75
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        },
+        "down": {
+          "uv": [
+            9.25,
+            9.25,
+            9.75,
+            9.75
+          ],
+          "texture": "#operator",
+          "rotation": 180
+        }
+      }
+    }
+  ]
+}
