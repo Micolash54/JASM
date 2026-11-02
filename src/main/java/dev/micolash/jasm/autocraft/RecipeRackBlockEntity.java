@@ -123,11 +123,13 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         }
         List<ProcessingCard.Machine> waiting = new ArrayList<>();
         for (ProcessingCard.Machine machine : card.machines()) {
-            if (!level.isLoaded(machine.pos())) {
+            // an older card names no dimension: its ports stand in the rack's
+            ServerLevel there = machine.at().level(level);
+            if (!Machines.running(there, machine.pos())) {
                 waiting.add(machine);
                 continue;
             }
-            AccessPortBlockEntity port = Machines.port(level, network, machine.pos(), machine.side());
+            AccessPortBlockEntity port = Machines.port(there, network, machine.pos(), machine.side());
             // a port already serving its most recipes turns it down: it stays here unpicked, like one with no port
             if (port != null) {
                 port.select(card);

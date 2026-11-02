@@ -7,6 +7,7 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmMenus;
 import java.util.List;
@@ -342,9 +343,12 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
             return true;
         }
         if (id == BUTTON_FIND) {
-            List<BlockPos> machines = server.job() == null || server.getLevel() == null ? List.of() : server.job().machines();
+            // only the machines in the player's dimension can be lit up for them
+            List<BlockPos> machines = server.job() == null || server.getLevel() == null ? List.of()
+                    : server.job().machines(server.getLevel()).stream().filter(m -> m.dimension().equals(serverPlayer.level().dimension()))
+                            .map(NetworkNode::pos).toList();
             if (!machines.isEmpty() && serverPlayer.connection.hasChannel(NetworkViewPayloads.Glow.TYPE)) {
-                PacketDistributor.sendToPlayer(serverPlayer, new NetworkViewPayloads.Glow(machines, server.getLevel().dimension()));
+                PacketDistributor.sendToPlayer(serverPlayer, new NetworkViewPayloads.Glow(machines, serverPlayer.level().dimension()));
             }
             return true;
         }

@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
@@ -63,7 +63,7 @@ final class CraftRequestWindow {
     private final Button view;
     private final CraftTreeView treeView = new CraftTreeView();
     private @Nullable ItemResource target;
-    private @Nullable BlockPos wanted;
+    private @Nullable NetworkNode wanted;
     private int x;
     private int y;
     private int width;
@@ -278,7 +278,7 @@ final class CraftRequestWindow {
     private void start() {
         CraftPayloads.Answer answer = answer();
         if (answer != null && answer.problem().isEmpty() && target != null) {
-            BlockPos pos = answer.chosen() >= 0 ? answer.servers().get(answer.chosen()).pos() : null;
+            NetworkNode pos = answer.chosen() >= 0 ? answer.servers().get(answer.chosen()).pos() : null;
             ClientPacketDistributor.sendToServer(new CraftPayloads.Start(menu.containerId, target, amount(), Optional.ofNullable(pos)));
             close();
         }

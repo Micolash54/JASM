@@ -3,13 +3,13 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.crafting.PickerPayloads;
 import dev.micolash.jasm.deck.DeckPayloads;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.TrustList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -32,9 +32,9 @@ public final class CraftPayloads {
 
     /** One job of this Deck as the screen shows it. {@code phase}: 0 crafting, 1 stopping, 2 returning. */
     /** {@code waiting}: the machine it has waited on longest, as a line to show. */
-    public record JobView(BlockPos server, ItemResource target, long amount, int phase, int progress, int pause, Optional<Component> waiting) {
+    public record JobView(NetworkNode server, ItemResource target, long amount, int phase, int progress, int pause, Optional<Component> waiting) {
         static final StreamCodec<RegistryFriendlyByteBuf, JobView> STREAM_CODEC = StreamCodec.composite(
-                BlockPos.STREAM_CODEC, JobView::server,
+                NetworkNode.STREAM_CODEC, JobView::server,
                 ItemResource.STREAM_CODEC, JobView::target,
                 ByteBufCodecs.VAR_LONG, JobView::amount,
                 ByteBufCodecs.VAR_INT, JobView::phase,
@@ -73,9 +73,9 @@ public final class CraftPayloads {
     }
 
     /** A server the request could go to. */
-    public record ServerView(BlockPos pos, int memory, int parallel, boolean busy, boolean fits) {
+    public record ServerView(NetworkNode pos, int memory, int parallel, boolean busy, boolean fits) {
         static final StreamCodec<RegistryFriendlyByteBuf, ServerView> STREAM_CODEC = StreamCodec.composite(
-                BlockPos.STREAM_CODEC, ServerView::pos,
+                NetworkNode.STREAM_CODEC, ServerView::pos,
                 ByteBufCodecs.VAR_INT, ServerView::memory,
                 ByteBufCodecs.VAR_INT, ServerView::parallel,
                 ByteBufCodecs.BOOL, ServerView::busy,
@@ -140,13 +140,13 @@ public final class CraftPayloads {
     }
 
     /** Client → server: what would a request for {@code amount} of {@code target} take? {@code tree}: also send the tree. */
-    public record Ask(int containerId, ItemResource target, long amount, Optional<BlockPos> server, boolean tree) implements CustomPacketPayload {
+    public record Ask(int containerId, ItemResource target, long amount, Optional<NetworkNode> server, boolean tree) implements CustomPacketPayload {
         public static final Type<Ask> TYPE = new Type<>(Jasm.id("craft_ask"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Ask> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Ask::containerId,
                 ItemResource.STREAM_CODEC, Ask::target,
                 ByteBufCodecs.VAR_LONG, Ask::amount,
-                ByteBufCodecs.optional(BlockPos.STREAM_CODEC), Ask::server,
+                ByteBufCodecs.optional(NetworkNode.STREAM_CODEC), Ask::server,
                 ByteBufCodecs.BOOL, Ask::tree,
                 Ask::new);
 
@@ -228,13 +228,13 @@ public final class CraftPayloads {
     }
 
     /** Client → server: start the request (planned again on the server). */
-    public record Start(int containerId, ItemResource target, long amount, Optional<BlockPos> server) implements CustomPacketPayload {
+    public record Start(int containerId, ItemResource target, long amount, Optional<NetworkNode> server) implements CustomPacketPayload {
         public static final Type<Start> TYPE = new Type<>(Jasm.id("craft_start"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Start> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Start::containerId,
                 ItemResource.STREAM_CODEC, Start::target,
                 ByteBufCodecs.VAR_LONG, Start::amount,
-                ByteBufCodecs.optional(BlockPos.STREAM_CODEC), Start::server,
+                ByteBufCodecs.optional(NetworkNode.STREAM_CODEC), Start::server,
                 Start::new);
 
         @Override
@@ -464,11 +464,11 @@ public final class CraftPayloads {
     }
 
     /** Client → server: open the screen of the server running one of this Deck's jobs. */
-    public record OpenServer(int containerId, BlockPos server) implements CustomPacketPayload {
+    public record OpenServer(int containerId, NetworkNode server) implements CustomPacketPayload {
         public static final Type<OpenServer> TYPE = new Type<>(Jasm.id("craft_open_server"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenServer> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, OpenServer::containerId,
-                BlockPos.STREAM_CODEC, OpenServer::server,
+                NetworkNode.STREAM_CODEC, OpenServer::server,
                 OpenServer::new);
 
         @Override
@@ -478,11 +478,11 @@ public final class CraftPayloads {
     }
 
     /** Client → server: stop this Deck's job on {@code server}. */
-    public record Cancel(int containerId, BlockPos server) implements CustomPacketPayload {
+    public record Cancel(int containerId, NetworkNode server) implements CustomPacketPayload {
         public static final Type<Cancel> TYPE = new Type<>(Jasm.id("craft_cancel"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Cancel> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Cancel::containerId,
-                BlockPos.STREAM_CODEC, Cancel::server,
+                NetworkNode.STREAM_CODEC, Cancel::server,
                 Cancel::new);
 
         @Override

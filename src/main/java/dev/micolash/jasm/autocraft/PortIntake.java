@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
@@ -117,7 +118,7 @@ final class PortIntake {
     private DeckStorage.Checked storage(ServerLevel serverLevel, AccessPortBlockEntity.DeckTarget target, @Nullable Direction side) {
         var storage = DeckStorage.checked(WaferStore.get(serverLevel.getServer()), target.deck(), target.player());
         // never back into the machine it came from
-        return side == null ? storage : storage.avoiding(port.getBlockPos().relative(side));
+        return side == null ? storage : storage.avoiding(NetworkNode.of(serverLevel, port.getBlockPos().relative(side)));
     }
 
     /** The push went through: what it handed over goes to waiting jobs first, then the network. */

@@ -5,7 +5,7 @@ import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.Map;
-import net.minecraft.core.BlockPos;
+import dev.micolash.jasm.network.NetworkNode;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
@@ -17,19 +17,19 @@ import org.jspecify.annotations.Nullable;
 public final class DeckMaterialStorage {
     private DeckMaterialStorage() {}
 
-    public static Map<Material, Long> stacks(ServerPlayer player, ItemStack deck, @Nullable BlockPos avoid) {
+    public static Map<Material, Long> stacks(ServerPlayer player, ItemStack deck, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         return pool == null ? Map.of() : pool.materialStacks(avoid);
     }
 
     /** How much of {@code material}, up to {@code amount}, the pool would take and the charge pays for. Changes nothing. */
-    public static long room(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable BlockPos avoid) {
+    public static long room(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         return pool == null ? 0 : pool.roomMaterial(material, Math.min(amount, DeckStorage.affordableFluid(deck)), avoid);
     }
 
     /** Puts up to {@code amount} into the pool as far as the charge pays for, and pays. Returns how much went in. */
-    public static long deposit(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable BlockPos avoid) {
+    public static long deposit(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         amount = Math.min(amount, DeckStorage.affordableFluid(deck));
         if (pool == null || amount <= 0) return 0;
@@ -39,7 +39,7 @@ public final class DeckMaterialStorage {
     }
 
     /** Takes up to {@code amount} out of the pool as far as the charge pays for, and pays. Returns how much came out. */
-    public static long withdraw(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable BlockPos avoid) {
+    public static long withdraw(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         amount = Math.min(amount, DeckStorage.affordableFluid(deck));
         if (pool == null || amount <= 0) return 0;
@@ -49,13 +49,13 @@ public final class DeckMaterialStorage {
     }
 
     /** Puts back what a move could not finish. No charge, and it does not matter what is left in the Deck. */
-    public static long restore(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable BlockPos avoid) {
+    public static long restore(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         return pool == null || amount <= 0 ? 0 : pool.insertMaterialNow(material, amount, avoid);
     }
 
     /** Takes back what a move put in but the other side never gave up. No charge. */
-    public static long takeBack(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable BlockPos avoid) {
+    public static long takeBack(ServerPlayer player, ItemStack deck, Material material, long amount, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         return pool == null || amount <= 0 ? 0 : pool.extractMaterialNow(material, amount, avoid);
     }

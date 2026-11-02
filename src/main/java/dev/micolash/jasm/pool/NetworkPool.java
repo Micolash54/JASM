@@ -5,6 +5,7 @@ import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,13 +59,15 @@ public final class NetworkPool {
     }
 
     /** The blocks the pool may use right now, one per block (the highest priority port wins), leaving out {@code avoid}. */
-    public List<PoolStore> stores(@Nullable BlockPos avoid) {
-        Map<BlockPos, PoolStore> byBlock = new LinkedHashMap<>();
+    public List<PoolStore> stores(@Nullable NetworkNode avoid) {
+        // a network may stand in several dimensions: a block is its dimension and position
+        Map<NetworkNode, PoolStore> byBlock = new LinkedHashMap<>();
         for (StoragePortBlockEntity port : network.machines(StoragePortBlockEntity.class)) {
             for (PoolStore store : port.stores()) {
-                if (!store.active() || store.chestPos().equals(avoid)) continue;
-                PoolStore known = byBlock.get(store.chestPos());
-                if (known == null || store.priority() > known.priority()) byBlock.put(store.chestPos(), store);
+                NetworkNode chest = store.chest();
+                if (chest == null || !store.active() || chest.equals(avoid)) continue;
+                PoolStore known = byBlock.get(chest);
+                if (known == null || store.priority() > known.priority()) byBlock.put(chest, store);
             }
         }
         return new ArrayList<>(byBlock.values());
@@ -190,13 +193,13 @@ public final class NetworkPool {
     }
 
     /** What the blocks hold right now, by exact resource and not from the listing. Leaves out {@code avoid}. */
-    public Map<Material, Long> materialStacks(@Nullable BlockPos avoid) {
+    public Map<Material, Long> materialStacks(@Nullable NetworkNode avoid) {
         Map<Material, Long> all = new LinkedHashMap<>();
         for (PoolStore store : stores(avoid)) store.scanMaterialStacks(all);
         return all;
     }
 
-    public long countMaterial(Material material, @Nullable BlockPos avoid) {
+    public long countMaterial(Material material, @Nullable NetworkNode avoid) {
         long total = 0;
         for (PoolStore store : stores(avoid)) total += store.countMaterial(material);
         return total;
@@ -216,12 +219,12 @@ public final class NetworkPool {
         public boolean canWrite() { return unit.canWrite(); }
     }
 
-    private List<Side> sides(@Nullable BlockPos avoid) {
+    private List<Side> sides(@Nullable NetworkNode avoid) {
         return stores(avoid).stream().map(store -> new Side(store, store.materialUnit())).toList();
     }
 
     /** How much of {@code material}, up to {@code most}, the blocks would take. Changes nothing. */
-    public long roomMaterial(Material material, long most, @Nullable BlockPos avoid) {
+    public long roomMaterial(Material material, long most, @Nullable NetworkNode avoid) {
         long room = 0;
         for (Side side : PoolRouter.insertOrder(sides(avoid), material)) {
             if (room >= most) break;
@@ -231,7 +234,7 @@ public final class NetworkPool {
     }
 
     /** Puts up to {@code amount} in, highest priority first. Returns how much went in. */
-    public long insertMaterialNow(Material material, long amount, @Nullable BlockPos avoid) {
+    public long insertMaterialNow(Material material, long amount, @Nullable NetworkNode avoid) {
         long moved = 0;
         for (Side side : PoolRouter.insertOrder(sides(avoid), material)) {
             if (moved >= amount) break;
@@ -241,7 +244,7 @@ public final class NetworkPool {
     }
 
     /** Takes up to {@code amount} out, lowest priority first. Returns how much came out. */
-    public long extractMaterialNow(Material material, long amount, @Nullable BlockPos avoid) {
+    public long extractMaterialNow(Material material, long amount, @Nullable NetworkNode avoid) {
         long taken = 0;
         for (Side side : PoolRouter.extractOrder(sides(avoid), material)) {
             if (taken >= amount) break;

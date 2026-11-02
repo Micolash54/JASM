@@ -9,6 +9,7 @@ import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineFace;
 import dev.micolash.jasm.network.MachineSides;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.pool.Material;
 import dev.micolash.jasm.pool.MaterialKinds;
 import dev.micolash.jasm.pool.NetworkPool;
@@ -19,11 +20,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.WorldlyContainer;
@@ -45,26 +50,41 @@ import org.jspecify.annotations.Nullable;
 public final class Machines {
     private Machines() {}
 
-    /** One machine: the Access Port it touches, and which side of the port it is on. */
-    public record At(BlockPos port, Direction side) {
+    /**
+     * One machine: the Access Port it touches, which side of the port it is on, and the port's dimension. Older saves
+     * have no dimension (null): the port stands in the dimension of the block that kept it.
+     */
+    public record At(BlockPos port, Direction side, @Nullable ResourceKey<Level> dimension) {
         public static final Codec<At> CODEC = RecordCodecBuilder.create(i -> i.group(
                 BlockPos.CODEC.fieldOf("port").forGetter(At::port),
-                Direction.CODEC.fieldOf("side").forGetter(At::side))
-                .apply(i, At::new));
+                Direction.CODEC.fieldOf("side").forGetter(At::side),
+                Level.RESOURCE_KEY_CODEC.optionalFieldOf("dimension").forGetter(a -> Optional.ofNullable(a.dimension())))
+                .apply(i, (port, side, dimension) -> new At(port, side, dimension.orElse(null))));
 
         public static final StreamCodec<ByteBuf, At> STREAM_CODEC = StreamCodec.composite(
                 BlockPos.STREAM_CODEC, At::port,
                 Direction.STREAM_CODEC, At::side,
-                At::new);
+                ByteBufCodecs.optional(ResourceKey.streamCodec(Registries.DIMENSION)), a -> Optional.ofNullable(a.dimension()),
+                (port, side, dimension) -> new At(port, side, dimension.orElse(null)));
+
+        /** As an older save wrote it: in the dimension of whatever keeps it. */
+        public At(BlockPos port, Direction side) {
+            this(port, side, null);
+        }
 
         public At {
             port = port.immutable();
+        }
+
+        /** The port's level: its own dimension, or {@code holder}'s when none was saved. Null for a dimension that is gone. */
+        public @Nullable ServerLevel level(ServerLevel holder) {
+            return dimension == null ? holder : holder.getServer().getLevel(dimension);
         }
     }
 
     /** The machine at {@code at}, if its port stands on {@code network}, is loaded, and something there takes items. */
     public static @Nullable AccessPortBlockEntity reach(ServerLevel level, @Nullable CableNetwork network, At at) {
-        AccessPortBlockEntity port = port(level, network, at.port(), at.side());
+        AccessPortBlockEntity port = port(at.level(level), network, at.port(), at.side());
         return port != null && port.hasMachine(at.side()) ? port : null;
     }
 
@@ -82,11 +102,12 @@ public final class Machines {
             if (!port.serves(card) || port.isRemoved()) {
                 continue;
             }
+            ResourceKey<Level> dimension = port.getLevel().dimension();
             if (port.face() != null) {
-                spots.add(new At(port.getBlockPos(), port.face()));
+                spots.add(new At(port.getBlockPos(), port.face(), dimension));
             } else {
                 for (Direction side : port.spotSides()) {
-                    spots.add(new At(port.getBlockPos(), side));
+                    spots.add(new At(port.getBlockPos(), side, dimension));
                 }
             }
         }
@@ -102,7 +123,7 @@ public final class Machines {
     public static ProcessingCard located(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
         List<ProcessingCard.Machine> machines = new ArrayList<>();
         for (At at : spots(level, network, card)) {
-            machines.add(new ProcessingCard.Machine(at.port(), at.side(), ""));
+            machines.add(new ProcessingCard.Machine(at.port(), at.side(), "", at.dimension()));
         }
         return card.at(machines);
     }
@@ -112,18 +133,28 @@ public final class Machines {
         return network.machines(AccessPortBlockEntity.class);
     }
 
-    /** The port at {@code pos}, if it stands there, is loaded and belongs to {@code network}. */
-    public static @Nullable AccessPortBlockEntity port(ServerLevel level, @Nullable CableNetwork network, BlockPos pos) {
-        if (network == null || !network.contains(pos) || !level.isLoaded(pos)) {
+    /**
+     * Whether the blocks at {@code pos} are running: loaded and ticking. Looking at a chunk keeps it in memory for a
+     * tick, so a job asks this before every look at its machines; one in a chunk that has stopped (its far side left
+     * behind) is waited for, and the chunk is free to unload. A null level (a dimension that is gone) has none.
+     */
+    public static boolean running(@Nullable ServerLevel level, BlockPos pos) {
+        return level != null && level.isLoaded(pos) && level.shouldTickBlocksAt(pos);
+    }
+
+    /** The port at {@code pos} in {@code level}, if it stands there, is {@link #running} and belongs to {@code network}. */
+    public static @Nullable AccessPortBlockEntity port(@Nullable ServerLevel level, @Nullable CableNetwork network, BlockPos pos) {
+        if (level == null || network == null || !network.contains(NetworkNode.of(level, pos)) || !running(level, pos)) {
             return null;
         }
         return level.getBlockEntity(pos) instanceof AccessPortBlockEntity port ? port : null;
     }
 
-    public static @Nullable AccessPortBlockEntity port(ServerLevel level, @Nullable CableNetwork network, BlockPos pos, Direction side) {
+    public static @Nullable AccessPortBlockEntity port(@Nullable ServerLevel level, @Nullable CableNetwork network, BlockPos pos,
+            Direction side) {
         AccessPortBlockEntity full = port(level, network, pos);
         if (full != null) return full;
-        if (network == null || !network.contains(pos) || !level.isLoaded(pos)) return null;
+        if (level == null || network == null || !network.contains(NetworkNode.of(level, pos)) || !running(level, pos)) return null;
         return level.getBlockEntity(pos) instanceof DataCableBlockEntity cable ? cable.port(side) : null;
     }
 

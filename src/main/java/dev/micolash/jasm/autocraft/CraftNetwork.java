@@ -10,6 +10,7 @@ import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckView;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.transfer.TransferPortMenu;
@@ -125,8 +126,8 @@ public final class CraftNetwork {
         if (menu == null || payload.target().isEmpty() || !mayPlan(player)) {
             return;
         }
-        Jobs.Preview preview = Jobs.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null),
-                payload.tree());
+        Jobs.Preview preview = JobPlanning.preview(player, menu.deck(), payload.target(), clamp(payload.amount()),
+                payload.server().orElse(null), payload.tree());
         CraftPlanner.Plan<GridKey> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
         for (CraftPlanner.Step<GridKey> step : plan.steps()) {
@@ -165,7 +166,8 @@ public final class CraftNetwork {
         if (menu == null || payload.target().isEmpty()) {
             return;
         }
-        String problem = Jobs.start(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null));
+        String problem = JobPlanning.start(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null),
+                null, false);
         Notices.tell(player, problem == null
                 ? Component.translatable("message.jasm.craft.started", clamp(payload.amount()), payload.target().toStack(1).getHoverName())
                 : Component.translatable(problem), problem == null);
@@ -174,7 +176,7 @@ public final class CraftNetwork {
 
     public static void cancel(ServerPlayer player, CraftPayloads.Cancel payload) {
         DeckMenu menu = craftingMenu(player, payload.containerId());
-        if (menu != null && Jobs.cancel(player, menu.deck(), payload.server())) {
+        if (menu != null && JobRunner.cancel(player, menu.deck(), payload.server())) {
             Notices.good(player, Component.translatable("message.jasm.craft.cancelling"));
             SENT.remove(menu);
         }
@@ -205,14 +207,15 @@ public final class CraftNetwork {
             return null;
         }
         for (AutocraftState.Job entry : AutocraftState.get(server).jobs()) {
+            NetworkNode at = payload.server();
             if (entry.finished() || !entry.requester().equals(player.getUUID()) || !entry.deck().map(deckId::equals).orElse(false)
-                    || !entry.server().pos().equals(payload.server())) {
+                    || !entry.server().pos().equals(at.pos()) || !entry.server().dimension().equals(at.dimension())) {
                 continue;
             }
-            ServerLevel level = server.getLevel(entry.server().dimension());
-            if (level != null && level.isLoaded(payload.server())
-                    && level.getBlockEntity(payload.server()) instanceof CraftingServerBlockEntity crafting
-                    && crafting.job() != null && crafting.job().id().equals(entry.id()) && Jobs.onDeckNetwork(menu.deck(), level, payload.server())) {
+            ServerLevel level = server.getLevel(at.dimension());
+            if (level != null && level.isLoaded(at.pos())
+                    && level.getBlockEntity(at.pos()) instanceof CraftingServerBlockEntity crafting
+                    && crafting.job() != null && crafting.job().id().equals(entry.id()) && Jobs.onDeckNetwork(menu.deck(), level, at.pos())) {
                 return crafting;
             }
         }
@@ -487,7 +490,7 @@ public final class CraftNetwork {
                     && crafting.job() != null && crafting.job().id().equals(entry.id()) && Jobs.onDeckNetwork(deck, level, pos)) {
                 CraftingJob job = crafting.job();
                 ItemResource target = job.target() == null ? ItemResource.EMPTY : ItemResource.of(job.target().create());
-                views.add(new CraftPayloads.JobView(pos, target, job.amount(), job.phase().ordinal(), Math.round(job.progress() * 1000),
+                views.add(new CraftPayloads.JobView(NetworkNode.of(level, pos), target, job.amount(), job.phase().ordinal(), Math.round(job.progress() * 1000),
                         job.pause().code(), Optional.ofNullable(job.waiting()).map(CraftingJob.Waiting::line)));
             }
             if (views.size() >= 64) {

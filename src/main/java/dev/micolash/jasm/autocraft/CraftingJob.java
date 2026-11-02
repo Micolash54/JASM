@@ -23,14 +23,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.NetworkNode;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -182,14 +185,18 @@ public final class CraftingJob {
                 // sets sent before these were kept have neither
                 BuiltInRegistries.BLOCK.byNameCodec().optionalFieldOf("machine").forGetter(s -> Optional.ofNullable(s.machine)),
                 ComponentSerialization.CODEC.optionalFieldOf("machine_name").forGetter(s -> Optional.ofNullable(s.name)),
-                Use.CODEC.listOf().optionalFieldOf("copies", List.of()).forGetter(s -> Step.list(s.copies)))
-                .apply(i, (step, port, side, waiting, since, machine, name, copies) -> new Sent(step, port, side, waiting, since,
-                        machine.orElse(null), name.orElse(null), Step.map(copies))));
+                Use.CODEC.listOf().optionalFieldOf("copies", List.of()).forGetter(s -> Step.list(s.copies)),
+                // sets sent before far links have none: the port is in the server's dimension
+                Level.RESOURCE_KEY_CODEC.optionalFieldOf("dimension").forGetter(s -> Optional.ofNullable(s.dimension)))
+                .apply(i, (step, port, side, waiting, since, machine, name, copies, dimension) -> new Sent(step, port, side,
+                        dimension.orElse(null), waiting, since, machine.orElse(null), name.orElse(null), Step.map(copies))));
 
         final int step;
         final BlockPos port;
         /** Which side of the port the machine is on. */
         final Direction side;
+        /** The port's dimension; null on sets saved before it was kept, which went to a port in the server's own. */
+        final @Nullable ResourceKey<Level> dimension;
         /** Still to come back; entries drop out as they arrive. */
         final List<ProcessingCard.Amount> waiting;
         /** Game time it was sent. */
@@ -203,16 +210,23 @@ public final class CraftingJob {
          */
         final Map<ItemResource, Long> copies;
 
+        /** A set as it was written before the port's dimension was kept. */
         Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
                 @Nullable Component name) {
-            this(step, port, side, waiting, since, machine, name, new LinkedHashMap<>());
+            this(step, port, side, null, waiting, since, machine, name, new LinkedHashMap<>());
         }
 
-        private Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
-                @Nullable Component name, Map<ItemResource, Long> copies) {
+        Sent(int step, NetworkNode port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
+                @Nullable Component name) {
+            this(step, port.pos(), side, port.dimension(), waiting, since, machine, name, new LinkedHashMap<>());
+        }
+
+        private Sent(int step, BlockPos port, Direction side, @Nullable ResourceKey<Level> dimension, List<ProcessingCard.Amount> waiting,
+                long since, @Nullable Block machine, @Nullable Component name, Map<ItemResource, Long> copies) {
             this.step = step;
             this.port = port.immutable();
             this.side = side;
+            this.dimension = dimension;
             this.waiting = new ArrayList<>(waiting);
             this.since = since;
             this.machine = machine;
@@ -242,8 +256,19 @@ public final class CraftingJob {
             return waiting.isEmpty();
         }
 
-        Machines.At at() {
-            return new Machines.At(port, side);
+        /** The machine, with its port's dimension filled in: {@code server} is the level of the server holding the job. */
+        Machines.At at(Level server) {
+            return new Machines.At(port, side, dimension != null ? dimension : server.dimension());
+        }
+
+        /** The port's level, or null for a dimension that is gone. {@code server} as above. */
+        @Nullable ServerLevel level(ServerLevel server) {
+            return at(server).level(server);
+        }
+
+        /** Whether the set went through {@code port}, in its own dimension. {@code server} as above. */
+        boolean through(ServerLevel server, AccessPortBlockEntity port) {
+            return port.getLevel() != null && at(server).equals(new Machines.At(port.getBlockPos(), side, port.getLevel().dimension()));
         }
 
         /** How much of the card's main result has come back for this set; extras and byproducts don't count. */
@@ -625,7 +650,8 @@ public final class CraftingJob {
             if (machine[set.step] == null && steps.get(set.step).card instanceof ProcessingCard card) {
                 // The name the machine had when the set went in; looking it up in the world each time would cost more. A
                 // set saved before names were kept falls back on the name an older card gave its machine.
-                String old = set.name != null ? "" : card.machines().stream().filter(m -> m.at().equals(set.at()))
+                // both were saved before dimensions were kept: the same spot is the same machine
+                String old = set.name != null ? "" : card.machines().stream().filter(m -> m.pos().equals(set.port) && m.side() == set.side)
                         .map(ProcessingCard.Machine::name).findFirst().orElse("");
                 machine[set.step] = set.name != null ? set.name
                         : old.isBlank() ? Component.translatable("screen.jasm.server.machine") : Component.literal(old);
@@ -643,11 +669,14 @@ public final class CraftingJob {
         return now;
     }
 
-    /** Where the machines are that the job has sets waiting in now, to light them up; empty when none is out. */
-    public List<BlockPos> machines() {
-        List<BlockPos> found = new ArrayList<>();
+    /**
+     * Where the machines are that the job has sets waiting in now, each in its dimension, to light them up; empty when
+     * none is out. {@code server} is the level of the server holding the job.
+     */
+    public List<NetworkNode> machines(Level server) {
+        List<NetworkNode> found = new ArrayList<>();
         for (Sent set : sent) {
-            BlockPos at = set.port.relative(set.side);
+            NetworkNode at = new NetworkNode(set.at(server).dimension(), set.port.relative(set.side));
             if (!set.done() && !found.contains(at)) found.add(at);
         }
         return found;

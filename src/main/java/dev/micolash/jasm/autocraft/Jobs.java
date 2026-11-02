@@ -3,6 +3,7 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.network.CableNetwork;
+import dev.micolash.jasm.network.NetworkNode;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -27,8 +28,8 @@ import org.jspecify.annotations.Nullable;
 public final class Jobs {
     private Jobs() {}
 
-    /** A server a request could go to. */
-    public record ServerOption(BlockPos pos, int memory, int parallel, boolean busy, boolean fits) {}
+    /** A server a request could go to, in its dimension. */
+    public record ServerOption(NetworkNode pos, int memory, int parallel, boolean busy, boolean fits) {}
 
     /** A planned request: the plan, the servers, and which one it would go to (-1 when none can take it). */
     public record Preview(CraftPlanner.Plan<GridKey> plan, List<ServerOption> servers, int chosen, @Nullable String problem) {}
@@ -60,13 +61,13 @@ public final class Jobs {
 
     /** Plans {@code amount} of {@code target} for {@code player}'s Crafting Deck, without changing anything. */
     public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
-        return JobPlanning.preview(player, deck, target, amount, wanted, false);
+        return JobPlanning.preview(player, deck, target, amount, nearTerminal(player, deck, wanted), false);
     }
 
     /** As above; with {@code tree} the plan also records which craft feeds which. */
     public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
             boolean tree) {
-        return JobPlanning.preview(player, deck, target, amount, wanted, tree);
+        return JobPlanning.preview(player, deck, target, amount, nearTerminal(player, deck, wanted), tree);
     }
 
     /**
@@ -82,19 +83,25 @@ public final class Jobs {
      * at once, and gives the job to the chosen server. Returns null when it started, or the message saying why not.
      */
     public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
-        return JobPlanning.start(player, deck, target, amount, wanted);
+        return JobPlanning.start(player, deck, target, amount, nearTerminal(player, deck, wanted), null, false);
     }
 
     /** As {@link #start(ServerPlayer, ItemStack, ItemResource, long, BlockPos)}, for a rule of the Deck ({@code rule} is its id). */
     public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
             @Nullable UUID rule) {
-        return JobPlanning.start(player, deck, target, amount, wanted, rule);
+        return JobPlanning.start(player, deck, target, amount, nearTerminal(player, deck, wanted), rule, false);
     }
 
     /** As above; {@code toPlayer}: the results go into the player's inventory instead of onto the Deck. */
     public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
             @Nullable UUID rule, boolean toPlayer) {
-        return JobPlanning.start(player, deck, target, amount, wanted, rule, toPlayer);
+        return JobPlanning.start(player, deck, target, amount, nearTerminal(player, deck, wanted), rule, toPlayer);
+    }
+
+    /** A server position given without a dimension is in the dimension of the Deck's terminal. */
+    private static @Nullable NetworkNode nearTerminal(ServerPlayer player, ItemStack deck, @Nullable BlockPos pos) {
+        EncodingTerminalBlockEntity terminal = pos == null ? null : terminalOf(player.level().getServer(), deck);
+        return terminal == null || terminal.getLevel() == null ? null : NetworkNode.of(terminal.getLevel(), pos);
     }
 
     /** One tick of a server's job. {@code powered} is whether the server paid for this tick. */
@@ -107,9 +114,10 @@ public final class Jobs {
         return JobRunner.cancel(player, server);
     }
 
-    /** Cancels the job on {@code pos} if it belongs to this Deck (the Deck's Craft tab). */
+    /** Cancels the job on {@code pos}, in the dimension of the Deck's terminal, if it belongs to this Deck. */
     public static boolean cancel(ServerPlayer player, ItemStack deck, BlockPos pos) {
-        return JobRunner.cancel(player, deck, pos);
+        NetworkNode at = nearTerminal(player, deck, pos);
+        return at != null && JobRunner.cancel(player, deck, at);
     }
 
     /**

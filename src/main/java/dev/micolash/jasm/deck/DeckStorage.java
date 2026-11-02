@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import net.minecraft.core.BlockPos;
+import dev.micolash.jasm.network.NetworkNode;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -111,7 +111,7 @@ public final class DeckStorage {
         private DeckWafers wafers;
         private int tick;
         /** A block the caller is itself moving items through: the pool leaves it alone. */
-        @Nullable BlockPos avoid;
+        @Nullable NetworkNode avoid;
 
         private Checked(WaferStore store, ItemStack deck, ServerPlayer player) {
             this.store = store;
@@ -134,7 +134,7 @@ public final class DeckStorage {
         }
 
         /** Never moves items or fluid into or out of the block at {@code chest}, through the pool. */
-        public Checked avoiding(BlockPos chest) {
+        public Checked avoiding(NetworkNode chest) {
             avoid = chest;
             return this;
         }
@@ -776,7 +776,7 @@ public final class DeckStorage {
     }
 
     /** The storage blocks this Deck may use, or an empty list. {@code avoid} is a block the caller is moving items through. */
-    private static List<PoolStore> ports(ServerPlayer player, ItemStack deck, @Nullable BlockPos avoid) {
+    private static List<PoolStore> ports(ServerPlayer player, ItemStack deck, @Nullable NetworkNode avoid) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         return pool == null ? List.of() : pool.stores(avoid);
     }

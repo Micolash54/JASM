@@ -10,6 +10,7 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
@@ -73,14 +74,14 @@ final class JobPlanning {
         return terminal;
     }
 
-    /** Whether the block at {@code pos} is on the network this Deck is paired with. */
+    /** Whether the block at {@code pos} in {@code level} is on the network this Deck is paired with, in any dimension. */
     public static boolean onDeckNetwork(ItemStack deck, ServerLevel level, BlockPos pos) {
         EncodingTerminalBlockEntity terminal = terminalOf(level.getServer(), deck);
-        if (terminal == null || terminal.getLevel() != level) {
+        if (terminal == null || !(terminal.getLevel() instanceof ServerLevel home)) {
             return false;
         }
-        CableNetwork network = Networks.at(level, terminal.getBlockPos());
-        return network != null && network.contains(pos);
+        CableNetwork network = Networks.at(home, terminal.getBlockPos());
+        return network != null && network.contains(NetworkNode.of(level, pos));
     }
 
     /** Cards on {@code network} in racks with power that {@code player} may use. */
@@ -105,7 +106,7 @@ final class JobPlanning {
     }
 
     /** Plans {@code amount} of {@code target} for {@code player}'s Crafting Deck, without changing anything. */
-    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
+    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable NetworkNode wanted) {
         return preview(player, deck, target, amount, wanted, false);
     }
 
@@ -205,7 +206,7 @@ final class JobPlanning {
     }
 
     /** As above; with {@code tree} the plan also records which craft feeds which. */
-    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
+    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable NetworkNode wanted,
             boolean tree) {
         CraftPlanner.Plan<GridKey> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
         Prepared prepared = prepare(player, deck);
@@ -223,11 +224,12 @@ final class JobPlanning {
         List<ServerOption> servers = new ArrayList<>();
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
             if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
-                servers.add(
-                        new ServerOption(server.getBlockPos(), server.memory(), server.parallel(), server.busy(), server.memory() >= plan.size()));
+                servers.add(new ServerOption(NetworkNode.of(server.getLevel(), server.getBlockPos()), server.memory(), server.parallel(),
+                        server.busy(), server.memory() >= plan.size()));
             }
         }
-        servers.sort(Comparator.comparingInt(ServerOption::memory).thenComparing(o -> o.pos().asLong()));
+        servers.sort(Comparator.comparingInt(ServerOption::memory).thenComparing(o -> o.pos().dimension().identifier().toString())
+                .thenComparingLong(o -> o.pos().pos().asLong()));
         int chosen = -1;
         for (int i = 0; i < servers.size(); i++) {
             ServerOption option = servers.get(i);
@@ -262,20 +264,11 @@ final class JobPlanning {
 
     /**
      * Starts a request: plans it again (the screen is never trusted), takes every ingredient from the Deck's wafers
-     * at once, and gives the job to the chosen server. Returns null when it started, or the message saying why not.
+     * at once, and gives the job to the chosen server ({@code wanted}, if it can take it). {@code rule} is the Deck's
+     * rule that asked, if any; {@code toPlayer}: the results go into the player's inventory instead of onto the Deck.
+     * Returns null when it started, or the message saying why not.
      */
-    public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted) {
-        return start(player, deck, target, amount, wanted, null);
-    }
-
-    /** As {@link #start(ServerPlayer, ItemStack, ItemResource, long, BlockPos)}, for a rule of the Deck ({@code rule} is its id). */
-    public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
-            @Nullable UUID rule) {
-        return start(player, deck, target, amount, wanted, rule, false);
-    }
-
-    /** As above; {@code toPlayer}: the results go into the player's inventory instead of onto the Deck. */
-    public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
+    public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable NetworkNode wanted,
             @Nullable UUID rule, boolean toPlayer) {
         // the chest listing can be half a second old, so a start looks in the chests for real
         NetworkPool pool = PoolAccess.forDeck(player, deck);
@@ -288,9 +281,10 @@ final class JobPlanning {
             return "message.jasm.deck.no_power";
         }
         ServerOption option = preview.servers().get(preview.chosen());
-        EncodingTerminalBlockEntity terminal = terminalOf(player.level().getServer(), deck);
-        ServerLevel level = (ServerLevel) terminal.getLevel();
-        if (!(level.getBlockEntity(option.pos()) instanceof CraftingServerBlockEntity server) || server.busy()) {
+        // the server may stand in another dimension than the terminal, across a far link
+        ServerLevel level = player.level().getServer().getLevel(option.pos().dimension());
+        if (level == null || !level.isLoaded(option.pos().pos())
+                || !(level.getBlockEntity(option.pos().pos()) instanceof CraftingServerBlockEntity server) || server.busy()) {
             return "message.jasm.craft.servers_busy";
         }
         WaferStore store = WaferStore.get(level.getServer());

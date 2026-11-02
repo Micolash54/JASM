@@ -12,11 +12,14 @@ import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
@@ -200,23 +203,31 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
 
     /**
      * A machine an older card was written for: its Access Port, the side of the port it touches, and the name it had
-     * when the card was written.
+     * when the card was written. Older cards have no dimension (null): the port stands in the dimension of the block
+     * holding the card. Where a recipe runs now ({@link Machines#located}) always says.
      */
-    public record Machine(BlockPos pos, Direction side, String name) {
+    public record Machine(BlockPos pos, Direction side, String name, @Nullable ResourceKey<Level> dimension) {
         static final Codec<Machine> CODEC = RecordCodecBuilder.create(i -> i.group(
                 BlockPos.CODEC.fieldOf("pos").forGetter(Machine::pos),
                 Direction.CODEC.optionalFieldOf("side", Direction.DOWN).forGetter(Machine::side),
-                Codec.STRING.optionalFieldOf("name", "").forGetter(Machine::name))
-                .apply(i, Machine::new));
+                Codec.STRING.optionalFieldOf("name", "").forGetter(Machine::name),
+                Level.RESOURCE_KEY_CODEC.optionalFieldOf("dimension").forGetter(m -> Optional.ofNullable(m.dimension())))
+                .apply(i, (pos, side, name, dimension) -> new Machine(pos, side, name, dimension.orElse(null))));
 
         static final StreamCodec<RegistryFriendlyByteBuf, Machine> STREAM_CODEC = StreamCodec.composite(
                 BlockPos.STREAM_CODEC, Machine::pos,
                 Direction.STREAM_CODEC, Machine::side,
                 ByteBufCodecs.stringUtf8(128), Machine::name,
-                Machine::new);
+                ByteBufCodecs.optional(ResourceKey.streamCodec(Registries.DIMENSION)), m -> Optional.ofNullable(m.dimension()),
+                (pos, side, name, dimension) -> new Machine(pos, side, name, dimension.orElse(null)));
+
+        /** As older cards wrote it. */
+        public Machine(BlockPos pos, Direction side, String name) {
+            this(pos, side, name, null);
+        }
 
         public Machines.At at() {
-            return new Machines.At(pos, side);
+            return new Machines.At(pos, side, dimension);
         }
     }
 

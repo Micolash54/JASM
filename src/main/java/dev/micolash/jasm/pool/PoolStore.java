@@ -6,6 +6,7 @@ import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.core.PoolRouter;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,8 @@ public final class PoolStore implements PoolRouter.Unit<ItemResource> {
 
     public StorageSettings settings() { return port.settings(); }
     public BlockPos chestPos() { return port.getBlockPos().relative(face); }
+    /** The block in the port's own dimension, for telling it from one at the same spot in another. */
+    public @Nullable NetworkNode chest() { return port.getLevel() == null ? null : NetworkNode.of(port.getLevel(), chestPos()); }
     public boolean active() { return port.storeActive(face); }
     /** The fluid side of this store, for ordering fluids. */
     public PoolRouter.Unit<FluidResource> fluidUnit() { return fluidSide; }

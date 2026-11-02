@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.core.BlockPos;
+import dev.micolash.jasm.network.NetworkNode;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
@@ -89,7 +89,7 @@ public final class DeckFluidStorage {
 
     private static List<PoolStore> ports(ServerPlayer player, ItemStack deck, DeckStorage.@Nullable Checked checked) {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
-        BlockPos avoid = checked == null ? null : checked.avoid;
+        NetworkNode avoid = checked == null ? null : checked.avoid;
         return pool == null ? List.of() : pool.stores(avoid);
     }
 

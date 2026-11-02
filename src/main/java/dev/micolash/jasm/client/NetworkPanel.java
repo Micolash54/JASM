@@ -6,6 +6,7 @@ import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.NetworkViewPayloads;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.registry.JasmComponents;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -463,6 +464,6 @@ public final class NetworkPanel {
             return;
         }
         AbstractWidget.playButtonClickSound(Minecraft.getInstance().getSoundManager());
-        ClientPacketDistributor.sendToServer(new NetworkViewPayloads.Locate(menu.containerId, view.nodes().get(index).pos()));
+        ClientPacketDistributor.sendToServer(new NetworkViewPayloads.Locate(menu.containerId, new NetworkNode(node.dimension(), node.pos())));
     }
 }

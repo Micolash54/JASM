@@ -10,6 +10,7 @@ import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.pool.Material;
 import dev.micolash.jasm.pool.NetworkPool;
@@ -36,6 +37,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
@@ -297,7 +299,8 @@ final class JobRunner {
     private static boolean halted(ServerLevel level, CraftingJob job) {
         for (CraftingJob.Sent set : job.sent) {
             BlockPos machine = set.port.relative(set.side);
-            if (level.isLoaded(machine) && level.getBlockEntity(machine) instanceof MachineBlockEntity jasm && jasm.halted()) {
+            ServerLevel there = set.level(level);
+            if (Machines.running(there, machine) && there.getBlockEntity(machine) instanceof MachineBlockEntity jasm && jasm.halted()) {
                 return true;
             }
         }
@@ -313,19 +316,20 @@ final class JobRunner {
      */
     private static Wait unreachable(ServerLevel level, @Nullable CableNetwork network, Machines.At at) {
         BlockPos machine = at.port().relative(at.side());
-        if (!level.isLoaded(at.port()) || !level.isLoaded(machine)) {
+        ServerLevel there = at.level(level);
+        if (!Machines.running(there, at.port()) || !Machines.running(there, machine)) {
             return Wait.UNLOADED;
         }
-        if (Machines.port(level, network, at.port(), at.side()) == null) {
+        if (Machines.port(there, network, at.port(), at.side()) == null) {
             return Wait.NO_PORT;
         }
-        return level.getBlockEntity(machine) instanceof MachineBlockEntity grid && grid.opensToPorts() ? Wait.SIDE : Wait.NO_PORT;
+        return there.getBlockEntity(machine) instanceof MachineBlockEntity grid && grid.opensToPorts() ? Wait.SIDE : Wait.NO_PORT;
     }
 
     /** A machine a set can go to right now. */
     private record Target(AccessPortBlockEntity port, Direction side) {
         Machines.At at() {
-            return new Machines.At(port.getBlockPos(), side);
+            return new Machines.At(port.getBlockPos(), side, port.getLevel().dimension());
         }
     }
 
@@ -368,7 +372,7 @@ final class JobRunner {
         List<ProcessingCard.Amount> expected = card.outputs().stream().filter(a -> !a.isEmpty()).toList();
         Map<Machines.At, Long> out = new HashMap<>();
         for (CraftingJob.Sent already : job.sent) {
-            out.merge(already.at(), 1L, Long::sum);
+            out.merge(already.at(level), 1L, Long::sum);
         }
         NetworkPool pool = materialSet.isEmpty() || network == null ? null : NetworkPool.of(level, network);
         int sent = 0;
@@ -439,8 +443,10 @@ final class JobRunner {
             });
             fluidSet.forEach((key, n) -> store.extractFluid(fluids, key, n, false, null));
             BlockPos machine = target.port().getBlockPos().relative(target.side());
-            job.sent.add(new CraftingJob.Sent(stepIndex, target.port().getBlockPos(), target.side(), expected, level.getGameTime(),
-                    level.getBlockState(machine).getBlock(), target.port().machineName(target.side())));
+            // the port may stand in another dimension than the server
+            Level there = target.port().getLevel();
+            job.sent.add(new CraftingJob.Sent(stepIndex, NetworkNode.of(there, target.port().getBlockPos()), target.side(), expected,
+                    level.getGameTime(), there.getBlockState(machine).getBlock(), target.port().machineName(target.side())));
             out.merge(target.at(), 1L, Long::sum);
             target.port().lock(target.side(), job.id, stepIndex);
             step.left--;
@@ -612,7 +618,7 @@ final class JobRunner {
         boolean[] noRoom = {false};
         Map<AccessPortBlockEntity, List<CraftingJob.Sent>> ports = new LinkedHashMap<>();
         for (CraftingJob.Sent set : job.sent) {
-            AccessPortBlockEntity port = Machines.port(level, network, set.port, set.side);
+            AccessPortBlockEntity port = Machines.port(set.level(level), network, set.port, set.side);
             if (port != null) ports.computeIfAbsent(port, unused -> new ArrayList<>()).add(set);
         }
         for (var entry : ports.entrySet()) {
@@ -666,7 +672,7 @@ final class JobRunner {
             job.sent.removeIf(CraftingJob.Sent::done);
             for (CraftingJob.Sent set : here) {
                 AccessPortBlockEntity.Lock lock = port.lock(set.side);
-                if (lock != null && lock.job().equals(job.id) && job.sent.stream().noneMatch(s -> s.at().equals(set.at()))) {
+                if (lock != null && lock.job().equals(job.id) && job.sent.stream().noneMatch(s -> s.at(level).equals(set.at(level)))) {
                     port.unlock(set.side);
                 }
             }
@@ -684,7 +690,11 @@ final class JobRunner {
      * its set back, so those are waited for.
      */
     private static boolean dropLost(ServerLevel level, CraftingJob job) {
-        boolean dropped = job.sent.removeIf(set -> level.isLoaded(set.port) && !portStands(level, set.port, set.side));
+        // each port is looked for in its own dimension; one that isn't running (unloaded, or a dimension that is gone) is waited for
+        boolean dropped = job.sent.removeIf(set -> {
+            ServerLevel there = set.level(level);
+            return Machines.running(there, set.port) && !portStands(there, set.port, set.side);
+        });
         if (dropped) {
             job.ended = PauseReason.PORT_GONE;
         }
@@ -773,7 +783,7 @@ final class JobRunner {
             WaferRecord fluids = fluidRecord(store, job);
             if (fluids == null) continue;
             List<CraftingJob.Sent> sets = job.sent.stream()
-                    .filter(s -> s.port.equals(port.getBlockPos()) && port.lock(s.side) != null && id.equals(port.lock(s.side).job())
+                    .filter(s -> s.through(jobLevel, port) && port.lock(s.side) != null && id.equals(port.lock(s.side).job())
                             && s.wants(key) > 0)
                     .sorted(Comparator.comparing(s -> s.side != side))
                     .toList();
@@ -877,8 +887,9 @@ final class JobRunner {
     /** The job stops waiting on machines: its sets are forgotten and its machines let go. */
     static void release(ServerLevel level, CraftingJob job) {
         for (CraftingJob.Sent set : job.sent) {
-            if (level.isLoaded(set.port)
-                    && Machines.port(level, Networks.at(level, set.port), set.port, set.side) instanceof AccessPortBlockEntity port) {
+            ServerLevel there = set.level(level);
+            if (Machines.running(there, set.port)
+                    && Machines.port(there, Networks.at(there, set.port), set.port, set.side) instanceof AccessPortBlockEntity port) {
                 port.unlockJob(job.id);
             }
         }
@@ -894,13 +905,14 @@ final class JobRunner {
         GridKey what = oldest.waiting.getFirst().key();
         long count = 0;
         for (CraftingJob.Sent set : job.sent) {
-            if (set.at().equals(oldest.at())) {
+            if (set.at(level).equals(oldest.at(level))) {
                 count += set.wants(what);
             }
         }
-        AccessPortBlockEntity port = Machines.port(level, network, oldest.port, oldest.side);
+        ServerLevel there = oldest.level(level);
+        AccessPortBlockEntity port = Machines.port(there, network, oldest.port, oldest.side);
         String name = port == null
-                ? Machines.blockName(level, oldest.port.relative(oldest.side)).getString()
+                ? Machines.blockName(Machines.running(there, oldest.port) ? there : null, oldest.port.relative(oldest.side)).getString()
                 : port.machineName(oldest.side).getString();
         return new CraftingJob.Waiting(name, what, count, Math.max(0, level.getGameTime() - oldest.since));
     }
@@ -979,10 +991,12 @@ final class JobRunner {
         return true;
     }
 
-    /** Cancels the job on {@code pos} if it belongs to this Deck (the Deck's Craft tab). */
-    public static boolean cancel(ServerPlayer player, ItemStack deck, BlockPos pos) {
+    /** Cancels the job on the server at {@code at} if it belongs to this Deck (the Deck's Craft tab). */
+    public static boolean cancel(ServerPlayer player, ItemStack deck, NetworkNode at) {
         EncodingTerminalBlockEntity terminal = JobPlanning.terminalOf(player.level().getServer(), deck);
-        if (terminal == null || !(terminal.getLevel().getBlockEntity(pos) instanceof CraftingServerBlockEntity server)
+        ServerLevel level = player.level().getServer().getLevel(at.dimension());
+        if (terminal == null || level == null || !level.isLoaded(at.pos())
+                || !(level.getBlockEntity(at.pos()) instanceof CraftingServerBlockEntity server)
                 || server.job() == null || !server.job().requester.equals(player.getUUID())) {
             return false;
         }

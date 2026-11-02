@@ -17,6 +17,7 @@ import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.NetworkLimit;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
@@ -29,10 +30,12 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -102,11 +105,11 @@ public final class NetworkViewService {
             return false;
         }
         CableNetwork network = Networks.at(level, terminal.getBlockPos());
-        if (network == null || !network.contains(payload.pos())) {
+        if (network == null || !network.contains(payload.at())) {
             return false;
         }
         if (player.connection.hasChannel(NetworkViewPayloads.Glow.TYPE)) {
-            PacketDistributor.sendToPlayer(player, NetworkViewPayloads.Glow.of(payload.pos(), level.dimension()));
+            PacketDistributor.sendToPlayer(player, NetworkViewPayloads.Glow.of(payload.at().pos(), payload.at().dimension()));
         }
         return true;
     }
@@ -135,10 +138,10 @@ public final class NetworkViewService {
         if (network == null) {
             return empty(containerId, 2);
         }
-        Cells cells = new Cells(level, network);
+        Cells cells = new Cells(network);
         NetworkBrainBlockEntity leader = network.leader();
-        Integer root = leader == null ? null : cells.index.get(leader.getBlockPos());
-        if (root == null) root = cells.index.get(terminal.getBlockPos());
+        Integer root = leader == null ? null : cells.index.get(NetworkNode.of(leader.getLevel(), leader.getBlockPos()));
+        if (root == null) root = cells.index.get(NetworkNode.of(level, terminal.getBlockPos()));
         if (root == null) root = cells.firstMachine();
         List<NetworkViewPayloads.Node> nodes = new ArrayList<>();
         boolean partial = !network.complete();
@@ -167,30 +170,38 @@ public final class NetworkViewService {
     private record PortCell(int cable, DataCableBlockEntity holder, AccessPortBlockEntity port) {}
 
     /**
-     * The network's blocks numbered for the tree: every cable and machine by position, so the numbers stay the same
-     * from one view to the next, then the ports on each cable.
+     * The network's blocks numbered for the tree: every cable and machine by dimension and position, so the numbers stay
+     * the same from one view to the next, then the ports on each cable. A far link joins its two ends like a cable.
      */
     private static final class Cells implements NetworkTree.Graph {
-        private final ServerLevel level;
-        private final List<BlockPos> positions;
-        private final Map<BlockPos, Integer> index = new HashMap<>();
+        private final List<NetworkNode> positions;
+        /** Each cell's level, in the order of {@link #positions}. */
+        private final List<ServerLevel> levels;
+        private final Map<NetworkNode, Integer> index = new HashMap<>();
         private final List<PortCell> ports = new ArrayList<>();
         private final List<List<Integer>> neighbours = new ArrayList<>();
         private int root = -1;
 
-        Cells(ServerLevel level, CableNetwork network) {
-            this.level = level;
-            List<BlockPos> all = new ArrayList<>(network.cables());
-            all.addAll(network.machines());
-            all.sort(Comparator.comparingLong(BlockPos::asLong));
+        Cells(CableNetwork network) {
+            Map<ResourceKey<Level>, ServerLevel> byDimension = new HashMap<>();
+            List<NetworkNode> all = new ArrayList<>();
+            for (CableNetwork.Part part : network.parts()) {
+                byDimension.put(part.level().dimension(), part.level());
+                part.cables().forEach(pos -> all.add(NetworkNode.of(part.level(), pos)));
+                part.machines().forEach(pos -> all.add(NetworkNode.of(part.level(), pos)));
+            }
+            all.sort(Comparator.comparing((NetworkNode n) -> n.dimension().identifier().toString()).thenComparingLong(n -> n.pos().asLong()));
             this.positions = all;
+            this.levels = all.stream().map(n -> byDimension.get(n.dimension())).toList();
             for (int i = 0; i < positions.size(); i++) {
                 index.put(positions.get(i), i);
             }
             List<List<Integer>> portsOn = new ArrayList<>();
             for (int i = 0; i < positions.size(); i++) {
                 List<Integer> on = new ArrayList<>();
-                if (level.isLoaded(positions.get(i)) && level.getBlockEntity(positions.get(i)) instanceof DataCableBlockEntity cable) {
+                ServerLevel level = levels.get(i);
+                BlockPos pos = positions.get(i).pos();
+                if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
                     // ports() keeps the direction order.
                     for (AccessPortBlockEntity port : cable.ports()) {
                         on.add(positions.size() + ports.size());
@@ -200,16 +211,25 @@ public final class NetworkViewService {
                 portsOn.add(on);
             }
             for (int i = 0; i < positions.size(); i++) {
-                BlockPos pos = positions.get(i);
+                ServerLevel level = levels.get(i);
+                BlockPos pos = positions.get(i).pos();
                 List<Integer> next = new ArrayList<>();
                 for (Direction side : Direction.values()) {
-                    Integer other = index.get(pos.relative(side));
-                    if (other != null && Networks.canConnect(level, pos, positions.get(other))) {
+                    Integer other = index.get(NetworkNode.of(level, pos.relative(side)));
+                    if (other != null && Networks.canConnect(level, pos, positions.get(other).pos())) {
                         next.add(other);
                     }
                 }
                 next.addAll(portsOn.get(i));
                 neighbours.add(next);
+            }
+            for (CableNetwork.Link link : network.links()) {
+                Integer from = index.get(link.from());
+                Integer to = index.get(link.to());
+                if (from != null && to != null && !neighbours.get(from).contains(to)) {
+                    neighbours.get(from).add(to);
+                    neighbours.get(to).add(from);
+                }
             }
             for (PortCell port : ports) {
                 neighbours.add(List.of(port.cable()));
@@ -227,7 +247,8 @@ public final class NetworkViewService {
             if (cell >= positions.size()) {
                 return true;
             }
-            BlockPos pos = positions.get(cell);
+            ServerLevel level = levels.get(cell);
+            BlockPos pos = positions.get(cell).pos();
             if (!level.isLoaded(pos) || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
                 return false;
             }
@@ -250,7 +271,9 @@ public final class NetworkViewService {
         /** FE a tick the whole network is paying right now: every loaded machine, Archive and mounted port. */
         long totalPower() {
             long total = 0;
-            for (BlockPos pos : positions) {
+            for (int i = 0; i < positions.size(); i++) {
+                ServerLevel level = levels.get(i);
+                BlockPos pos = positions.get(i).pos();
                 if (level.isLoaded(pos)) total += power(level.getBlockEntity(pos));
             }
             for (PortCell port : ports) {
@@ -263,13 +286,15 @@ public final class NetworkViewService {
             int cell = row.cell();
             if (cell >= positions.size()) {
                 PortCell port = ports.get(cell - positions.size());
-                BlockPos pos = positions.get(port.cable());
+                ServerLevel level = levels.get(port.cable());
+                BlockPos pos = positions.get(port.cable()).pos();
                 int status = !level.isLoaded(pos) ? 2 : port.port().running() ? 0 : 1;
                 int power = status == 2 ? 0 : port.port().usingNow();
                 return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), port.holder().portItem(port.port()),
                         portName(port.port()), pos, level.dimension(), status, power);
             }
-            BlockPos pos = positions.get(cell);
+            ServerLevel level = levels.get(cell);
+            BlockPos pos = positions.get(cell).pos();
             if (!level.isLoaded(pos)) {
                 // Never read a block that isn't loaded: that would load its chunk.
                 return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), ItemStack.EMPTY,

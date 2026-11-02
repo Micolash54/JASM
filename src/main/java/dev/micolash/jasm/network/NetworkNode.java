@@ -2,7 +2,10 @@ package dev.micolash.jasm.network;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
@@ -15,6 +18,11 @@ public record NetworkNode(ResourceKey<Level> dimension, BlockPos pos) {
             Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(NetworkNode::dimension),
             BlockPos.CODEC.fieldOf("pos").forGetter(NetworkNode::pos))
             .apply(i, NetworkNode::new));
+
+    public static final StreamCodec<ByteBuf, NetworkNode> STREAM_CODEC = StreamCodec.composite(
+            ResourceKey.streamCodec(Registries.DIMENSION), NetworkNode::dimension,
+            BlockPos.STREAM_CODEC, NetworkNode::pos,
+            NetworkNode::new);
 
     public NetworkNode {
         pos = pos.immutable();

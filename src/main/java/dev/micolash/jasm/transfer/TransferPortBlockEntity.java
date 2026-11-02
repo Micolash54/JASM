@@ -4,6 +4,7 @@ import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
 import dev.micolash.jasm.autocraft.Machines;
 import dev.micolash.jasm.deck.DeckStorage;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
@@ -270,7 +271,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         var tank = Machines.fluidInlet(world, target, side.getOpposite());
         var materials = Machines.materialInlets(world, target, side.getOpposite());
         if (inventory == null && tank == null && materials.isEmpty()) return;
-        storage.avoiding(target);
+        storage.avoiding(NetworkNode.of(world, target));
         // Output takes the shared allowance first. Neither filter list disables the other direction.
         boolean stock = hasStockUpgrade();
         if (inventory != null && kind.exports() && filters.output().hasAllow()) {
@@ -373,7 +374,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         if (pool == null) return 0;
         long taken = 0;
-        for (PoolStore chest : pool.stores(target)) {
+        for (PoolStore chest : pool.stores(NetworkNode.of(level, target))) {
             if (taken >= amount) break;
             taken += chest.extractNow(key, amount - taken);
         }
@@ -384,7 +385,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         if (pool == null) return 0;
         long taken = 0;
-        for (PoolStore tank : pool.stores(target)) {
+        for (PoolStore tank : pool.stores(NetworkNode.of(level, target))) {
             if (taken >= amount) break;
             taken += tank.extractFluidNow(key, amount - taken);
         }

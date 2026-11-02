@@ -1,6 +1,7 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.network.NetworkNode;
 import io.netty.buffer.ByteBuf;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -92,12 +93,12 @@ public final class NetworkViewPayloads {
         }
     }
 
-    /** Client → server: light up the block at {@code pos}. */
-    public record Locate(int containerId, BlockPos pos) implements CustomPacketPayload {
+    /** Client → server: light up the block at {@code at}, in its dimension. */
+    public record Locate(int containerId, NetworkNode at) implements CustomPacketPayload {
         public static final Type<Locate> TYPE = new Type<>(Jasm.id("network_view_locate"));
         public static final StreamCodec<ByteBuf, Locate> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Locate::containerId,
-                BlockPos.STREAM_CODEC, Locate::pos,
+                NetworkNode.STREAM_CODEC, Locate::at,
                 Locate::new);
 
         @Override

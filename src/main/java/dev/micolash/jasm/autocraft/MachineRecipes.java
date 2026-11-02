@@ -98,7 +98,9 @@ public final class MachineRecipes {
             InputFace face = slot < card.usedFaces().size() ? card.usedFaces().get(slot) : InputFace.DEFAULT;
             for (ProcessingCard.Machine machine : card.machines()) {
                 BlockPos pos = machine.pos().relative(machine.side());
-                ResourceHandler<ItemResource> inlet = level.isLoaded(pos) ? Machines.inlet(level, pos, Machines.face(machine.side(), face)) : null;
+                ServerLevel there = machine.at().level(level);
+                ResourceHandler<ItemResource> inlet = Machines.running(there, pos)
+                        ? Machines.inlet(there, pos, Machines.face(machine.side(), face)) : null;
                 if (inlet == null) {
                     continue;
                 }
@@ -138,11 +140,13 @@ public final class MachineRecipes {
         String namespace = null;
         for (ProcessingCard.Machine machine : card.machines()) {
             BlockPos pos = machine.pos().relative(machine.side());
-            if (!level.isLoaded(machine.pos()) || !level.isLoaded(pos)) {
+            // each machine is looked at in its own dimension
+            ServerLevel there = machine.at().level(level);
+            if (!Machines.running(there, machine.pos()) || !Machines.running(there, pos)) {
                 return null;
             }
-            RecipeType<? extends AbstractCookingRecipe> here = cookingAt(level.getBlockEntity(pos));
-            String mod = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).getNamespace();
+            RecipeType<? extends AbstractCookingRecipe> here = cookingAt(there.getBlockEntity(pos));
+            String mod = BuiltInRegistries.BLOCK.getKey(there.getBlockState(pos).getBlock()).getNamespace();
             String kind = here != null ? "" : mod;
             if (namespace != null && !namespace.equals(kind) || here != null && cooking != null && here != cooking) {
                 return null;

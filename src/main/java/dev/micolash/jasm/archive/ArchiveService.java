@@ -99,9 +99,13 @@ public final class ArchiveService {
         var archives = new HashSet<UUID>();
         archives.add(archive.id());
         if (network != null) {
-            for (var pos : network.machines()) {
-                if (player.level().getBlockEntity(pos) instanceof ArchiveBlockEntity other && other.archiveId() != null) {
-                    archives.add(other.archiveId());
+            // each Archive in its own dimension, and only where loaded
+            for (var part : network.parts()) {
+                for (var pos : part.machines()) {
+                    if (part.level().isLoaded(pos) && part.level().getBlockEntity(pos) instanceof ArchiveBlockEntity other
+                            && other.archiveId() != null) {
+                        archives.add(other.archiveId());
+                    }
                 }
             }
         }
