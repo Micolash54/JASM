@@ -1,12 +1,17 @@
 package dev.micolash.jasm.client;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.relay.RelayChatterboxBlockEntity;
+import dev.micolash.jasm.relay.RelayDish;
 import dev.micolash.jasm.relay.RelayEnd;
 import dev.micolash.jasm.relay.RelayStatus;
+import java.io.Reader;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,9 +29,12 @@ import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.resources.model.ModelManager;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.model.standalone.SimpleUnbakedStandaloneModel;
@@ -37,8 +45,10 @@ import org.jspecify.annotations.Nullable;
  * Draws what changes in the Relay Chatterbox's room: the status light and number on the front console, the
  * switchboard's lamps, and the Link Byteling at work. The operator plays one 30 second loop made in Blockbench, on the
  * same clock in every Chatterbox; with no Byteling inside, the stool stands empty, the lamps are dark, the data screen
- * is black and the cord hangs still. The status light glows in the dark unless it is off. The room and dish themselves
- * are the block's own model.
+ * is black and the cord hangs still. The status light glows in the dark unless it is off. On the roof, the dish's yoke
+ * turns on its base and the bowl tilts on the yoke, moved by {@link RelayDish}: pointing at the partner while linked,
+ * straight up when the partner is in another dimension, searching while it waits, at rest with no frequency. The room
+ * and the dish's base are the block's own model.
  */
 public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatterboxBlockEntity, RelayChatterboxRenderer.State> {
     /** The operator's moving parts, in drawing order. */
@@ -63,6 +73,8 @@ public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatter
         key("board_dark");
         key("screen_on");
         key("screen_off");
+        key("dish_yoke");
+        key("dish_bowl");
         for (RelayStatus.Light light : RelayStatus.Light.values()) {
             LIGHTS.put(light, key("light_" + light.name().toLowerCase(Locale.ROOT)));
         }
@@ -83,11 +95,31 @@ public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatter
     private float posedAt = Float.NaN;
     private Map<String, float[]> pose = Map.of();
     private final Map<String, float[]> rest;
+    private final RelayDish.Shape dish;
 
     public RelayChatterboxRenderer(BlockEntityRendererProvider.Context context) {
         animations = BitlingAnimations.load(Minecraft.getInstance().getResourceManager(), Jasm.id("animations/relay_operator.json"));
         loop = animations.clip("operator_loop");
         rest = animations.sample(null, 0);
+        dish = loadDish();
+    }
+
+    /** The dish's pivots and tilt limits, written with its model. */
+    private static RelayDish.Shape loadDish() {
+        Identifier file = Jasm.id("animations/relay_dish.json");
+        try (Reader reader = Minecraft.getInstance().getResourceManager().openAsReader(file)) {
+            JsonObject d = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonArray axis = d.getAsJsonArray("turn_axis");
+            JsonArray hinge = d.getAsJsonArray("hinge");
+            return new RelayDish.Shape(axis.get(0).getAsFloat(), axis.get(1).getAsFloat(), hinge.get(0).getAsFloat(), hinge.get(1).getAsFloat(),
+                    hinge.get(2).getAsFloat(), d.get("bowl_drop").getAsFloat(), d.get("rest_tilt").getAsFloat(), d.get("lowest_tilt").getAsFloat(),
+                    d.get("front_lowest_tilt").getAsFloat(), d.get("front_turn").getAsFloat(), d.get("blend_turn").getAsFloat(),
+                    d.get("highest_tilt").getAsFloat());
+        } catch (Exception e) {
+            Jasm.LOGGER.error("Could not read the dish in {}", file, e);
+            // the dish then stays at its rest pose
+            return new RelayDish.Shape(8, 8, 8, 25.3F, 6.9F, 16, 26, 26, 26, 10, 120, 26);
+        }
     }
 
     @Override
@@ -106,6 +138,46 @@ public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatter
         Level level = relay.getLevel();
         // One clock for all: the world's time, round the loop, never offset by place or restarted by a change.
         state.seconds = level == null ? 0 : (level.getGameTime() % (long) LOOP_TICKS + partialTicks) / 20F;
+        moveDish(relay, state, level == null ? 0 : (level.getGameTime() + partialTicks) / 20.0);
+    }
+
+    /** Moves the dish on to this frame: what it should do comes from the front, the partner only from what was sent. */
+    private void moveDish(RelayChatterboxBlockEntity relay, State state, double seconds) {
+        RelayDish moving = relay.dish();
+        RelayDish.Mode mode = RelayDish.Mode.SEARCH;
+        float turn = 0;
+        float tilt = 0;
+        if (state.light == RelayStatus.Light.OFF) {
+            mode = RelayDish.Mode.REST;
+        } else if (state.light == RelayStatus.Light.GREEN || state.light == RelayStatus.Light.YELLOW) {
+            switch (relay.shownPartner()) {
+                case ELSEWHERE -> mode = RelayDish.Mode.UP;
+                case HERE -> {
+                    mode = RelayDish.Mode.AIM;
+                    long to = relay.shownPartnerPos();
+                    BlockPos from = relay.getBlockPos();
+                    float dx = BlockPos.getX(to) - from.getX();
+                    float dy = BlockPos.getY(to) - from.getY();
+                    float dz = BlockPos.getZ(to) - from.getZ();
+                    // into the block's own frame, where the dish at rest faces -z
+                    double facing = Math.toRadians(180 - state.facing.toYRot());
+                    double x = dx * Math.cos(facing) - dz * Math.sin(facing);
+                    double z = dx * Math.sin(facing) + dz * Math.cos(facing);
+                    double across = Math.sqrt(x * x + z * z);
+                    turn = across < 1e-3 ? moving.turn() : (float) Math.toDegrees(Math.atan2(-x, -z));
+                    tilt = (float) Math.toDegrees(Math.atan2(dy, across));
+                }
+                case NONE -> mode = RelayDish.Mode.SEARCH;
+            }
+        }
+        moving.update(seconds, mode, turn, tilt, dish);
+        state.dishTurn = moving.turn();
+        state.dishTilt = moving.tilt();
+    }
+
+    @Override
+    public AABB getRenderBoundingBox(RelayChatterboxBlockEntity relay) {
+        return relay.renderBox();
     }
 
     @Override
@@ -126,6 +198,8 @@ public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatter
         draw(KEYS.get(state.seated ? "board_lit" : "board_dark"), poseStack, collector, state.lightCoords);
         draw(KEYS.get(state.seated ? "screen_on" : "screen_off"), poseStack, collector, state.lightCoords);
 
+        drawDish(state, poseStack, collector);
+
         Map<String, float[]> now = state.seated ? poseAt(state.seconds) : rest;
         drawPart(CORD, now, poseStack, collector, state);
         if (state.seated) {
@@ -134,6 +208,22 @@ public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatter
                 drawPart(part, now, poseStack, collector, state);
             }
         }
+        poseStack.popPose();
+    }
+
+    /** The yoke turned about the block's centre, and the bowl tilted on the yoke's pins (its model sits a block low). */
+    private void drawDish(State state, PoseStack poseStack, SubmitNodeCollector collector) {
+        float axisX = dish.axisX() / 16;
+        float axisZ = dish.axisZ() / 16;
+        poseStack.pushPose();
+        poseStack.translate(axisX, 0, axisZ);
+        poseStack.mulPose(Axis.YP.rotationDegrees(state.dishTurn));
+        poseStack.translate(-axisX, 0, -axisZ);
+        draw(KEYS.get("dish_yoke"), poseStack, collector, state.lightCoords);
+        poseStack.translate(dish.hingeX() / 16, dish.hingeY() / 16, dish.hingeZ() / 16);
+        poseStack.mulPose(Axis.XP.rotationDegrees(state.dishTilt));
+        poseStack.translate(-dish.hingeX() / 16, (dish.bowlDrop() - dish.hingeY()) / 16, -dish.hingeZ() / 16);
+        draw(KEYS.get("dish_bowl"), poseStack, collector, state.lightCoords);
         poseStack.popPose();
     }
 
@@ -169,5 +259,7 @@ public class RelayChatterboxRenderer implements BlockEntityRenderer<RelayChatter
         int frequency = RelayEnd.NO_FREQUENCY;
         boolean seated;
         float seconds;
+        float dishTurn;
+        float dishTilt;
     }
 }

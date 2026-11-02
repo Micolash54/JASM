@@ -3,6 +3,7 @@ package dev.micolash.jasm.relay;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
@@ -34,6 +35,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,12 +57,24 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     private long paidAt = Long.MIN_VALUE;
     /** Where the pairing last said this end stands; worked out again after the pairing says it changed. Server only. */
     private @Nullable RelayStatus status;
-    /** The front as players' games were last told it, so it is only sent again once it looks different. Server only. */
+    /** The other end of the running link, worked out with {@link #status}; null while not linked. Server only. */
+    private @Nullable NetworkNode partner;
+    /** The front and the dish's partner as players' games were last told them, so they are only sent again on a change. Server only. */
     private int sentLook = UNSENT;
+    private Partner sentPartner = Partner.NONE;
+    private long sentPartnerPos;
     private int looksSent;
-    /** The front as this player's game was told it. Client only. */
+    /** The front and the dish's partner as this player's game was told them. Client only. */
     private int shownLook = look(RelayStatus.Light.OFF, NO_FREQUENCY, false);
+    private Partner shownPartner = Partner.NONE;
+    private long shownPartnerPos;
+    /** The dish's movement and the space the renderer draws in. Client only, made when first drawn. */
+    private @Nullable RelayDish dish;
+    private @Nullable AABB renderBox;
     private static final int UNSENT = -1;
+
+    /** Where the dish's partner is, as far as the dish cares: nowhere (not linked), here, or in another dimension. */
+    public enum Partner { NONE, HERE, ELSEWHERE }
 
     public RelayChatterboxBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.RELAY_CHATTERBOX_ENTITY.get(), pos, state, 0);
@@ -192,8 +206,19 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     public RelayStatus status() {
         if (status == null) {
             status = RelayLinks.status(this);
+            partner = RelayLinks.partner(this);
         }
         return status;
+    }
+
+    /** Where the other end of the running link stands, as the dish cares. Server only. */
+    private Partner partner() {
+        status();
+        return partner == null || level == null ? Partner.NONE : partner.dimension().equals(level.dimension()) ? Partner.HERE : Partner.ELSEWHERE;
+    }
+
+    private long partnerPos() {
+        return partner() == Partner.HERE && partner != null ? partner.pos().asLong() : 0;
     }
 
     @Override
@@ -263,7 +288,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         return droppedItself || holdsItems();
     }
 
-    // --- what players' games are told: the console light, the number and whether the operator sits ---
+    // --- what players' games are told: the console light, the number, whether the operator sits, where the dish points ---
 
     /** The front packed in one number: the light, whether a Link Byteling sits, and the frequency. */
     private static int look(RelayStatus.Light light, int frequency, boolean seated) {
@@ -274,22 +299,57 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         return look(status().light(), frequency, accepts(OPERATOR, operator()));
     }
 
-    /** Tells players' games when the front would be drawn differently, and only then: never for a change of charge alone. */
+    /**
+     * Tells players' games when the front would be drawn differently or the dish's partner moved, and only then: never
+     * for a change of charge alone.
+     */
     private void showLook() {
         int now = look();
+        Partner to = partner();
+        long at = partnerPos();
         if (sentLook == UNSENT) {
             // nobody has been told anything yet, so nobody needs telling
             sentLook = now;
-        } else if (now != sentLook && level != null) {
+            sentPartner = to;
+            sentPartnerPos = at;
+        } else if ((now != sentLook || to != sentPartner || at != sentPartnerPos) && level != null) {
             sentLook = now;
+            sentPartner = to;
+            sentPartnerPos = at;
             looksSent++;
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
         }
     }
 
-    /** How many times players' games were sent a new look of the front. */
+    /** How many times players' games were sent a new look of the front or a new partner for the dish. */
     public int looksSent() {
         return looksSent;
+    }
+
+    /** Where the dish's partner is, as this player's game was told. */
+    public Partner shownPartner() {
+        return shownPartner;
+    }
+
+    /** The partner's block, packed, when {@link #shownPartner} is {@link Partner#HERE}. */
+    public long shownPartnerPos() {
+        return shownPartnerPos;
+    }
+
+    /** The dish's movement, made the first time it is drawn, each block with its own rhythm. Client only. */
+    public RelayDish dish() {
+        if (dish == null) {
+            dish = new RelayDish(worldPosition.asLong());
+        }
+        return dish;
+    }
+
+    /** Both halves, with room for the turning yoke's ends. Client only. */
+    public AABB renderBox() {
+        if (renderBox == null) {
+            renderBox = new AABB(worldPosition).expandTowards(0, 1, 0).inflate(0.05, 0, 0.05);
+        }
+        return renderBox;
     }
 
     /** The console light as this player's game knows it. */
@@ -318,13 +378,22 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         CompoundTag tag = new CompoundTag();
         int now = look();
         sentLook = now;
+        sentPartner = partner();
+        sentPartnerPos = partnerPos();
         tag.putInt("look", now);
+        tag.putInt("partner", sentPartner.ordinal());
+        if (sentPartner == Partner.HERE) {
+            tag.putLong("partner_pos", sentPartnerPos);
+        }
         return tag;
     }
 
     @Override
     public void handleUpdateTag(ValueInput input) {
         shownLook = input.getIntOr("look", shownLook);
+        int partner = input.getIntOr("partner", 0);
+        shownPartner = partner >= 0 && partner < Partner.values().length ? Partner.values()[partner] : Partner.NONE;
+        shownPartnerPos = input.getLongOr("partner_pos", 0);
     }
 
     @Override

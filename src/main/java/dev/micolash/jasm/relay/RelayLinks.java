@@ -132,6 +132,20 @@ public final class RelayLinks {
         return end.canRun() && partner.canRun() ? RelayStatus.LINKED : RelayStatus.LINKED_ONE_SIDE;
     }
 
+    /** Where the other end of this end's running link stands, or null while it isn't linked. */
+    public static @Nullable NetworkNode partner(RelayEnd end) {
+        RelayPairs.Channel channel = channel(end);
+        if (channel == null || !(end.getLevel() instanceof ServerLevel level)) {
+            return null;
+        }
+        Edge edge = LIVE.get(channel);
+        if (edge == null) {
+            return null;
+        }
+        NetworkNode node = NetworkNode.of(level, end.getBlockPos());
+        return edge.a().equals(node) ? edge.b() : edge.b().equals(node) ? edge.a() : null;
+    }
+
     /** The frequency an end's block says it is on, or null without one. */
     static RelayPairs.@Nullable Channel channel(RelayEnd end) {
         int frequency = end.frequency();

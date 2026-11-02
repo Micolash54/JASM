@@ -1,0 +1,18 @@
+{
+  "turn_axis": [
+    8,
+    8
+  ],
+  "hinge": [
+    8,
+    25.3,
+    6.9
+  ],
+  "bowl_drop": 16,
+  "rest_tilt": 26,
+  "lowest_tilt": 31.5,
+  "front_lowest_tilt": 26,
+  "front_turn": 10,
+  "blend_turn": 120,
+  "highest_tilt": 90
+}
