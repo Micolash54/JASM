@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
@@ -188,6 +189,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
                     int from = AccessPortBlockEntity.SPEED_START;
                     int to = AccessPortBlockEntity.INVENTORY_SIZE;
                     if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) return RedstoneUpgradeItem.fits(container, from, to, getContainerSlot(), stack);
+                    if (stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) return ChunkloadUpgradeItem.fits(container, from, to, getContainerSlot(), stack);
                     return stack.is(JasmItems.SPEED_UPGRADE.get()) && SpeedUpgradeItem.fits(container, from, to, getContainerSlot(), stack);
                 }
                 @Override
@@ -566,7 +568,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
                     || moveItemStackTo(stack, inventoryStart, hotbarStart, false);
         } else if (stack.is(JasmItems.POWER_UPGRADE.get())) {
             moved = moveItemStackTo(stack, 0, 1, false);
-        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) {
             moved = moveItemStackTo(stack, SLOT_SPEED, inventoryStart, false);
         } else if (stack.is(JasmItems.SPEED_UPGRADE.get())) {
             moved = false;

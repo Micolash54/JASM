@@ -12,6 +12,7 @@ import dev.micolash.jasm.autocraft.RecipeCardItem;
 import dev.micolash.jasm.autocraft.ServerPartItem;
 import dev.micolash.jasm.acceptor.ThinPowerAcceptorItem;
 import dev.micolash.jasm.autocraft.ThinAccessPortItem;
+import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipType;
@@ -80,6 +81,7 @@ public final class JasmItems {
     public static final DeferredItem<Item> STOCK_UPGRADE = ITEMS.registerSimpleItem("stock_upgrade");
     public static final DeferredItem<Item> POWER_UPGRADE = ITEMS.registerSimpleItem("power_upgrade");
     public static final DeferredItem<Item> DIMENSION_UPGRADE = ITEMS.registerSimpleItem("dimension_upgrade");
+    public static final DeferredItem<ChunkloadUpgradeItem> CHUNKLOAD_UPGRADE = ITEMS.registerItem("chunkload_upgrade", ChunkloadUpgradeItem::new);
     public static final DeferredItem<CrystalSeedItem> CRYSTAL_SEED = ITEMS.registerItem("crystal_seed", CrystalSeedItem::new);
     public static final DeferredItem<Item> DATA_CRYSTAL = ITEMS.registerSimpleItem("data_crystal");
     public static final DeferredItem<GuideBookItem> GUIDE_BOOK = ITEMS.registerItem("guide_book", GuideBookItem::new, p -> p.stacksTo(1));

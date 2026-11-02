@@ -273,7 +273,7 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
             // Each upgrade slot holds one, and one move fills one empty slot.
             moved = false;
             while (!stack.isEmpty() && moveItemStackTo(stack, ChipWorkshopBlockEntity.UPGRADE_START, MACHINE_SLOTS, false)) moved = true;
-        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) {
             moved = moveItemStackTo(stack, ChipWorkshopBlockEntity.UPGRADE_START, MACHINE_SLOTS, false);
         } else {
             moved = moveItemStackTo(stack, 0, ChipWorkshopBlockEntity.GRID_SIZE, false);

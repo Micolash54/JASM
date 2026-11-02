@@ -72,6 +72,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.STOCK_UPGRADE);
                 output.accept(JasmItems.POWER_UPGRADE);
                 output.accept(JasmItems.DIMENSION_UPGRADE);
+                if (Feature.CHUNKLOAD_UPGRADE.on()) output.accept(JasmItems.CHUNKLOAD_UPGRADE);
                 for (ProcessorTier tier : ProcessorTier.values()) {
                     output.accept(JasmItems.processor(tier));
                 }

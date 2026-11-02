@@ -1,0 +1,21 @@
+{
+  "type": "jasm:switchable",
+  "feature": "chunkload_upgrade",
+  "recipe": {
+    "type": "minecraft:crafting_shaped",
+    "key": {
+      "L": "jasm:link_chip",
+      "E": "minecraft:ender_pearl",
+      "R": "minecraft:redstone",
+      "B": "jasm:blank_upgrade"
+    },
+    "pattern": [
+      "ELE",
+      "RBR",
+      "ELE"
+    ],
+    "result": {
+      "id": "jasm:chunkload_upgrade"
+    }
+  }
+}

@@ -3,6 +3,8 @@ package dev.micolash.jasm.autocraft;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
+import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
+import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckStorage;
@@ -68,8 +70,10 @@ import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -129,6 +133,19 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private final PortIntake intake = new PortIntake(this);
     /** How the Power Upgrade passes power on: the port itself holds none. */
     private final PortPower power = new PortPower(this);
+    /** A Chunkload Upgrade's tick of power, fed by the cables only while the port holds one. Not saved: the next tick refills it. */
+    private final SimpleEnergyHandler chunkloadPower = new SimpleEnergyHandler(Tuning.CHUNKLOAD_UPGRADE_DRAIN) {
+        @Override
+        public long getCapacityAsLong() {
+            return ChunkloadUpgradeItem.installedIn(AccessPortBlockEntity.this) ? super.getCapacityAsLong() : 0;
+        }
+
+        @Override
+        public int insert(int amount, TransactionContext transaction) {
+            return ChunkloadUpgradeItem.installedIn(AccessPortBlockEntity.this) ? super.insert(amount, transaction) : 0;
+        }
+    };
+    private @Nullable List<EnergyHandler> inlets;
     /** What other mods' machines take power through, one per side, made when first needed. */
     private final @Nullable BlockCapabilityCache<EnergyHandler, @Nullable Direction>[] energyCaps = newCaches();
 
@@ -452,10 +469,30 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return power.whole();
     }
 
-    /** The cables hand power to each machine side on its own, so short supply is split evenly between them. */
+    /**
+     * The cables hand power to each machine side on its own, so short supply is split evenly between them. A Chunkload
+     * Upgrade is fed beside them.
+     */
     @Override
     public List<? extends EnergyHandler> powerInlets() {
-        return power.inlets();
+        List<EnergyHandler> found = inlets;
+        if (found == null) {
+            List<EnergyHandler> made = new ArrayList<>(power.inlets());
+            made.add(chunkloadPower);
+            inlets = found = List.copyOf(made);
+        }
+        return found;
+    }
+
+    /** A port holds no power of its own, so a Chunkload Upgrade in it keeps one tick's worth. */
+    @Override
+    public SimpleEnergyHandler chunkloadPower() {
+        return chunkloadPower;
+    }
+
+    @Override
+    public boolean isUpgradeSlot(int slot) {
+        return slot >= SPEED_START && slot < INVENTORY_SIZE;
     }
 
     /** FE a tick the Power Upgrade passed on to the machines, averaged over the last second. */
@@ -982,6 +1019,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public boolean canPlaceItem(int slot, ItemStack stack) {
         if (slot >= SPEED_START && slot < INVENTORY_SIZE) {
             if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) return RedstoneUpgradeItem.fits(this, SPEED_START, INVENTORY_SIZE, slot, stack);
+            if (stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) return ChunkloadUpgradeItem.fits(this, SPEED_START, INVENTORY_SIZE, slot, stack);
             return stack.is(JasmItems.SPEED_UPGRADE.get()) && SpeedUpgradeItem.fits(this, SPEED_START, INVENTORY_SIZE, slot, stack);
         }
         if (slot == POWER_SLOT) return stack.is(JasmItems.POWER_UPGRADE.get());
