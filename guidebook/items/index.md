@@ -57,6 +57,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Battery](battery.md): stores power and joins up with its neighbours.
 * [Network Brain](network-brain.md): lifts the machine limit.
 * [Network Chamber](network-chamber.md): builds brain floors and towers.
+* [Relay Chatterbox](relay-chatterbox.md): links two networks like a wireless cable.
 
 <br />
 <br />

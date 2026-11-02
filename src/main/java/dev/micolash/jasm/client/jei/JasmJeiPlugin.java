@@ -139,6 +139,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "power_upgrade", 1, List.of(JasmItems.POWER_UPGRADE.get()));
         info(registration, "dimension_upgrade", 1, List.of(JasmItems.DIMENSION_UPGRADE.get()));
         info(registration, "chunkload_upgrade", 2, List.of(JasmItems.CHUNKLOAD_UPGRADE.get()));
+        info(registration, "relay_chatterbox", 2, List.of(JasmItems.RELAY_CHATTERBOX.get()));
         info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
         info(registration, "storage_module", 1, Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
         info(registration, "archive", 2, Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());

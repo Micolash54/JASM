@@ -22,6 +22,8 @@ The same limit applies to linked ports, crafting jobs and rules. They pause when
 
 Sending items to a player in another dimension needs the upgrade on both Decks. See [sending items](../mechanics/sending-items.md).
 
+Two [Relay Chatterboxes](relay-chatterbox.md) link across dimensions when either one holds this upgrade.
+
 <br />
 <br />
 ## Recipe

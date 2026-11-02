@@ -660,6 +660,8 @@
   "jei.jasm.info.dimension_upgrade.1": "Without it, a Deck and everything linked to it work only in the Overworld.",
   "jei.jasm.info.chunkload_upgrade.1": "Keeps the machine's own chunk loaded while it has power, even with nobody near. A machine takes one.",
   "jei.jasm.info.chunkload_upgrade.2": "With several in one chunk, the first one loads it and the rest wait to take over. The server can limit how many chunks each player loads, or turn the upgrade off.",
+  "jei.jasm.info.relay_chatterbox.1": "Two of these on the same frequency join their networks like a wireless cable. Each needs a Link Byteling at the switchboard.",
+  "jei.jasm.info.relay_chatterbox.2": "The two must have the same owner, and a Dimension Upgrade in one of them links across dimensions.",
   "tooltip.jasm.upgrade.shift": "%s to show compatible machines",
   "tooltip.jasm.upgrade.decks": "Decks",
   "screen.jasm.transfer.input_filters": "Input Filters",
