@@ -96,12 +96,13 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     }
     /** Upgrades a port holds one of at most, in any of its upgrade slots. */
     public static boolean single(ItemStack stack) {
-        return stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CRAFTING_UPGRADE.get()) || stack.is(JasmItems.STOCK_UPGRADE.get());
+        return stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CRAFTING_UPGRADE.get()) || stack.is(JasmItems.STOCK_UPGRADE.get())
+                || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get());
     }
     /** Whether a port of this kind takes {@code stack} in its upgrade slots, ignoring what the other slots hold. */
     public static boolean takesUpgrade(TransferPortKind kind, ItemStack stack) {
         if (stack.is(JasmItems.CRAFTING_UPGRADE.get()) || stack.is(JasmItems.STOCK_UPGRADE.get())) return kind.exports();
-        return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get());
+        return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get());
     }
     @Override
     public boolean hasMachine(Direction side) { return false; }

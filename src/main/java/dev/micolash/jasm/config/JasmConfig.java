@@ -304,6 +304,14 @@ public final class JasmConfig {
             .defineInRange("dropEntityRadius", 8, 1, 64);
 
     static {
+        BUILDER.pop().push("chunkloading");
+    }
+
+    public static final ModConfigSpec.IntValue CHUNKS_PER_PLAYER = BUILDER
+            .comment("Chunks each player's Chunkload Upgrades may keep loaded at once. Upgrades past it wait. 0 means no limit")
+            .defineInRange("chunksPerPlayer", 0, 0, 100_000);
+
+    static {
         BUILDER.pop().push("features");
     }
 
@@ -326,6 +334,11 @@ public final class JasmConfig {
             .worldRestart()
             .comment("Elite Combustion Generator recipe. Off: it can't be crafted; placed ones keep working")
             .define("eliteGenerator", true);
+
+    public static final ModConfigSpec.BooleanValue FEATURE_CHUNKLOAD_UPGRADE = BUILDER
+            .worldRestart()
+            .comment("Chunkload Upgrade. Off: it can't be crafted, and upgrades already in machines do nothing")
+            .define("chunkloadUpgrade", true);
 
     static {
         BUILDER.pop();

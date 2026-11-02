@@ -268,7 +268,7 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         boolean moved;
         if (index < BayBlockEntity.SLOTS) {
             moved = moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false) || moveItemStackTo(stack, BayBlockEntity.SLOTS, HOTBAR_START, false);
-        } else if (stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        } else if (stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) {
             // Each upgrade slot holds one, and one move fills one empty slot.
             moved = false;
             while (!stack.isEmpty() && moveItemStackTo(stack, BayBlockEntity.UPGRADE_START, BayBlockEntity.SLOTS, false)) moved = true;

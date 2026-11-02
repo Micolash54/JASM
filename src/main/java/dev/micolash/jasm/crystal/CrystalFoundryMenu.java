@@ -199,7 +199,7 @@ public class CrystalFoundryMenu extends AbstractContainerMenu implements Machine
             // Each upgrade slot holds one, and one move fills one empty slot.
             moved = false;
             while (!stack.isEmpty() && moveItemStackTo(stack, CrystalFoundryBlockEntity.UPGRADE_START, MACHINE_SLOTS, false)) moved = true;
-        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get())) {
+        } else if (stack.is(JasmItems.REDSTONE_UPGRADE.get()) || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) {
             moved = moveItemStackTo(stack, CrystalFoundryBlockEntity.UPGRADE_START, MACHINE_SLOTS, false);
         } else {
             moved = CrystalFoundryBlockEntity.accepts(CrystalFoundryBlockEntity.INPUT, stack) && moveItemStackTo(stack, 0, 1, false);

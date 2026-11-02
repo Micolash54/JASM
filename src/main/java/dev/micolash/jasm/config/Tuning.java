@@ -42,6 +42,8 @@ public final class Tuning {
      * a Battery slot's base rate). It costs nothing to run.
      */
     public static final int DOCK_CAPACITY = 20_000;
+    /** Chunkload Upgrade, temporary number: FE the upgrade loading a chunk takes from its machine each tick. Waiting ones take none. */
+    public static final int CHUNKLOAD_UPGRADE_DRAIN = 20;
 
     private Tuning() {}
 }

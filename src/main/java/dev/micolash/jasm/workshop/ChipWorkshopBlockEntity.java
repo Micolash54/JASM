@@ -1,6 +1,7 @@
 package dev.micolash.jasm.workshop;
 
 import dev.micolash.jasm.bay.BayClock;
+import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.BitlingStage;
@@ -665,15 +666,22 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
             return !(stack.getItem() instanceof BitlingItem);
         }
         if (slot >= UPGRADE_START && slot < SLOTS) {
-            return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get());
+            return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get())
+                    || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get());
         }
         return slot == CRITTER && stack.getItem() instanceof BitlingItem;
     }
 
-    /** {@link #accepts(int, ItemStack)}, with no more Speed Upgrades than the limit and one Redstone Upgrade in what {@code container} holds. */
+    /** {@link #accepts(int, ItemStack)}, with no more Speed Upgrades than the limit and one Redstone and one Chunkload Upgrade in what {@code container} holds. */
     public static boolean accepts(Container container, int slot, ItemStack stack) {
         return accepts(slot, stack) && SpeedUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack)
-                && RedstoneUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
+                && RedstoneUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack)
+                && ChunkloadUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
+    }
+
+    @Override
+    public boolean isUpgradeSlot(int slot) {
+        return slot >= UPGRADE_START && slot < SLOTS;
     }
 
     public boolean hasRedstoneUpgrade() {
