@@ -62,9 +62,9 @@ public class CombustionGeneratorScreen extends JasmScreen<CombustionGeneratorMen
         graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         // What it makes while burning; fixed, so it doesn't flicker as the buffer fills and empties. The flame shows burning.
-        Component status = Feature.GENERATORS.on()
-                ? Component.translatable("screen.jasm.combustion_generator.potential", String.format("%,d", menu.potential()))
-                : Component.translatable("screen.jasm.turned_off");
+        Component status = !Feature.GENERATORS.on() || menu.switchedOff()
+                ? Component.translatable("screen.jasm.turned_off")
+                : Component.translatable("screen.jasm.combustion_generator.potential", String.format("%,d", menu.potential()));
         graphics.text(font, status, (imageWidth - font.width(status)) / 2, STATUS_Y, JasmGui.SUBTEXT, false);
         Component charge = Component.translatable("screen.jasm.combustion_generator.charge",
                 String.format("%,d", menu.energy()), String.format("%,d", menu.capacity()));

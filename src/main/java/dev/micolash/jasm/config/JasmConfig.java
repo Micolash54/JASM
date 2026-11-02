@@ -332,7 +332,7 @@ public final class JasmConfig {
 
     public static final ModConfigSpec.BooleanValue FEATURE_ELITE_GENERATOR = BUILDER
             .worldRestart()
-            .comment("Elite Combustion Generator recipe. Off: it can't be crafted; placed ones keep working")
+            .comment("Elite Combustion Generator. Off: it can't be crafted, and placed ones stop burning but keep their fuel and charge")
             .define("eliteGenerator", true);
 
     public static final ModConfigSpec.BooleanValue FEATURE_CHUNKLOAD_UPGRADE = BUILDER

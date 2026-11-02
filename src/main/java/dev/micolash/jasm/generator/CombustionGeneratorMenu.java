@@ -34,7 +34,8 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
     static final int DATA_CAPACITY_LOW = 4;
     static final int DATA_CAPACITY_HIGH = 5;
     static final int DATA_POTENTIAL = 6;
-    static final int DATA_COUNT = 7;
+    static final int DATA_SWITCHED_OFF = 7;
+    static final int DATA_COUNT = 8;
 
     private static final Identifier EMPTY_FUEL = Jasm.id("container/empty_fuel");
     private static final Identifier EMPTY_BOLT = Jasm.id("container/empty_bolt");
@@ -100,6 +101,11 @@ public class CombustionGeneratorMenu extends AbstractContainerMenu {
     /** FE per tick this generator makes while it burns. */
     public int potential() {
         return data.get(DATA_POTENTIAL);
+    }
+
+    /** This generator's own switch is off on the server (the Elite one), while generators in general are on. */
+    public boolean switchedOff() {
+        return data.get(DATA_SWITCHED_OFF) != 0;
     }
 
     @Override

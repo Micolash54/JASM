@@ -174,7 +174,7 @@ Each one turns a part of JASM on or off for the world.
 | Deck to Deck | `deckToDeck` | Deck to Deck sending. Off: nothing new can be sent, but trips already on their way still arrive. |
 | Bays | `bays` | The Deployment and Demolition Bays. Off: they can't be crafted, and placed ones stop working but keep their contents. |
 | Combustion Generators | `generators` | The Combustion Generators. Off: they can't be crafted, and placed ones stop burning but keep their fuel and charge. |
-| Elite Combustion Generator recipe | `eliteGenerator` | The Elite Combustion Generator's recipe. Off: it can't be crafted, and placed ones keep working. |
+| Elite Combustion Generator | `eliteGenerator` | The Elite Combustion Generator. Off: it can't be crafted, and placed ones stop burning but keep their fuel and charge. |
 | Chunkload Upgrade | `chunkloadUpgrade` | The Chunkload Upgrade. Off: it can't be crafted, and upgrades already in machines do nothing. |
 
 <br />
