@@ -131,8 +131,8 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         FluidResource fluid = tank.getResource(0);
         if (fluid.isEmpty() || tank.getAmountAsLong(0) < FluidAmounts.PER_BUCKET || !fluid.isComponentsPatchEmpty()
                 || !passes(fluid.getFluid())) return BayStatus.NOTHING_TO_PLACE;
-        // Water is replaceable by water: never pour onto a source of the same fluid.
-        if (level.getFluidState(front).isSourceOfType(fluid.getFluid())) return BayStatus.NOTHING_TO_PLACE;
+        // Only air and flowing fluid take a bucket: it waits in front of any fluid source, its own kind or another.
+        if (level.getFluidState(front).isSource()) return BayStatus.NOTHING_TO_PLACE;
         // Claim mods get their say before anything moves: on the front, as for a player's bucket, and on the spot the
         // fluid fills.
         if (claimWaiting(level, front) || !clickAllowed(level, player, front, new ItemStack(fluid.getFluid().getBucket()))

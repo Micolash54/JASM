@@ -131,6 +131,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private boolean draggingHandle;
     /** Left edge of the main panel, and the grid and scroll track inside it. */
     private final int mainX;
+    /** Width of the used / capacity line as drawn, and what it says in full when it is rounded; set each frame by the labels. */
+    private int usageWidth;
+    private @Nullable Component usageExact;
     private final int gridX;
     private final int trackX;
     private final int gridY = DeckMenu.GRID_Y;
@@ -905,6 +908,14 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         graphics.fill(lx, y + statusY, lx + LINK_SIZE, y + statusY + LINK_SIZE, colour);
     }
 
+    /** Over the used / capacity line, when it is rounded: the exact figures. */
+    private void usageTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (usageExact == null) return;
+        int left = leftPos + mainX + 6;
+        if (mouseX < left || mouseX >= left + usageWidth || mouseY < topPos + statusY || mouseY >= topPos + statusY + 9) return;
+        graphics.setTooltipForNextFrame(font, usageExact, mouseX, mouseY);
+    }
+
     /** Over the charge bar or the link light: the charge and whether the Deck is linked. */
     private void chargeTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         int left = leftPos + linkX() - 1;
@@ -965,6 +976,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         }
         drawGrid(graphics, mouseX, mouseY);
         chargeTooltip(graphics, mouseX, mouseY);
+        usageTooltip(graphics, mouseX, mouseY);
         if (picker != null) {
             picker.draw(graphics, font, realMouseX, realMouseY);
         }
@@ -1169,6 +1181,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
+        usageExact = null;
         long used = 0;
         long capacity = 0;
         long missing = 0;
@@ -1198,6 +1211,12 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 ? Component.translatable("screen.jasm.deck.usage_fluid", GridEntries.abbreviateBuckets(used), GridEntries.abbreviate(capacity / 1_000))
                 : Component.translatable("screen.jasm.deck.usage", GridEntries.abbreviate(used), GridEntries.abbreviate(capacity));
         graphics.text(font, status, mainX + 6, statusY, missing > 0 ? JasmGui.BAD : JasmGui.SUBTEXT, false);
+        usageWidth = font.width(status);
+        Component exact = fluidLine
+                ? Component.translatable("screen.jasm.deck.usage_fluid", FluidAmounts.buckets(used), FluidAmounts.buckets(capacity))
+                : Component.translatable("screen.jasm.deck.usage", String.format("%,d", used), String.format("%,d", capacity));
+        // The exact total, for when the line above is rounded.
+        usageExact = exact.getString().equals(status.getString()) ? null : exact;
         if (types > 0) {
             // Type Wafers: types used, right-aligned before the charge bar, when there is room for both.
             Component typeStatus = Component.translatable("screen.jasm.deck.types", typesUsed, types);
