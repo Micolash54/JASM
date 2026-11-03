@@ -654,6 +654,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             for (int i = 0; i < 9; i++) {
                 ItemStack stack = i < items.size() ? items.get(i) : ItemStack.EMPTY;
                 ghost.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+                amounts[i] = stack.isEmpty() ? 0 : 1;
             }
             if (recipe != null && level instanceof ServerLevel serverLevel
                     && serverLevel.getServer().getRecipeManager().recipeMap().byKey(recipe) != null) {

@@ -21,7 +21,11 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.jspecify.annotations.Nullable;
 
-/** JEI's "+" on a crafting recipe fills the Encoding Terminal's ghost grid with the items JEI is showing. Nothing is used up. */
+/**
+ * JEI's "+" on a crafting recipe fills the Encoding Terminal's ghost grid with the items JEI is showing, switching the
+ * terminal to Crafting if it was on Processing. Shift + "+" keeps Processing and fills the processing grid instead.
+ * Nothing is used up.
+ */
 final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTerminalMenu, RecipeHolder<CraftingRecipe>> {
     private final IRecipeTransferHandlerHelper helper;
 
@@ -53,8 +57,9 @@ final class TerminalTransferHandler implements IRecipeTransferHandler<EncodingTe
     @SuppressWarnings("removal")
     public @Nullable IRecipeTransferError transferRecipe(EncodingTerminalMenu menu, RecipeHolder<CraftingRecipe> recipe, IRecipeSlotsView slots,
             Player player, boolean maxTransfer, boolean doTransfer) {
-        if (menu.processing()) {
-            // With Processing chosen, a crafting recipe fills the processing grid like any other.
+        if (menu.processing() && maxTransfer) {
+            // Shift on the "+" keeps Processing: the crafting recipe fills the processing grid like any other.
+            // Without Shift the server switches the encoder to Crafting and fills the crafting grid below.
             if (doTransfer) {
                 ProcessingTransferHandler.send(menu, ProcessingTransferHandler.items(slots, RecipeIngredientRole.INPUT),
                         ProcessingTransferHandler.items(slots, RecipeIngredientRole.OUTPUT));

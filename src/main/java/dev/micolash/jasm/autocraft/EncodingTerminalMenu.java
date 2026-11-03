@@ -279,23 +279,21 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         }
     }
 
-    /** Fills the crafting grid from a recipe viewer; {@code recipe} becomes the pick. Processing mode fills slot by slot. */
+    /**
+     * Fills the crafting grid from a recipe viewer; {@code recipe} becomes the pick. With Processing chosen, the
+     * terminal switches to Crafting first: a crafting recipe is a crafting card unless the player asked otherwise
+     * (the viewer sends it as a processing fill then).
+     */
     public void fillGhostGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
-        if (terminal != null) {
-            terminal.resetFaces();
-            terminal.resetPins();
-        }
-        if (terminal != null && !processing()) {
-            List<ItemStack> clean = new ArrayList<>();
-            for (ItemStack stack : items) {
-                clean.add(FluidMarkerItem.isMarker(stack) || MaterialMarkerItem.isMarker(stack) ? ItemStack.EMPTY : stack);
-            }
-            terminal.fillGrid(clean, recipe);
+        if (terminal == null) {
             return;
         }
-        for (int i = 0; i < 9; i++) {
-            setGhost(i, i < items.size() ? items.get(i) : ItemStack.EMPTY);
+        terminal.setProcessingMode(false);
+        List<ItemStack> clean = new ArrayList<>();
+        for (ItemStack stack : items) {
+            clean.add(FluidMarkerItem.isMarker(stack) || MaterialMarkerItem.isMarker(stack) ? ItemStack.EMPTY : stack);
         }
+        terminal.fillGrid(clean, recipe);
     }
 
     /** The trust list goes to the screen with the first update after opening. */
