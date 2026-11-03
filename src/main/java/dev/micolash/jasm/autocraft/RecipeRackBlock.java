@@ -20,6 +20,20 @@ public class RecipeRackBlock extends MachineBlock {
     public static final float SLOT_STEP = 3;
     /** How far a card's face stands out of the rack's front, in pixels. What the card makes is drawn just in front of it. */
     public static final float CARD_FACE = 0.5F;
+    /** How far the back of the picture on a card stands out of the rack's front, in pixels: just in front of the card face. */
+    public static final float ICON_BACK = 0.6F;
+    /** How wide the picture on a card is, in pixels: the whole card face. An inventory icon is 1 unit across. */
+    public static final float ICON_SIZE = 2.5F;
+    /** How deep a flat item's picture is, in units: a sixteenth of its width. */
+    private static final double FLAT_ITEM = 1 / 16.0;
+
+    /**
+     * Pixels per unit of depth for an inventory picture {@code depth} units deep, so that it lies flat on the card: a flat
+     * item keeps its own thickness, and a block's 3D picture is squashed to that same thickness.
+     */
+    public static float iconDepthScale(double depth) {
+        return depth <= FLAT_ITEM ? ICON_SIZE : (float) (ICON_SIZE * FLAT_ITEM / depth);
+    }
 
     /**
      * The middle of slot {@code slot}'s card face across, in pixels, on the rack as modelled facing north. Seen from the
