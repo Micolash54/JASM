@@ -1,5 +1,6 @@
 package dev.micolash.jasm.client;
 
+import dev.micolash.jasm.autocraft.Card;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RackControllerMenu;
 import dev.micolash.jasm.autocraft.RackPayloads;
@@ -50,8 +51,11 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     private static final int DIM = 0xB31E1E2E;
     private static final int SCROLL_STEP = 18;
 
-    /** One rack as laid out: its view, which cards the search lights (null without a search), and where it starts. */
-    private record Section(RackControllerMenu.RackView rack, boolean @Nullable [] lit, boolean folded, int top) {
+    /**
+     * One rack as laid out: its view, what each slot shows (the item a card makes, as with Shift held over a card), which
+     * cards the search lights (null without a search), and where it starts.
+     */
+    private record Section(RackControllerMenu.RackView rack, List<ItemStack> icons, boolean @Nullable [] lit, boolean folded, int top) {
         int height() {
             return folded ? FOLDED : FULL;
         }
@@ -109,7 +113,7 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
                     }
                     folded = !any;
                 }
-                Section section = new Section(rack, lit, folded, y);
+                Section section = new Section(rack, icons(rack), lit, folded, y);
                 laid.add(section);
                 y += section.height();
             }
@@ -117,6 +121,17 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
             contentHeight = y + (menu.complete() || racks.isEmpty() ? 0 : NOTE);
         }
         return sections;
+    }
+
+    /** What each slot shows: the item its card makes, or the card itself when it makes nothing that can be drawn. */
+    private static List<ItemStack> icons(RackControllerMenu.RackView rack) {
+        List<ItemStack> icons = new ArrayList<>(RecipeRackBlockEntity.SLOTS);
+        for (ItemStack stack : rack.cards()) {
+            Card card = Card.of(stack);
+            ItemStack result = card == null ? ItemStack.EMPTY : card.result();
+            icons.add(result.isEmpty() ? stack : result);
+        }
+        return icons;
     }
 
     private static boolean matches(ItemStack stack, String query) {
@@ -212,11 +227,8 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
                 int sy = y + HEADER + 1 + i / COLS * 18;
                 JasmGui.slot(graphics, x, sy);
                 if (hovered != null && hovered.section() == section && hovered.slot() == i) JasmGui.slotHover(graphics, x, sy);
-                ItemStack card = section.rack().cards().get(i);
-                if (!card.isEmpty()) {
-                    graphics.item(card, x, sy);
-                    graphics.itemDecorations(font, card, x, sy);
-                }
+                ItemStack icon = section.icons().get(i);
+                if (!icon.isEmpty()) FluidGrid.drawStack(graphics, icon, x, sy);
             }
         }
         // Over the cards: those the search doesn't find dimmed, then the hover rim.
