@@ -2,15 +2,14 @@
   "type": "minecraft:crafting_shaped",
   "key": {
     "I": "minecraft:iron_ingot",
-    "G": "minecraft:glass_pane",
-    "C": "jasm:recipe_card",
-    "L": "jasm:logic_chip",
-    "D": "jasm:data_cable"
+    "S": "jasm:synapse_core",
+    "A": "jasm:access_port",
+    "R": "jasm:recipe_rack"
   },
   "pattern": [
-    "IGI",
-    "CLC",
-    "IDI"
+    "ISI",
+    "ARA",
+    "ISI"
   ],
   "result": {
     "id": "jasm:rack_controller"
