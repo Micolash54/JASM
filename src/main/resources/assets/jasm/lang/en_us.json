@@ -763,7 +763,7 @@
   "screen.jasm.port.idle": "Idle",
   "screen.jasm.port.machine_row": "Machine:",
   "screen.jasm.port.in_use_short": "In use",
-  "screen.jasm.port.machine_taken": "Machine already used by another port",
+  "screen.jasm.port.machine_taken": "Machine in use by another port",
   "screen.jasm.port.active": "Active recipes",
   "screen.jasm.port.recipe_count": "%s recipes",
   "screen.jasm.port.recipe_count_one": "1 recipe",

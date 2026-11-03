@@ -64,8 +64,6 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final int MACHINE_KEY_Y = 16;
     private static final int MACHINE_KEY_WIDTH = 20;
     private static final int MACHINE_KEY_HEIGHT = 22;
-    /** How wide the "machine already used" line may be before it goes on to the next line. */
-    private static final int TAKEN_WIDTH = 84;
     /** Served recipes: at most 16, a slot grid under their heading, lined up with the incoming items below. */
     private static final int ACTIVE_LABEL_Y = 44;
     private static final int ACTIVE_COLS = 8;
@@ -553,7 +551,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     /** How far apart the machine keys stand: a little closer when many kinds would run into the state on the right. */
     private int machineStep() {
         int count = menu.machines().size();
-        int room = WIDTH - 8 - statusWidth() - 3 - machineX();
+        int room = WIDTH - 8 - font.width(status()) - 3 - machineX();
         return count <= 1 ? MACHINE_KEY_WIDTH + 1 : Math.clamp(room / count, 17, MACHINE_KEY_WIDTH + 1);
     }
 
@@ -561,7 +559,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private boolean overOnlyMachine(double mouseX, double mouseY) {
         double x = mouseX - leftPos - machineX();
         double y = mouseY - topPos;
-        return menu.machines().size() == 1 && x >= 0 && x < 16 && y >= MACHINE_KEY_Y + 3 && y < MACHINE_KEY_Y + 19;
+        return !rowTaken() && menu.machines().size() == 1 && x >= 0 && x < 16 && y >= MACHINE_KEY_Y + 3 && y < MACHINE_KEY_Y + 19;
     }
 
     private void chooseMachine(AccessPortMenu.MachineView machine) {
@@ -596,7 +594,13 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
             JasmButton key = machineKeys.get(i);
             key.setPosition(leftPos + machineX() + i * step, topPos + MACHINE_KEY_Y);
             key.setWidth(step - 1);
+            key.visible = !rowTaken();
         }
+    }
+
+    /** Another port keeps the machine: the whole machine row gives way to one line saying so. */
+    private boolean rowTaken() {
+        return menu.running() && menu.machineTaken();
     }
 
     /** The port's state for the right end of the machine row, and its colour. */
@@ -605,23 +609,12 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
             // A port uses no power, so the only thing that stops it is a network over its machine limit.
             return MachineStatusText.noPower(menu.containerId, "screen.jasm.server.pause.network_full", font, WIDTH / 2);
         }
-        if (menu.machineTaken()) return Component.translatable("screen.jasm.port.machine_taken");
         if (menu.paused()) return Component.translatable("screen.jasm.bay.status.paused");
         return Component.translatable(menu.locked() ? "screen.jasm.port.in_use_short" : "screen.jasm.port.idle");
     }
 
-    /** The state split into the lines that fit beside the machines: one, or a few for the long "machine already used" line. */
-    private List<FormattedCharSequence> statusLines() {
-        Component state = status();
-        return menu.running() && menu.machineTaken() ? font.split(state, TAKEN_WIDTH) : List.of(state.getVisualOrderText());
-    }
-
-    private int statusWidth() {
-        return statusLines().stream().mapToInt(font::width).max().orElse(0);
-    }
-
     private int statusColor() {
-        if (!menu.running() || menu.machineTaken()) return JasmGui.BAD;
+        if (!menu.running()) return JasmGui.BAD;
         if (menu.paused()) return JasmGui.WARN;
         return menu.locked() ? JasmGui.GOOD : JasmGui.MUTED;
     }
@@ -693,7 +686,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     /** The one machine's icon when only one kind is in range; several kinds are keys of their own. */
     private void drawMachines(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         List<AccessPortMenu.MachineView> machines = menu.machines();
-        if (machines.size() != 1) return;
+        if (machines.size() != 1 || rowTaken()) return;
         graphics.item(machines.getFirst().icon(), leftPos + machineX(), topPos + MACHINE_KEY_Y + 3);
         if (overOnlyMachine(mouseX, mouseY)) graphics.setTooltipForNextFrame(font, machines.getFirst().name(), mouseX, mouseY);
     }
@@ -810,14 +803,17 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
             }
             graphics.text(font, shown, BAR_X + BAR_WIDTH - font.width(shown), BAR_Y, flow > 0 ? JasmGui.TEXT : JasmGui.MUTED, false);
         }
-        graphics.text(font, Component.translatable("screen.jasm.port.machine_row"), 8, MACHINE_Y, JasmGui.SUBTEXT, false);
-        if (menu.machines().isEmpty()) {
-            graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), machineX(), MACHINE_Y, JasmGui.MUTED, false);
-        }
-        List<FormattedCharSequence> state = statusLines();
-        int stateY = MACHINE_Y + 4 - state.size() * font.lineHeight / 2;
-        for (int i = 0; i < state.size(); i++) {
-            graphics.text(font, state.get(i), WIDTH - 8 - font.width(state.get(i)) + 1, stateY + i * font.lineHeight, statusColor(), false);
+        if (rowTaken()) {
+            // no label, no icon: one red line across the row, kept clear of the title, the help key and the recipes heading
+            String taken = font.plainSubstrByWidth(Component.translatable("screen.jasm.port.machine_taken").getString(), WIDTH - 16);
+            graphics.text(font, taken, 8, MACHINE_Y, JasmGui.BAD, false);
+        } else {
+            graphics.text(font, Component.translatable("screen.jasm.port.machine_row"), 8, MACHINE_Y, JasmGui.SUBTEXT, false);
+            if (menu.machines().isEmpty()) {
+                graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), machineX(), MACHINE_Y, JasmGui.MUTED, false);
+            }
+            Component state = status();
+            graphics.text(font, state, WIDTH - 8 - font.width(state) + 1, MACHINE_Y, statusColor(), false);
         }
         graphics.text(font, Component.translatable("screen.jasm.port.active"), ACTIVE_X + 1, ACTIVE_LABEL_Y, JasmGui.SUBTEXT, false);
         int served = menu.active().size();
