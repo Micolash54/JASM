@@ -76,6 +76,10 @@ public final class JasmClientConfig {
             .comment("Folds the recipe list away on Access Port screens")
             .define("portRecipesFolded", false);
 
+    public static final ModConfigSpec.BooleanValue ENCODER_PORTS_FOLDED = BUILDER
+            .comment("Folds the port list away on Advanced Encoder screens")
+            .define("encoderPortsFolded", false);
+
     static {
         BUILDER.pop().push("sounds");
     }
@@ -171,6 +175,15 @@ public final class JasmClientConfig {
 
     public static void setPortRecipesFolded(boolean folded) {
         PORT_RECIPES_FOLDED.set(folded);
+        SPEC.save();
+    }
+
+    public static boolean encoderPortsFolded() {
+        return SPEC.isLoaded() && ENCODER_PORTS_FOLDED.get();
+    }
+
+    public static void setEncoderPortsFolded(boolean folded) {
+        ENCODER_PORTS_FOLDED.set(folded);
         SPEC.save();
     }
 

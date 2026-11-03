@@ -1253,10 +1253,20 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** What the screen needs when it opens: where the port is, its name and its machines'. */
     public void writeOpening(RegistryFriendlyByteBuf buf) {
+        writeOpening(buf, false);
+    }
+
+    /** The same, for a screen opened from an Advanced Encoder's port list, which goes back to the encoder when shut. */
+    public void writeRemoteOpening(RegistryFriendlyByteBuf buf) {
+        writeOpening(buf, true);
+    }
+
+    private void writeOpening(RegistryFriendlyByteBuf buf, boolean fromEncoder) {
         buf.writeBlockPos(worldPosition);
         buf.writeUtf(label, AccessPortMenu.MAX_NAME);
         AccessPortMenu.MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(6))
                 .encode(buf, AccessPortMenu.connectedMachines(this));
+        buf.writeBoolean(fromEncoder);
     }
 
     @Override

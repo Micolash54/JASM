@@ -86,6 +86,9 @@ public final class CraftNetwork {
                         (payload, context) -> portPaste((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.ProcessingGhost.TYPE, CraftPayloads.ProcessingGhost.STREAM_CODEC,
                         (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.OpenPort.TYPE, CraftPayloads.OpenPort.STREAM_CODEC,
+                        (payload, context) -> openPort((ServerPlayer) context.player(), payload))
+                .playToClient(CraftPayloads.EncoderPorts.TYPE, CraftPayloads.EncoderPorts.STREAM_CODEC, CraftNetwork::onEncoderPorts)
                 .playToClient(CraftPayloads.PortMachines.TYPE, CraftPayloads.PortMachines.STREAM_CODEC, CraftNetwork::onPortMachines)
                 .playToClient(CraftPayloads.PortRecipes.TYPE, CraftPayloads.PortRecipes.STREAM_CODEC, CraftNetwork::onPortRecipes)
                 .playToClient(CraftPayloads.PortPasted.TYPE, CraftPayloads.PortPasted.STREAM_CODEC, CraftNetwork::onPortPasted)
@@ -322,6 +325,18 @@ public final class CraftNetwork {
         if (context.player().containerMenu instanceof CraftingServerMenu menu && menu.containerId == payload.containerId()) {
             menu.setNow(payload.rows());
         }
+    }
+
+    private static void onEncoderPorts(CraftPayloads.EncoderPorts payload, IPayloadContext context) {
+        if (context.player().containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()) {
+            menu.setPorts(payload.rows());
+        }
+    }
+
+    /** Opens a port's screen from the open Advanced Encoder's port list; see {@link EncodingTerminalMenu#portToOpen}. */
+    public static boolean openPort(ServerPlayer player, CraftPayloads.OpenPort payload) {
+        return player.containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()
+                && menu.openPort(player, payload.at(), payload.face());
     }
 
     private static void onPortMachines(CraftPayloads.PortMachines payload, IPayloadContext context) {

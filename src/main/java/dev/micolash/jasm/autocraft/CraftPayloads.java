@@ -361,6 +361,31 @@ public final class CraftPayloads {
         public Type<PortMachines> type() { return TYPE; }
     }
 
+    /** Server → client: the Access Ports the open Advanced Encoder's port list shows. */
+    public record EncoderPorts(int containerId, List<EncodingTerminalMenu.PortRow> rows) implements CustomPacketPayload {
+        public static final Type<EncoderPorts> TYPE = new Type<>(Jasm.id("encoder_ports"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, EncoderPorts> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, EncoderPorts::containerId,
+                EncodingTerminalMenu.PortRow.STREAM_CODEC.apply(ByteBufCodecs.list(EncodingTerminalMenu.MAX_PORTS)), EncoderPorts::rows,
+                EncoderPorts::new);
+
+        @Override
+        public Type<EncoderPorts> type() { return TYPE; }
+    }
+
+    /** Client → server: open the screen of a port in the open Advanced Encoder's port list; {@code face} -1 for a block port. */
+    public record OpenPort(int containerId, NetworkNode at, int face) implements CustomPacketPayload {
+        public static final Type<OpenPort> TYPE = new Type<>(Jasm.id("open_port"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, OpenPort> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, OpenPort::containerId,
+                NetworkNode.STREAM_CODEC, OpenPort::at,
+                ByteBufCodecs.VAR_INT, OpenPort::face,
+                OpenPort::new);
+
+        @Override
+        public Type<OpenPort> type() { return TYPE; }
+    }
+
     /** Server → client: whose Deck the open port delivers to. */
     public record PortLinkedPlayer(int containerId, String name) implements CustomPacketPayload {
         public static final Type<PortLinkedPlayer> TYPE = new Type<>(Jasm.id("port_linked_player"));

@@ -294,7 +294,7 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     }
 
     /** "the_nether" as "The Nether". */
-    private static String dimensionName(String path) {
+    static String dimensionName(String path) {
         StringBuilder out = new StringBuilder();
         for (String word : path.split("[_/]")) {
             if (word.isEmpty()) continue;

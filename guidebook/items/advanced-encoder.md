@@ -12,7 +12,7 @@ item_ids:
 
 <BlockImage id="advanced_encoder" scale="3.5" />
 
-A [Network Encoder](encoding-terminal.md) that also picks which face of a machine each ingredient goes in through. For machines that only take some ingredients from the top, the bottom or one side.
+A [Network Encoder](encoding-terminal.md) that also picks which face of a machine each ingredient goes in through, and opens the network's Access Ports from afar. For machines that only take some ingredients from the top, the bottom or one side.
 
 Leave your machine's own side settings at their defaults, and let the recipe card's faces decide where each ingredient goes.
 
@@ -28,6 +28,15 @@ Leave your machine's own side settings at their defaults, and let the recipe car
 A slot shows its face as a coloured tint with a letter. The faces are Top, Bottom, North, South, East and West, the same whichever way the machine is turned. Default is the face the [Access Port](access-port.md) touches, as on any card.
 
 The Faces window can be dragged anywhere and stays where you left it.
+
+<br />
+<br />
+## Ports
+
+* The Ports list on the left shows every [Access Port](access-port.md) on the network you may use, with the machine it works with and its name. The arrow key folds it away.
+* Click a port to open its screen and set it up from here. Closing it brings you back to the encoder.
+* Ports in another dimension are greyed and can't be opened. A port whose machine another port keeps is shown in red.
+* The list needs power, and ports in unloaded chunks aren't shown.
 
 <br />
 <br />

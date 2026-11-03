@@ -9,24 +9,39 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.deck.WornDecks;
+import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.LinkWindowCover;
+import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineView;
+import dev.micolash.jasm.network.NetworkNode;
+import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.MaterialKinds;
+import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -38,6 +53,7 @@ import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
@@ -143,6 +159,16 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     private final LinkWindowCover linkCover = new LinkWindowCover();
     /** Client side: the Deck list shows in place of the inventory, whose slots are then hidden. */
     private boolean deckTab;
+    /** Most ports the Advanced Encoder's list shows. */
+    public static final int MAX_PORTS = 256;
+    /** Ticks between looks at the network's ports. */
+    private static final int PORTS_EVERY = 20;
+    /** The Advanced Encoder's port list; on the server, what was last sent. */
+    private List<PortRow> ports = List.of();
+    private int portsVersion;
+    /** Server side: whether the port list went out once yet, and how many times it did. */
+    private boolean portsSynced;
+    private int portSends;
 
     /** Server side. */
     public EncodingTerminalMenu(int containerId, Inventory inventory, EncodingTerminalBlockEntity terminal, ContainerLevelAccess access) {
@@ -286,6 +312,171 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         if (deckSent == null || serverPlayer.level().getGameTime() % DECK_EVERY == 0) {
             sendDeck(serverPlayer);
         }
+        // The port list once a second, spread out over open screens.
+        if (advanced() && (!portsSynced || (serverPlayer.level().getGameTime() + containerId) % PORTS_EVERY == 0) && stillValid(serverPlayer)) {
+            lookAtPorts(serverPlayer);
+        }
+    }
+
+    // --- the Advanced Encoder's port list ---
+
+    /**
+     * One Access Port as the list shows it: where it stands, its mounting face for a thin port (-1 for a block), its
+     * name (the port's own name when unnamed), the machine it serves as an icon (the port itself while it has none),
+     * whether it stands in the viewer's dimension, and whether another port keeps its machine.
+     */
+    public record PortRow(NetworkNode at, int face, Component name, ItemStack icon, boolean here, boolean taken) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortRow> STREAM_CODEC = StreamCodec.composite(
+                NetworkNode.STREAM_CODEC, PortRow::at,
+                ByteBufCodecs.VAR_INT, PortRow::face,
+                ComponentSerialization.STREAM_CODEC, PortRow::name,
+                ItemStack.OPTIONAL_STREAM_CODEC, PortRow::icon,
+                ByteBufCodecs.BOOL, PortRow::here,
+                ByteBufCodecs.BOOL, PortRow::taken,
+                PortRow::new);
+
+        /** Ports in the viewer's dimension first, then by dimension and position: the server's order, which names don't change. */
+        static final Comparator<PortRow> PLACE = Comparator
+                .comparing((PortRow row) -> !row.here())
+                .thenComparing(row -> row.at().dimension().identifier().toString())
+                .thenComparing(row -> row.at().pos())
+                .thenComparingInt(PortRow::face);
+
+        /** As the list shows them: ports in the viewer's dimension first, then by name. Names only read right on the client. */
+        static final Comparator<PortRow> SHOWN = Comparator
+                .comparing((PortRow row) -> !row.here())
+                .thenComparing(row -> row.name().getString().toLowerCase(Locale.ROOT))
+                .thenComparing(PLACE);
+
+        static PortRow of(AccessPortBlockEntity port, Player viewer) {
+            Block type = port.machineType();
+            ItemStack icon = type == null ? ItemStack.EMPTY : new ItemStack(type);
+            Direction face = port.face();
+            if (icon.isEmpty()) {
+                icon = face == null ? new ItemStack(port.getBlockState().getBlock()) : new ItemStack(JasmItems.THIN_ACCESS_PORT.get());
+            }
+            return new PortRow(NetworkNode.of(port.getLevel(), port.getBlockPos()), face == null ? -1 : face.get3DDataValue(),
+                    port.getDisplayName(), icon, port.getLevel().dimension().equals(viewer.level().dimension()), port.anyTaken());
+        }
+
+        /** Whether the port at {@code at} with {@code face} is this row's. */
+        public boolean is(NetworkNode at, int face) {
+            return this.at.equals(at) && this.face == face;
+        }
+
+        boolean same(PortRow other) {
+            return is(other.at, other.face) && name.equals(other.name) && ItemStack.matches(icon, other.icon) && here == other.here
+                    && taken == other.taken;
+        }
+    }
+
+    /**
+     * The loaded Access Ports on the encoder's network that the player may use, in every dimension it stands in; none
+     * while the encoder has no power. Ports in unloaded chunks are never loaded to be shown.
+     */
+    private List<AccessPortBlockEntity> usablePorts(Player player) {
+        if (terminal == null || !terminal.running() || !(terminal.getLevel() instanceof ServerLevel level)) {
+            return List.of();
+        }
+        CableNetwork network = Networks.at(level, terminal.getBlockPos());
+        if (network == null) {
+            return List.of();
+        }
+        List<AccessPortBlockEntity> found = new ArrayList<>();
+        for (AccessPortBlockEntity port : network.machines(AccessPortBlockEntity.class)) {
+            if (!(port instanceof TransferPortBlockEntity) && port.installed() && MachineAccess.canUse(port, player)) {
+                found.add(port);
+            }
+        }
+        return found;
+    }
+
+    /** Looks at the ports and sends the list when it changed since last time. */
+    private void lookAtPorts(ServerPlayer player) {
+        List<PortRow> now = new ArrayList<>();
+        for (AccessPortBlockEntity port : usablePorts(player)) {
+            now.add(PortRow.of(port, player));
+        }
+        now.sort(PortRow.PLACE);
+        if (now.size() > MAX_PORTS) {
+            now = new ArrayList<>(now.subList(0, MAX_PORTS));
+        }
+        boolean same = portsSynced && now.size() == ports.size();
+        for (int i = 0; same && i < now.size(); i++) {
+            same = now.get(i).same(ports.get(i));
+        }
+        portsSynced = true;
+        if (same) {
+            return;
+        }
+        ports = List.copyOf(now);
+        portSends++;
+        if (player.connection.hasChannel(CraftPayloads.EncoderPorts.TYPE)) {
+            PacketDistributor.sendToPlayer(player, new CraftPayloads.EncoderPorts(containerId, ports));
+        }
+    }
+
+    /** The ports the list shows; on the server, what was last sent. */
+    public List<PortRow> ports() {
+        return ports;
+    }
+
+    /** Client side: what the server sent, sorted by name. */
+    public void setPorts(List<PortRow> rows) {
+        List<PortRow> sorted = new ArrayList<>(rows);
+        sorted.sort(PortRow.SHOWN);
+        ports = List.copyOf(sorted);
+        portsVersion++;
+    }
+
+    /** Goes up with every new list, so the screen knows to lay it out again. */
+    public int portsVersion() {
+        return portsVersion;
+    }
+
+    /** Server side: how many times the port list changed and went to the player. */
+    public int portSends() {
+        return portSends;
+    }
+
+    /**
+     * Server side: the port the player asked to open from the list, or null with a line on the screen saying why not.
+     * Refused unless this is the player's open, usable Advanced Encoder screen with power, the port is on its network
+     * and loaded, the player may use the port, and it stands in the player's dimension.
+     */
+    public @Nullable AccessPortBlockEntity portToOpen(ServerPlayer player, NetworkNode at, int face) {
+        if (terminal == null || !advanced() || player.containerMenu != this || !stillValid(player)) {
+            return null;
+        }
+        if (!terminal.running()) {
+            Notices.bad(player, Component.translatable("message.jasm.terminal.no_power"));
+            return null;
+        }
+        for (AccessPortBlockEntity port : usablePorts(player)) {
+            Direction side = port.face();
+            if (port.getBlockPos().equals(at.pos()) && port.getLevel().dimension().equals(at.dimension())
+                    && (side == null ? -1 : side.get3DDataValue()) == face) {
+                if (!at.dimension().equals(player.level().dimension())) {
+                    Notices.bad(player, Component.translatable("message.jasm.terminal.port_elsewhere"));
+                    return null;
+                }
+                return port;
+            }
+        }
+        Notices.bad(player, Component.translatable("message.jasm.terminal.port_gone"));
+        return null;
+    }
+
+    /** Server side: opens the port's own screen from the list; shutting it comes back here. */
+    public boolean openPort(ServerPlayer player, NetworkNode at, int face) {
+        AccessPortBlockEntity port = portToOpen(player, at, face);
+        EncodingTerminalBlockEntity encoder = terminal;
+        if (port == null || encoder == null) {
+            return false;
+        }
+        player.openMenu(new SimpleMenuProvider((id, inventory, p) -> AccessPortMenu.remote(id, inventory, port, encoder),
+                port.getDisplayName()), port::writeRemoteOpening);
+        return true;
     }
 
     // --- the viewer's Deck ---

@@ -90,6 +90,8 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     /** Side keys on the right: the Deck Link, then the access list. */
     private static final int KEY_X = WIDTH;
     private JasmFrame frame;
+    /** The Advanced Encoder's port list, left of the main panel; null on the plain terminal. */
+    private @Nullable EncoderPortsPanel portsPanel;
     /** Whether the Deck tab shows in place of the inventory; kept while the game runs. */
     private static boolean showDeck;
     /** The sheet under the inventory or the Deck list, and the tabs along its top. */
@@ -126,7 +128,16 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     @Override
     protected void init() {
         super.init();
-        frame = JasmFrame.rounded(new int[]{0, 0, imageWidth, imageHeight}, JasmGui.sideStrip(KEY_X, sideKeys()));
+        if (menu.advanced()) {
+            // The main panel stays in the middle whether the port list is open or folded; on a window too narrow for the
+            // open list, it moves right just enough, as long as the side keys still fit.
+            leftPos = Math.max((width - WIDTH) / 2, Math.min(EncoderPortsPanel.REACH, width - (KEY_X + JasmGui.SIDE_KEY_WIDTH + 3)));
+            if (portsPanel == null) {
+                portsPanel = new EncoderPortsPanel(menu, font, imageHeight, this::buildFrame);
+            }
+            addRenderableWidget(portsPanel.foldKey(leftPos, topPos));
+        }
+        buildFrame();
         addHelp(WIDTH - 7, "items/encoding-terminal.md");
         Component linkLabel = Component.translatable("screen.jasm.deck_link");
         linkKey = addRenderableWidget(JasmButton.icon(() -> LINK, linkLabel, b -> toggleLink(),
@@ -197,6 +208,15 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         key.setGreenRim();
         key.setTooltip(Tooltip.create(name));
         return addRenderableWidget(key);
+    }
+
+    /** The main panel and the side keys, with the port list on the Advanced Encoder. */
+    private void buildFrame() {
+        List<int[]> parts = new ArrayList<>(List.of(new int[]{0, 0, imageWidth, imageHeight}, JasmGui.sideStrip(KEY_X, sideKeys())));
+        if (portsPanel != null) {
+            parts.addAll(portsPanel.frameParts());
+        }
+        frame = JasmFrame.rounded(parts.toArray(int[][]::new));
     }
 
     /** Side keys on the right: Deck Link and Access, and Faces on the Advanced Encoder. */
@@ -368,6 +388,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (linkWindow != null) linkWindow.area().ifPresent(areas::add);
         if (facesWindow != null) facesWindow.area().ifPresent(areas::add);
         if (trustWindow != null) trustWindow.area().ifPresent(areas::add);
+        if (portsPanel != null) areas.addAll(portsPanel.areas());
         return areas;
     }
 
@@ -407,6 +428,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
         if (trustWindow.contains(event.x(), event.y())) {
             return trustWindow.mouseClicked(event, doubleClick);
+        }
+        if (portsPanel != null && portsPanel.mouseClicked(event.x(), event.y(), event.button() == InputConstants.MOUSE_BUTTON_LEFT)) {
+            return true;
         }
         if (picker.mouseClicked(event.x(), event.y())) {
             return true;
@@ -482,6 +506,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (linkWindow.mouseDragged(event, width, height) || trustWindow.mouseDragged(event, width, height)) {
             return true;
         }
+        if (portsPanel != null && portsPanel.mouseDragged(event.y())) {
+            return true;
+        }
         if (painting() != null && event.button() == InputConstants.MOUSE_BUTTON_LEFT && ghostSlotAt(event.x(), event.y()) >= 0) {
             paint(ghostSlotAt(event.x(), event.y()));
             return true;
@@ -509,6 +536,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             return true;
         }
         if (linkWindow.mouseReleased() | trustWindow.mouseReleased()) {
+            return true;
+        }
+        if (portsPanel != null && portsPanel.mouseReleased()) {
             return true;
         }
         if (painting() != null) {
@@ -556,6 +586,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
         if (trustWindow.contains(x, y)) {
             return trustWindow.mouseScrolled(scrollY);
+        }
+        if (portsPanel != null && portsPanel.mouseScrolled(x, y, scrollY)) {
+            return true;
         }
         if (showDeck && deckList.contains(x, y)) {
             deckList.scroll(scrollY);
@@ -638,6 +671,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         int x = leftPos;
         int y = topPos;
         frame.draw(graphics, x, y);
+        if (portsPanel != null) {
+            portsPanel.drawBackground(graphics);
+        }
         drawSheet(graphics, mouseX, mouseY);
         // The Deck Link window draws its own two slots.
         for (Slot slot : menu.slots) {
@@ -685,6 +721,9 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         int mouseX = over ? -1000 : realMouseX;
         int mouseY = over ? -1000 : realMouseY;
         super.extractContents(graphics, mouseX, mouseY, a);
+        if (portsPanel != null) {
+            portsPanel.draw(graphics, mouseX, mouseY);
+        }
         if (showDeck) {
             deckList.drawItems(graphics, mouseX, mouseY);
             if (ghostHeld.isEmpty() && menu.getCarried().isEmpty()) {

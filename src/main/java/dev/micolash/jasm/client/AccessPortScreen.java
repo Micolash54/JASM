@@ -855,6 +855,16 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         return super.keyPressed(event);
     }
 
+    /** Opened from an Advanced Encoder's port list, shutting the screen goes back to the encoder; the server opens it. */
+    @Override
+    public void onClose() {
+        if (menu.fromEncoder() && minecraft.player != null && !minecraft.player.isSpectator()) {
+            minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.BACK);
+            return;
+        }
+        super.onClose();
+    }
+
     @Override
     public boolean charTyped(CharacterEvent event) {
         if (renameWindow.isOpen() && renameWindow.charTyped(event)) return true;
