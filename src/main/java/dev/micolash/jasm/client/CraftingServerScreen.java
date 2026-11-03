@@ -137,11 +137,11 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         renameKey.setLatched(renameWindow.isOpen());
     }
 
-    /** The priority key's tooltip: what it does, and whether it is on. */
+    /** The priority key's tooltip: whether it is on, then what it does. */
     private static Tooltip priorityTooltip(boolean on) {
-        return Tooltip.create(Component.translatable("screen.jasm.server.priority_hint").append("\n")
-                .append(Component.translatable(on ? "screen.jasm.server.priority_on" : "screen.jasm.server.priority_off")
-                        .withColor((on ? JasmGui.GOOD : JasmGui.BAD) & 0xFFFFFF)));
+        return Tooltip.create(Component.translatable(on ? "screen.jasm.server.priority_on" : "screen.jasm.server.priority_off")
+                .withColor((on ? JasmGui.GOOD : JasmGui.BAD) & 0xFFFFFF).append("\n")
+                .append(Component.translatable("screen.jasm.server.priority_hint").withStyle(ChatFormatting.WHITE)));
     }
 
     /** Where the rename window is while open, so JEI's lists stay clear of it. */

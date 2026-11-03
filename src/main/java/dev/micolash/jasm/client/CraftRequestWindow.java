@@ -59,8 +59,6 @@ final class CraftRequestWindow {
     private static final Identifier STORAGE = Jasm.id("icon/storage");
     private static final int CORES_W = 7;
     private static final int STORAGE_W = 9;
-    /** The narrowest the open drop-down gets. */
-    private static final int DROP_MIN = 60;
     /** The server drop-down's box, from the window's left and top; it reaches the window's right edge less this. */
     private static final int BOX_X = 58;
     private static final int BOX_Y = 42;
@@ -482,11 +480,7 @@ final class CraftRequestWindow {
         return answer.servers().size() + 1;
     }
 
-    /** Width of a server's figures: the cores icon and count, then the storage icon and size, in columns as wide as the widest. */
-    private int figuresWidth(CraftPayloads.Answer answer) {
-        return CORES_W + 1 + coresColumn(answer) + 5 + STORAGE_W + 1 + storageColumn(answer);
-    }
-
+    /** The cores and storage figures sit in columns as wide as the widest of each. */
     private int coresColumn(CraftPayloads.Answer answer) {
         int widest = 0;
         for (CraftPayloads.ServerView server : answer.servers()) {
@@ -503,15 +497,9 @@ final class CraftRequestWindow {
         return widest;
     }
 
-    /** As wide as its widest row needs, from the box's left edge, but never wider than the box. */
+    /** The open drop-down is exactly as wide as the box above it. */
     private int dropWidth(CraftPayloads.Answer answer) {
-        int widest = font.width(Component.translatable("screen.jasm.craft.server_any")) + 4 + 9 + 4;
-        int figures = figuresWidth(answer);
-        for (CraftPayloads.ServerView server : answer.servers()) {
-            widest = Math.max(widest, font.width(server.name()) + 4 + figures);
-        }
-        // room for the scroll mark on the right
-        return Math.clamp(widest + 8 + (dropRows(answer) > dropShown(answer) ? 3 : 0), DROP_MIN, boxWidth());
+        return boxWidth();
     }
 
     /** Rows shown at once: as many as fit under the box inside the window. */
@@ -632,7 +620,7 @@ final class CraftRequestWindow {
             CraftPayloads.ServerView server = answer.servers().get(hovered - 1);
             List<Component> tip = new ArrayList<>();
             tip.add(server.name());
-            tip.add(Component.translatable("screen.jasm.craft.server_size", GridEntries.abbreviate(server.memory()), server.parallel())
+            tip.add(Component.translatable("screen.jasm.craft.server_size", server.parallel(), GridEntries.abbreviate(server.memory()))
                     .withColor(JasmGui.SUBTEXT & 0xFFFFFF));
             if (server.busy()) {
                 tip.add(Component.translatable("screen.jasm.craft.server_busy").withColor(JasmGui.WARN & 0xFFFFFF));

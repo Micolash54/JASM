@@ -476,7 +476,7 @@
   "screen.jasm.craft.server_hint": "Select a server",
   "screen.jasm.craft.server_busy": "Busy",
   "screen.jasm.craft.server_too_small": "Too small",
-  "screen.jasm.craft.server_size": "%s items, %s at once",
+  "screen.jasm.craft.server_size": "Cores: %s, Storage: %s",
   "screen.jasm.craft.server_where": "%s, %s, %s",
   "screen.jasm.craft.hint_click": "Click to craft",
   "screen.jasm.craft.hint_middle": "Middle-click to craft",
