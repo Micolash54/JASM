@@ -28,13 +28,15 @@ import org.jspecify.annotations.Nullable;
  * A recipe for a machine behind an Access Port: what goes in (nine slots, any amount each), what comes back (up to
  * three, the first one being what the card makes), and the machine face each input goes in through (Default, the face
  * the port touches, unless the Advanced Encoder set another). JASM never checks it against the machine: the player
- * says what the machine does.
+ * says what the machine does. A pinned item slot takes only its own item, even where the machine's recipe would take
+ * others.
  *
- * <p>The card is its contents: two cards with the same inputs, outputs and faces are one recipe, wherever they are.
+ * <p>The card is its contents: two cards with the same inputs, outputs, faces and pins are one recipe, wherever they are.
  * Ports pick the recipes they serve. {@code machines} is only what older cards named (the ports they were written
  * for), read once to select the recipe in those ports; it is never part of what the card is.
  */
-public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines, List<InputFace> faces) implements Card {
+public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines, List<InputFace> faces, int pinned)
+        implements Card {
     public static final int INPUTS = 9;
     public static final int OUTPUTS = 3;
     /** Most of one item in one slot. */
@@ -237,7 +239,9 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
             // Only older cards have it; cards written now leave it out.
             Machine.CODEC.listOf().optionalFieldOf("machines", List.of()).forGetter(ProcessingCard::machines),
             // Left out while every input is Default, so cards without faces save exactly as before.
-            InputFace.CODEC.listOf().optionalFieldOf("faces", InputFace.NONE).forGetter(ProcessingCard::faces))
+            InputFace.CODEC.listOf().optionalFieldOf("faces", InputFace.NONE).forGetter(ProcessingCard::faces),
+            // Left out while nothing is pinned, so such cards save exactly as before.
+            Pins.CODEC.optionalFieldOf("pinned", Pins.NONE).forGetter(ProcessingCard::pinned))
             .apply(i, ProcessingCard::new));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ProcessingCard> STREAM_CODEC = StreamCodec.composite(
@@ -245,6 +249,7 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
             Amount.STREAM_CODEC.apply(ByteBufCodecs.list(OUTPUTS)), ProcessingCard::outputs,
             Machine.STREAM_CODEC.apply(ByteBufCodecs.list(64)), ProcessingCard::machines,
             InputFace.STREAM_CODEC.apply(ByteBufCodecs.list(INPUTS)), ProcessingCard::faces,
+            Pins.STREAM_CODEC, ProcessingCard::pinned,
             ProcessingCard::new);
 
     /** A card whose inputs all go in through the face the port touches. */
@@ -252,9 +257,19 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
         this(inputs, outputs, machines, InputFace.NONE);
     }
 
+    /** A card with nothing pinned. */
+    public ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Machine> machines, List<InputFace> faces) {
+        this(inputs, outputs, machines, faces, Pins.NONE);
+    }
+
     /** A card as written now: it names no port. */
     public static ProcessingCard of(List<Amount> inputs, List<Amount> outputs, List<InputFace> faces) {
-        return new ProcessingCard(inputs, outputs, List.of(), faces);
+        return of(inputs, outputs, faces, Pins.NONE);
+    }
+
+    /** A card as written now, with item slots {@code pinned} taking only their own item. */
+    public static ProcessingCard of(List<Amount> inputs, List<Amount> outputs, List<InputFace> faces, int pinned) {
+        return new ProcessingCard(inputs, outputs, List.of(), faces, pinned);
     }
 
     public ProcessingCard {
@@ -269,6 +284,29 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
             }
         }
         faces = kept.equals(InputFace.NONE) ? InputFace.NONE : List.copyOf(kept);
+        // only an item slot can be pinned: a fluid or a material has nothing to stand in for it
+        int keptPins = Pins.NONE;
+        for (int i = 0; i < INPUTS; i++) {
+            Amount input = inputs.get(i);
+            keptPins = Pins.with(keptPins, i, Pins.has(pinned, i) && !input.isEmpty() && !input.isFluid() && !input.isMaterial());
+        }
+        pinned = keptPins;
+    }
+
+    /** Whether input slot {@code slot} (0-8) takes only its own item. */
+    public boolean pinned(int slot) {
+        return Pins.has(pinned, slot);
+    }
+
+    /** Whether the used input slot at {@code used}, counted as in {@link #usedInputs()}, takes only its own item. */
+    public boolean usedPinned(int used) {
+        int seen = 0;
+        for (int i = 0; i < INPUTS; i++) {
+            if (!inputs.get(i).isEmpty() && seen++ == used) {
+                return pinned(i);
+            }
+        }
+        return false;
     }
 
     /** Whether any input goes in through a face other than the one the port touches. */
@@ -369,23 +407,23 @@ public record ProcessingCard(List<Amount> inputs, List<Amount> outputs, List<Mac
 
     /** The same recipe naming no port. */
     public ProcessingCard clean() {
-        return machines.isEmpty() ? this : new ProcessingCard(inputs, outputs, List.of(), faces);
+        return machines.isEmpty() ? this : new ProcessingCard(inputs, outputs, List.of(), faces, pinned);
     }
 
     /** The same recipe with {@code machines} filled in (where it runs now, for looking at the machines). */
     ProcessingCard at(List<Machine> machines) {
-        return new ProcessingCard(inputs, outputs, machines, faces);
+        return new ProcessingCard(inputs, outputs, machines, faces, pinned);
     }
 
     // The ports an older card names are no part of the recipe.
     @Override
     public boolean equals(Object other) {
         return this == other || other instanceof ProcessingCard card
-                && inputs.equals(card.inputs) && outputs.equals(card.outputs) && faces.equals(card.faces);
+                && inputs.equals(card.inputs) && outputs.equals(card.outputs) && faces.equals(card.faces) && pinned == card.pinned;
     }
 
     @Override
     public int hashCode() {
-        return 31 * (31 * inputs.hashCode() + outputs.hashCode()) + faces.hashCode();
+        return 31 * (31 * (31 * inputs.hashCode() + outputs.hashCode()) + faces.hashCode()) + pinned;
     }
 }

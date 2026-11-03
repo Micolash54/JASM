@@ -20,9 +20,12 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 
 /**
  * A Filled Recipe Card: its tooltip says what it makes and what goes in, and whether the recipe is shaped, shapeless,
- * or for machines (and which).
+ * or for machines (and which). A pinned ingredient says "exact" and stands out from the others.
  */
 public class RecipeCardItem extends Item {
+    /** Pinned ingredient lines: a soft lavender, brighter than the grey of the other ingredients. */
+    private static final int EXACT_COLOR = 0xB4BEFE;
+
     public RecipeCardItem(Item.Properties properties) {
         super(properties);
     }
@@ -47,16 +50,29 @@ public class RecipeCardItem extends Item {
         builder.accept(modLine(result));
         builder.accept(Component.translatable(card.shapeless() ? "tooltip.jasm.card.shapeless" : "tooltip.jasm.card.shaped")
                 .withStyle(card.shapeless() ? ChatFormatting.AQUA : ChatFormatting.GOLD));
-        Map<Item, Integer> counts = new LinkedHashMap<>();
+        // the same item pinned in one slot and not in another is two lines
+        Map<PinnedInput, Integer> counts = new LinkedHashMap<>();
         Map<Item, Component> names = new LinkedHashMap<>();
-        for (ItemStack input : card.inputs()) {
+        List<ItemStack> inputs = card.inputs();
+        for (int slot = 0; slot < inputs.size(); slot++) {
+            ItemStack input = inputs.get(slot);
             if (!input.isEmpty()) {
-                counts.merge(input.getItem(), 1, Integer::sum);
+                counts.merge(new PinnedInput(input.getItem(), card.pinned(slot)), 1, Integer::sum);
                 names.putIfAbsent(input.getItem(), input.getHoverName());
             }
         }
-        counts.forEach((item, n) -> builder.accept(
-                Component.translatable("tooltip.jasm.card.input", n, names.get(item)).withStyle(ChatFormatting.DARK_GRAY)));
+        counts.forEach((input, n) -> builder.accept(
+                ingredient(Component.translatable("tooltip.jasm.card.input", n, names.get(input.item())), input.pinned())));
+    }
+
+    /** One crafting ingredient line of a card's tooltip: an item, and whether its slots are pinned. */
+    private record PinnedInput(Item item, boolean pinned) {}
+
+    /** An ingredient line: grey, or marked exact and brighter when pinned. */
+    private static Component ingredient(Component line, boolean pinned) {
+        return pinned
+                ? Component.translatable("tooltip.jasm.card.exact", line).withColor(EXACT_COLOR)
+                : line.copy().withStyle(ChatFormatting.DARK_GRAY);
     }
 
     /** The mod the result comes from, so two cards making a "Tin Ingot" can be told apart. */
@@ -66,8 +82,8 @@ public class RecipeCardItem extends Item {
         return Component.literal(name).withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
     }
 
-    /** One ingredient line of a card's tooltip: what goes in, and through which face. */
-    private record FacedInput(GridKey key, InputFace face) {}
+    /** One ingredient line of a card's tooltip: what goes in, through which face, and whether it is pinned. */
+    private record FacedInput(GridKey key, InputFace face, boolean pinned) {}
 
     private static void processing(ProcessingCard card, Consumer<Component> builder) {
         ProcessingCard.Amount main = card.main();
@@ -88,7 +104,7 @@ public class RecipeCardItem extends Item {
         List<ProcessingCard.Amount> inputs = card.usedInputs();
         List<InputFace> faces = card.usedFaces();
         for (int i = 0; i < inputs.size(); i++) {
-            counts.merge(new FacedInput(inputs.get(i).key(), faces.get(i)), inputs.get(i).count(), Integer::sum);
+            counts.merge(new FacedInput(inputs.get(i).key(), faces.get(i), card.usedPinned(i)), inputs.get(i).count(), Integer::sum);
         }
         counts.forEach((input, n) -> {
             boolean fluid = input.key() instanceof GridKey.Fluid;
@@ -98,7 +114,7 @@ public class RecipeCardItem extends Item {
             if (input.face() != InputFace.DEFAULT) {
                 line = Component.translatable("tooltip.jasm.card.input_face", line, Component.translatable(input.face().translationKey()));
             }
-            builder.accept(line.copy().withStyle(ChatFormatting.DARK_GRAY));
+            builder.accept(ingredient(line, input.pinned()));
         });
         for (ProcessingCard.Machine machine : card.machines()) {
             builder.accept(Component.translatable("tooltip.jasm.card.machine", machine.name()).withStyle(ChatFormatting.DARK_AQUA));

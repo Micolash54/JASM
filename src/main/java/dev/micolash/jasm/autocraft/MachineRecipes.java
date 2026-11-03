@@ -49,7 +49,7 @@ import org.jspecify.annotations.Nullable;
  * An item takes a slot's place only if the recipe takes it there and in no other slot, it carries no extra data (a
  * named or enchanted item is never used up by accident) unless it is the card's own item with data {@link ItemVariants}
  * allows, with it in that slot the machine has no other recipe of the
- * same kind it could run instead, and no machine of the card says it never holds it.
+ * same kind it could run instead, no machine of the card says it never holds it, and the card doesn't pin that slot.
  */
 public final class MachineRecipes {
     private MachineRecipes() {}
@@ -71,7 +71,14 @@ public final class MachineRecipes {
 
         private Match(ProcessingCard card, List<@Nullable Rule> slots) {
             this.card = card;
-            this.slots = slots;
+            // a pinned slot takes only the card's own item, whatever the recipe takes there
+            List<@Nullable Rule> open = new ArrayList<>(slots);
+            for (int i = 0; i < open.size(); i++) {
+                if (card.usedPinned(i)) {
+                    open.set(i, null);
+                }
+            }
+            this.slots = open;
         }
 
         /** Whether used input slot {@code slot} may take anything besides the card's own item. */

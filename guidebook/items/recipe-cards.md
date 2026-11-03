@@ -26,6 +26,13 @@ The tooltip tells you which mod the result comes from, whether a card is shaped 
 
 <br />
 <br />
+## Other items in a slot
+
+* A card may use another item its recipe takes in a slot (another log for planks), its own item first.
+* A **pinned** ingredient only ever uses the item on the card. Pin it at the [Network Encoder](encoding-terminal.md). The tooltip marks it **exact**.
+
+<br />
+<br />
 ## Recipes
 
 <RecipesFor id="recipe_card" />

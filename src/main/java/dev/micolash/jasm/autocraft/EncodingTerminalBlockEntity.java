@@ -55,7 +55,8 @@ import org.jspecify.annotations.Nullable;
  * with the world under the terminal's identity ({@link NetworkTrust}). Mined, it keeps its identity (so paired
  * Decks stay paired) and its trust list. The Advanced Encoder is the same block entity on another block: it
  * also lets the player pick the machine face each ingredient goes in through. The plain one keeps a card's faces when
- * the card is written again, but can't change them.
+ * the card is written again, but can't change them. On both, an ingredient slot can be pinned: the card then takes only
+ * that item there.
  */
 public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public static final int CARD_IN = 0;
@@ -84,6 +85,15 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             return 1;
         }
 
+        /** Another item in a slot lets go of its pin: the pin was for the item that was there. */
+        @Override
+        public void setItem(int slot, ItemStack stack) {
+            if (!ItemStack.isSameItemSameComponents(getItem(slot), stack)) {
+                pins = Pins.with(pins, slot, false);
+            }
+            super.setItem(slot, stack);
+        }
+
         @Override
         public void setChanged() {
             super.setChanged();
@@ -107,6 +117,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     private final int[] amounts = new int[AMOUNTS];
     /** Processing mode: the machine face each grid slot's ingredient goes in through. An empty slot is always Default. */
     private final InputFace[] faces = InputFace.NONE.toArray(InputFace[]::new);
+    /** The grid slots whose item the card takes and nothing in its place. Only a slot holding an item is pinned. */
+    private int pins = Pins.NONE;
     /** Whether the next card is a processing card. Off: an ordinary crafting card, made on the Crafting Servers. */
     private boolean processing;
     /** What the ghost grid makes right now, shown next to it. */
@@ -146,6 +158,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
                     }
                     if (index >= EncodingTerminalMenu.DATA_FACES && index < EncodingTerminalMenu.DATA_FACES + ProcessingCard.INPUTS) {
                         yield faces[index - EncodingTerminalMenu.DATA_FACES].ordinal();
+                    }
+                    if (index == EncodingTerminalMenu.DATA_PINS) {
+                        yield pins;
                     }
                     yield index == EncodingTerminalMenu.DATA_DRAIN ? drainPerTick() : 0;
                 }
@@ -452,6 +467,31 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         java.util.Arrays.fill(faces, InputFace.DEFAULT);
     }
 
+    /** Whether grid slot {@code slot} is pinned. */
+    public boolean pinned(int slot) {
+        return Pins.has(pins, slot);
+    }
+
+    /** Pins or unpins grid slot {@code slot}. Only a slot holding an item can be pinned, never a fluid or a material. */
+    public void togglePin(int slot) {
+        if (slot < 0 || slot >= 9) {
+            return;
+        }
+        if (pinned(slot) || pinnable(ghost.getItem(slot))) {
+            pins = Pins.with(pins, slot, !pinned(slot));
+            setChanged();
+        }
+    }
+
+    private static boolean pinnable(ItemStack example) {
+        return !example.isEmpty() && !FluidMarkerItem.isMarker(example) && !MaterialMarkerItem.isMarker(example);
+    }
+
+    /** Every grid slot unpinned: a recipe from a recipe viewer starts without pins. */
+    void resetPins() {
+        pins = Pins.NONE;
+    }
+
     /** The processing card the grid describes, or why there is none. The card names no machine or port. */
     public CardRecipes.Encoding encodeProcessing() {
         List<ProcessingCard.Amount> in = new ArrayList<>();
@@ -468,7 +508,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (out.stream().allMatch(ProcessingCard.Amount::isEmpty)) {
             return new CardRecipes.Encoding.Refused("message.jasm.terminal.no_output");
         }
-        return new CardRecipes.Encoding.Card(ProcessingCard.of(in, out, List.of(faces)));
+        return new CardRecipes.Encoding.Card(ProcessingCard.of(in, out, List.of(faces), pins));
     }
 
     public int previewState() {
@@ -572,6 +612,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             if (ghost.getItem(i).isEmpty()) {
                 faces[i] = InputFace.DEFAULT;
             }
+            if (!pinnable(ghost.getItem(i))) {
+                pins = Pins.with(pins, i, false);
+            }
         }
         setChanged();
         if (!filling && level instanceof ServerLevel serverLevel) {
@@ -607,6 +650,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
     public void fillGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
         fill(() -> {
             resetFaces();
+            resetPins();
             for (int i = 0; i < 9; i++) {
                 ItemStack stack = i < items.size() ? items.get(i) : ItemStack.EMPTY;
                 ghost.setItem(i, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
@@ -695,7 +739,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             for (int i = 0; i < 9; i++) {
                 grid.add(ghost.getItem(i));
             }
-            encoding = CardRecipes.encode(level, grid, picked);
+            encoding = CardRecipes.encode(level, grid, picked, pins);
         }
         if (encoding instanceof CardRecipes.Encoding.Refused(String messageKey)) {
             return messageKey;
@@ -715,7 +759,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
 
     /**
      * A Filled card put in the top slot shows its recipe in the grid, ready to change and write again, and puts the
-     * terminal in the card's mode. A processing card also brings back its amounts, outputs and faces.
+     * terminal in the card's mode, with its pins. A processing card also brings back its amounts, outputs and faces.
      */
     @Override
     public void setItem(int slot, ItemStack stack) {
@@ -734,6 +778,8 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
                 for (int i = 0; i < 9; i++) {
                     ghost.setItem(i, inputs.get(i).isEmpty() ? ItemStack.EMPTY : inputs.get(i).copyWithCount(1));
                 }
+                // after the slots, since a new item in a slot lets go of its pin
+                pins = card.pinned();
             });
         } else if (found instanceof ProcessingCard card) {
             processing = true;
@@ -747,6 +793,7 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
             for (int i = 0; i < ProcessingCard.INPUTS; i++) {
                 faces[i] = card.inputs().get(i).isEmpty() ? InputFace.DEFAULT : card.face(i);
             }
+            pins = card.pinned();
             setChanged();
         }
     }
@@ -810,6 +857,9 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         if (!List.of(faces).equals(InputFace.NONE)) {
             output.store("faces", InputFace.CODEC.listOf(), List.of(faces));
         }
+        if (pins != Pins.NONE) {
+            output.store("pinned", Pins.CODEC, pins);
+        }
         output.putBoolean("processing", processing);
         output.storeNullable("terminal", UUIDUtil.CODEC, terminalId);
         output.storeNullable("pending_pairer", UUIDUtil.CODEC, pendingPairer);
@@ -842,6 +892,11 @@ public class EncodingTerminalBlockEntity extends MachineBlockEntity {
         List<InputFace> savedFaces = InputFace.padded(input.read("faces", InputFace.CODEC.listOf()).orElse(InputFace.NONE));
         for (int f = 0; f < ProcessingCard.INPUTS; f++) {
             faces[f] = ghost.getItem(f).isEmpty() ? InputFace.DEFAULT : savedFaces.get(f);
+        }
+        int savedPins = input.read("pinned", Pins.CODEC).orElse(Pins.NONE);
+        pins = Pins.NONE;
+        for (int f = 0; f < 9; f++) {
+            pins = Pins.with(pins, f, Pins.has(savedPins, f) && pinnable(ghost.getItem(f)));
         }
         // an older save had machines picked instead: such a terminal wrote processing cards
         processing = input.getBooleanOr("processing", false)

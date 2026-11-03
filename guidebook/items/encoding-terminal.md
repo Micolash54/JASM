@@ -22,6 +22,8 @@ The Network Encoder writes recipes onto [Recipe Cards](recipe-cards.md). It is a
 2. Put an empty or filled Recipe Card in.
 3. Press **Encode**. Take the finished card out first, or it can't write the next one.
 
+With an empty hand, left-click an ingredient to pin it: a lock shows on the slot, and the card then uses exactly that item, never another one the recipe takes. Click again to unpin. Right-click removes an item from the grid.
+
 When more than one recipe fits the grid, the key above the result picks which one the card gets. JEI's "+" picks its own recipe.
 
 Two keys beside **Encode** set the kind of card: the crafting table for **Crafting**, the furnace for **Processing**. Crafting is for anything with a crafting grid.

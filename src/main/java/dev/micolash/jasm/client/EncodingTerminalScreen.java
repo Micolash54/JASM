@@ -45,7 +45,8 @@ import org.jspecify.annotations.Nullable;
  * the Encode row choose what the card is: Crafting (an ordinary crafting card) or Processing. With Processing chosen,
  * the grid takes amounts and what the machine gives back goes in a column of three beside it. The Advanced Encoder
  * adds a third side key, Faces: its window paints ingredient slots with the machine face they go in through. Painted
- * slots show their face's colour on either terminal.
+ * slots show their face's colour on either terminal. An empty-handed left click on an ingredient pins it (a lock in its
+ * corner): the card then takes only that item there.
  */
 public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final JasmButton.Icon LINK = new JasmButton.Icon(Jasm.id("icon/deck_link"), 12, 12);
@@ -75,6 +76,12 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final Identifier ARROW_DOWN = Jasm.id("icon/craft_arrow");
+    /** The lock in the corner of a pinned ingredient. */
+    private static final Identifier PIN = Jasm.id("icon/pin_lock");
+    private static final int PIN_WIDTH = 7;
+    private static final int PIN_HEIGHT = 8;
+    /** Pinned lines in a tooltip: the lavender the card's tooltip uses for them. */
+    private static final int EXACT_COLOR = 0xB4BEFE;
     private static final Identifier ARROW_RIGHT = Jasm.id("icon/craft_arrow_right");
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final int MESSAGE_TICKS = 80;
@@ -693,6 +700,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (menu.processing()) {
             drawAmounts(graphics);
         }
+        drawPins(graphics);
         if (hoveredSlot != null && processingSlot(hoveredSlot) >= 0 && hoveredSlot.isActive() && menu.getCarried().isEmpty()) {
             MaterialKey hoveredMaterial = MaterialMarkerItem.materialOf(hoveredSlot.getItem());
             int index = processingSlot(hoveredSlot);
@@ -785,7 +793,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         }
     }
 
-    /** An ingredient's tooltip also says which face it goes in through. */
+    /** An ingredient's tooltip also says which face it goes in through, and whether it is pinned. */
     @Override
     protected List<Component> getTooltipFromContainerItem(ItemStack stack) {
         List<Component> lines = super.getTooltipFromContainerItem(stack);
@@ -794,7 +802,45 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
             lines = new ArrayList<>(lines);
             lines.addAll(faceLines(slot));
         }
+        if (slot >= 0 && slot < 9) {
+            lines = new ArrayList<>(lines);
+            lines.addAll(pinLines(slot, stack));
+        }
         return lines;
+    }
+
+    /**
+     * "Exact: only Oak Log" on a pinned ingredient. While nothing is in hand (a click would pin or unpin), what a left
+     * and a right click do.
+     */
+    private List<Component> pinLines(int slot, ItemStack stack) {
+        if (FluidMarkerItem.isMarker(stack) || MaterialMarkerItem.isMarker(stack)) {
+            return List.of();
+        }
+        List<Component> lines = new ArrayList<>();
+        boolean pinned = menu.pinned(slot);
+        if (pinned) {
+            lines.add(Component.translatable("screen.jasm.terminal.pinned", stack.getHoverName()).withColor(EXACT_COLOR));
+        }
+        if (menu.getCarried().isEmpty() && ghostHeld.isEmpty() && painting() == null) {
+            int muted = JasmGui.MUTED & 0xFFFFFF;
+            lines.add(Component.translatable(pinned ? "screen.jasm.terminal.unpin_hint" : "screen.jasm.terminal.pin_hint",
+                    stack.getHoverName()).withColor(muted));
+            lines.add(Component.translatable("screen.jasm.terminal.remove_hint").withColor(muted));
+        }
+        return lines;
+    }
+
+    /** A lock in the top left corner of each pinned ingredient, over its item. */
+    private void drawPins(GuiGraphicsExtractor graphics) {
+        graphics.nextStratum();
+        for (int i = 0; i < 9; i++) {
+            Slot slot = menu.getSlot(EncodingTerminalMenu.SLOT_GHOST + i);
+            if (menu.pinned(i) && slot.isActive() && slot.hasItem()) {
+                Rect2i area = ghostSlotArea(i);
+                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, PIN, area.getX() - 1, area.getY() - 1, PIN_WIDTH, PIN_HEIGHT);
+            }
+        }
     }
 
     /**

@@ -97,7 +97,9 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     static final int DATA_AMOUNTS = 6;
     static final int DATA_FACES = DATA_AMOUNTS + EncodingTerminalBlockEntity.AMOUNTS;
     static final int DATA_DRAIN = DATA_FACES + ProcessingCard.INPUTS;
-    static final int DATA_COUNT = DATA_DRAIN + 1;
+    /** The pinned grid slots, one bit each. */
+    static final int DATA_PINS = DATA_DRAIN + 1;
+    static final int DATA_COUNT = DATA_PINS + 1;
 
     /** Messages the screen can show, by number; 0 is none. */
     public static final List<String> MESSAGES = List.of("", "message.jasm.terminal.no_power", "message.jasm.terminal.no_card",
@@ -228,6 +230,11 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         return getType() == JasmMenus.ADVANCED_ENCODER.get();
     }
 
+    /** Whether grid slot {@code slot} (0-8) is pinned, as last synced. */
+    public boolean pinned(int slot) {
+        return Pins.has(data.get(DATA_PINS), slot);
+    }
+
     /** The face grid slot {@code slot} goes in through, as last synced. */
     public InputFace face(int slot) {
         return slot >= 0 && slot < ProcessingCard.INPUTS ? InputFace.byId(data.get(DATA_FACES + slot)) : InputFace.DEFAULT;
@@ -249,6 +256,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public void fillGhostGrid(List<ItemStack> items, @Nullable ResourceKey<Recipe<?>> recipe) {
         if (terminal != null) {
             terminal.resetFaces();
+            terminal.resetPins();
         }
         if (terminal != null && !processing()) {
             List<ItemStack> clean = new ArrayList<>();
@@ -399,8 +407,10 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     }
 
     /**
-     * Ghost slots: holding an item copies it in, empty-handed (or right-click) clears the slot. In processing mode the
-     * copy keeps the held stack's count, and the output column works the same. The preview can't be taken.
+     * Ghost slots: holding an item copies it in, right-click (or Shift) clears the slot. Empty-handed, a left click on an
+     * ingredient pins or unpins it (a fluid or material has nothing to pin and stays as it is), and on an output clears
+     * it. In processing mode the copy keeps the held stack's count, and the output column works the same. The preview
+     * can't be taken.
      */
     @Override
     public void clicked(int slotIndex, int buttonNum, ContainerInput input, Player player) {
@@ -411,6 +421,12 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
                 ItemStack carried = getCarried();
                 boolean clear = carried.isEmpty() || buttonNum == 1 || input == ContainerInput.QUICK_MOVE;
                 int slot = grid ? slotIndex - SLOT_GHOST : 9 + slotIndex - SLOT_OUTPUTS;
+                if (grid && carried.isEmpty() && buttonNum == 0 && input == ContainerInput.PICKUP) {
+                    if (terminal != null) {
+                        terminal.togglePin(slot);
+                    }
+                    return;
+                }
                 ItemStack example = clear ? ItemStack.EMPTY : carried;
                 int count = carried.getCount();
                 // Right-click with a filled bucket or tank: the fluid inside, as much as the container holds.
@@ -475,6 +491,7 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
         List<ItemStack> in = advanced() ? apart(inputs) : merged(inputs, ProcessingCard.INPUTS);
         List<ItemStack> out = merged(outputs, ProcessingCard.OUTPUTS);
         terminal.resetFaces();
+        terminal.resetPins();
         for (int i = 0; i < ProcessingCard.INPUTS; i++) {
             ItemStack stack = i < in.size() ? in.get(i) : ItemStack.EMPTY;
             terminal.setProcessingSlot(i, stack, stack.getCount());

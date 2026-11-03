@@ -49,6 +49,11 @@ public final class CardRecipes {
      * or when it no longer fits, the first that fits, as a crafting table would choose.
      */
     public static Encoding encode(ServerLevel level, List<ItemStack> grid, @Nullable ResourceKey<Recipe<?>> picked) {
+        return encode(level, grid, picked, Pins.NONE);
+    }
+
+    /** As above, with grid slots {@code pinned} taking only the item shown there. */
+    public static Encoding encode(ServerLevel level, List<ItemStack> grid, @Nullable ResourceKey<Recipe<?>> picked, int pinned) {
         List<ItemStack> single = new ArrayList<>();
         for (ItemStack stack : grid) {
             single.add(stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
@@ -64,7 +69,7 @@ public final class CardRecipes {
         }
         RecipeChoices.Choice choice = choices.get(at);
         return new Encoding.Card(new RecipeCard(choice.id(), ItemContainerContents.fromItems(single),
-                ItemStackTemplate.fromNonEmptyStack(choice.result()), shapeless(choice.recipe().value())));
+                ItemStackTemplate.fromNonEmptyStack(choice.result()), shapeless(choice.recipe().value()), pinned));
     }
 
     /** Whether the recipe book shows {@code recipe} as shapeless. */
@@ -236,6 +241,7 @@ public final class CardRecipes {
          * enchantments, name or other data, as long as the recipe still takes it there: the crystal that comes back bare
          * keeps serving, but a card with a regular crystal never takes a Master one. A slot holding a fully trained
          * critter takes any copy of it, whatever its charge or name; the recipe turns away the ones whose bar isn't full.
+         * A pinned slot never takes another item, whatever the recipe allows; copies of its own item follow the rules above.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
             ItemStack there = encoded.get(slot);
@@ -246,6 +252,9 @@ public final class CardRecipes {
                 return true;
             }
             ItemStack stack = candidate.toStack(1);
+            if (card.pinned(slot) && !stack.is(there.getItem())) {
+                return false;
+            }
             if (trainedCritter(slot) || convertedCritter(slot) || returnsSelf(level, slot)) {
                 if (!stack.is(there.getItem())) {
                     return false;
