@@ -27,7 +27,7 @@ A Rack Controller shows every [Recipe Rack](recipe-rack.md) on its network in on
 ## The panel
 
 * Each rack has a section with its name and its 16 slots. A rack with no name shows as Recipe Rack. Hover a name to see where the rack stands.
-* Click a card to take it. Click an empty slot to put the card you hold in. Shift-click a card to send it to your inventory.
+* Click a card to take it. Click an empty slot to put the card you hold in. Shift-click a card to send it to your inventory, or a written card in your inventory to put it in the first free slot.
 * The search box finds cards by what they make. Racks with no match fold up to their name.
 * Racks in other dimensions joined by a far link are listed too. Racks in unloaded chunks are not.
 * You only see the racks you may use.

@@ -1,10 +1,13 @@
 package dev.micolash.jasm.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.Card;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RackControllerMenu;
 import dev.micolash.jasm.autocraft.RackPayloads;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
+import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +15,7 @@ import java.util.Locale;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -30,13 +34,20 @@ import org.jspecify.annotations.Nullable;
  */
 public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     private static final int WIDTH = RackControllerMenu.WIDTH;
-    private static final int HEIGHT = RackControllerMenu.HEIGHT;
-    private static final int BAR_WIDTH = 50;
-    private static final int BAR_X = WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
+    /** The size key: as tall as the "?" key and square, just left of it. */
+    private static final int SIZE_KEY = HELP_HEIGHT;
+    private static final int SIZE_KEY_X = WIDTH - 7 - HELP_SIZE - 1 - SIZE_KEY;
+    private static final int BAR_WIDTH = 40;
+    private static final int BAR_X = SIZE_KEY_X - 4 - BAR_WIDTH;
     private static final int BAR_Y = 6;
     private static final int LIST_X = RackControllerMenu.LIST_X;
     private static final int LIST_Y = RackControllerMenu.LIST_Y;
-    private static final int LIST_H = RackControllerMenu.LIST_HEIGHT;
+    /** The least room the list keeps on a short game window: one rack. */
+    private static final int LEAST_LIST = 54;
+    private static final int MARGIN = 16;
+    private static final JasmButton.Icon[] SIZE_ICONS = {
+            new JasmButton.Icon(Jasm.id("icon/size_small"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_medium"), 8, 7),
+            new JasmButton.Icon(Jasm.id("icon/size_tall"), 8, 7), new JasmButton.Icon(Jasm.id("icon/size_full"), 8, 7)};
     private static final int COLS = 8;
     private static final int ROWS = RecipeRackBlockEntity.SLOTS / COLS;
     private static final int LIST_W = COLS * 18;
@@ -68,16 +79,47 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     private String laidOutQuery = "";
     private int scroll;
     private boolean dragging;
+    private JasmButton sizeKey;
 
     public RackControllerScreen(RackControllerMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, WIDTH, HEIGHT);
-        this.inventoryLabelY = RackControllerMenu.INVENTORY_Y - 10;
+        super(menu, inventory, title, WIDTH, menu.screenHeight());
+    }
+
+    /**
+     * The list's height for the chosen size, like the Deck's grid: the smallest is the panel's usual height (less on a game
+     * window too short for it), the largest fills the window, and the two between split the difference.
+     */
+    private int listHeightFor(JasmClientConfig.DeckSize size) {
+        int fixed = menu.screenHeight() - menu.listHeight();
+        int small = Math.clamp(height - fixed, LEAST_LIST, RackControllerMenu.LIST_HEIGHT);
+        int most = Math.max(small, height - 2 * MARGIN - fixed);
+        return small + (most - small) * size.ordinal() / (JasmClientConfig.DeckSize.values().length - 1);
+    }
+
+    /** Steps to the next size, or back one; the screen is laid out again around the new list. */
+    private void changeSize(boolean back) {
+        JasmClientConfig.DeckSize[] sizes = JasmClientConfig.DeckSize.values();
+        int next = Math.floorMod(JasmClientConfig.rackControllerSize().ordinal() + (back ? -1 : 1), sizes.length);
+        JasmClientConfig.setRackControllerSize(sizes[next]);
+        rebuildWidgets();
+    }
+
+    private static Component sizeLabel() {
+        String name = JasmClientConfig.rackControllerSize().name().toLowerCase(Locale.ROOT);
+        return Component.translatable("screen.jasm.rack_controller.size", Component.translatable("screen.jasm.deck.size." + name));
     }
 
     @Override
     protected void init() {
+        menu.layout(listHeightFor(JasmClientConfig.rackControllerSize()));
+        imageHeight = menu.screenHeight();
+        inventoryLabelY = menu.inventoryY() - 10;
         super.init();
         addHelp(WIDTH - 7, "items/rack-controller.md");
+        sizeKey = addRenderableWidget(JasmButton.icon(() -> SIZE_ICONS[JasmClientConfig.rackControllerSize().ordinal()], sizeLabel(),
+                b -> changeSize(false), leftPos + SIZE_KEY_X, topPos + titleLabelY - 3, SIZE_KEY, SIZE_KEY));
+        sizeKey.setTooltip(Tooltip.create(Component.empty().append(sizeLabel()).append("\n")
+                .append(Component.translatable("screen.jasm.deck.size_hint").withStyle(ChatFormatting.GRAY))));
         String query = search == null ? "" : search.getValue();
         search = new JasmField(font, leftPos + LIST_X, topPos + 19, WIDTH - 2 * LIST_X, 14,
                 Component.translatable("screen.jasm.rack_controller.search_hint"));
@@ -144,11 +186,12 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
 
     private int maxScroll() {
         sections();
-        return Math.max(0, contentHeight - LIST_H);
+        return Math.max(0, contentHeight - menu.listHeight());
     }
 
     private boolean inList(double mouseX, double mouseY) {
-        return mouseX >= leftPos + LIST_X && mouseX < leftPos + LIST_X + LIST_W && mouseY >= topPos + LIST_Y && mouseY < topPos + LIST_Y + LIST_H;
+        return mouseX >= leftPos + LIST_X && mouseX < leftPos + LIST_X + LIST_W && mouseY >= topPos + LIST_Y
+                && mouseY < topPos + LIST_Y + menu.listHeight();
     }
 
     /** What is under the mouse in the list: a rack's name strip ({@code slot} -1) or one of its slots. */
@@ -182,8 +225,8 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
         JasmGui.bar(graphics, leftPos + BAR_X, topPos + BAR_Y, BAR_WIDTH, 7, menu.energy() / (double) menu.capacity());
         scroll = Math.clamp(scroll, 0, maxScroll());
         int max = maxScroll();
-        int offset = max == 0 ? 0 : Math.round((LIST_H - KNOB) * scroll / (float) max);
-        JasmGui.track(graphics, leftPos + TRACK_X, topPos + LIST_Y, LIST_H, offset, KNOB, max > 0);
+        int offset = max == 0 ? 0 : Math.round((menu.listHeight() - KNOB) * scroll / (float) max);
+        JasmGui.track(graphics, leftPos + TRACK_X, topPos + LIST_Y, menu.listHeight(), offset, KNOB, max > 0);
     }
 
     @Override
@@ -210,16 +253,17 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
                     : Component.translatable(menu.complete() ? "screen.jasm.rack_controller.none" : "screen.jasm.rack_controller.unloaded");
             List<FormattedCharSequence> lines = font.split(empty, LIST_W);
             for (int i = 0; i < lines.size(); i++) {
-                graphics.text(font, lines.get(i), left + (LIST_W - font.width(lines.get(i))) / 2, top + LIST_H / 2 - lines.size() * 5 + i * 10,
+                int lineY = top + menu.listHeight() / 2 - lines.size() * 5 + i * 10;
+                graphics.text(font, lines.get(i), left + (LIST_W - font.width(lines.get(i))) / 2, lineY,
                         menu.running() ? JasmGui.MUTED : JasmGui.BAD, false);
             }
             return;
         }
         Spot hovered = spotAt(mouseX, mouseY);
-        graphics.enableScissor(left, top, left + LIST_W, top + LIST_H);
+        graphics.enableScissor(left, top, left + LIST_W, top + menu.listHeight());
         for (Section section : laid) {
             int y = top + section.top() - scroll;
-            if (y + section.height() <= top || y >= top + LIST_H) continue;
+            if (y + section.height() <= top || y >= top + menu.listHeight()) continue;
             drawHeader(graphics, section, left, y);
             if (section.folded()) continue;
             for (int i = 0; i < RecipeRackBlockEntity.SLOTS; i++) {
@@ -235,7 +279,7 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
         graphics.nextStratum();
         for (Section section : laid) {
             int y = top + section.top() - scroll;
-            if (section.folded() || y + section.height() <= top || y >= top + LIST_H) continue;
+            if (section.folded() || y + section.height() <= top || y >= top + menu.listHeight()) continue;
             for (int i = 0; i < RecipeRackBlockEntity.SLOTS; i++) {
                 int x = left + 1 + i % COLS * 18;
                 int sy = y + HEADER + 1 + i / COLS * 18;
@@ -321,6 +365,12 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double x = event.x();
         double y = event.y();
+        // Right-click on the size key steps back one size.
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT && sizeKey.isMouseOver(x, y)) {
+            sizeKey.playDownSound(minecraft.getSoundManager());
+            changeSize(true);
+            return true;
+        }
         if (inList(x, y)) {
             Spot spot = spotAt(x, y);
             if (spot != null && spot.slot() >= 0 && menu.running()) {
@@ -343,11 +393,11 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     }
 
     private boolean onTrack(double x, double y) {
-        return x >= leftPos + TRACK_X - 1 && x < leftPos + TRACK_X + 11 && y >= topPos + LIST_Y && y < topPos + LIST_Y + LIST_H;
+        return x >= leftPos + TRACK_X - 1 && x < leftPos + TRACK_X + 11 && y >= topPos + LIST_Y && y < topPos + LIST_Y + menu.listHeight();
     }
 
     private void dragTo(double y) {
-        double fraction = (y - topPos - LIST_Y - KNOB / 2.0) / (LIST_H - KNOB);
+        double fraction = (y - topPos - LIST_Y - KNOB / 2.0) / (menu.listHeight() - KNOB);
         scroll = (int) Math.round(Math.clamp(fraction, 0, 1) * maxScroll());
     }
 

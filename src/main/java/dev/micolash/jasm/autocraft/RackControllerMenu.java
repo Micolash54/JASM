@@ -45,9 +45,10 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
     /** The rack list: under the title and the search box, as wide as eight slots plus its scroll bar. */
     public static final int LIST_X = 8;
     public static final int LIST_Y = 36;
+    /** The list's height at the smallest size; the player may make it taller (the screen grows with it). */
     public static final int LIST_HEIGHT = 100;
-    public static final int INVENTORY_Y = LIST_Y + LIST_HEIGHT + 16;
-    public static final int HEIGHT = INVENTORY_Y + 58 + 18 + 6;
+    /** From the list's bottom edge to the screen's: the inventory and its label. */
+    private static final int BELOW_LIST = 16 + 58 + 18 + 6;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -70,11 +71,7 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
                 RackView::new);
 
         /** Named racks first, by name; then the rest by dimension and position. */
-        public static final Comparator<RackView> ORDER = Comparator
-                .comparing((RackView view) -> view.label().isEmpty())
-                .thenComparing(view -> view.label().toLowerCase(Locale.ROOT))
-                .thenComparing(view -> view.at().dimension().identifier().toString())
-                .thenComparing(view -> view.at().pos());
+        public static final Comparator<RackView> ORDER = order(RackView::label, RackView::at);
 
         static RackView of(NetworkNode at, RecipeRackBlockEntity rack) {
             List<ItemStack> cards = new ArrayList<>(RecipeRackBlockEntity.SLOTS);
@@ -102,6 +99,7 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
     private final ContainerLevelAccess access;
     private final @Nullable RackControllerBlockEntity controller;
     private final Player player;
+    private int listHeight = LIST_HEIGHT;
     /** The racks the player last heard of; on the client, what the server sent. */
     private Map<NetworkNode, RackView> racks = new LinkedHashMap<>();
     /** Whether the whole network was loaded at the last look, so no rack can be missing from the list. */
@@ -132,13 +130,35 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
         this.player = inventory.player;
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, INVENTORY_Y + row * 18));
+                addSlot(new Slot(inventory, 9 + row * 9 + column, 8 + column * 18, inventoryY() + row * 18));
             }
         }
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(inventory, column, 8 + column * 18, INVENTORY_Y + 58));
+            addSlot(new Slot(inventory, column, 8 + column * 18, inventoryY() + 58));
         }
         addDataSlots(data);
+    }
+
+    /** How tall the rack list is: the smallest size on the server, where it doesn't matter. */
+    public int listHeight() {
+        return listHeight;
+    }
+
+    public int inventoryY() {
+        return LIST_Y + listHeight + 16;
+    }
+
+    public int screenHeight() {
+        return LIST_Y + listHeight + BELOW_LIST;
+    }
+
+    /** Client side: the list is {@code height} tall, and the inventory moves to just under it. */
+    public void layout(int height) {
+        listHeight = height;
+        for (Slot slot : slots) {
+            int index = slot.getContainerSlot();
+            slot.y = index < 9 ? inventoryY() + 58 : inventoryY() + (index - 9) / 9 * 18;
+        }
     }
 
     public int energy() {
@@ -180,6 +200,14 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
 
     private @Nullable CableNetwork network() {
         return controller != null && controller.getLevel() instanceof ServerLevel level ? Networks.at(level, controller.getBlockPos()) : null;
+    }
+
+    /** Named racks first, by name; then the rest by dimension and position. The panel and Shift-click both go by it. */
+    private static <T> Comparator<T> order(Function<T, String> label, Function<T, NetworkNode> at) {
+        return Comparator.comparing((T rack) -> label.apply(rack).isEmpty())
+                .thenComparing(rack -> label.apply(rack).toLowerCase(Locale.ROOT))
+                .thenComparing(rack -> at.apply(rack).dimension().identifier().toString())
+                .thenComparing(rack -> at.apply(rack).pos());
     }
 
     private static NetworkNode node(RecipeRackBlockEntity rack) {
@@ -332,22 +360,31 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
                 && MachineAccess.canUse(controller, player);
     }
 
-    /** Shift-click in the inventory moves between hotbar and inventory, as in a chest-less screen; cards go into racks by hand. */
+    /**
+     * Shift-click on a written card in the inventory: it goes into the first free slot of the first rack in the panel's
+     * order (the search doesn't change which). Anything else, or a card no rack has room for, stays where it is. Only
+     * the server moves it, straight into the real rack.
+     */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         Slot clicked = slots.get(index);
-        if (!clicked.hasItem()) return ItemStack.EMPTY;
         ItemStack stack = clicked.getItem();
-        ItemStack before = stack.copy();
-        int hotbar = 27;
-        boolean moved = index < hotbar ? moveItemStackTo(stack, hotbar, hotbar + 9, false) : moveItemStackTo(stack, 0, hotbar, false);
-        if (!moved) return ItemStack.EMPTY;
-        if (stack.isEmpty()) {
-            clicked.setByPlayer(ItemStack.EMPTY);
-        } else {
-            clicked.setChanged();
+        if (controller == null || stack.isEmpty() || !RecipeRackBlockEntity.accepts(stack) || !controller.running() || !stillValid(player)) {
+            return ItemStack.EMPTY;
         }
-        return before;
+        List<RecipeRackBlockEntity> racks = new ArrayList<>(usableRacks(player));
+        racks.sort(order(RecipeRackBlockEntity::label, RackControllerMenu::node));
+        for (RecipeRackBlockEntity rack : racks) {
+            for (int i = 0; i < RecipeRackBlockEntity.SLOTS; i++) {
+                if (!rack.getItem(i).isEmpty()) continue;
+                ItemStack moved = stack.copyWithCount(1);
+                clicked.remove(1);
+                rack.setItem(i, moved);
+                lookNow = true;
+                return moved.copy();
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     @Override

@@ -11,7 +11,10 @@ import net.neoforged.neoforge.common.TranslatableEnum;
 public final class JasmClientConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
-    /** How tall the Deck screen's grid is; every size above the smallest grows with the game window. */
+    /**
+     * How tall the Deck screen's grid is, and the Rack Controller's rack list; every size above the smallest grows with the
+     * game window.
+     */
     public enum DeckSize implements TranslatableEnum {
         SMALL,
         MEDIUM,
@@ -80,6 +83,10 @@ public final class JasmClientConfig {
             .comment("Folds the port list away on Advanced Encoder screens")
             .define("encoderPortsFolded", false);
 
+    public static final ModConfigSpec.EnumValue<DeckSize> RACK_CONTROLLER_SIZE = BUILDER
+            .comment("Height of the Rack Controller's rack list")
+            .defineEnum("rackControllerSize", DeckSize.SMALL);
+
     static {
         BUILDER.pop().push("sounds");
     }
@@ -101,6 +108,16 @@ public final class JasmClientConfig {
 
     public static void setDeckSize(DeckSize size) {
         DECK_SIZE.set(size);
+        SPEC.save();
+    }
+
+    /** Before the config has loaded, the smallest size. */
+    public static DeckSize rackControllerSize() {
+        return SPEC.isLoaded() ? RACK_CONTROLLER_SIZE.get() : DeckSize.SMALL;
+    }
+
+    public static void setRackControllerSize(DeckSize size) {
+        RACK_CONTROLLER_SIZE.set(size);
         SPEC.save();
     }
 
