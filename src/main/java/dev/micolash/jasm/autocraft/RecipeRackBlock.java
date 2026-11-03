@@ -18,8 +18,8 @@ import org.jspecify.annotations.Nullable;
 public class RecipeRackBlock extends MachineBlock {
     /** Distance between two slots, in pixels. */
     public static final float SLOT_STEP = 3;
-    /** How deep the face of what a card makes sits, in pixels behind the front: between the card's face and the frame's. */
-    public static final float ICON_DEPTH = 0.5F;
+    /** How far a card's face stands out of the rack's front, in pixels. What the card makes is drawn just in front of it. */
+    public static final float CARD_FACE = 0.5F;
 
     /**
      * The middle of slot {@code slot}'s card face across, in pixels, on the rack as modelled facing north. Seen from the
@@ -39,9 +39,9 @@ public class RecipeRackBlock extends MachineBlock {
         return 180 - facing.toYRot();
     }
 
-    /** Where the middle of what slot {@code slot}'s card makes is drawn on a rack facing {@code facing}, in blocks from its lowest corner. */
+    /** The middle of slot {@code slot}'s card face on a rack facing {@code facing}, in blocks from its lowest corner. */
     public static Vec3 slotFront(Direction facing, int slot) {
-        Vec3 modelled = new Vec3(slotX(slot) / 16 - 0.5, slotY(slot) / 16, ICON_DEPTH / 16 - 0.5);
+        Vec3 modelled = new Vec3(slotX(slot) / 16 - 0.5, slotY(slot) / 16, -CARD_FACE / 16 - 0.5);
         return modelled.yRot((float) Math.toRadians(yRotation(facing))).add(0.5, 0, 0.5);
     }
 

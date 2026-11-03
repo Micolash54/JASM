@@ -38,18 +38,18 @@ import org.jspecify.annotations.Nullable;
  * icon. The card model sits in the top-left slot; slot 0 to 3 run left to right along the top row, 4 to 7 the row below,
  * and so on, matching the rack's screen.
  *
- * <p>A rack whose front faces away from the camera draws nothing: its body hides the cards. Past the player's rack icon
+ * <p>A rack the camera is behind draws nothing: its body hides the cards. Past the player's rack icon
  * distance the cards are drawn plain. The icons are worked out only when the rack's cards change, and kept between frames.
  */
 public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEntity, RecipeRackRenderer.State> {
     public static final StandaloneModelKey<BlockStateModelPart> CARD_MODEL = new StandaloneModelKey<>(() -> "jasm:recipe_rack_card");
     public static final Identifier CARD_MODEL_ID = Jasm.id("block/recipe_rack_card");
-    /** A 16-pixel inventory icon drawn 2 pixels across. */
-    private static final float ICON_SCALE = 2 / 16F;
-    /** An icon's depth is squashed to at most this share of its width. */
-    private static final float ICON_DEPTH_SHARE = 0.4F;
-    /** The deepest an icon may be, in blocks, so a block's 3D icon stays between the card's face and the frame's. */
-    private static final float ICON_MAX_DEPTH = 0.8F / 16;
+    /** A 16-pixel inventory icon drawn 2.5 pixels across, covering the card face, and as deep as its shape. */
+    private static final float ICON_SCALE = 2.5F / 16;
+    /** The gap between a card's face and the back of what it shows, in pixels. */
+    private static final float ICON_GAP = 0.1F;
+    /** How far past the block the cards and a block's icon may reach: a full-depth icon stands about 3 pixels out. */
+    private static final double REACH_OUT = 4 / 16.0;
 
     private final ItemModelResolver itemModelResolver;
     private @Nullable BlockStateModelPart card;
@@ -64,7 +64,10 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         return new State();
     }
 
-    /** Only racks in reach whose front the camera can see. */
+    /**
+     * Only racks in reach that the camera isn't behind. The cards and icons stand out of the front, so they can be seen
+     * from beside the rack too: only a camera past the back face is sure to see none of them.
+     */
     @Override
     public boolean shouldRender(RecipeRackBlockEntity rack, Vec3 cameraPosition) {
         BlockPos pos = rack.getBlockPos();
@@ -76,8 +79,8 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
             return false;
         }
         Direction facing = rack.getBlockState().getValue(MachineBlock.FACING);
-        // in front of the front face
-        return (dx - facing.getStepX() * 0.5) * facing.getStepX() + (dz - facing.getStepZ() * 0.5) * facing.getStepZ() > 0;
+        // in front of the back face
+        return (dx + facing.getStepX() * 0.5) * facing.getStepX() + (dz + facing.getStepZ() * 0.5) * facing.getStepZ() > 0;
     }
 
     @Override
@@ -110,7 +113,7 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         return dx * dx + dy * dy + dz * dz <= (double) reach * reach;
     }
 
-    /** The rack's own block: everything drawn sits inside it. */
+    /** The rack's block and a little round it, so cards and icons standing out of the front aren't cut off. */
     @Override
     public AABB getRenderBoundingBox(RecipeRackBlockEntity rack) {
         return kept(rack).bounds;
@@ -120,7 +123,8 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         if (rack.renderCache() instanceof Icons kept && kept.owner == this) {
             return kept;
         }
-        Icons icons = new Icons(this, new AABB(rack.getBlockPos()));
+        // round every side, so a rack turned with a wrench needs nothing new
+        Icons icons = new Icons(this, new AABB(rack.getBlockPos()).inflate(REACH_OUT, 0, REACH_OUT));
         rack.setRenderCache(icons);
         return icons;
     }
@@ -156,9 +160,9 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         }
         icons.shown |= 1 << slot;
         AABB box = item.getModelBoundingBox();
-        double depth = box.maxZ - box.minZ;
-        float squashed = ICON_SCALE * ICON_DEPTH_SHARE;
-        icons.depthScale[slot] = depth > 0 ? (float) Math.min(squashed, ICON_MAX_DEPTH / depth) : squashed;
+        float depth = (float) Math.max(0, box.maxZ - box.minZ) * ICON_SCALE;
+        // the icon's back just in front of the card face, so flat items sit on it and blocks stand out at their full depth
+        icons.middle[slot] = -(RecipeRackBlock.CARD_FACE + ICON_GAP) / 16 - depth / 2;
         icons.depthMiddle[slot] = (float) ((box.minZ + box.maxZ) / 2);
     }
 
@@ -207,10 +211,10 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
             return;
         }
         poseStack.pushPose();
-        poseStack.translate(RecipeRackBlock.slotX(slot) / 16, RecipeRackBlock.slotY(slot) / 16, RecipeRackBlock.ICON_DEPTH / 16);
+        poseStack.translate(RecipeRackBlock.slotX(slot) / 16, RecipeRackBlock.slotY(slot) / 16, icons.middle[slot]);
         // an icon faces +z; the rack's front is -z
         poseStack.mulPose(Axis.YP.rotationDegrees(180));
-        poseStack.scale(ICON_SCALE, ICON_SCALE, icons.depthScale[slot]);
+        poseStack.scale(ICON_SCALE, ICON_SCALE, ICON_SCALE);
         poseStack.translate(0, 0, -icons.depthMiddle[slot]);
         item.submit(poseStack, collector, light, OverlayTexture.NO_OVERLAY, 0);
         poseStack.popPose();
@@ -225,8 +229,9 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         /** One bit per slot with an icon to draw. */
         int shown;
         final @Nullable ItemStackRenderState[] items = new ItemStackRenderState[RecipeRackBlockEntity.SLOTS];
-        final float[] depthScale = new float[RecipeRackBlockEntity.SLOTS];
-        /** The middle of each icon's depth, before squashing, so it sits centred on the icon plane. */
+        /** Where each icon's middle goes, in blocks along the rack as modelled facing north (out of the front is -z). */
+        final float[] middle = new float[RecipeRackBlockEntity.SLOTS];
+        /** The middle of each icon's own depth, in its own space, so it can be placed by its middle. */
         final float[] depthMiddle = new float[RecipeRackBlockEntity.SLOTS];
 
         Icons(RecipeRackRenderer owner, AABB bounds) {
