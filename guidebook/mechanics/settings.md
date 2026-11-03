@@ -16,11 +16,14 @@ Every number and switch JASM lets you change, in the order the config screen sho
 
 * Choose **Mods**, **JASM**, **Config**. The sections are on the left and each setting has a short description.
 * The screen has two parts: **My settings** (`jasm-client.toml`) and **World rules** (`jasm-server.toml`).
-* My settings can always be changed. World rules can be changed in singleplayer and by operators on a server. Everyone else sees them locked.
-* Without a world open, World rules show the normal values and are locked.
+* My settings can always be changed. World rules can be changed in singleplayer and by operators on a server. Everyone else sees them locked, and with no world open they show the normal values.
 * A changed value turns yellow and gets a **Reset** key. **Reset section** puts the open section back to its defaults.
-* A value outside its range can't be saved.
-* Changes are saved when you press **Done**.
+* A value outside its range can't be saved. Changes are saved when you press **Done**.
+
+<br />
+<br />
+## When a change applies
+
 * Settings marked **Needs restart** (Deck slots, the features and the Basic Bitling recipe) apply after the world reloads, or after the server restarts. The rest apply at once.
 * Players who join a server get the server's world rules. A server's `jasm-server.toml` can also be edited by hand.
 
@@ -82,6 +85,11 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | Battery: typed Bitling (FE) | `batteryBitling` | FE a typed Bitling's own battery holds: 150,000 in a new world. |
 | Battery: Nibbling (FE) | `batteryNibbling` | FE a Nibbling's own battery holds. |
 | Battery: Byteling (FE) | `batteryByteling` | FE a Byteling's own battery holds. |
+| Battery: Starter Deck (FE) | `batteryDeckStarter` | FE a Starter Deck's battery holds. Lowering it never deletes charge at once: a Deck holding more counts as full and drops to the new top the next time it spends power. |
+| Battery: Basic Deck (FE) | `batteryDeckBasic` | FE a Basic Deck's battery holds. |
+| Battery: Advanced Deck (FE) | `batteryDeckAdvanced` | FE an Advanced Deck's battery holds, and so does its Crafting Deck. |
+| Battery: Elite Deck (FE) | `batteryDeckElite` | FE an Elite Deck's battery holds, and so does its Crafting Deck. |
+| Battery: Ultimate Deck (FE) | `batteryDeckUltimate` | FE an Ultimate Deck's battery holds, and so does its Crafting Deck. |
 | Most blocks in a Battery | `batteryMaxBlocks` | Most blocks one Battery may have. A block that would join up a bigger one can't be placed. |
 | Battery capacity bonus per block (%) | `batteryCapacityBonus` | Extra room in each Battery block for every block in its group, in percent. A lone block has no bonus. |
 | Battery charging slot base (FE/t) | `batteryChargeBase` | FE each tick a Battery's charging slot gives an item, before the size bonus. |
@@ -208,6 +216,9 @@ These are your own, in `jasm-client.toml`. They don't change with the world.
 | Deck sort | `deckSort` | What the Deck screen sorts its grid by. |
 | Deck sort ascending | `deckAscending` | Sorts the Deck screen's grid from smallest to largest, or A to Z. |
 | Sync Deck search with JEI | `deckSearchSync` | With JEI installed, the Deck's search and JEI's search show the same text. |
+| Group the Network tab | `networkGrouped` | Groups the Deck's Network tab by category. |
+| Network tab sort | `networkSort` | What the Deck's Network tab sorts its rows by. |
+| Folded Network tab categories | `networkFolded` | The Network tab categories folded shut. The tab keeps this list itself. |
 | Fold bay filters | `bayFilterCollapsed` | Folds the filter away on bay panels. |
 | Fold Access Port recipes | `portRecipesFolded` | Folds the recipe list away on Access Port screens. |
 | Fold Advanced Encoder ports | `encoderPortsFolded` | Folds the port list away on Advanced Encoder screens. |

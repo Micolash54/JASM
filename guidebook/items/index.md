@@ -70,6 +70,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Blank Upgrade](blank-upgrade.md): the base for other upgrades.
 * [Speed Upgrade](speed-upgrade.md), [Redstone Upgrade](redstone-upgrade.md) and [Power Upgrade](power-upgrade.md).
 * [Crafting Upgrade](crafting-upgrade.md) and [Stock Upgrade](stock-upgrade.md): for Output Ports.
+* [Chunkload Upgrade](chunkload-upgrade.md): keeps a machine's chunk loaded.
 * [Deployment Bay](deployment-bay.md): places blocks and fluids.
 * [Demolition Bay](demolition-bay.md): breaks blocks.
 * [Wrench](wrench.md): turn machines and pick them up.
@@ -81,6 +82,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Network Encoder](encoding-terminal.md): writes recipes and pairs Decks.
 * [Advanced Encoder](advanced-encoder.md): a Network Encoder that picks which face of a machine each ingredient goes in through.
 * [Recipe Cards](recipe-cards.md): hold one recipe each.
+* [Material](material-marker.md): stands for another mod's material on a card.
 * [Recipe Rack](recipe-rack.md): stores 16 cards.
 * [Rack Controller](rack-controller.md): every rack's cards in one panel.
 * [Crafting Server](crafting-server.md): runs the jobs.
