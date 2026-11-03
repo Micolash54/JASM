@@ -47,6 +47,7 @@
   "screen.jasm.server.cancel": "Cancel",
   "screen.jasm.server.collect": "Collect",
   "screen.jasm.server.rename": "Rename",
+  "screen.jasm.server.name_hint": "Crafting server name",
   "screen.jasm.server.priority": "Priority server",
   "screen.jasm.server.priority_on": "On",
   "screen.jasm.server.priority_off": "Off",
