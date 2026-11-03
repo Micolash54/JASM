@@ -11,6 +11,7 @@ import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.dock.DeckReach;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlock;
+import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.NetworkPowerSource;
@@ -26,6 +27,7 @@ import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -128,6 +130,15 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private final @Nullable Block[] around = new Block[SIDES.length];
     /** The processing recipes the port serves, in the order they were picked. Never sent along with block updates. */
     private final Set<ProcessingCard> recipes = new LinkedHashSet<>();
+    /**
+     * Per side, since when (game time) the port has been after the machine there; 0 when it isn't. When ports meet at one
+     * machine, the one after it longest keeps it.
+     */
+    private final long[] wantedSince = new long[SIDES.length];
+    /** The sides whose machine another port keeps, one bit per side. */
+    private int takenSides;
+    /** Set when who keeps the machines may have changed; settled on the next look. */
+    private boolean claimsStale = true;
 
     /** What machines, hoppers and pipes push in. */
     private final PortIntake intake = new PortIntake(this);
@@ -162,6 +173,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_BLOCKING -> blockingMode ? 1 : 0;
                 case AccessPortMenu.DATA_PAUSED -> redstonePaused() ? 1 : 0;
                 case AccessPortMenu.DATA_REDSTONE -> redstoneMode.ordinal();
+                case AccessPortMenu.DATA_TAKEN -> anyTaken() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -190,12 +202,16 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, AccessPortBlockEntity port) {
         port.checkStopped();
+        if (port.claimsStale) {
+            port.settleClaims();
+        }
         port.processDeckLink();
         port.forwardItems();
         port.tickIntake();
         if (level.getGameTime() % 10 == 0) {
             // A machine can start taking items without its block changing (a modded one finishing its build, say).
             port.settleType(true);
+            port.settleClaims();
             port.refreshSides();
         }
         if (!port.locks.isEmpty() && level.getGameTime() % LOCK_CHECK == 0) {
@@ -421,7 +437,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** The upgrade powers only blocks of the kind of machine the port serves. */
     protected boolean canPowerSide(Direction side) {
-        return machineType != null && blockAt(side) == machineType;
+        return machineType != null && blockAt(side) == machineType && !takenElsewhere(side);
     }
 
     /** The sides the Power Upgrade may ever reach: every side of a full port, the mounted face of a thin one. */
@@ -556,7 +572,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         List<Direction> sides = new ArrayList<>();
         settleType(false);
         for (Direction side : SIDES) {
-            if (machineType != null && blockAt(side) == machineType && detects(side)) {
+            if (machineType != null && blockAt(side) == machineType && detects(side) && !takenElsewhere(side)) {
                 sides.add(side);
             }
         }
@@ -610,7 +626,143 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
      */
     public boolean hasMachine(Direction side) {
         settleType(false);
-        return machineType != null && blockAt(side) == machineType && touches(side);
+        return machineType != null && blockAt(side) == machineType && touches(side) && !takenElsewhere(side);
+    }
+
+    // --- one port per machine ---
+
+    /** A port going for the machine on one of its sides, and which side that is. */
+    private record Rival(AccessPortBlockEntity port, Direction side) {
+        /**
+         * Whether this port keeps the machine over {@code other} (on its {@code otherSide}): the one with a job's sets in the
+         * machine, else the one that has been after it longest, else the lower position, so every port reaches the same answer.
+         */
+        boolean keepsOver(AccessPortBlockEntity other, Direction otherSide) {
+            boolean busy = port.locks.containsKey(side);
+            boolean otherBusy = other.locks.containsKey(otherSide);
+            if (busy != otherBusy) {
+                return busy;
+            }
+            long since = port.wantedSince[side.ordinal()];
+            long otherSince = other.wantedSince[otherSide.ordinal()];
+            if (since != otherSince && (since == 0 || otherSince == 0)) {
+                // a port that has not looked yet comes last
+                return since != 0;
+            }
+            if (since != otherSince) {
+                return since < otherSince;
+            }
+            int byPosition = Long.compare(port.worldPosition.asLong(), other.worldPosition.asLong());
+            return byPosition != 0 ? byPosition < 0 : side.ordinal() < otherSide.ordinal();
+        }
+    }
+
+    /**
+     * Whether another port keeps the machine on {@code side}, so this port does nothing with it: no recipes, no sets, no
+     * pushes taken in, no power passed on. The port that had the machine first keeps it; when that port is broken or
+     * turned away, the next one takes over at its next check.
+     */
+    public boolean takenElsewhere(@Nullable Direction side) {
+        if (side == null || !(level instanceof ServerLevel) || !servesRecipes()) {
+            return false;
+        }
+        if (claimsStale) {
+            settleClaims();
+        }
+        return (takenSides & 1 << side.ordinal()) != 0;
+    }
+
+    /** Whether another port keeps a machine this port is after. */
+    public boolean anyTaken() {
+        if (!(level instanceof ServerLevel) || !servesRecipes()) {
+            return false;
+        }
+        if (claimsStale) {
+            settleClaims();
+        }
+        return takenSides != 0;
+    }
+
+    /** Whether the block on {@code side} is a machine of the served kind that the port is after. */
+    private boolean wants(Direction side) {
+        settleType(false);
+        return servesRecipes() && machineType != null && blockAt(side) == machineType && detects(side);
+    }
+
+    /** The other ports going for the machine on {@code side}: block ports beside it, and thin ports on cables beside it. */
+    private List<Rival> rivals(Direction side) {
+        BlockPos machine = worldPosition.relative(side);
+        List<Rival> found = new ArrayList<>(2);
+        for (Direction around : SIDES) {
+            BlockPos there = machine.relative(around);
+            if (!level.isLoaded(there)) {
+                continue;
+            }
+            Direction toward = around.getOpposite();
+            AccessPortBlockEntity other = switch (level.getBlockEntity(there)) {
+                case DataCableBlockEntity cable -> cable.port(toward);
+                case AccessPortBlockEntity full -> full;
+                case null, default -> null;
+            };
+            if (other != null && other != this && !other.isRemoved() && other.wants(toward)) {
+                found.add(new Rival(other, toward));
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Works out which machines this port keeps. A port notes when it first went for a machine and forgets it once it no
+     * longer does (broken, turned away, the machine replaced by another kind), and of the ports at one machine the one
+     * that has been there longest keeps it. A machine in an unloaded spot stays as it was.
+     */
+    private void settleClaims() {
+        claimsStale = false;
+        if (!(level instanceof ServerLevel) || !servesRecipes()) {
+            return;
+        }
+        int taken = 0;
+        boolean changed = false;
+        for (Direction side : SIDES) {
+            int bit = 1 << side.ordinal();
+            if (face() != null && side != face()) {
+                continue;
+            }
+            if (blockAt(side) == null) {
+                taken |= takenSides & bit;
+                continue;
+            }
+            if (!wants(side)) {
+                if (wantedSince[side.ordinal()] != 0) {
+                    wantedSince[side.ordinal()] = 0;
+                    changed = true;
+                }
+                continue;
+            }
+            List<Rival> rivals = rivals(side);
+            if (wantedSince[side.ordinal()] == 0) {
+                // after every port already there, even one that came in the same tick
+                long since = level.getGameTime();
+                for (Rival rival : rivals) {
+                    since = Math.max(since, rival.port().wantedSince[rival.side().ordinal()] + 1);
+                }
+                wantedSince[side.ordinal()] = since;
+                changed = true;
+            }
+            for (Rival rival : rivals) {
+                if (rival.keepsOver(this, side)) {
+                    taken |= bit;
+                    break;
+                }
+            }
+        }
+        if (taken != takenSides) {
+            takenSides = taken;
+            changed = true;
+        }
+        if (changed) {
+            setChanged();
+        }
     }
 
     /** The block on {@code side} if the port looks that way and it is loaded; a thin port looks only at its face. */
@@ -707,6 +859,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (!changed) {
             return;
         }
+        claimsStale = true;
         if (machineType != null) {
             for (Direction side : SIDES) {
                 if (around[side.ordinal()] == machineType && detects(side)) {
@@ -797,6 +950,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void setMachineType(@Nullable Block type) {
         if (machineType != type) {
             machineType = type;
+            // a new kind is a new claim: the time spent after the old machines counts for nothing
+            Arrays.fill(wantedSince, 0);
+            claimsStale = true;
             setChanged();
         }
     }
@@ -1047,7 +1203,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
-        return slot >= 0 && slot < BUFFER_SLOTS && open();
+        return slot >= 0 && slot < BUFFER_SLOTS && open() && !takenElsewhere(side);
     }
 
     @Override
@@ -1110,6 +1266,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
         output.storeNullable("machine_type", BuiltInRegistries.BLOCK.byNameCodec(), machineType);
+        if (Arrays.stream(wantedSince).anyMatch(since -> since != 0)) {
+            output.store("wanted_since", Codec.LONG.listOf(), Arrays.stream(wantedSince).boxed().toList());
+        }
         if (!recipes.isEmpty()) {
             output.store("recipes", ProcessingCard.CODEC.listOf(), List.copyOf(recipes));
         }
@@ -1129,6 +1288,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
         machineType = input.read("machine_type", BuiltInRegistries.BLOCK.byNameCodec()).orElse(null);
+        Arrays.fill(wantedSince, 0);
+        List<Long> savedSince = input.read("wanted_since", Codec.LONG.listOf()).orElse(List.of());
+        for (int i = 0; i < Math.min(savedSince.size(), wantedSince.length); i++) {
+            wantedSince[i] = savedSince.get(i);
+        }
+        takenSides = 0;
+        claimsStale = true;
         recipes.clear();
         input.read("recipes", ProcessingCard.CODEC.listOf()).orElse(List.of()).forEach(card -> recipes.add(card.clean()));
         intake.load(input);
@@ -1170,6 +1336,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public void removeComponentsFromTag(ValueOutput output) {
         super.removeComponentsFromTag(output);
         output.discard("label");
+        output.discard("wanted_since");
         if (servesRecipes()) {
             output.discard("machine_type");
             output.discard("recipes");

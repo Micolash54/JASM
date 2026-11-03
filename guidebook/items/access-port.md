@@ -57,6 +57,8 @@ A full block port works with one kind of machine, even if several touch it. The 
 
 A thin port has one machine, the one it faces.
 
+Only one port works with a machine. A second port facing a machine another port already uses does nothing with it, and its screen says "Machine already used by another port". It takes the machine over when the first port is broken or turned away.
+
 <br />
 <br />
 ## Two shapes

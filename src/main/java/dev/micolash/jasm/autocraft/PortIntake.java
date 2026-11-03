@@ -95,7 +95,8 @@ final class PortIntake {
 
     /** How much of {@code fluid}, up to {@code amount}, a push through {@code side} may hand over now. Changes nothing. */
     private long fluidRoom(@Nullable Direction side, FluidResource fluid, long amount, TransactionContext tx) {
-        if (!(port.getLevel() instanceof ServerLevel serverLevel) || port.stopped() || !port.acceptsPushedFluid(fluid)) return 0;
+        if (!(port.getLevel() instanceof ServerLevel serverLevel) || port.stopped() || !port.acceptsPushedFluid(fluid)
+                || port.takenElsewhere(side)) return 0;
         long accepted = 0;
         long same = heldFluids.getOrDefault(fluid, 0L);
         for (PushedFluid push : pushedFluids) {

@@ -299,9 +299,13 @@ public final class NetworkViewService {
         }
         int chunk = ChunkLoaders.drawOf(port);
         int use = port.networkPowerFlow() + chunk;
+        // a port whose machine another port keeps serves nothing there: idle, with the reason
+        boolean taken = port.anyTaken();
+        int status = !port.running() ? NetworkViewPayloads.Node.STOPPED
+                : taken && serving.isEmpty() ? NetworkViewPayloads.Node.IDLE : NetworkViewPayloads.Node.WORKING;
         return new NetworkViewPayloads.Node(category, icon, name, serving, port.getBlockPos(), level.dimension(),
-                port.running() ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, -use, chunk,
-                NetworkViewPayloads.Charge.NONE, Optional.empty());
+                status, -use, chunk, NetworkViewPayloads.Charge.NONE,
+                taken ? Optional.of(Component.translatable("screen.jasm.port.machine_taken")) : Optional.empty());
     }
 
     /** Which badge a port's row wears: its own kind. */

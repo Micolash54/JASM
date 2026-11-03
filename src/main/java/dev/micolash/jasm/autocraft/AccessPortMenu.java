@@ -86,7 +86,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     static final int DATA_BLOCKING = 6;
     static final int DATA_PAUSED = 7;
     static final int DATA_REDSTONE = 8;
-    public static final int DATA_COUNT = 9;
+    static final int DATA_TAKEN = 9;
+    public static final int DATA_COUNT = 10;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -543,6 +544,11 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public boolean hasRedstoneUpgrade() {
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) if (getSlot(SLOT_SPEED + i).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return true;
         return false;
+    }
+
+    /** Another port keeps a machine this port is after, so this port does nothing with it. */
+    public boolean machineTaken() {
+        return data.get(DATA_TAKEN) != 0;
     }
 
     /** Whether a job has sets in the machine right now. */

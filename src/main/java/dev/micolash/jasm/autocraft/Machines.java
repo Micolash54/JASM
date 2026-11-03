@@ -91,7 +91,8 @@ public final class Machines {
     /**
      * The machines {@code card}'s recipe can run on: every side with a machine of the served kind, on each loaded port on
      * {@code network} that serves the recipe. A thin port's one face counts, machine or not, and so does a block port's
-     * side facing a machine whose grid keeps that face shut, so a job can say what is wrong there.
+     * side facing a machine whose grid keeps that face shut, so a job can say what is wrong there. A machine another port
+     * keeps is not listed for this one.
      */
     public static List<At> spots(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
         if (network == null) {
@@ -104,7 +105,9 @@ public final class Machines {
             }
             ResourceKey<Level> dimension = port.getLevel().dimension();
             if (port.face() != null) {
-                spots.add(new At(port.getBlockPos(), port.face(), dimension));
+                if (!port.takenElsewhere(port.face())) {
+                    spots.add(new At(port.getBlockPos(), port.face(), dimension));
+                }
             } else {
                 for (Direction side : port.spotSides()) {
                     spots.add(new At(port.getBlockPos(), side, dimension));
