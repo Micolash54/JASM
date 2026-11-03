@@ -277,7 +277,7 @@ public final class JasmConfig {
 
     public static final ModConfigSpec.IntValue BAY_ACTION_TICKS = BUILDER
             .comment("Ticks one bay action takes with no Speed Upgrades. Under 20, two Bitlings take turns")
-            .defineInRange("actionTicks", 40, 1, 30_000);
+            .defineInRange("actionTicks", 60, 1, 30_000);
 
     public static final ModConfigSpec.IntValue BAY_ENERGY_CAPACITY = BUILDER
             .comment("FE a bay holds")

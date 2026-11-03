@@ -22,7 +22,7 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 
 | At a glance | |
 | --- | --- |
-| Speed | 2 seconds, down to 0.15 seconds with 4 [Speed Upgrades](speed-upgrade.md) |
+| Speed | 3 seconds, down to 0.2 seconds with 4 [Speed Upgrades](speed-upgrade.md) |
 | Cost | 20 FE for each block, fluid or stack |
 | Upgrades | five slots: up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md) |
 | Holds | 10,000 FE and 16 buckets |

@@ -24,7 +24,7 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 
 | At a glance | |
 | --- | --- |
-| Speed | 2 seconds, down to 0.15 seconds with 4 [Speed Upgrades](speed-upgrade.md) |
+| Speed | 3 seconds, down to 0.2 seconds with 4 [Speed Upgrades](speed-upgrade.md) |
 | Breaking | 6 FE for each point of cost: 1, plus the block's hardness and drops, times enchantments |
 | Scooping | 50 FE a bucket |
 | Upgrades | five slots: up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md) |
