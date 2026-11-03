@@ -229,3 +229,9 @@ These are your own, in `jasm-client.toml`. They don't change with the world.
 | Setting | Key | What it does |
 | --- | --- | --- |
 | Mute the Demolition Bay laser | `bayLaserMuted` | Silences every Demolition Bay's laser. |
+
+**Blocks**
+
+| Setting | Key | What it does |
+| --- | --- | --- |
+| Rack icon distance | `rackIconDistance` | How close, in blocks, you need to be to a [Recipe Rack](../items/recipe-rack.md) to see what each card makes. Further away, the cards show plain. 0 turns the pictures off, 64 at most. Normally 32. |

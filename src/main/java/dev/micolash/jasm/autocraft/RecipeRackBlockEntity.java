@@ -8,6 +8,7 @@ import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -16,10 +17,13 @@ import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
@@ -42,8 +46,19 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     private NonNullList<ItemStack> items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
     /** One bit per slot: a processing card none of whose machines can be reached. Worked out once a second. */
     private int missing;
-    /** One bit per slot that holds a card, as last sent to players. It's all their game needs to draw the cards. */
+    /** One bit per slot that holds a card, as last sent to players. */
     private int shownCards;
+    /**
+     * What each slot's card makes, one of it, as last sent to players: their game draws it on the card. Empty for an empty
+     * slot or a card with nothing readable to show.
+     */
+    private final ItemStack[] shownMakes = new ItemStack[SLOTS];
+    /** The stacks {@link #shownMakes} was read from, so a tick notices a changed slot without reading every card. */
+    private final ItemStack[] seen = new ItemStack[SLOTS];
+    /** Goes up each time a player's game is sent new cards, so its renderer knows to look again. */
+    private int shownVersion;
+    /** The client renderer's own things for this rack, kept between frames. Never saved or sent. */
+    private @Nullable Object renderCache;
     /** A name the player gave the rack; empty for the block's own name. */
     private String label = "";
 
@@ -71,6 +86,7 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
 
     public RecipeRackBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.RECIPE_RACK_ENTITY.get(), pos, state, CAPACITY);
+        Arrays.fill(shownMakes, ItemStack.EMPTY);
     }
 
     static void serverTick(Level level, BlockPos pos, BlockState state, RecipeRackBlockEntity rack) {
@@ -78,11 +94,46 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         if (level.getGameTime() % 20 == 0) {
             rack.checkMachines((ServerLevel) level);
         }
-        int filled = rack.filledSlots();
-        if (filled != rack.shownCards) {
-            rack.shownCards = filled;
+        if (rack.updateShown()) {
             level.sendBlockUpdated(pos, state, state, Block.UPDATE_CLIENTS);
         }
+    }
+
+    /**
+     * Brings what players are shown up to date with the slots, reading only the cards whose stack changed. Whether
+     * anything players see is different.
+     */
+    private boolean updateShown() {
+        boolean changed = false;
+        for (int i = 0; i < SLOTS; i++) {
+            ItemStack stack = items.get(i);
+            boolean filled = !stack.isEmpty();
+            boolean wasFilled = (shownCards & (1 << i)) != 0;
+            if (stack == seen[i] && filled == wasFilled) {
+                continue;
+            }
+            seen[i] = stack;
+            if (filled != wasFilled) {
+                shownCards ^= 1 << i;
+                changed = true;
+            }
+            ItemStack makes = makes(stack);
+            if (!ItemStack.matches(makes, shownMakes[i])) {
+                shownMakes[i] = makes;
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /** One of what the card {@code stack} makes, or empty for no card or a card that makes nothing readable. */
+    private static ItemStack makes(ItemStack stack) {
+        Card card = stack.isEmpty() ? null : Card.of(stack);
+        if (card == null) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack result = card.result();
+        return result.isEmpty() ? ItemStack.EMPTY : result.copyWithCount(1);
     }
 
     private int filledSlots() {
@@ -98,6 +149,24 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     /** Whether the slot holds a card, as far as a player's game knows. */
     public boolean showsCard(int slot) {
         return (shownCards & (1 << slot)) != 0;
+    }
+
+    /** What the slot's card makes, as far as a player's game knows; empty for none. Not to be changed. */
+    public ItemStack shownMakes(int slot) {
+        return shownMakes[slot];
+    }
+
+    /** Goes up each time a player's game is sent new cards. */
+    public int shownVersion() {
+        return shownVersion;
+    }
+
+    public @Nullable Object renderCache() {
+        return renderCache;
+    }
+
+    public void setRenderCache(@Nullable Object cache) {
+        renderCache = cache;
     }
 
     /** Marks the processing cards no port serves with a machine, for the screen, and brings older cards up to date. */
@@ -289,7 +358,14 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         output.discard("label");
     }
 
-    // Players only get which slots are filled, not the cards themselves.
+    /** The update tag's key for what the card in slot {@code i} makes. */
+    private static final String[] MAKES_KEYS = new String[SLOTS];
+
+    static {
+        for (int i = 0; i < SLOTS; i++) MAKES_KEYS[i] = "makes" + i;
+    }
+
+    // Players only get which slots are filled and what each card makes, not the cards themselves.
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
@@ -299,16 +375,30 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         tag.putInt("cards", filledSlots());
+        RegistryOps<Tag> ops = registries.createSerializationContext(NbtOps.INSTANCE);
+        for (int i = 0; i < SLOTS; i++) {
+            ItemStack makes = makes(items.get(i));
+            if (!makes.isEmpty()) tag.store(MAKES_KEYS[i], ItemStack.CODEC, ops, makes);
+        }
         return tag;
     }
 
     @Override
     public void handleUpdateTag(ValueInput input) {
-        shownCards = input.getIntOr("cards", 0);
+        readShown(input);
     }
 
     @Override
     public void onDataPacket(Connection connection, ValueInput input) {
+        readShown(input);
+    }
+
+    private void readShown(ValueInput input) {
         shownCards = input.getIntOr("cards", 0);
+        for (int i = 0; i < SLOTS; i++) {
+            // an item this game can't read shows as a plain card
+            shownMakes[i] = (shownCards & (1 << i)) == 0 ? ItemStack.EMPTY : input.read(MAKES_KEYS[i], ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        }
+        shownVersion++;
     }
 }

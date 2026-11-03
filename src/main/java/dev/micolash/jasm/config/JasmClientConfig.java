@@ -96,6 +96,16 @@ public final class JasmClientConfig {
             .define("bayLaserMuted", false);
 
     static {
+        BUILDER.pop().push("blocks");
+    }
+
+    public static final int RACK_ICON_DISTANCE_DEFAULT = 32;
+
+    public static final ModConfigSpec.IntValue RACK_ICON_DISTANCE = BUILDER
+            .comment("How close, in blocks, you need to be to a Recipe Rack to see what each card makes. 0 turns it off")
+            .defineInRange("rackIconDistance", RACK_ICON_DISTANCE_DEFAULT, 0, 64);
+
+    static {
         BUILDER.pop();
     }
 
@@ -212,6 +222,11 @@ public final class JasmClientConfig {
     public static void setBayLaserMuted(boolean muted) {
         BAY_LASER_MUTED.set(muted);
         SPEC.save();
+    }
+
+    /** Before the config has loaded, the normal distance. */
+    public static int rackIconDistance() {
+        return SPEC.isLoaded() ? RACK_ICON_DISTANCE.getAsInt() : RACK_ICON_DISTANCE_DEFAULT;
     }
 
     private JasmClientConfig() {}
