@@ -19,8 +19,8 @@ import net.neoforged.neoforge.common.TranslatableEnum;
 
 /**
  * The right-hand side of the settings screen: one row for each setting of the open section, with its name, its control and
- * what it does in plain words. Rows are as tall as their words need. On a wide window the control sits beside the words;
- * on a narrow one it moves under the name, so nothing ever overlaps.
+ * what it does in plain words. Rows are as tall as their words need. On a wide window the control sits beside the name;
+ * on a narrow one it moves under the name. The words always run under both, across the whole row.
  */
 final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
     private static final int PEACH = 0xFFFAB387;
@@ -28,7 +28,7 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
     private static final int RESET_WIDTH = 30;
     private static final int LIST_BOX = 46;
     private static final int GAP = 3;
-    /** The least room the words beside a control are given; with less, the control goes under the name. */
+    /** The least room the name beside a control is given; with less, the control goes under the name. */
     private static final int MIN_WORDS = 110;
     private static final int LINE = 10;
 
@@ -129,6 +129,8 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
                     CONTROL_HEIGHT);
             int markRoom = setting.needsRestart() ? JasmGui.smallWidth(font, restartMark) + 10 : 0;
             int fullWidth = rowWidth - 2 * PAD;
+            // The words reach nearly to the scroll bar.
+            int wordsWidth = rowWidth - PAD - 2;
             int nameBottom;
             int controlBottom;
             int textWidth;
@@ -167,7 +169,7 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
                 }
                 controlBottom = y + 9 + CONTROL_HEIGHT;
                 textStart = controlBottom + 3;
-                textWidth = fullWidth;
+                textWidth = wordsWidth;
             } else {
                 int controlWidth = switch (setting.kind()) {
                     case SWITCH -> SettingsWidgets.Switch.WIDTH;
@@ -183,8 +185,9 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
                     this.nameLines = font.split(name, free - markRoom);
                     nameBottom = 5 + nameLines.size() * LINE;
                     controlBottom = 2 + CONTROL_HEIGHT;
-                    textStart = nameBottom + 1;
-                    textWidth = free;
+                    // The words run under the name and the control, across the whole row.
+                    textStart = Math.max(nameBottom + 1, controlBottom + 3);
+                    textWidth = wordsWidth;
                 } else {
                     this.nameLines = font.split(name, fullWidth - markRoom);
                     nameBottom = 5 + nameLines.size() * LINE;
@@ -193,7 +196,7 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
                     place(reset, PAD + controlWidth + GAP, controlY);
                     controlBottom = controlY + CONTROL_HEIGHT;
                     textStart = controlBottom + 3;
-                    textWidth = fullWidth;
+                    textWidth = wordsWidth;
                 }
             }
             this.description = tip.getString().isEmpty() ? List.of() : font.split(tip, textWidth);
