@@ -56,7 +56,7 @@ final class EncoderPortsPanel {
         this.menu = menu;
         this.font = font;
         this.height = height;
-        this.rows = (height - ROWS_Y - 8) / ROW_HEIGHT;
+        this.rows = (height - ROWS_Y - 6) / ROW_HEIGHT;
         this.folded = folded;
     }
 

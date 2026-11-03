@@ -71,7 +71,8 @@ public class EncodingTerminalMenu extends AbstractContainerMenu implements Notic
     public static final int CARD_X = 24;
     public static final int CARD_IN_Y = 18;
     public static final int CARD_OUT_Y = 54;
-    public static final int INVENTORY_Y = 128;
+    /** The inventory, low enough that the screen is as tall as the Access Port's, with room for two message lines above its tabs. */
+    public static final int INVENTORY_Y = 140;
     /** Where the terminal's messages show, under the Encode row. */
     public static final int MESSAGE_Y = 98;
     /** The Encode row: the mode keys and the Encode button, all this tall. */
