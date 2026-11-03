@@ -37,7 +37,7 @@ A network holds only <Rule name="brain.withoutBrain" /> machines on its own. A N
 * Mined, a brain keeps its charge.
 * Several brains on one network don't add up. Only the best one leads, the one with the most floors, then the one placed first.
 
-The machines' screens, Jade and a linked Deck's Network tab say when a network is full. See [what counts as a machine](../mechanics/networks.md).
+The machines' screens and Jade say when a network is full, and a linked Deck's Network tab shows the count. See [what counts as a machine](../mechanics/networks.md).
 
 <br />
 <br />

@@ -52,6 +52,16 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
         return side;
     }
 
+    /** FE a tick going through, in or out as the mode says, averaged over the last second. */
+    public int averageFlow() {
+        return flow.flow();
+    }
+
+    /** The block in front, if it holds or takes power; see {@link AcceptorFlow#served()}. */
+    public net.minecraft.world.level.block.@Nullable Block served() {
+        return flow.served();
+    }
+
     public void tick(ServerLevel level) {
         flow.tick(level);
     }
@@ -105,24 +115,25 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
         }
 
         @Override
-        public void refresh(ServerLevel level) {
+        public boolean refresh(ServerLevel level) {
             // A block placed without a neighbour update is caught within a second.
             BlockPos here = host.getBlockPos();
             if ((level.getGameTime() + here.asLong() + side.ordinal()) % 20 == 0) {
                 dirty = true;
             }
             if (!dirty) {
-                return;
+                return false;
             }
             dirty = false;
             BlockPos front = here.relative(side);
             if (!level.isLoaded(front)) {
                 frontOpen = false;
                 dirty = true;
-                return;
+                return true;
             }
             BlockEntity entity = level.getBlockEntity(front);
             frontOpen = !(entity instanceof NetworkPowerSource) && (entity == null || PowerReceiver.of(entity) == null);
+            return true;
         }
 
         @Override

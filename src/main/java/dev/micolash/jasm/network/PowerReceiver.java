@@ -17,18 +17,30 @@ public final class PowerReceiver implements EnergyHandler {
     private final BlockEntity owner;
     /** The buffer power goes into, or null for a cable, which passes it on to its network. */
     private final @Nullable EnergyHandler energy;
+    private final boolean network;
 
-    private PowerReceiver(BlockEntity owner, @Nullable EnergyHandler energy) {
+    private PowerReceiver(BlockEntity owner, @Nullable EnergyHandler energy, boolean network) {
         this.owner = owner;
         this.energy = energy;
+        this.network = network;
     }
 
     public static @Nullable PowerReceiver of(BlockEntity entity) {
-        if (entity instanceof DataCableBlockEntity cable) return new PowerReceiver(cable, null);
-        if (entity instanceof MachineBlockEntity machine) return new PowerReceiver(machine, machine.powerIn());
-        if (entity instanceof ArchiveBlockEntity archive) return new PowerReceiver(archive, archive.energy());
-        if (entity instanceof BatteryBlockEntity battery) return new PowerReceiver(battery, battery.groupEnergy());
+        if (entity instanceof DataCableBlockEntity cable) return new PowerReceiver(cable, null, true);
+        if (entity instanceof MachineBlockEntity machine) {
+            return new PowerReceiver(machine, machine.powerIn(), machine.powerIn() == machine.energy());
+        }
+        if (entity instanceof ArchiveBlockEntity archive) return new PowerReceiver(archive, archive.energy(), true);
+        if (entity instanceof BatteryBlockEntity battery) return new PowerReceiver(battery, battery.groupEnergy(), false);
         return null;
+    }
+
+    /**
+     * Whether power handed in here is the network's to use: a cable, a machine or an Archive. A Battery only stores it,
+     * and a port hands it straight on to the machine beside it, outside the network.
+     */
+    public boolean feedsNetwork() {
+        return network;
     }
 
     /** False once the block is gone or its chunk unloaded. */

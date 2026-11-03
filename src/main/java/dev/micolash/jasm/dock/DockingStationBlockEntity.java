@@ -120,6 +120,7 @@ public class DockingStationBlockEntity extends MachineBlockEntity implements Wor
         if (amount <= 0) return 0;
         deck.set(JasmComponents.ENERGY.get(), stored + amount);
         energy.set(energy.getAmountAsInt() - amount);
+        chargedItem(amount);
         setChanged();
         return amount;
     }

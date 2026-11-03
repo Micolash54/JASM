@@ -70,6 +70,16 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         return flow.input(side);
     }
 
+    /** FE a tick going through, in or out as the mode says, averaged over the last second. */
+    public int averageFlow() {
+        return flow.flow();
+    }
+
+    /** The outside block it trades power with; see {@link AcceptorFlow#served()}. */
+    public net.minecraft.world.level.block.@Nullable Block served() {
+        return flow.served();
+    }
+
     @Override
     public void neighboursChanged() {
         sides.changed();
@@ -113,8 +123,8 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
         }
 
         @Override
-        public void refresh(ServerLevel level) {
-            sides.refresh(level, worldPosition);
+        public boolean refresh(ServerLevel level) {
+            return sides.refresh(level, worldPosition);
         }
 
         @Override

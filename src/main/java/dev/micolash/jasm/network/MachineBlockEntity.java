@@ -41,6 +41,8 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     private boolean networkBlocked;
     /** Whether the last tick could be paid for. */
     private boolean running;
+    /** Power moved from the block into an item's battery (a critter's, a Deck's); not saved. */
+    private final FlowMeter charged = new FlowMeter();
     /** Whether the network is over its machine limit: the block works as if it had no power, but keeps charging. */
     private boolean stopped;
 
@@ -214,6 +216,19 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     /** FE a tick it is paying right now: its cost while the last tick was paid for, otherwise nothing. */
     public int usingNow() {
         return running() && paysThisTick() ? Math.max(0, drainPerTick()) : 0;
+    }
+
+    /**
+     * FE a tick the block takes from its network right now: its own cost, plus what it charges into an item's battery.
+     * Some blocks cost nothing themselves and are paid for by the critter or Deck they keep charged.
+     */
+    public int drawingNow() {
+        return usingNow() + (level == null ? 0 : charged.flow(level.getGameTime()));
+    }
+
+    /** The block moved {@code amount} FE from its power into an item's battery. */
+    protected final void chargedItem(int amount) {
+        if (amount > 0 && level != null) charged.add(level.getGameTime(), amount);
     }
 
     /**

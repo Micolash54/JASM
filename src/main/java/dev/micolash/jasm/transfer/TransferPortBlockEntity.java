@@ -51,6 +51,8 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     private final @Nullable Direction face;
     /** The faces a full port serves, found when a neighbour changes and every half second. */
     private List<Direction> served = List.of();
+    /** The block it works with, found with its faces; null with none. */
+    private net.minecraft.world.level.block.@Nullable Block servedBlock;
     private final List<Direction> ownFace;
     /** Which face the next operation starts at, so a full port's faces take turns. Kept in memory only. */
     private int turn;
@@ -83,6 +85,25 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
     public boolean works(Direction side) { return face != null ? side == face : served.contains(side); }
 
     public TransferPortKind kind() { return kind; }
+
+    /**
+     * The block it works with, for the Deck's Network tab: a thin port's block in front, a full port's first (below, above,
+     * north, south, west, east). Null with none.
+     */
+    public net.minecraft.world.level.block.@Nullable Block servedBlock() { return servedBlock; }
+
+    private void findServedBlock() {
+        if (level == null) return;
+        net.minecraft.world.level.block.Block found = null;
+        for (Direction side : workFaces()) {
+            BlockPos pos = worldPosition.relative(side);
+            if (level.isLoaded(pos) && (full() || serves(side))) {
+                found = level.getBlockState(pos).getBlock();
+                break;
+            }
+        }
+        servedBlock = found;
+    }
     public TransferFilters filters() { return filters; }
     public void setFilters(TransferFilters filters) { this.filters = filters; setChanged(); }
     /** Output side only: the Crafting and Stock Upgrades do nothing on a port that doesn't export. */
@@ -134,6 +155,7 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
             served = List.copyOf(found);
             servedChanged();
         }
+        findServedBlock();
         super.refreshSides();
     }
 
@@ -226,7 +248,13 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
         TransferFilters.STREAM_CODEC.encode(buf, filters);
     }
 
+    /** A thin port has no neighbour updates of its own: it looks at its face every half second, as a full port does. */
+    protected final void watchFace() {
+        if (!full() && level != null && (level.getGameTime() + worldPosition.asLong() + face.ordinal()) % 10 == 0) findServedBlock();
+    }
+
     public void tickTransfer() {
+        watchFace();
         checkStopped();
         processDeckLink();
         tickIntake();

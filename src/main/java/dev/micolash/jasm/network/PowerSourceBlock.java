@@ -1,6 +1,7 @@
 package dev.micolash.jasm.network;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
@@ -26,6 +27,21 @@ public abstract class PowerSourceBlock extends BaseEntityBlock {
             serverPlayer.openMenu(menu);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    /** The networks beside it keep a list of the power sources touching them, so they look again. */
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        super.onPlace(state, level, pos, oldState, movedByPiston);
+        if (level instanceof ServerLevel serverLevel && !oldState.is(this)) {
+            Networks.invalidate(serverLevel, pos);
+        }
+    }
+
+    @Override
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+        Networks.invalidate(level, pos);
     }
 
     @Override

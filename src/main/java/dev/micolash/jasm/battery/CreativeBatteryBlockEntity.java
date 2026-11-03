@@ -1,7 +1,9 @@
 package dev.micolash.jasm.battery;
 
 import dev.micolash.jasm.config.Tuning;
+import dev.micolash.jasm.network.FlowMeter;
 import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.network.PowerReceiver;
 import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.EnumMap;
@@ -45,6 +47,7 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
     private final ResourceHandler<ItemResource> automation = new AutomationSlot();
     private final Map<Direction, BlockCapabilityCache<EnergyHandler, @Nullable Direction>> neighbours = new EnumMap<>(Direction.class);
     private final PowerSides sides = new PowerSides();
+    private final FlowMeter fed = new FlowMeter();
 
     public CreativeBatteryBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.CREATIVE_BATTERY_ENTITY.get(), pos, state);
@@ -63,7 +66,8 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
         }
         sides.refresh(level, worldPosition);
         for (Direction side : Direction.values()) {
-            EnergyHandler target = sides.receiver(side);
+            PowerReceiver receiver = sides.receiver(side);
+            EnergyHandler target = receiver;
             if (target == null && !sides.jasm(side)) {
                 target = neighbours
                         .computeIfAbsent(side,
@@ -72,11 +76,17 @@ public class CreativeBatteryBlockEntity extends BlockEntity implements MenuProvi
             }
             if (target != null) {
                 try (Transaction tx = Transaction.openRoot()) {
-                    target.insert(amount, tx);
+                    int given = target.insert(amount, tx);
                     tx.commit();
+                    if (receiver != null && receiver.feedsNetwork()) fed.add(level.getGameTime(), given);
                 }
             }
         }
+    }
+
+    /** FE a tick handed to network cables, machines and Archives, averaged over the last second. */
+    public int networkFlow() {
+        return level == null ? 0 : fed.flow(level.getGameTime());
     }
 
     /** Charges the item in the slot by up to {@code amount} FE and returns how much went in. */

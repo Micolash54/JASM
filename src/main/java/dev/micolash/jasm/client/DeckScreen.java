@@ -142,7 +142,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private int rows = SMALL_ROWS;
     private Button sizeButton;
     private WaferFilterWindow filterWindow;
-    /** The Network tab: kept while the screen is open, so it remembers list or tree. */
+    /** The Network tab: kept while the screen is open. */
     private @Nullable NetworkPanel networkPanel;
 
     /** The views of the grid: what is stored, what the network can craft, the rules, and the network. */
@@ -345,7 +345,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         }
         if (networkPanel == null) networkPanel = new NetworkPanel(menu, font);
         networkPanel.place(leftPos + gridX, topPos + gridY, COLUMNS * 18, rows);
-        addRenderableWidget(networkPanel.key());
+        networkPanel.keys().forEach(this::addRenderableWidget);
         updateTabs();
 
         if (filterWindow == null) filterWindow = new WaferFilterWindow(menu, font);
@@ -401,7 +401,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             tabs.get(i).setSelected(!jobs && i == shown.indexOf(tab));
         }
         if (jobsButton instanceof JasmButton button) button.setLatched(jobs);
-        if (networkPanel != null) networkPanel.key().visible = tab == Tab.NETWORK;
+        if (networkPanel != null) networkPanel.setShown(tab == Tab.NETWORK);
     }
 
     /** The job list covers the main panel, including its wider search row; other windows close. */
@@ -869,7 +869,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
 
     private int handleOffset() {
         int travel = trackHeight() - HANDLE_HEIGHT;
-        // The Network tab's list can get shorter between two frames, when a junction is folded.
+        // The Network tab's list can get shorter between two frames, when a category is folded.
         scrollRow = Math.min(scrollRow, maxScroll());
         return maxScroll() == 0 ? 0 : Math.round(travel * scrollRow / (float) maxScroll());
     }
@@ -1320,9 +1320,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (picker != null && picker.mouseClicked(event.x(), event.y())) {
             return true;
         }
-        // The Network tab holds no items: a click there picks a block to light up, or presses the list/tree key.
+        // The Network tab holds no items: a click there picks a block to light up, folds a category, or presses a key.
         if (tab == Tab.NETWORK && inGrid(event.x(), event.y())) {
-            if (networkPanel.key().isMouseOver(event.x(), event.y())) {
+            if (networkPanel.overKey(event.x(), event.y())) {
                 return super.mouseClicked(event, doubleClick);
             }
             networkPanel.mouseClicked(event.x(), event.y(), scrollRow);

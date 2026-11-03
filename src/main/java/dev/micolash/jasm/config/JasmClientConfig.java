@@ -1,6 +1,7 @@
 package dev.micolash.jasm.config;
 
 import dev.micolash.jasm.core.GridEntries;
+import java.util.List;
 import java.util.Locale;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -23,6 +24,18 @@ public final class JasmClientConfig {
         }
     }
 
+    /** What the Deck's Network tab sorts its groups and rows by. */
+    public enum NetworkSort implements TranslatableEnum {
+        POWER,
+        NAME,
+        TYPE;
+
+        @Override
+        public Component getTranslatedName() {
+            return Component.translatable("jasm.configuration.networkSort." + name().toLowerCase(Locale.ROOT));
+        }
+    }
+
     static {
         BUILDER.push("screens");
     }
@@ -42,6 +55,18 @@ public final class JasmClientConfig {
     public static final ModConfigSpec.BooleanValue DECK_SEARCH_SYNC = BUILDER
             .comment("With JEI installed, the Deck's search and JEI's search show the same text")
             .define("deckSearchSync", true);
+
+    public static final ModConfigSpec.BooleanValue NETWORK_GROUPED = BUILDER
+            .comment("Groups the Deck's Network tab by category")
+            .define("networkGrouped", true);
+
+    public static final ModConfigSpec.EnumValue<NetworkSort> NETWORK_SORT = BUILDER
+            .comment("What the Deck's Network tab sorts by")
+            .defineEnum("networkSort", NetworkSort.POWER);
+
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> NETWORK_FOLDED = BUILDER
+            .comment("The Network tab categories folded shut")
+            .defineListAllowEmpty("networkFolded", List.of(), () -> "power", value -> value instanceof String);
 
     public static final ModConfigSpec.BooleanValue BAY_FILTER_COLLAPSED = BUILDER
             .comment("Folds the filter away on bay panels")
@@ -100,6 +125,34 @@ public final class JasmClientConfig {
 
     public static void setDeckSearchSync(boolean sync) {
         DECK_SEARCH_SYNC.set(sync);
+        SPEC.save();
+    }
+
+    /** Before the config has loaded, the tab is grouped. */
+    public static boolean networkGrouped() {
+        return !SPEC.isLoaded() || NETWORK_GROUPED.get();
+    }
+
+    public static void setNetworkGrouped(boolean grouped) {
+        NETWORK_GROUPED.set(grouped);
+        SPEC.save();
+    }
+
+    public static NetworkSort networkSort() {
+        return SPEC.isLoaded() ? NETWORK_SORT.get() : NetworkSort.POWER;
+    }
+
+    public static void setNetworkSort(NetworkSort sort) {
+        NETWORK_SORT.set(sort);
+        SPEC.save();
+    }
+
+    public static List<? extends String> networkFolded() {
+        return SPEC.isLoaded() ? NETWORK_FOLDED.get() : List.of();
+    }
+
+    public static void setNetworkFolded(List<String> folded) {
+        NETWORK_FOLDED.set(List.copyOf(folded));
         SPEC.save();
     }
 

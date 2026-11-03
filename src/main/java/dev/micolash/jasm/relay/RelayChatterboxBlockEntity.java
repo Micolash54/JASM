@@ -134,6 +134,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         if (moved > 0) {
             energy.set(amount - moved);
             operator.set(JasmComponents.ENERGY.get(), charge + moved);
+            chargedItem(moved);
             batteryChanged();
         }
     }

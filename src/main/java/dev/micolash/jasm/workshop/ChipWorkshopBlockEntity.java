@@ -476,6 +476,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         if (moved > 0) {
             energy.set(amount - moved);
             critter.set(JasmComponents.ENERGY.get(), charge + moved);
+            chargedItem(moved);
             setChanged();
         }
     }
@@ -610,6 +611,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     public boolean napping() {
         return napping;
+    }
+
+    /** Whether the last tick moved a chip or a recipe along. */
+    public boolean working() {
+        return working;
     }
 
     public int progress() {

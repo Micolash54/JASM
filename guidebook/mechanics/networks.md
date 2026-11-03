@@ -37,7 +37,7 @@ The network belongs to the player who set it up. The owner can trust other playe
 <br />
 ## Seeing the network
 
-A linked [Deck](../items/decks.md) has a Network tab. It lists every machine, as a list or a branching tree, with where it is and whether it works.
+A linked [Deck](../items/decks.md) has a Network tab. It lists every machine, generator and Battery with the power each adds or uses, grouped by category or as one list.
 
 <br />
 <br />

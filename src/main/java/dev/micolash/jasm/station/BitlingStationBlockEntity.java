@@ -149,6 +149,7 @@ public class BitlingStationBlockEntity extends MachineBlockEntity implements Wor
             if (moved > 0) {
                 energy.set(amount - moved);
                 critter.set(JasmComponents.ENERGY.get(), charge + moved);
+                chargedItem(moved);
                 setChanged();
             }
         } else {

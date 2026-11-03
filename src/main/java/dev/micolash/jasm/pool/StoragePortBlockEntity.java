@@ -90,6 +90,7 @@ public class StoragePortBlockEntity extends TransferPortBlockEntity {
 
     @Override
     public void tickTransfer() {
+        watchFace();
         checkStopped();
     }
 

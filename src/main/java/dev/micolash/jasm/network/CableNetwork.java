@@ -367,6 +367,12 @@ public final class CableNetwork {
         return parts.size() == 1 ? batteries : List.of();
     }
 
+    /** The Battery blocks touching the network's cables in every dimension it stands in; each block knows its own. */
+    public List<BatteryBlockEntity> allBatteries() {
+        consumers();
+        return batteries;
+    }
+
     /**
      * Machines and Archives touching a cable, and the ports on cables. Each buffer once. Found once and kept. A port holds
      * no power: it is here as one target per side it may power, each working out its room as it is asked, so the list

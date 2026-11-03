@@ -4,7 +4,9 @@ import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
 import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.core.ContainerWords;
+import dev.micolash.jasm.network.FlowMeter;
 import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.network.PowerReceiver;
 import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmComponents;
@@ -66,6 +68,7 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
     private int burnTotal;
     /** FE made in the last tick, for the screen. */
     private int lastOutput;
+    private final FlowMeter fed = new FlowMeter();
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -180,7 +183,8 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
             if (energy.getAmountAsInt() <= 0) {
                 return;
             }
-            EnergyHandler target = sides.receiver(side);
+            PowerReceiver receiver = sides.receiver(side);
+            EnergyHandler target = receiver;
             if (target == null && !sides.jasm(side)) {
                 target = neighbours
                         .computeIfAbsent(side,
@@ -188,9 +192,15 @@ public class CombustionGeneratorBlockEntity extends BaseContainerBlockEntity imp
                         .getCapability();
             }
             if (target != null) {
-                give(target, limit);
+                int given = give(target, limit);
+                if (receiver != null && receiver.feedsNetwork()) fed.add(level.getGameTime(), given);
             }
         }
+    }
+
+    /** FE a tick handed to network cables, machines and Archives, averaged over the last second. */
+    public int networkFlow() {
+        return level == null ? 0 : fed.flow(level.getGameTime());
     }
 
     /** Charges the item in the charging slot by up to {@code amount} FE from the buffer. Returns how much went in. */

@@ -1,43 +1,60 @@
 package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.acceptor.AcceptorMode;
+import dev.micolash.jasm.acceptor.PowerAcceptorBlockEntity;
+import dev.micolash.jasm.acceptor.ThinPowerAcceptor;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
 import dev.micolash.jasm.autocraft.AdvancedCraftingServerTopBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
 import dev.micolash.jasm.autocraft.Jobs;
+import dev.micolash.jasm.battery.BatteryBlockEntity;
+import dev.micolash.jasm.battery.BatteryGroup;
+import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
+import dev.micolash.jasm.chunkload.ChunkLoaders;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.core.JasmServerData.NetworkAnswer;
-import dev.micolash.jasm.core.NetworkTree;
+import dev.micolash.jasm.deck.NetworkViewPayloads.Category;
+import dev.micolash.jasm.dock.DockingStationBlockEntity;
+import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
 import dev.micolash.jasm.network.CableNetwork;
-import dev.micolash.jasm.network.DataCableBlock;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineAccess;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.NetworkLimit;
 import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.pool.StoragePortBlockEntity;
 import dev.micolash.jasm.registry.JasmComponents;
+import dev.micolash.jasm.registry.JasmItems;
+import dev.micolash.jasm.relay.RelayChatterboxBlockEntity;
+import dev.micolash.jasm.relay.RelayChatterboxTopBlockEntity;
+import dev.micolash.jasm.relay.RelayEnd;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
+import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -45,13 +62,20 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Deck's Network tab on the server: works out the linked network as a tree of its machines, and lights up the one
- * the player clicks. Only the Deck's own network is shown, and only to players its terminal lets in.
+ * The Deck's Network tab on the server: lists the linked network's machines, power sources and Batteries with the power
+ * each adds or uses, and lights up the one the player clicks. Only the Deck's own network is shown, and only to players
+ * its terminal lets in.
+ *
+ * <p>Power is what its sources give the network (an Out interface counts against it), every other group is what its
+ * machines use, and the Batteries show their own In minus Out, as their screens do. Power a source hands straight to a
+ * port's machine never passes through the network, so it is left out on both sides.
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class NetworkViewService {
-    /** Server ticks between two answers to the same player: the walk over a big network isn't free. */
+    /** Server ticks between two answers to the same player. */
     private static final int ASK_EVERY = 20;
+    /** What the tab finds on a network once, kept as long as that network. */
+    private static final Function<CableNetwork, Layout> LAYOUT = NetworkViewService::layout;
 
     private NetworkViewService() {}
 
@@ -92,8 +116,9 @@ public final class NetworkViewService {
     }
 
     /**
-     * Lights up a block of the Deck's own network for its player. Anything else, or a player the network doesn't let
-     * in, gets nothing. Returns whether it answered.
+     * Lights up a block of the Deck's own network for its player: one of its blocks, a power source touching it, or a
+     * Battery the tab lists. Anything else, or a player the network doesn't let in, gets nothing. Returns whether it
+     * answered.
      */
     public static boolean locate(ServerPlayer player, NetworkViewPayloads.Locate payload) {
         DeckMenu menu = openMenu(player, payload.containerId());
@@ -105,13 +130,24 @@ public final class NetworkViewService {
             return false;
         }
         CableNetwork network = Networks.at(level, terminal.getBlockPos());
-        if (network == null || !network.contains(payload.at())) {
+        if (network == null || !network.contains(payload.at()) && !network.derived(LAYOUT).sources.contains(payload.at())
+                && !batteryAt(network, payload.at())) {
             return false;
         }
         if (player.connection.hasChannel(NetworkViewPayloads.Glow.TYPE)) {
             PacketDistributor.sendToPlayer(player, NetworkViewPayloads.Glow.of(payload.at().pos(), payload.at().dimension()));
         }
         return true;
+    }
+
+    private static boolean batteryAt(CableNetwork network, NetworkNode at) {
+        for (BatteryBlockEntity battery : network.allBatteries()) {
+            if (!battery.isRemoved() && battery.getLevel() instanceof ServerLevel level
+                    && at.equals(NetworkNode.of(level, battery.group(level).holder().getBlockPos()))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static @Nullable DeckMenu openMenu(ServerPlayer player, int containerId) {
@@ -138,217 +174,329 @@ public final class NetworkViewService {
         if (network == null) {
             return empty(containerId, 2);
         }
-        Cells cells = new Cells(network);
-        NetworkBrainBlockEntity leader = network.leader();
-        Integer root = leader == null ? null : cells.index.get(NetworkNode.of(leader.getLevel(), leader.getBlockPos()));
-        if (root == null) root = cells.index.get(NetworkNode.of(level, terminal.getBlockPos()));
-        if (root == null) root = cells.firstMachine();
-        List<NetworkViewPayloads.Node> nodes = new ArrayList<>();
-        boolean partial = !network.complete();
-        if (root != null) {
-            cells.root = root;
-            List<NetworkTree.Row> rows = NetworkTree.build(root, cells);
-            partial |= rows.size() > NetworkViewPayloads.MAX_NODES;
-            // Rows come parents first, so cutting the list short never leaves a row without its parent.
-            for (NetworkTree.Row row : rows.subList(0, Math.min(rows.size(), NetworkViewPayloads.MAX_NODES))) {
-                nodes.add(cells.node(row));
+        Layout layout = network.derived(LAYOUT);
+        List<NetworkViewPayloads.Node> rows = new ArrayList<>();
+        boolean partial = !network.complete() || layout.missing;
+        for (BlockEntity entity : layout.machines) {
+            if (entity.isRemoved() || !(entity.getLevel() instanceof ServerLevel at)) {
+                partial = true;
+                continue;
+            }
+            // The floors above a tower's lowest show what it shows, and pay nothing: the lowest stands for them.
+            if (entity instanceof NetworkBrainBlockEntity brain && !brain.leadsItsTower()) continue;
+            if (entity instanceof AccessPortBlockEntity port) {
+                rows.add(portRow(port, new ItemStack(port.getBlockState().getBlock()), at));
+            } else {
+                rows.add(machineRow(entity, at));
             }
         }
+        for (PortOnCable port : layout.ports) {
+            if (port.cable().isRemoved() || !(port.cable().getLevel() instanceof ServerLevel at)) {
+                partial = true;
+                continue;
+            }
+            rows.add(portRow(port.port(), port.cable().portItem(port.port()), at));
+        }
+        for (Object source : layout.sourceBlocks) {
+            NetworkViewPayloads.Node row = sourceRow(source);
+            if (row == null) {
+                partial = true;
+            } else {
+                rows.add(row);
+            }
+        }
+        long[] power = new long[Category.values().length];
+        int[] counts = new int[power.length];
+        for (NetworkViewPayloads.Node row : rows) {
+            power[row.category().ordinal()] += row.power();
+            counts[row.category().ordinal()]++;
+        }
+        long stored = 0;
+        long capacity = 0;
+        long in = 0;
+        long out = 0;
+        for (BatteryGroup group : batteries(network)) {
+            BatteryBlockEntity holder = group.holder();
+            ServerLevel at = (ServerLevel) holder.getLevel();
+            long held = group.stored();
+            long room = group.energy().getCapacityAsLong();
+            stored += held;
+            capacity += room;
+            in += group.flowIn();
+            out += group.flowOut();
+            counts[Category.BATTERIES.ordinal()]++;
+            rows.add(new NetworkViewPayloads.Node(Category.BATTERIES, new ItemStack(holder.getBlockState().getBlock()),
+                    holder.getDisplayName(), Optional.empty(), holder.getBlockPos(), at.dimension(), NetworkViewPayloads.Node.WORKING, 0, 0,
+                    new NetworkViewPayloads.Charge(held, room, group.flowIn(), group.flowOut()), Optional.empty()));
+        }
+        // The Batteries' own figures: a source or a use the tab doesn't see still shows in them.
+        power[Category.BATTERIES.ordinal()] = in - out;
+        List<NetworkViewPayloads.Group> groups = new ArrayList<>();
+        for (int i = 0; i < power.length; i++) {
+            groups.add(new NetworkViewPayloads.Group(counts[i], power[i]));
+        }
+        if (rows.size() > NetworkViewPayloads.MAX_NODES) {
+            partial = true;
+            rows = rows.subList(0, NetworkViewPayloads.MAX_NODES);
+        }
         NetworkLimit.State limit = network.limitState();
-        List<NetworkBrainBlockEntity> brains = network.machines(NetworkBrainBlockEntity.class);
-        boolean brainUnpowered = !brains.isEmpty() && brains.stream().noneMatch(NetworkBrainBlockEntity::working);
-        NetworkViewPayloads.Header header = new NetworkViewPayloads.Header(0, leader == null ? -1 : leader.floors(),
-                limit.count(), limit.limit(), limit.stopped(), brainUnpowered, partial, cells.totalPower());
-        return new NetworkViewPayloads.View(containerId, header, nodes);
+        NetworkViewPayloads.Header header = new NetworkViewPayloads.Header(0, limit.count(), limit.limit(), partial, groups, stored, capacity,
+                in, out);
+        return new NetworkViewPayloads.View(containerId, header, rows);
     }
 
     private static NetworkViewPayloads.View empty(int containerId, int state) {
         return new NetworkViewPayloads.View(containerId, NetworkViewPayloads.Header.of(state), List.of());
     }
 
-    /** A port mounted on a cable: a cell of its own, joined only to its cable's cell. */
-    private record PortCell(int cable, DataCableBlockEntity holder, AccessPortBlockEntity port) {}
-
-    /**
-     * The network's blocks numbered for the tree: every cable and machine by dimension and position, so the numbers stay
-     * the same from one view to the next, then the ports on each cable. A far link joins its two ends like a cable.
-     */
-    private static final class Cells implements NetworkTree.Graph {
-        private final List<NetworkNode> positions;
-        /** Each cell's level, in the order of {@link #positions}. */
-        private final List<ServerLevel> levels;
-        private final Map<NetworkNode, Integer> index = new HashMap<>();
-        private final List<PortCell> ports = new ArrayList<>();
-        private final List<List<Integer>> neighbours = new ArrayList<>();
-        private int root = -1;
-
-        Cells(CableNetwork network) {
-            Map<ResourceKey<Level>, ServerLevel> byDimension = new HashMap<>();
-            List<NetworkNode> all = new ArrayList<>();
-            for (CableNetwork.Part part : network.parts()) {
-                byDimension.put(part.level().dimension(), part.level());
-                part.cables().forEach(pos -> all.add(NetworkNode.of(part.level(), pos)));
-                part.machines().forEach(pos -> all.add(NetworkNode.of(part.level(), pos)));
-            }
-            all.sort(Comparator.comparing((NetworkNode n) -> n.dimension().identifier().toString()).thenComparingLong(n -> n.pos().asLong()));
-            this.positions = all;
-            this.levels = all.stream().map(n -> byDimension.get(n.dimension())).toList();
-            for (int i = 0; i < positions.size(); i++) {
-                index.put(positions.get(i), i);
-            }
-            List<List<Integer>> portsOn = new ArrayList<>();
-            for (int i = 0; i < positions.size(); i++) {
-                List<Integer> on = new ArrayList<>();
-                ServerLevel level = levels.get(i);
-                BlockPos pos = positions.get(i).pos();
-                if (level.isLoaded(pos) && level.getBlockEntity(pos) instanceof DataCableBlockEntity cable) {
-                    // ports() keeps the direction order.
-                    for (AccessPortBlockEntity port : cable.ports()) {
-                        on.add(positions.size() + ports.size());
-                        ports.add(new PortCell(i, cable, port));
-                    }
-                }
-                portsOn.add(on);
-            }
-            for (int i = 0; i < positions.size(); i++) {
-                ServerLevel level = levels.get(i);
-                BlockPos pos = positions.get(i).pos();
-                List<Integer> next = new ArrayList<>();
-                for (Direction side : Direction.values()) {
-                    Integer other = index.get(NetworkNode.of(level, pos.relative(side)));
-                    if (other != null && Networks.canConnect(level, pos, positions.get(other).pos())) {
-                        next.add(other);
-                    }
-                }
-                next.addAll(portsOn.get(i));
-                neighbours.add(next);
-            }
-            for (CableNetwork.Link link : network.links()) {
-                Integer from = index.get(link.from());
-                Integer to = index.get(link.to());
-                if (from != null && to != null && !neighbours.get(from).contains(to)) {
-                    neighbours.get(from).add(to);
-                    neighbours.get(to).add(from);
-                }
-            }
-            for (PortCell port : ports) {
-                neighbours.add(List.of(port.cable()));
+    /** Each Battery on the network once, in every dimension it stands in. */
+    private static Set<BatteryGroup> batteries(CableNetwork network) {
+        Set<BatteryGroup> found = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (BatteryBlockEntity battery : network.allBatteries()) {
+            if (!battery.isRemoved() && battery.getLevel() instanceof ServerLevel level) {
+                found.add(battery.group(level));
             }
         }
-
-        @Override
-        public List<Integer> neighbours(int cell) {
-            return neighbours.get(cell);
-        }
-
-        /** Cables, chambers and brains are the way between machines; the brain that leads is the root, so it shows. */
-        @Override
-        public boolean machine(int cell) {
-            if (cell >= positions.size()) {
-                return true;
-            }
-            ServerLevel level = levels.get(cell);
-            BlockPos pos = positions.get(cell).pos();
-            if (!level.isLoaded(pos) || level.getBlockState(pos).getBlock() instanceof DataCableBlock) {
-                return false;
-            }
-            BlockEntity entity = level.getBlockEntity(pos);
-            // The top half of an Advanced Crafting Server is the same machine as the bottom.
-            if (entity instanceof NetworkChamberBlockEntity || entity instanceof AdvancedCraftingServerTopBlockEntity) {
-                return false;
-            }
-            return !(entity instanceof NetworkBrainBlockEntity) || cell == root;
-        }
-
-        @Nullable
-        Integer firstMachine() {
-            for (int cell = 0; cell < positions.size(); cell++) {
-                if (machine(cell)) return cell;
-            }
-            return null;
-        }
-
-        /** FE a tick the whole network is paying right now: every loaded machine, Archive and mounted port. */
-        long totalPower() {
-            long total = 0;
-            for (int i = 0; i < positions.size(); i++) {
-                ServerLevel level = levels.get(i);
-                BlockPos pos = positions.get(i).pos();
-                if (level.isLoaded(pos)) total += power(level.getBlockEntity(pos));
-            }
-            for (PortCell port : ports) {
-                total += port.port().usingNow();
-            }
-            return total;
-        }
-
-        NetworkViewPayloads.Node node(NetworkTree.Row row) {
-            int cell = row.cell();
-            if (cell >= positions.size()) {
-                PortCell port = ports.get(cell - positions.size());
-                ServerLevel level = levels.get(port.cable());
-                BlockPos pos = positions.get(port.cable()).pos();
-                int status = !level.isLoaded(pos) ? 2 : port.port().running() ? 0 : 1;
-                int power = status == 2 ? 0 : port.port().usingNow();
-                return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), port.holder().portItem(port.port()),
-                        portName(port.port()), pos, level.dimension(), status, power);
-            }
-            ServerLevel level = levels.get(cell);
-            BlockPos pos = positions.get(cell).pos();
-            if (!level.isLoaded(pos)) {
-                // Never read a block that isn't loaded: that would load its chunk.
-                return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), ItemStack.EMPTY,
-                        Component.translatable("screen.jasm.network.status.unloaded"), pos, level.dimension(), 2, 0);
-            }
-            BlockState state = level.getBlockState(pos);
-            BlockEntity entity = level.getBlockEntity(pos);
-            Component name = row.junction() ? Component.translatable("screen.jasm.network.junction") : name(entity, state);
-            int status = row.junction() || running(entity) ? 0 : 1;
-            return new NetworkViewPayloads.Node(row.parent(), row.depth(), row.junction(), new ItemStack(state.getBlock()), name, pos,
-                    level.dimension(), status, row.junction() ? 0 : power(entity));
-        }
+        return found;
     }
 
-    /** FE a tick the block is paying right now; 0 for anything that never pays. */
-    private static int power(@Nullable BlockEntity entity) {
+    // --- rows ---
+
+    private static NetworkViewPayloads.Node machineRow(BlockEntity entity, ServerLevel level) {
+        int chunk = entity instanceof MachineBlockEntity machine ? ChunkLoaders.drawOf(machine) : 0;
+        int use = power(entity) + chunk;
+        return new NetworkViewPayloads.Node(category(entity), new ItemStack(entity.getBlockState().getBlock()), name(entity),
+                Optional.empty(), entity.getBlockPos(), level.dimension(), status(entity), -use, chunk, NetworkViewPayloads.Charge.NONE,
+                note(entity));
+    }
+
+    /**
+     * A port. One serving a machine shows that machine, and an Input, Output, Two-Way or Storage Port the block it works
+     * with, with the port's own name kept for the hover; one with nothing there shows itself. Its use is the power its
+     * upgrade passes on from the cables; what a generator touching it hands straight on isn't the network's.
+     */
+    private static NetworkViewPayloads.Node portRow(AccessPortBlockEntity port, ItemStack portItem, ServerLevel level) {
+        Category category = port instanceof StoragePortBlockEntity ? Category.STORAGE : Category.PORTS;
+        ItemStack icon = portItem;
+        Component name = port.label().isEmpty() ? port.getDisplayName() : Component.literal(port.label());
+        Optional<NetworkViewPayloads.Serving> serving = Optional.empty();
+        Component served = null;
+        ItemStack servedIcon = ItemStack.EMPTY;
+        if (port instanceof TransferPortBlockEntity transfer) {
+            Block block = transfer.servedBlock();
+            servedIcon = block == null ? ItemStack.EMPTY : new ItemStack(block);
+            if (!servedIcon.isEmpty()) served = block.getName();
+        } else if (!port.machineSides().isEmpty()) {
+            Block block = port.servedType();
+            servedIcon = block == null ? ItemStack.EMPTY : new ItemStack(block);
+            served = port.machineNames();
+        }
+        if (served != null) {
+            if (!servedIcon.isEmpty()) icon = servedIcon;
+            if (port.label().isEmpty()) name = served;
+            serving = Optional.of(new NetworkViewPayloads.Serving(
+                    Component.translatable("screen.jasm.network.serving", portItem.getHoverName(), served), badge(port)));
+        }
+        int chunk = ChunkLoaders.drawOf(port);
+        int use = port.networkPowerFlow() + chunk;
+        return new NetworkViewPayloads.Node(category, icon, name, serving, port.getBlockPos(), level.dimension(),
+                port.running() ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, -use, chunk,
+                NetworkViewPayloads.Charge.NONE, Optional.empty());
+    }
+
+    /** Which badge a port's row wears: its own kind. */
+    private static NetworkViewPayloads.Badge badge(AccessPortBlockEntity port) {
+        if (port instanceof StoragePortBlockEntity) return NetworkViewPayloads.Badge.STORAGE_PORT;
+        if (!(port instanceof TransferPortBlockEntity transfer)) return NetworkViewPayloads.Badge.ACCESS_PORT;
+        return switch (transfer.kind()) {
+            case INPUT -> NetworkViewPayloads.Badge.INPUT_PORT;
+            case OUTPUT -> NetworkViewPayloads.Badge.OUTPUT_PORT;
+            case INPUT_OUTPUT -> NetworkViewPayloads.Badge.TWO_WAY_PORT;
+            case STORAGE -> NetworkViewPayloads.Badge.STORAGE_PORT;
+        };
+    }
+
+    /** One more hover line for the row: a Relay Chatterbox's frequency, as its screen shows it. */
+    private static Optional<Component> note(BlockEntity entity) {
+        if (!(entity instanceof RelayChatterboxBlockEntity relay)) return Optional.empty();
+        int frequency = relay.frequency();
+        return Optional.of(frequency == RelayEnd.NO_FREQUENCY ? Component.translatable("screen.jasm.network.no_frequency")
+                : Component.translatable("tooltip.jasm.relay_chatterbox.frequency", String.format(Locale.ROOT, "%03d", frequency)));
+    }
+
+    /** A generator, Creative Battery or Power Interface touching the network; null once it is gone. */
+    private static NetworkViewPayloads.@Nullable Node sourceRow(Object source) {
+        if (source instanceof ThinOnCable thin) {
+            if (thin.cable().isRemoved() || thin.cable().acceptor(thin.acceptor().side()) != thin.acceptor()
+                    || !(thin.cable().getLevel() instanceof ServerLevel level)) {
+                return null;
+            }
+            int flow = thin.acceptor().averageFlow();
+            int power = thin.acceptor().mode() == AcceptorMode.INPUT ? flow : -flow;
+            return interfaceRow(new ItemStack(JasmItems.THIN_POWER_ACCEPTOR.get()), thin.acceptor().getDisplayName(),
+                    thin.acceptor().served(), thin.cable().getBlockPos(), level, flow, power);
+        }
+        if (!(source instanceof BlockEntity entity) || entity.isRemoved() || !(entity.getLevel() instanceof ServerLevel level)) {
+            return null;
+        }
+        if (entity instanceof PowerAcceptorBlockEntity acceptor) {
+            int flow = acceptor.averageFlow();
+            return interfaceRow(new ItemStack(acceptor.getBlockState().getBlock()), acceptor.getDisplayName(), acceptor.served(),
+                    acceptor.getBlockPos(), level, flow, acceptor.mode() == AcceptorMode.INPUT ? flow : -flow);
+        }
+        int power;
+        boolean working;
+        if (entity instanceof CombustionGeneratorBlockEntity generator) {
+            power = generator.networkFlow();
+            working = power > 0;
+        } else if (entity instanceof CreativeBatteryBlockEntity battery) {
+            power = battery.networkFlow();
+            working = true;
+        } else {
+            return null;
+        }
+        return new NetworkViewPayloads.Node(Category.POWER, new ItemStack(entity.getBlockState().getBlock()), name(entity),
+                Optional.empty(), entity.getBlockPos(), level.dimension(),
+                working ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, power, 0, NetworkViewPayloads.Charge.NONE,
+                Optional.empty());
+    }
+
+    /**
+     * A Power Interface. One trading with another block shows that block, like a port shows its machine, with its own name
+     * kept for the hover; one with nothing beside it shows itself.
+     */
+    private static NetworkViewPayloads.Node interfaceRow(ItemStack own, Component ownName, @Nullable Block served, BlockPos pos,
+            ServerLevel level, int flow, int power) {
+        ItemStack icon = own;
+        Component name = ownName;
+        Optional<NetworkViewPayloads.Serving> serving = Optional.empty();
+        ItemStack servedIcon = served == null ? ItemStack.EMPTY : new ItemStack(served);
+        if (!servedIcon.isEmpty()) {
+            icon = servedIcon;
+            name = served.getName();
+            serving = Optional.of(new NetworkViewPayloads.Serving(Component.translatable("screen.jasm.network.serving", ownName, name),
+                    NetworkViewPayloads.Badge.POWER_INTERFACE));
+        }
+        return new NetworkViewPayloads.Node(Category.POWER, icon, name, serving, pos, level.dimension(),
+                flow > 0 ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, power, 0, NetworkViewPayloads.Charge.NONE,
+                Optional.empty());
+    }
+
+    private static Category category(BlockEntity entity) {
+        if (entity instanceof NetworkBrainBlockEntity || entity instanceof EncodingTerminalBlockEntity
+                || entity instanceof RelayChatterboxBlockEntity || entity instanceof DockingStationBlockEntity) {
+            return Category.NETWORK;
+        }
+        return entity instanceof ArchiveBlockEntity ? Category.STORAGE : Category.CRAFTING;
+    }
+
+    /** FE a tick the block takes from the network right now, its critter's or Deck's charging included; 0 for anything that never pays. */
+    private static int power(BlockEntity entity) {
         if (entity instanceof MachineBlockEntity machine) {
-            return machine.usingNow();
+            return machine.drawingNow();
         }
         return entity instanceof ArchiveBlockEntity archive ? archive.usingNow() : 0;
     }
 
-    private static boolean running(@Nullable BlockEntity entity) {
+    /**
+     * Working, stopped or out of power, or idle. A Chip Workshop with nothing to make and its critter charged is idle;
+     * every other block is working or stopped.
+     */
+    private static int status(BlockEntity entity) {
+        if (entity instanceof ChipWorkshopBlockEntity workshop) {
+            if (workshop.halted()) return NetworkViewPayloads.Node.STOPPED;
+            return workshop.working() || workshop.drawingNow() > 0 ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.IDLE;
+        }
+        return running(entity) ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED;
+    }
+
+    private static boolean running(BlockEntity entity) {
         if (entity instanceof NetworkBrainBlockEntity brain) {
             return brain.working();
         }
+        // A Chatterbox costs nothing itself: it works while its Link Byteling pays for the link.
+        if (entity instanceof RelayChatterboxBlockEntity relay) {
+            return relay.powerUse() > 0;
+        }
         if (entity instanceof MachineBlockEntity machine) {
-            return machine.running();
+            return machine.running() || machine.drawingNow() > 0;
         }
         return entity instanceof ArchiveBlockEntity archive && archive.energy().getAmountAsInt() > 0 && !archive.networkStopped();
     }
 
-    private static Component name(@Nullable BlockEntity entity, BlockState state) {
-        if (entity instanceof AccessPortBlockEntity port) {
-            return portName(port);
-        }
+    private static Component name(BlockEntity entity) {
         if (entity instanceof MenuProvider provider) {
             return provider.getDisplayName();
         }
-        return state.getBlock().getName();
+        return entity.getBlockState().getBlock().getName();
     }
 
-    /** A port's own name if it has one; an Access Port without one says which machines it serves. */
-    private static Component portName(AccessPortBlockEntity port) {
-        if (port instanceof TransferPortBlockEntity) {
-            return port.getDisplayName();
+    // --- what is found once per network ---
+
+    /** A port mounted on a cable. */
+    private record PortOnCable(DataCableBlockEntity cable, AccessPortBlockEntity port) {}
+
+    /** A Power Interface mounted on a cable. */
+    private record ThinOnCable(DataCableBlockEntity cable, ThinPowerAcceptor acceptor) {}
+
+    /**
+     * The network's machines and Archives (without the parts that only belong to another block), the ports on its cables,
+     * and the power sources touching any of its blocks: generators, Creative Batteries and Power Interfaces. {@code
+     * missing} says a block of the network wasn't loaded when this was worked out. A power source placed or broken beside
+     * the network makes a new network, so this never goes stale.
+     */
+    private record Layout(List<BlockEntity> machines, List<PortOnCable> ports, List<Object> sourceBlocks, Set<NetworkNode> sources,
+            boolean missing) {}
+
+    private static Layout layout(CableNetwork network) {
+        List<BlockEntity> machines = new ArrayList<>();
+        List<PortOnCable> ports = new ArrayList<>();
+        Set<Object> sources = new LinkedHashSet<>();
+        Set<NetworkNode> places = new LinkedHashSet<>();
+        boolean missing = false;
+        for (CableNetwork.Part part : network.parts()) {
+            ServerLevel level = part.level();
+            for (BlockPos pos : part.machines()) {
+                if (!level.isLoaded(pos)) {
+                    missing = true;
+                    continue;
+                }
+                BlockEntity entity = level.getBlockEntity(pos);
+                if (entity == null || entity instanceof NetworkChamberBlockEntity || entity instanceof AdvancedCraftingServerTopBlockEntity
+                        || entity instanceof RelayChatterboxTopBlockEntity) {
+                    continue;
+                }
+                machines.add(entity);
+                findSources(level, pos, sources, places);
+            }
+            for (BlockPos pos : part.cables()) {
+                if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity cable)) {
+                    missing |= !level.isLoaded(pos);
+                    continue;
+                }
+                for (AccessPortBlockEntity port : cable.ports()) ports.add(new PortOnCable(cable, port));
+                for (Direction side : Direction.values()) {
+                    ThinPowerAcceptor acceptor = cable.acceptor(side);
+                    if (acceptor != null) {
+                        sources.add(new ThinOnCable(cable, acceptor));
+                        places.add(NetworkNode.of(level, pos));
+                    }
+                }
+                findSources(level, pos, sources, places);
+            }
         }
-        if (!port.label().isEmpty()) {
-            return Component.literal(port.label());
-        }
-        if (!port.machineSides().isEmpty()) {
-            return Component.translatable("screen.jasm.network.port_machine", port.machineNames());
-        }
-        return port.getDisplayName();
+        return new Layout(List.copyOf(machines), List.copyOf(ports), List.copyOf(sources), Set.copyOf(places), missing);
     }
 
+    private static void findSources(ServerLevel level, BlockPos pos, Set<Object> sources, Set<NetworkNode> places) {
+        for (Direction side : Direction.values()) {
+            BlockPos next = pos.relative(side);
+            if (!level.isLoaded(next)) continue;
+            BlockEntity entity = level.getBlockEntity(next);
+            if (entity instanceof CombustionGeneratorBlockEntity || entity instanceof CreativeBatteryBlockEntity
+                    || entity instanceof PowerAcceptorBlockEntity) {
+                if (sources.add(entity)) places.add(NetworkNode.of(level, next));
+            }
+        }
+    }
 }

@@ -12,6 +12,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
@@ -40,8 +41,11 @@ final class AcceptorFlow {
         /** Where the acceptor is: outside blocks are the neighbours of this spot. */
         BlockPos pos();
 
-        /** Looks again at what is around, once something changed. Called every tick, so it must be cheap when nothing did. */
-        void refresh(ServerLevel level);
+        /**
+         * Looks again at what is around, once something changed. Called every tick, so it must be cheap when nothing did.
+         * Returns whether it looked again.
+         */
+        boolean refresh(ServerLevel level);
 
         /** Whether an outside block may sit on that side: any block that is not a JASM one. */
         boolean open(Direction side);
@@ -57,8 +61,16 @@ final class AcceptorFlow {
     }
 
     private final Site site;
-    /** What other mods see, on every side. */
-    private final Intake intake = new Intake();
+    /** What other mods see when they don't say which side they reach from. */
+    private final Intake intake = new Intake(-1);
+    /** What other mods see on each side, so what comes in is counted against the block it came from. */
+    private final Intake[] sideIntakes = new Intake[6];
+    /** The outside block on each side that holds or takes power, found again only after a neighbour changes. */
+    private final @Nullable Block[] outsideBlocks = new Block[6];
+    private boolean outsideStale = true;
+    /** FE moved with each side since the flow was last worked out, and the side that moved the most then (-1 for none). */
+    private final long[] movedBy = new long[6];
+    private int busiest = -1;
     private final Map<Direction, BlockCapabilityCache<EnergyHandler, @Nullable Direction>> neighbours = new EnumMap<>(Direction.class);
     private AcceptorMode mode = AcceptorMode.INPUT;
     /** The network's room, worked out at most once a tick and only when someone asks. */
@@ -86,6 +98,7 @@ final class AcceptorFlow {
 
     AcceptorFlow(Site site) {
         this.site = site;
+        for (int i = 0; i < sideIntakes.length; i++) sideIntakes[i] = new Intake(i);
     }
 
     AcceptorMode mode() {
@@ -105,21 +118,58 @@ final class AcceptorFlow {
 
     /** What other mods see on that side: they may push power in, never take it out. */
     EnergyHandler input(@Nullable Direction side) {
-        return intake;
+        return side == null ? intake : sideIntakes[side.ordinal()];
+    }
+
+    /**
+     * The outside block it serves: the one it moved the most power with over the last second, else the first beside it
+     * that holds or takes power (below, above, north, south, west, east); null with none.
+     */
+    @Nullable Block served() {
+        if (busiest >= 0 && outsideBlocks[busiest] != null) return outsideBlocks[busiest];
+        for (Block block : outsideBlocks) {
+            if (block != null) return block;
+        }
+        return null;
+    }
+
+    /** Looks around if something changed, noting that the outside blocks need finding again. */
+    private void refresh(ServerLevel level) {
+        if (site.refresh(level)) outsideStale = true;
+    }
+
+    private void findOutsideBlocks(ServerLevel level) {
+        outsideStale = false;
+        for (Direction side : Direction.values()) {
+            outsideBlocks[side.ordinal()] = outside(level, side) == null ? null : level.getBlockState(site.pos().relative(side)).getBlock();
+        }
     }
 
     ContainerData data() {
         return data;
     }
 
+    /** FE a tick going through, in or out as the mode says, averaged over the last second. */
+    int flow() {
+        return flow;
+    }
+
     void tick(ServerLevel level) {
-        site.refresh(level);
+        refresh(level);
+        if (outsideStale) {
+            findOutsideBlocks(level);
+        }
         if (mode == AcceptorMode.OUTPUT) {
             give(level);
         }
         if ((level.getGameTime() + site.pos().asLong()) % FLOW_TICKS == 0) {
             flow = (int) Math.min(Integer.MAX_VALUE, Math.round(moved / (double) FLOW_TICKS));
             moved = 0;
+            busiest = -1;
+            for (int i = 0; i < movedBy.length; i++) {
+                if (movedBy[i] > 0 && (busiest < 0 || movedBy[i] > movedBy[busiest])) busiest = i;
+            }
+            java.util.Arrays.fill(movedBy, 0);
         }
     }
 
@@ -145,7 +195,7 @@ final class AcceptorFlow {
         if (now == roomTick || lifecycle == Transaction.Lifecycle.CLOSING || lifecycle == Transaction.Lifecycle.ROOT_CLOSING) {
             return now == roomTick ? room : 0;
         }
-        site.refresh(level);
+        refresh(level);
         TransactionContext outer = Transaction.getCurrentOpenedTransaction();
         try (Transaction dryRun = outer == null ? Transaction.openRoot() : Transaction.open(outer)) {
             room = site.forward(Integer.MAX_VALUE, dryRun);
@@ -169,15 +219,17 @@ final class AcceptorFlow {
             if (batteries == null) {
                 batteries = BatteryGroup.distinct(level, site.batteries(level));
             }
-            moved += give(target, room, batteries);
+            int sent = give(target, room, batteries);
             // A partially charged battery still comes first; fallback starts only once all are empty.
             if (batteries.stream().allMatch(battery -> battery.getAmountAsLong() == 0)) {
                 List<EnergyHandler> generators = new ArrayList<>();
                 for (CombustionGeneratorBlockEntity generator : site.generators(level)) {
                     if (!generator.isRemoved()) generators.add(generator.output());
                 }
-                moved += give(target, room(target), generators);
+                sent += give(target, room(target), generators);
             }
+            moved += sent;
+            movedBy[side.ordinal()] += sent;
         }
     }
 
@@ -228,8 +280,14 @@ final class AcceptorFlow {
      * network takes. What it took counts towards the flow once the transfer is kept.
      */
     private final class Intake extends SnapshotJournal<Integer> implements EnergyHandler {
+        /** The side it is reached from, or -1 when the caller didn't say. */
+        private final int from;
         /** Taken in the transfer going on now; it only counts once that transfer is kept. */
         private int received;
+
+        Intake(int from) {
+            this.from = from;
+        }
 
         @Override
         public long getAmountAsLong() {
@@ -247,7 +305,7 @@ final class AcceptorFlow {
                 return 0;
             }
             if (site.level() instanceof ServerLevel serverLevel) {
-                site.refresh(serverLevel);
+                refresh(serverLevel);
             }
             int taken = site.forward(amount, transaction);
             if (taken > 0) {
@@ -275,6 +333,7 @@ final class AcceptorFlow {
         @Override
         protected void onRootCommit(Integer original) {
             moved += received;
+            if (from >= 0) movedBy[from] += received;
             received = 0;
         }
     }

@@ -32,6 +32,9 @@ final class PortPower {
     private long windowStart = Long.MIN_VALUE;
     private long moved;
     private int flow;
+    /** The part of those that came from a source touching the port, not from the network's cables. */
+    private long movedDirect;
+    private int flowDirect;
 
     PortPower(AccessPortBlockEntity port) {
         this.port = port;
@@ -62,13 +65,20 @@ final class PortPower {
         return flow;
     }
 
+    /** Like {@link #flow()}, but only what came from the network's cables, not from a source touching the port. */
+    int networkFlow() {
+        roll(now());
+        return Math.max(0, flow - flowDirect);
+    }
+
     private long now() {
         return port.getLevel() == null ? 0 : port.getLevel().getGameTime();
     }
 
-    private void passed(int amount) {
+    private void passed(int amount, int direct) {
         roll(now());
         moved += amount;
+        movedDirect += direct;
     }
 
     private void roll(long now) {
@@ -76,23 +86,28 @@ final class PortPower {
             windowStart = now;
             moved = 0;
             flow = 0;
+            movedDirect = 0;
+            flowDirect = 0;
         } else if (now - windowStart >= FLOW_TICKS) {
             // A window nobody looked at for a while ended with nothing passed since.
-            flow = now - windowStart < 2L * FLOW_TICKS ? (int) Math.min(Integer.MAX_VALUE, Math.round(moved / (double) FLOW_TICKS)) : 0;
+            boolean recent = now - windowStart < 2L * FLOW_TICKS;
+            flow = recent ? (int) Math.min(Integer.MAX_VALUE, Math.round(moved / (double) FLOW_TICKS)) : 0;
+            flowDirect = recent ? (int) Math.min(Integer.MAX_VALUE, Math.round(movedDirect / (double) FLOW_TICKS)) : 0;
             windowStart = now;
             moved = 0;
+            movedDirect = 0;
         }
     }
 
-    /** FE handed to one side in one tick. */
-    private record Used(long tick, int amount) {}
+    /** FE handed to one side in one tick, and how much of it came from a source touching the port. */
+    private record Used(long tick, int amount, int direct) {}
 
     /** The machine on one side. It reports the room the machine had this tick, less what it has been given since. */
     private final class Side extends SnapshotJournal<Used> implements EnergyHandler {
         private final Direction side;
         private long roomTick = Long.MIN_VALUE;
         private int room;
-        private Used used = new Used(Long.MIN_VALUE, 0);
+        private Used used = new Used(Long.MIN_VALUE, 0, 0);
 
         Side(Direction side) {
             this.side = side;
@@ -132,6 +147,10 @@ final class PortPower {
             return used.tick() == now() ? used.amount() : 0;
         }
 
+        private int directNow() {
+            return used.tick() == now() ? used.direct() : 0;
+        }
+
         @Override
         public long getAmountAsLong() {
             return 0;
@@ -153,7 +172,7 @@ final class PortPower {
             int taken = target == null ? 0 : target.insert(most, transaction);
             if (taken > 0) {
                 updateSnapshots(transaction);
-                used = new Used(now(), usedNow() + taken);
+                used = new Used(now(), usedNow() + taken, directNow() + (whole.giving ? taken : 0));
             }
             return taken;
         }
@@ -175,12 +194,16 @@ final class PortPower {
 
         @Override
         protected void onRootCommit(Used original) {
-            passed(used.tick() == original.tick() ? used.amount() - original.amount() : used.amount());
+            boolean same = used.tick() == original.tick();
+            passed(same ? used.amount() - original.amount() : used.amount(), same ? used.direct() - original.direct() : used.direct());
         }
     }
 
     /** The port as one block, for a source that touches it: it holds nothing and shares what it is given between the sides. */
     private final class Whole implements EnergyHandler {
+        /** True while a touching source's power is being shared out, so the sides can tell it from the cables'. */
+        private boolean giving;
+
         @Override
         public long getAmountAsLong() {
             return 0;
@@ -195,7 +218,12 @@ final class PortPower {
 
         @Override
         public int insert(int amount, TransactionContext transaction) {
-            return PowerShare.spread(inlets(), amount, now(), transaction);
+            giving = true;
+            try {
+                return PowerShare.spread(inlets(), amount, now(), transaction);
+            } finally {
+                giving = false;
+            }
         }
 
         @Override

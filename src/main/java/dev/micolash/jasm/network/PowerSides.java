@@ -20,7 +20,8 @@ public final class PowerSides {
         dirty = true;
     }
 
-    public void refresh(ServerLevel level, BlockPos origin) {
+    /** Looks at the neighbours again if one changed. Returns whether it did. */
+    public boolean refresh(ServerLevel level, BlockPos origin) {
         // Blocks placed without a neighbour update (commands, structures, editing tools) are caught within a second.
         if ((level.getGameTime() + origin.asLong()) % 20 == 0) {
             dirty = true;
@@ -33,7 +34,7 @@ public final class PowerSides {
                     break;
                 }
             }
-            if (!dirty) return;
+            if (!dirty) return false;
         }
         dirty = false;
         for (Direction side : Direction.values()) {
@@ -50,6 +51,7 @@ public final class PowerSides {
             receivers[i] = PowerReceiver.of(entity);
             jasm[i] = receivers[i] != null || entity instanceof NetworkPowerSource;
         }
+        return true;
     }
 
     public @Nullable PowerReceiver receiver(Direction side) {

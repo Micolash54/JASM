@@ -500,6 +500,14 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return power.flow();
     }
 
+    /**
+     * Like {@link #powerFlow()}, but only the part the network's cables gave: a generator or Battery touching the port
+     * hands its power straight on to the machines, outside the network.
+     */
+    public int networkPowerFlow() {
+        return power.networkFlow();
+    }
+
     /** A port uses no power of its own: it works unless its network is over the machine limit. */
     @Override
     public boolean running() {

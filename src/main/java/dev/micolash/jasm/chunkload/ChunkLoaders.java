@@ -128,6 +128,13 @@ public final class ChunkLoaders extends SavedData {
         return server.getDataStorage().get(TYPE);
     }
 
+    /** FE a tick a Chunkload Upgrade in {@code machine} pays right now: its cost while it loads a chunk, otherwise 0. */
+    public static int drawOf(MachineBlockEntity machine) {
+        if (!(machine.getLevel() instanceof ServerLevel level)) return 0;
+        ChunkLoaders data = peek(level.getServer());
+        return data != null && data.machines.containsValue(machine) ? Math.max(0, Tuning.CHUNKLOAD_UPGRADE_DRAIN) : 0;
+    }
+
     private static Placement placement(ServerLevel level, BlockPos pos) {
         return new Placement(level.dimension(), pos.immutable());
     }
