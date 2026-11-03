@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.client.AccessPortScreen;
 import dev.micolash.jasm.client.CraftingServerScreen;
+import dev.micolash.jasm.client.RecipeRackScreen;
 import dev.micolash.jasm.client.ArchiveScreen;
 import dev.micolash.jasm.client.BayScreen;
 import dev.micolash.jasm.client.DeckScreen;
@@ -130,6 +131,7 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "encoding_terminal", 2, List.of(JasmItems.ENCODING_TERMINAL.get()));
         info(registration, "advanced_encoder", 1, List.of(JasmItems.ADVANCED_ENCODER.get()));
         info(registration, "recipe_rack", 2, List.of(JasmItems.RECIPE_RACK.get()));
+        info(registration, "rack_controller", 2, List.of(JasmItems.RACK_CONTROLLER.get()));
         info(registration, "data_cable", 2, JasmItems.cables());
         info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));
         info(registration, "advanced_crafting_server", 2, List.of(JasmItems.ADVANCED_CRAFTING_SERVER.get()));
@@ -322,6 +324,10 @@ public class JasmJeiPlugin implements IModPlugin {
             public List<Rect2i> getGuiExtraAreas(CraftingServerScreen screen) {
                 return screen.extraAreas();
             }
+        });
+        registration.addGuiContainerHandler(RecipeRackScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public List<Rect2i> getGuiExtraAreas(RecipeRackScreen screen) { return screen.extraAreas(); }
         });
         registration.addGuiContainerHandler(TransferPortScreen.class, new IGuiContainerHandler<>() {
             @Override

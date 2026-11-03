@@ -206,7 +206,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                     () -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.RESET_DECK));
         }
         if (renameWindow == null) {
-            renameWindow = new RenameWindow(font, name -> {
+            renameWindow = new RenameWindow(font, Component.translatable("screen.jasm.port.name_hint"), name -> {
                 ClientPacketDistributor.sendToServer(new CraftPayloads.PortName(menu.containerId, name));
                 renamed(name);
             });

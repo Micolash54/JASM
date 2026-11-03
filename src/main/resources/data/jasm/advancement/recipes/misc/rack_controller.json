@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:rack_controller"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_recipe_rack": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:recipe_rack"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_recipe_rack"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:rack_controller"
+    ]
+  }
+}

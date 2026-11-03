@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "particle": "jasm:block/network_casing",
+    "top": "jasm:block/network_casing",
+    "side": "jasm:block/network_casing",
+    "front": "jasm:block/recipe_rack_front"
+  }
+}

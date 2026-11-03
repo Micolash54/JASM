@@ -15,6 +15,8 @@ import dev.micolash.jasm.autocraft.CraftingServerBlock;
 import dev.micolash.jasm.autocraft.CraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlock;
 import dev.micolash.jasm.autocraft.EncodingTerminalBlockEntity;
+import dev.micolash.jasm.autocraft.RackControllerBlock;
+import dev.micolash.jasm.autocraft.RackControllerBlockEntity;
 import dev.micolash.jasm.autocraft.RecipeRackBlock;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.battery.BatteryBlock;
@@ -135,6 +137,12 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<RecipeRackBlockEntity>> RECIPE_RACK_ENTITY = BLOCK_ENTITIES.register(
             "recipe_rack", () -> new BlockEntityType<>(RecipeRackBlockEntity::new, RECIPE_RACK.get()));
+
+    public static final DeferredBlock<RackControllerBlock> RACK_CONTROLLER = BLOCKS.registerBlock("rack_controller",
+            RackControllerBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL));
+
+    public static final Supplier<BlockEntityType<RackControllerBlockEntity>> RACK_CONTROLLER_ENTITY = BLOCK_ENTITIES.register(
+            "rack_controller", () -> new BlockEntityType<>(RackControllerBlockEntity::new, RACK_CONTROLLER.get()));
 
     public static final DeferredBlock<DockingStationBlock> DOCKING_STATION = BLOCKS.registerBlock("docking_station",
             DockingStationBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL)

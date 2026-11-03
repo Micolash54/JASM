@@ -12,6 +12,7 @@
     "jasm:encoding_terminal",
     "jasm:advanced_encoder",
     "jasm:recipe_rack",
+    "jasm:rack_controller",
     "jasm:crystal_foundry",
     "jasm:crystal_resonator",
     "jasm:chip_workshop",

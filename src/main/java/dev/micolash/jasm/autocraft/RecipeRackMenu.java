@@ -7,6 +7,7 @@ import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -44,20 +45,37 @@ public class RecipeRackMenu extends AbstractContainerMenu implements MachineView
     private final ContainerData data;
     private final ContainerLevelAccess access;
     private final @Nullable RecipeRackBlockEntity rack;
+    /** Client side: the rack's name when the screen opened; empty for the block's own. */
+    private String label = "";
 
     /** Server side. */
     public RecipeRackMenu(int containerId, Inventory inventory, RecipeRackBlockEntity rack, ContainerLevelAccess access) {
         this(containerId, inventory, rack, rack.data(), access, rack);
     }
 
-    /** Client side. */
-    public RecipeRackMenu(int containerId, Inventory inventory) {
-        this(containerId, inventory, new SimpleContainer(RecipeRackBlockEntity.SLOTS) {
+    /** Client side: the server sends where the rack stands and its name. */
+    public static RecipeRackMenu client(int containerId, Inventory inventory, RegistryFriendlyByteBuf buf) {
+        RecipeRackMenu menu = new RecipeRackMenu(containerId, inventory, new SimpleContainer(RecipeRackBlockEntity.SLOTS) {
             @Override
             public boolean canPlaceItem(int slot, ItemStack stack) {
                 return RecipeRackBlockEntity.accepts(stack);
             }
         }, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL, null);
+        buf.readBlockPos();
+        menu.label = buf.readUtf(AccessPortMenu.MAX_NAME);
+        return menu;
+    }
+
+    /** Client side: the rack's name as it was when the screen opened; empty for the block's own. */
+    public String label() {
+        return label;
+    }
+
+    /** Server side: names the rack, if this is the player's open, usable screen and the name is one the rename panel takes. */
+    public boolean rename(Player player, String name) {
+        if (rack == null || player.containerMenu != this || !stillValid(player) || !AccessPortMenu.validName(name)) return false;
+        rack.setLabel(name);
+        return true;
     }
 
     private RecipeRackMenu(int containerId, Inventory inventory, Container container, ContainerData data, ContainerLevelAccess access,

@@ -10,6 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -76,6 +77,11 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     /** Whether the screen is told where the block stands when it opens; the menu type then has to read it. */
     public boolean sendsPosToScreen() {
         return false;
+    }
+
+    /** What the screen is told as it opens, when {@link #sendsPosToScreen()} says so: where the block stands, by default. */
+    public void writeScreenData(RegistryFriendlyByteBuf buf) {
+        buf.writeBlockPos(worldPosition);
     }
 
     /** The I/O grid, for the machines that have one. */

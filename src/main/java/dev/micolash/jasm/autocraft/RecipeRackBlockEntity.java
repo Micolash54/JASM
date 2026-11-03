@@ -12,8 +12,12 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponentGetter;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -40,6 +44,8 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     private int missing;
     /** One bit per slot that holds a card, as last sent to players. It's all their game needs to draw the cards. */
     private int shownCards;
+    /** A name the player gave the rack; empty for the block's own name. */
+    private String label = "";
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -213,6 +219,35 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     }
 
     @Override
+    public Component getName() {
+        return label.isEmpty() ? getDefaultName() : Component.literal(label);
+    }
+
+    /** The name the player gave the rack, or empty. */
+    public String label() {
+        return label;
+    }
+
+    /** Names the rack; an empty name brings back the block's own. Cut to the longest name the rename panel takes. */
+    public void setLabel(String label) {
+        String cleaned = label.strip();
+        this.label = cleaned.length() > AccessPortMenu.MAX_NAME ? cleaned.substring(0, AccessPortMenu.MAX_NAME) : cleaned;
+        setChanged();
+    }
+
+    @Override
+    public boolean sendsPosToScreen() {
+        return true;
+    }
+
+    /** The screen is told where the rack stands and its name, for the rename panel. */
+    @Override
+    public void writeScreenData(RegistryFriendlyByteBuf buf) {
+        super.writeScreenData(buf);
+        buf.writeUtf(label, AccessPortMenu.MAX_NAME);
+    }
+
+    @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
         return new RecipeRackMenu(containerId, inventory, this, ContainerLevelAccess.create(level, worldPosition));
     }
@@ -221,6 +256,7 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         ContainerHelper.saveAllItems(output, items);
+        output.putString("label", label);
     }
 
     @Override
@@ -228,6 +264,29 @@ public class RecipeRackBlockEntity extends MachineBlockEntity {
         super.loadAdditional(input);
         items = NonNullList.withSize(SLOTS, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
+        // A rack saved before it could be renamed has no label: it keeps a name given on an anvil, if any.
+        Component custom = getCustomName();
+        label = input.getStringOr("label", custom == null ? "" : custom.getString());
+    }
+
+    /** The mined rack keeps its name. */
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        components.set(DataComponents.CUSTOM_NAME, label.isEmpty() ? null : Component.literal(label));
+    }
+
+    @Override
+    protected void applyImplicitComponents(DataComponentGetter components) {
+        super.applyImplicitComponents(components);
+        Component name = components.get(DataComponents.CUSTOM_NAME);
+        label = name == null ? "" : name.getString();
+    }
+
+    @Override
+    public void removeComponentsFromTag(ValueOutput output) {
+        super.removeComponentsFromTag(output);
+        output.discard("label");
     }
 
     // Players only get which slots are filled, not the cards themselves.

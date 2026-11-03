@@ -24,7 +24,9 @@ Without power, the network can't see the cards inside, so autocrafting stops. Ja
 
 Processing cards go in a rack too. An [Access Port](access-port.md) lists the recipes of every rack on its network, so you pick them there.
 
-Need more than 16 recipes? Add another rack.
+Rename a rack with the key beside its screen. The name shows in a [Rack Controller](rack-controller.md) and stays on the mined rack.
+
+Need more than 16 recipes? Add another rack. A Rack Controller shows them all in one panel.
 
 <br />
 <br />

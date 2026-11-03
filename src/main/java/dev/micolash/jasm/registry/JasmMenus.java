@@ -6,6 +6,7 @@ import dev.micolash.jasm.archive.ArchiveMenu;
 import dev.micolash.jasm.autocraft.AccessPortMenu;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
+import dev.micolash.jasm.autocraft.RackControllerMenu;
 import dev.micolash.jasm.autocraft.RecipeRackMenu;
 import dev.micolash.jasm.battery.BatteryMenu;
 import dev.micolash.jasm.battery.CreativeBatteryMenu;
@@ -61,7 +62,10 @@ public final class JasmMenus {
             () -> new MenuType<>(EncodingTerminalMenu::advanced, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<RecipeRackMenu>> RECIPE_RACK = MENUS.register("recipe_rack",
-            () -> new MenuType<>(RecipeRackMenu::new, FeatureFlags.VANILLA_SET));
+            () -> IMenuTypeExtension.create(RecipeRackMenu::client));
+
+    public static final Supplier<MenuType<RackControllerMenu>> RACK_CONTROLLER = MENUS.register("rack_controller",
+            () -> new MenuType<>(RackControllerMenu::new, FeatureFlags.VANILLA_SET));
 
     public static final Supplier<MenuType<DockingStationMenu>> DOCKING_STATION = MENUS.register("docking_station",
             () -> new MenuType<>(DockingStationMenu::new, FeatureFlags.VANILLA_SET));

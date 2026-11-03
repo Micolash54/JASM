@@ -57,7 +57,7 @@ public abstract class MachineBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (player instanceof ServerPlayer serverPlayer && level.getBlockEntity(pos) instanceof MachineBlockEntity machine) {
             if (MachineAccess.canUse(machine, serverPlayer)) {
-                if (machine.sendsPosToScreen()) serverPlayer.openMenu(machine, buf -> buf.writeBlockPos(pos));
+                if (machine.sendsPosToScreen()) serverPlayer.openMenu(machine, machine::writeScreenData);
                 else serverPlayer.openMenu(machine);
             } else {
                 serverPlayer.sendOverlayMessage(Component.translatable("message.jasm.machine.no_access", machine.ownerName()));

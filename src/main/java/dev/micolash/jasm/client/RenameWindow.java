@@ -16,8 +16,9 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 
 /**
- * A machine's rename panel (Access Port, Crafting Server): a name box and a Rename key. Renaming sends the name and
- * shuts the panel, but only for a name the machine takes. Opened from a side key and moved by dragging any empty spot of it.
+ * A block's rename panel (Access Port, Crafting Server, Recipe Rack): a name box and a Rename key. Renaming sends the
+ * name and shuts the panel, but only for a name the block takes. Opened from a side key and moved by dragging any empty
+ * spot of it.
  */
 final class RenameWindow {
     static final int WIDTH = 150;
@@ -36,13 +37,16 @@ final class RenameWindow {
     private int grabX = -1;
     private int grabY;
 
-    /** {@code renamed} is given the new name, trimmed: it sends it, and the screen's title can follow it. */
-    RenameWindow(Font font, Consumer<String> renamed) {
+    /**
+     * {@code renamed} is given the new name, trimmed: it sends it, and the screen's title can follow it. {@code hint}
+     * shows in the empty name box.
+     */
+    RenameWindow(Font font, Component hint, Consumer<String> renamed) {
         this.font = font;
         this.renamed = renamed;
         name = new JasmField(font, 0, 0, 86, 14, Component.translatable("screen.jasm.port.name"));
         name.setMaxLength(AccessPortMenu.MAX_NAME);
-        name.setHint(Component.translatable("screen.jasm.port.name_hint"));
+        name.setHint(hint);
         rename = JasmButton.text(Component.translatable("screen.jasm.port.rename"), b -> submit(), 0, 0, 44, 17);
         close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11);
     }

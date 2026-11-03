@@ -82,6 +82,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Advanced Encoder](advanced-encoder.md): a Network Encoder that picks which face of a machine each ingredient goes in through.
 * [Recipe Cards](recipe-cards.md): hold one recipe each.
 * [Recipe Rack](recipe-rack.md): stores 16 cards.
+* [Rack Controller](rack-controller.md): every rack's cards in one panel.
 * [Crafting Server](crafting-server.md): runs the jobs.
 * [Advanced Crafting Server](advanced-crafting-server.md): the same with room for ten of everything.
 * [Processors](processors.md): how many crafts run at once.

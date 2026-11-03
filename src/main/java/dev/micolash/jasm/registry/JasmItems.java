@@ -60,6 +60,7 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> ENCODING_TERMINAL = ITEMS.registerSimpleBlockItem(JasmBlocks.ENCODING_TERMINAL);
     public static final DeferredItem<BlockItem> ADVANCED_ENCODER = ITEMS.registerSimpleBlockItem(JasmBlocks.ADVANCED_ENCODER);
     public static final DeferredItem<BlockItem> RECIPE_RACK = ITEMS.registerSimpleBlockItem(JasmBlocks.RECIPE_RACK);
+    public static final DeferredItem<BlockItem> RACK_CONTROLLER = ITEMS.registerSimpleBlockItem(JasmBlocks.RACK_CONTROLLER);
     public static final DeferredItem<DockingStationItem> DOCKING_STATION = ITEMS.registerItem("docking_station",
             properties -> new DockingStationItem(JasmBlocks.DOCKING_STATION.get(), properties.useBlockDescriptionPrefix()));
     public static final DeferredItem<BlockItem> DATA_CABLE = ITEMS.registerSimpleBlockItem(JasmBlocks.DATA_CABLE);
