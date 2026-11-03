@@ -55,6 +55,12 @@ final class CraftRequestWindow {
     private static final JasmButton.Icon MAX = new JasmButton.Icon(Jasm.id("icon/max_craft"), 7, 7);
     private static final Identifier DROP = Jasm.id("icon/triangle_down");
     private static final Identifier CHECK = Jasm.id("icon/check");
+    private static final Identifier CORES = Jasm.id("icon/cores");
+    private static final Identifier STORAGE = Jasm.id("icon/storage");
+    private static final int CORES_W = 7;
+    private static final int STORAGE_W = 9;
+    /** The narrowest the open drop-down gets. */
+    private static final int DROP_MIN = 60;
     /** The server drop-down's box, from the window's left and top; it reaches the window's right edge less this. */
     private static final int BOX_X = 58;
     private static final int BOX_Y = 42;
@@ -476,6 +482,38 @@ final class CraftRequestWindow {
         return answer.servers().size() + 1;
     }
 
+    /** Width of a server's figures: the cores icon and count, then the storage icon and size, in columns as wide as the widest. */
+    private int figuresWidth(CraftPayloads.Answer answer) {
+        return CORES_W + 1 + coresColumn(answer) + 5 + STORAGE_W + 1 + storageColumn(answer);
+    }
+
+    private int coresColumn(CraftPayloads.Answer answer) {
+        int widest = 0;
+        for (CraftPayloads.ServerView server : answer.servers()) {
+            widest = Math.max(widest, font.width(String.valueOf(server.parallel())));
+        }
+        return widest;
+    }
+
+    private int storageColumn(CraftPayloads.Answer answer) {
+        int widest = 0;
+        for (CraftPayloads.ServerView server : answer.servers()) {
+            widest = Math.max(widest, font.width(GridEntries.abbreviate(server.memory())));
+        }
+        return widest;
+    }
+
+    /** As wide as its widest row needs, from the box's left edge, but never wider than the box. */
+    private int dropWidth(CraftPayloads.Answer answer) {
+        int widest = font.width(Component.translatable("screen.jasm.craft.server_any")) + 4 + 9 + 4;
+        int figures = figuresWidth(answer);
+        for (CraftPayloads.ServerView server : answer.servers()) {
+            widest = Math.max(widest, font.width(server.name()) + 4 + figures);
+        }
+        // room for the scroll mark on the right
+        return Math.clamp(widest + 8 + (dropRows(answer) > dropShown(answer) ? 3 : 0), DROP_MIN, boxWidth());
+    }
+
     /** Rows shown at once: as many as fit under the box inside the window. */
     private int dropShown(CraftPayloads.Answer answer) {
         int room = (y + height - 6 - (boxY() + BOX_H)) / DROP_ROW;
@@ -487,7 +525,7 @@ final class CraftRequestWindow {
     }
 
     private boolean inDrop(CraftPayloads.@Nullable Answer answer, double mouseX, double mouseY) {
-        return answer != null && mouseX >= boxX() && mouseX < boxX() + boxWidth() && mouseY >= boxY() + BOX_H
+        return answer != null && mouseX >= boxX() && mouseX < boxX() + dropWidth(answer) && mouseY >= boxY() + BOX_H
                 && mouseY < boxY() + BOX_H + dropHeight(answer);
     }
 
@@ -500,7 +538,7 @@ final class CraftRequestWindow {
         return row >= 0 && row < dropShown(answer) ? dropScroll + row : -1;
     }
 
-    /** Busy and too-small servers stay in the list, greyed, so the player sees why they can't take the job. */
+    /** Busy and too-small servers stay in the list, dimmed with a coloured name, so the player sees they can't take the job. */
     private static boolean pickable(CraftPayloads.ServerView server) {
         return !server.busy() && server.fits();
     }
@@ -537,8 +575,12 @@ final class CraftRequestWindow {
     private void drawDrop(GuiGraphicsExtractor graphics, CraftPayloads.Answer answer, int mouseX, int mouseY) {
         int dx = boxX();
         int dy = boxY() + BOX_H;
-        int dw = boxWidth();
+        int dw = dropWidth(answer);
         int shownRows = dropShown(answer);
+        // the figures' right edge, clear of the scroll mark
+        int right = dx + dw - 4 - (dropRows(answer) > shownRows ? 3 : 0);
+        int coresColumn = coresColumn(answer);
+        int storageColumn = storageColumn(answer);
         dropScroll = Math.clamp(dropScroll, 0, dropRows(answer) - shownRows);
         graphics.fill(dx, dy, dx + dw, dy + dropHeight(answer), JasmGui.SELECTED);
         graphics.fill(dx + 1, dy, dx + dw - 1, dy + dropHeight(answer) - 1, BACKGROUND);
@@ -563,23 +605,21 @@ final class CraftRequestWindow {
                 continue;
             }
             CraftPayloads.ServerView server = answer.servers().get(row - 1);
-            Component status;
-            int statusColor;
-            if (server.busy()) {
-                status = Component.translatable("screen.jasm.craft.server_busy");
-                statusColor = JasmGui.WARN;
-            } else if (!server.fits()) {
-                status = Component.translatable("screen.jasm.craft.server_too_small");
-                statusColor = JasmGui.BAD;
-            } else {
-                status = Component.translatable("screen.jasm.craft.server_free", GridEntries.abbreviate(server.memory()), server.parallel());
-                statusColor = JasmGui.SUBTEXT;
-            }
-            String statusText = trim(status.getString(), dw / 2);
-            int statusWidth = font.width(statusText);
-            graphics.text(font, statusText, dx + dw - 4 - statusWidth, ry + 3, statusColor, false);
-            graphics.text(font, trim(server.name().getString(), dw - 14 - statusWidth), dx + 4, ry + 3,
-                    usable ? JasmGui.TEXT : JasmGui.MUTED, false);
+            // a busy server's name is yellow, a too-small one's red; their figures are dimmed
+            int nameColor = server.busy() ? JasmGui.WARN : !server.fits() ? JasmGui.BAD : JasmGui.TEXT;
+            int figureColor = usable ? JasmGui.SUBTEXT : JasmGui.MUTED;
+            float iconAlpha = usable ? 1.0F : 0.5F;
+            String size = GridEntries.abbreviate(server.memory());
+            int storageX = right - storageColumn - 1 - STORAGE_W;
+            graphics.text(font, size, right - font.width(size), ry + 3, figureColor, false);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, STORAGE, storageX, ry + 4, STORAGE_W, 6, iconAlpha);
+            String cores = String.valueOf(server.parallel());
+            int coresRight = storageX - 5;
+            int coresX = coresRight - coresColumn - 1 - CORES_W;
+            graphics.text(font, cores, coresRight - font.width(cores), ry + 3, figureColor, false);
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CORES, coresX, ry + 3, CORES_W, 7, iconAlpha);
+            int nameRoom = coresX - 4 - (dx + 4);
+            graphics.text(font, trim(server.name().getString(), nameRoom), dx + 4, ry + 3, nameColor, false);
         }
         if (dropRows(answer) > shownRows) {
             // a thin bar on the right shows where the list is scrolled to
@@ -594,6 +634,11 @@ final class CraftRequestWindow {
             tip.add(server.name());
             tip.add(Component.translatable("screen.jasm.craft.server_size", GridEntries.abbreviate(server.memory()), server.parallel())
                     .withColor(JasmGui.SUBTEXT & 0xFFFFFF));
+            if (server.busy()) {
+                tip.add(Component.translatable("screen.jasm.craft.server_busy").withColor(JasmGui.WARN & 0xFFFFFF));
+            } else if (!server.fits()) {
+                tip.add(Component.translatable("screen.jasm.craft.server_too_small").withColor(JasmGui.BAD & 0xFFFFFF));
+            }
             BlockPos at = server.pos().pos();
             tip.add(Component.translatable("screen.jasm.craft.server_where", at.getX(), at.getY(), at.getZ()).withColor(JasmGui.MUTED & 0xFFFFFF));
             if (Minecraft.getInstance().level != null && !server.pos().dimension().equals(Minecraft.getInstance().level.dimension())) {
