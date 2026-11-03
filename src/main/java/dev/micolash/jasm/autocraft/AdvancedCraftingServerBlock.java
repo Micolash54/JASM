@@ -37,6 +37,8 @@ public class AdvancedCraftingServerBlock extends CraftingServerBlock {
     public static final EnumProperty<DoubleBlockHalf> HALF = BlockStateProperties.DOUBLE_BLOCK_HALF;
     /** Only used on the top half: whether its screen is on. */
     public static final BooleanProperty LIT = BlockStateProperties.LIT;
+    /** Only used on the top half: whether its screen shows the job's details as well as the two items. */
+    public static final BooleanProperty INFO = BooleanProperty.create("info");
 
     @Override
     protected MapCodec<AdvancedCraftingServerBlock> codec() {
@@ -45,13 +47,13 @@ public class AdvancedCraftingServerBlock extends CraftingServerBlock {
 
     public AdvancedCraftingServerBlock(BlockBehaviour.Properties properties) {
         super(properties);
-        registerDefaultState(defaultBlockState().setValue(HALF, DoubleBlockHalf.LOWER).setValue(LIT, false));
+        registerDefaultState(defaultBlockState().setValue(HALF, DoubleBlockHalf.LOWER).setValue(LIT, false).setValue(INFO, false));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
-        builder.add(HALF, LIT);
+        builder.add(HALF, LIT, INFO);
     }
 
     public static boolean isLower(BlockState state) {
@@ -125,12 +127,12 @@ public class AdvancedCraftingServerBlock extends CraftingServerBlock {
                 : createTickerHelper(type, JasmBlocks.ADVANCED_CRAFTING_SERVER_ENTITY.get(), CraftingServerBlockEntity::serverTick);
     }
 
-    /** Turns the top half's screen on or off. */
-    static void setScreen(ServerLevel level, BlockPos lower, boolean on) {
+    /** Turns the top half's screen on or off, and sets which of the two screens it shows. */
+    static void setScreen(ServerLevel level, BlockPos lower, boolean on, boolean info) {
         BlockPos pos = lower.above();
         BlockState upper = level.getBlockState(pos);
-        if (upper.getBlock() instanceof AdvancedCraftingServerBlock && !isLower(upper) && upper.getValue(LIT) != on) {
-            level.setBlock(pos, upper.setValue(LIT, on), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+        if (upper.getBlock() instanceof AdvancedCraftingServerBlock && !isLower(upper) && (upper.getValue(LIT) != on || upper.getValue(INFO) != info)) {
+            level.setBlock(pos, upper.setValue(LIT, on).setValue(INFO, info), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
         }
     }
 }

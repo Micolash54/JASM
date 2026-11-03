@@ -13,6 +13,7 @@
                 "jasm:energy",
                 "jasm:owner",
                 "jasm:server_priority",
+                "jasm:server_screen_mode",
                 "minecraft:custom_name"
               ],
               "source": "block_entity",

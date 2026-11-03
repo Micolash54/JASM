@@ -1,63 +1,123 @@
 {
   "variants": {
-    "facing=north,half=lower,lit=false": {
+    "facing=north,half=lower,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower"
     },
-    "facing=north,half=upper,lit=false": {
+    "facing=north,half=upper,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/upper_off"
     },
-    "facing=north,half=lower,lit=true": {
+    "facing=north,half=lower,info=true,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower"
     },
-    "facing=north,half=upper,lit=true": {
+    "facing=north,half=upper,info=true,lit=false": {
+      "model": "jasm:block/advanced_crafting_server/upper_off"
+    },
+    "facing=north,half=lower,info=false,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower"
+    },
+    "facing=north,half=upper,info=false,lit=true": {
       "model": "jasm:block/advanced_crafting_server/upper"
     },
-    "facing=east,half=lower,lit=false": {
+    "facing=north,half=lower,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower"
+    },
+    "facing=north,half=upper,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/upper_info"
+    },
+    "facing=east,half=lower,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower",
       "y": 90
     },
-    "facing=east,half=upper,lit=false": {
+    "facing=east,half=upper,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/upper_off",
       "y": 90
     },
-    "facing=east,half=lower,lit=true": {
+    "facing=east,half=lower,info=true,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower",
       "y": 90
     },
-    "facing=east,half=upper,lit=true": {
+    "facing=east,half=upper,info=true,lit=false": {
+      "model": "jasm:block/advanced_crafting_server/upper_off",
+      "y": 90
+    },
+    "facing=east,half=lower,info=false,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower",
+      "y": 90
+    },
+    "facing=east,half=upper,info=false,lit=true": {
       "model": "jasm:block/advanced_crafting_server/upper",
       "y": 90
     },
-    "facing=south,half=lower,lit=false": {
+    "facing=east,half=lower,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower",
+      "y": 90
+    },
+    "facing=east,half=upper,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/upper_info",
+      "y": 90
+    },
+    "facing=south,half=lower,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower",
       "y": 180
     },
-    "facing=south,half=upper,lit=false": {
+    "facing=south,half=upper,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/upper_off",
       "y": 180
     },
-    "facing=south,half=lower,lit=true": {
+    "facing=south,half=lower,info=true,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower",
       "y": 180
     },
-    "facing=south,half=upper,lit=true": {
+    "facing=south,half=upper,info=true,lit=false": {
+      "model": "jasm:block/advanced_crafting_server/upper_off",
+      "y": 180
+    },
+    "facing=south,half=lower,info=false,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower",
+      "y": 180
+    },
+    "facing=south,half=upper,info=false,lit=true": {
       "model": "jasm:block/advanced_crafting_server/upper",
       "y": 180
     },
-    "facing=west,half=lower,lit=false": {
+    "facing=south,half=lower,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower",
+      "y": 180
+    },
+    "facing=south,half=upper,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/upper_info",
+      "y": 180
+    },
+    "facing=west,half=lower,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower",
       "y": 270
     },
-    "facing=west,half=upper,lit=false": {
+    "facing=west,half=upper,info=false,lit=false": {
       "model": "jasm:block/advanced_crafting_server/upper_off",
       "y": 270
     },
-    "facing=west,half=lower,lit=true": {
+    "facing=west,half=lower,info=true,lit=false": {
       "model": "jasm:block/advanced_crafting_server/lower",
       "y": 270
     },
-    "facing=west,half=upper,lit=true": {
+    "facing=west,half=upper,info=true,lit=false": {
+      "model": "jasm:block/advanced_crafting_server/upper_off",
+      "y": 270
+    },
+    "facing=west,half=lower,info=false,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower",
+      "y": 270
+    },
+    "facing=west,half=upper,info=false,lit=true": {
       "model": "jasm:block/advanced_crafting_server/upper",
+      "y": 270
+    },
+    "facing=west,half=lower,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/lower",
+      "y": 270
+    },
+    "facing=west,half=upper,info=true,lit=true": {
+      "model": "jasm:block/advanced_crafting_server/upper_info",
       "y": 270
     }
   }

@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.PortMemory;
 import dev.micolash.jasm.autocraft.PortSettings;
 import dev.micolash.jasm.autocraft.ProcessingCard;
 import dev.micolash.jasm.autocraft.RecipeCard;
+import dev.micolash.jasm.autocraft.ServerScreenMode;
 import dev.micolash.jasm.bay.BayRedstone;
 import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.core.MaterialKey;
@@ -182,6 +183,10 @@ public final class JasmComponents {
     /** A mined Crafting Server that was a priority server, and is one again when placed. */
     public static final Supplier<DataComponentType<Unit>> SERVER_PRIORITY = COMPONENTS.registerComponentType(
             "server_priority", b -> b.persistent(Unit.CODEC).networkSynchronized(StreamCodec.unit(Unit.INSTANCE)));
+
+    /** A mined Advanced Crafting Server's front screen mode, kept for when it is placed again; absent for the default. */
+    public static final Supplier<DataComponentType<ServerScreenMode>> SERVER_SCREEN_MODE = COMPONENTS.registerComponentType(
+            "server_screen_mode", b -> b.persistent(ServerScreenMode.CODEC).networkSynchronized(ServerScreenMode.STREAM_CODEC));
 
     private JasmComponents() {}
 }

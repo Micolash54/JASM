@@ -77,6 +77,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
                 case CraftingServerMenu.DATA_AMOUNT_HIGH -> j == null ? 0 : ContainerWords.high((int) Math.min(Integer.MAX_VALUE, j.amount()));
                 case CraftingServerMenu.DATA_DRAIN -> drainPerTick();
                 case CraftingServerMenu.DATA_PRIORITY -> priority ? 1 : 0;
+                case CraftingServerMenu.DATA_SCREEN_MODE -> screenModeCode();
                 default -> 0;
             };
         }
@@ -116,6 +117,11 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         // What the job makes; the screen writes the amount beside it.
         server.shown.setItem(0, job == null || job.target() == null ? ItemStack.EMPTY : job.target().create().copyWithCount(1));
         server.syncShown(serverLevel);
+    }
+
+    /** The front screen's mode for the server's own screen; a server without a front screen has none. */
+    protected int screenModeCode() {
+        return 0;
     }
 
     /** Tells players what changed on the block's outside. */

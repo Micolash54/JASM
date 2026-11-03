@@ -8,12 +8,14 @@ import dev.micolash.jasm.autocraft.AdvancedCraftingServerBlockEntity;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
+import dev.micolash.jasm.autocraft.ServerScreenMode;
 import dev.micolash.jasm.network.MachineBlock;
 import java.util.Arrays;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
 import net.minecraft.client.renderer.block.FluidModel;
@@ -47,7 +49,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * Draws an Advanced Crafting Server's parts in its ten rows, Processors on the left and Storage Modules on the right, top
  * row first like the screen; the turning fans up both sides while it has power; and on the front screen
- * what the job makes and what is crafting at that moment. Everything is drawn from the bottom half.
+ * what the job makes and what is crafting at that moment, in the info mode with the job's amount, progress, crafts running
+ * and a core bar. Everything is drawn from the bottom half.
+ *
+ * <p>Places on the screen are in model pixels of a north-facing block: x grows to the viewer's left, y up from the
+ * bottom of the lower half.
  */
 public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<AdvancedCraftingServerBlockEntity, AdvancedCraftingServerRenderer.State> {
     private static final String[] PROCESSOR_NAMES = {"processor_basic", "processor_advanced", "processor_elite"};
@@ -64,11 +70,51 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
     private static final float ROW_STEP = 2 / 16F;
     /** The screen's items, in pixels: centre and size. They sit just in front of the glass. */
     private static final float ITEM_Z = 0.95F / 16;
-    private static final float NOW_X = 12.5F;
-    private static final float TARGET_X = 4.75F;
-    private static final float ITEMS_Y = 25.5F;
-    private static final float NOW_SIZE = 4;
-    private static final float TARGET_SIZE = 6;
+    /** The minimal screen: the two items, big. */
+    private static final float NOW_X = 11.5F;
+    private static final float TARGET_X = 4.5F;
+    private static final float ITEMS_Y = 25;
+    private static final float ITEM_SIZE = 5.5F;
+    /** The info screen: smaller items, with room for the job's details. */
+    private static final float INFO_NOW_X = 12.75F;
+    private static final float INFO_TARGET_X = 7.5F;
+    private static final float INFO_ITEMS_Y = 26.5F;
+    private static final float INFO_ITEM_SIZE = 4;
+    /** Glyphs, bars and frames sit between the glass and the items. */
+    private static final float TEXT_Z = 0.98F / 16;
+    /** One pixel of the screen's 64x64 texture, in model pixels. */
+    private static final float DOT = 0.25F;
+    private static final float GLYPH_W = 3 * DOT;
+    private static final float GLYPH_H = 5 * DOT;
+    /** Glyphs are 4 screen pixels apart. */
+    private static final float ADVANCE = 4 * DOT;
+    private static final float ARROW_X = 10.5F;
+    private static final float ARROW_Y = 27;
+    /** Amount and percent end at the same right edge. */
+    private static final float RIGHT_EDGE = 1.5F;
+    private static final float AMOUNT_Y = 28;
+    private static final float PERCENT_Y = 26.25F;
+    private static final float RUNNING_X = 12.25F;
+    private static final float RUNNING_Y = 23.25F;
+    private static final float BAR_X = 7;
+    private static final float BAR_STEP = 3 * DOT;
+    private static final float BAR_W = 2 * DOT;
+    private static final float BAR_TOP = 23.25F;
+    private static final float BAR_BOTTOM = 22;
+    private static final int TEXT = 0xFFCDD6F4;
+    private static final int GREEN = 0xFFA6E3A1;
+    private static final int YELLOW = 0xFFF9E2AF;
+    private static final int RED = 0xFFF38BA8;
+    private static final int TEAL = 0xFF94E2D5;
+    private static final int TEAL_DARK = 0xFF5E9E95;
+    private static final int UNLIT = 0xFF313244;
+    private static final int FLUID_FRAME = 0xFF45475A;
+    /** The glyph sheet's cells. */
+    private static final int SHEET = 32;
+    private static final int CELL_W = 4;
+    private static final int CELL_H = 6;
+    private static final int CELLS_PER_ROW = 8;
+    private static final Identifier GLYPHS = Jasm.id("advanced_crafting_server_screen_digits");
     /** How deep the flat items on the screen are. */
     private static final float FLAT = 0.01F;
 
@@ -121,6 +167,10 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
         item(state.now, server.shownNow(), level, seed + 1);
         state.targetFluid = fluid(server.shownTarget());
         state.nowFluid = fluid(server.shownNow());
+        state.mode = server.shownMode();
+        state.info = server.shownTarget().isEmpty() ? null : server.shownInfo();
+        state.targetIsFluid = state.targetFluid != null;
+        state.parallel = server.shownParallel();
         // Both halves are solid, so their own spots are dark: light each half's parts from the block in front of it, and
         // each face's fans from the brighter of the two blocks beside that face.
         if (level != null) {
@@ -186,19 +236,118 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
                 draw(models.getStandaloneModel(FANS.get(i)), poseStack, collector, state.fanLight[i]);
             }
         }
-        screenItem(state.target, state.targetFluid, TARGET_X, TARGET_SIZE, poseStack, collector);
-        screenItem(state.now, state.nowFluid, NOW_X, NOW_SIZE, poseStack, collector);
+        boolean info = state.mode == ServerScreenMode.INFO;
+        float y = info ? INFO_ITEMS_Y : ITEMS_Y;
+        float size = info ? INFO_ITEM_SIZE : ITEM_SIZE;
+        float targetX = info ? INFO_TARGET_X : TARGET_X;
+        screenItem(state.target, state.targetFluid, targetX, y, size, poseStack, collector);
+        screenItem(state.now, state.nowFluid, info ? INFO_NOW_X : NOW_X, y, size, poseStack, collector);
+        boolean frame = state.targetFluid != null;
+        AdvancedCraftingServerBlockEntity.Info details = info ? state.info : null;
+        if (frame || details != null) {
+            TextureAtlasSprite glyphs = Minecraft.getInstance().getAtlasManager().get(Sheets.BLOCKS_MAPPER.apply(GLYPHS));
+            collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TextureAtlas.LOCATION_BLOCKS), (pose, buffer) -> {
+                Glyphs out = new Glyphs(pose, buffer, glyphs);
+                if (frame) {
+                    // a one-pixel outline round the fluid's square
+                    float half = size / 2 + DOT;
+                    out.outline(targetX + half, targetX - half, y + half, y - half, FLUID_FRAME);
+                }
+                if (details != null) {
+                    details(out, details, state);
+                }
+            });
+        }
         poseStack.popPose();
     }
 
+    /** The info screen's arrow, amount, percent, crafts running and core bar. */
+    private static void details(Glyphs out, AdvancedCraftingServerBlockEntity.Info info, State state) {
+        int status = switch (info.status()) {
+            case RUNNING -> GREEN;
+            case PAUSED -> YELLOW;
+            case STOPPED -> RED;
+        };
+        out.text(">", ARROW_X, ARROW_Y, status);
+        out.textRight(ServerScreenText.amount(info.amount(), state.targetIsFluid), RIGHT_EDGE, AMOUNT_Y, TEXT);
+        out.textRight(ServerScreenText.percent(info.percent()), RIGHT_EDGE, PERCENT_Y, status);
+        out.text(ServerScreenText.running(info.running(), state.parallel), RUNNING_X, RUNNING_Y, TEXT);
+        int lit = ServerScreenText.litSegments(info.running(), state.parallel);
+        for (int i = 0; i < ServerScreenText.SEGMENTS; i++) {
+            float left = BAR_X - i * BAR_STEP;
+            if (i < lit) {
+                out.fill(left, left - BAR_W, BAR_TOP, BAR_BOTTOM + DOT, TEAL);
+                out.fill(left, left - BAR_W, BAR_BOTTOM + DOT, BAR_BOTTOM, TEAL_DARK);
+            } else {
+                out.fill(left, left - BAR_W, BAR_TOP, BAR_BOTTOM, UNLIT);
+            }
+        }
+    }
+
+    /** Draws the glyph sheet's characters and solid quads, flat on the screen and facing out of the front, full bright. */
+    private record Glyphs(PoseStack.Pose pose, VertexConsumer buffer, TextureAtlasSprite sheet) {
+        /** {@code left} is the glyphs' left edge as seen from the front. */
+        void text(String text, float left, float top, int color) {
+            for (int i = 0; i < text.length(); i++) {
+                int glyph = ServerScreenText.glyph(text.charAt(i));
+                if (glyph < 0) continue;
+                float u = (glyph % CELLS_PER_ROW) * CELL_W;
+                float v = (glyph / CELLS_PER_ROW) * CELL_H;
+                float x = left - i * ADVANCE;
+                quad(x, x - GLYPH_W, top, top - GLYPH_H, u(u), u(u + 3), v(v), v(v + 5), color);
+            }
+        }
+
+        /** {@code right} is the last glyph's right edge as seen from the front. */
+        void textRight(String text, float right, float top, int color) {
+            text(text, right + GLYPH_W + (text.length() - 1) * ADVANCE, top, color);
+        }
+
+        /** A solid quad from the viewer's {@code left} to {@code right}. */
+        void fill(float left, float right, float top, float bottom, int color) {
+            int solid = ServerScreenText.solid();
+            float u = u((solid % CELLS_PER_ROW) * CELL_W + 1.5F);
+            float v = v((solid / CELLS_PER_ROW) * CELL_H + 2.5F);
+            quad(left, right, top, bottom, u, u, v, v, color);
+        }
+
+        void outline(float left, float right, float top, float bottom, int color) {
+            fill(left, right, top, top - DOT, color);
+            fill(left, right, bottom + DOT, bottom, color);
+            fill(left, left - DOT, top - DOT, bottom + DOT, color);
+            fill(right + DOT, right, top - DOT, bottom + DOT, color);
+        }
+
+        private float u(float pixel) {
+            return sheet.getU(pixel / SHEET);
+        }
+
+        private float v(float pixel) {
+            return sheet.getV(pixel / SHEET);
+        }
+
+        /** Model pixels; the texture's left edge goes on the viewer's left, which is the larger x. */
+        private void quad(float left, float right, float top, float bottom, float u0, float u1, float v0, float v1, int color) {
+            corner(left / 16, bottom / 16, u0, v1, color);
+            corner(right / 16, bottom / 16, u1, v1, color);
+            corner(right / 16, top / 16, u1, v0, color);
+            corner(left / 16, top / 16, u0, v0, color);
+        }
+
+        private void corner(float x, float y, float u, float v, int color) {
+            buffer.addVertex(pose, x, y, TEXT_Z).setColor(color).setUv(u, v).setOverlay(OverlayTexture.NO_OVERLAY)
+                    .setLight(LightCoordsUtil.FULL_BRIGHT).setNormal(pose, 0, 0, -1);
+        }
+    }
+
     /** One item (or fluid) on the screen, flat like an icon and facing out of the front, at full brightness. */
-    private static void screenItem(ItemStackRenderState item, @Nullable ScreenFluid fluid, float x, float size, PoseStack poseStack,
+    private static void screenItem(ItemStackRenderState item, @Nullable ScreenFluid fluid, float x, float y, float size, PoseStack poseStack,
             SubmitNodeCollector collector) {
         if (item.isEmpty() && fluid == null) {
             return;
         }
         poseStack.pushPose();
-        poseStack.translate(x / 16, ITEMS_Y / 16, ITEM_Z);
+        poseStack.translate(x / 16, y / 16, ITEM_Z);
         poseStack.mulPose(Axis.YP.rotationDegrees(180));
         poseStack.scale(size / 16, size / 16, FLAT);
         if (fluid != null) {
@@ -246,5 +395,10 @@ public class AdvancedCraftingServerRenderer implements BlockEntityRenderer<Advan
         final ItemStackRenderState now = new ItemStackRenderState();
         @Nullable ScreenFluid targetFluid;
         @Nullable ScreenFluid nowFluid;
+        ServerScreenMode mode = ServerScreenMode.MINIMAL;
+        AdvancedCraftingServerBlockEntity.@Nullable Info info;
+        boolean targetIsFluid;
+        /** Crafts the installed Processors run at once. */
+        int parallel;
     }
 }

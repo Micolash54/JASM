@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import dev.micolash.jasm.autocraft.PauseReason;
+import dev.micolash.jasm.autocraft.ServerScreenMode;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.registry.JasmBlocks;
@@ -36,7 +37,8 @@ import org.jspecify.annotations.Nullable;
  * The Crafting Server screen: Processors and Storage Modules in a side panel on the left; in
  * the main panel, the job (what it makes, how far along, what holds it up, and what is crafting right now) with buttons to
  * cancel it or collect its results, and the player's inventory. Opened from a Crafting Deck, it also has a button back to the Deck.
- * Keys on the right light up the machines the job waits on, rename the server, and make it a priority server.
+ * Keys on the right light up the machines the job waits on, rename the server, and make it a priority server; on the
+ * Advanced Crafting Server another switches what its front screen shows.
  */
 public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int MAIN_X = CraftingServerMenu.MAIN_X;
@@ -47,6 +49,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final JasmButton.Icon FIND_ICON = new JasmButton.Icon(Jasm.id("icon/find_machine"), 11, 11);
     private static final JasmButton.Icon RENAME_ICON = new JasmButton.Icon(Jasm.id("icon/rename"), 12, 12);
     private static final JasmButton.Icon PRIORITY_ICON = new JasmButton.Icon(Jasm.id("icon/priority"), 12, 12);
+    private static final JasmButton.Icon SCREEN_MODE_ICON = new JasmButton.Icon(Jasm.id("icon/screen_mode"), 12, 12);
     private static final int KEYS = 3;
     private static final int HEIGHT = CraftingServerMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 50;
@@ -75,8 +78,12 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private JasmButton find;
     private JasmButton renameKey;
     private JasmButton priorityKey;
+    /** The front screen key; only the Advanced Crafting Server has one. */
+    private @Nullable JasmButton screenModeKey;
     /** The priority the key's tooltip was made for. */
     private @Nullable Boolean tipPriority;
+    /** The front screen mode the key's tooltip was made for. */
+    private @Nullable ServerScreenMode tipScreenMode;
     private @Nullable RenameWindow renameWindow;
     /** The name as last set from this screen, empty for the block's own; the title follows it. */
     private String label;
@@ -122,6 +129,13 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_PRIORITY),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(2), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         tipPriority = null;
+        screenModeKey = null;
+        tipScreenMode = null;
+        if (menu.hasFrontScreen()) {
+            screenModeKey = addRenderableWidget(JasmButton.icon(() -> SCREEN_MODE_ICON, Component.translatable("screen.jasm.server.display_minimal"),
+                    b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_SCREEN_MODE),
+                    leftPos + KEY_X, topPos + JasmGui.sideKeyY(KEYS), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        }
         if (renameWindow == null) {
             renameWindow = new RenameWindow(font, Component.translatable("screen.jasm.server.name_hint"), name -> {
                 ClientPacketDistributor.sendToServer(new CraftPayloads.ServerName(menu.containerId, name));
@@ -144,6 +158,12 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
                 .append(Component.translatable("screen.jasm.server.priority_hint").withStyle(ChatFormatting.WHITE)));
     }
 
+    /** The front screen key's tooltip: what the screen shows now, then what the key does. */
+    private static Tooltip screenModeTooltip(ServerScreenMode mode) {
+        return Tooltip.create(Component.translatable(mode == ServerScreenMode.INFO ? "screen.jasm.server.display_info" : "screen.jasm.server.display_minimal")
+                .append("\n").append(Component.translatable("screen.jasm.server.display_hint").withStyle(ChatFormatting.GRAY)));
+    }
+
     /** Where the rename window is while open, so JEI's lists stay clear of it. */
     public List<Rect2i> extraAreas() {
         List<Rect2i> areas = new ArrayList<>();
@@ -158,7 +178,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int y = topPos;
         if (frame == null)
             frame = JasmFrame.rounded(new int[]{0, 0, CraftingServerMenu.SIDE_WIDTH, menu.sideHeight()},
-                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight}, JasmGui.sideStrip(KEY_X, KEYS));
+                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight}, JasmGui.sideStrip(KEY_X, menu.hasFrontScreen() ? KEYS + 1 : KEYS));
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             if (slot.index != menu.shownSlot()) {
@@ -188,6 +208,15 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         if (!Optional.ofNullable(tipPriority).equals(Optional.of(menu.priority()))) {
             tipPriority = menu.priority();
             priorityKey.setTooltip(priorityTooltip(tipPriority));
+        }
+        if (screenModeKey != null) {
+            // Pressed in while the screen shows the job's details.
+            ServerScreenMode mode = menu.screenMode();
+            screenModeKey.setLatched(mode == ServerScreenMode.INFO);
+            if (mode != tipScreenMode) {
+                tipScreenMode = mode;
+                screenModeKey.setTooltip(screenModeTooltip(mode));
+            }
         }
         CraftingJob.Phase phase = menu.phase();
         cancel.active = menu.canControlJob() && phase == CraftingJob.Phase.CRAFTING;

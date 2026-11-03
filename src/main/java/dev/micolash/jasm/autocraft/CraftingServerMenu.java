@@ -66,6 +66,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     public static final int BUTTON_FIND = 3;
     /** Turns the server's priority for ports with a Crafting Upgrade on or off. */
     public static final int BUTTON_PRIORITY = 4;
+    /** Switches what an Advanced Crafting Server's front screen shows. */
+    public static final int BUTTON_SCREEN_MODE = 5;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -81,7 +83,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     static final int DATA_AMOUNT_HIGH = 11;
     static final int DATA_DRAIN = 12;
     static final int DATA_PRIORITY = 13;
-    static final int DATA_COUNT = 14;
+    static final int DATA_SCREEN_MODE = 14;
+    static final int DATA_COUNT = 15;
 
     private static final Identifier EMPTY_PROCESSOR = Jasm.id("container/empty_processor");
     private static final Identifier EMPTY_MODULE = Jasm.id("container/empty_module");
@@ -301,6 +304,16 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         return data.get(DATA_PRIORITY) != 0;
     }
 
+    /** Whether this is an Advanced Crafting Server's screen, the one with a front screen. */
+    public boolean hasFrontScreen() {
+        return getType() == JasmMenus.ADVANCED_CRAFTING_SERVER.get();
+    }
+
+    /** What the Advanced Crafting Server's front screen shows. */
+    public ServerScreenMode screenMode() {
+        return ServerScreenMode.of(data.get(DATA_SCREEN_MODE));
+    }
+
     /** Server side: names the server, if this is the player's open screen, they may use the server, and the name is valid. */
     public boolean rename(Player player, String name) {
         if (server == null || player.containerMenu != this || !stillValid(player) || !MachineAccess.canUse(server, player)
@@ -363,6 +376,12 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         if (id == BUTTON_PRIORITY) {
             if (MachineAccess.canUse(server, serverPlayer)) {
                 server.setPriority(!server.priority());
+            }
+            return true;
+        }
+        if (id == BUTTON_SCREEN_MODE) {
+            if (server instanceof AdvancedCraftingServerBlockEntity advanced && MachineAccess.canUse(server, serverPlayer)) {
+                advanced.setScreenMode(advanced.screenMode().next());
             }
             return true;
         }
