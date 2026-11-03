@@ -14,6 +14,7 @@ import dev.micolash.jasm.deck.DeckBucket;
 import dev.micolash.jasm.deck.DeckWafers;
 import dev.micolash.jasm.dock.DockedDeck;
 import dev.micolash.jasm.network.MachineOwner;
+import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.StorageSettings;
 import dev.micolash.jasm.relay.RelayContents;
@@ -29,7 +30,9 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.Unit;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -171,6 +174,14 @@ public final class JasmComponents {
     /** A mined Access Port's machine type, recipes, Blocking Mode and Redstone mode, taken back when it is placed again. */
     public static final Supplier<DataComponentType<PortSettings>> PORT_SETTINGS = COMPONENTS.registerComponentType(
             "port_settings", b -> b.persistent(PortSettings.CODEC).networkSynchronized(PortSettings.STREAM_CODEC));
+
+    /** The Crafting Server a Crafting Deck's requests go to, picked in its request window; none for any free server. */
+    public static final Supplier<DataComponentType<NetworkNode>> CRAFT_SERVER = COMPONENTS.registerComponentType(
+            "craft_server", b -> b.persistent(NetworkNode.CODEC).networkSynchronized(NetworkNode.STREAM_CODEC));
+
+    /** A mined Crafting Server that was a priority server, and is one again when placed. */
+    public static final Supplier<DataComponentType<Unit>> SERVER_PRIORITY = COMPONENTS.registerComponentType(
+            "server_priority", b -> b.persistent(Unit.CODEC).networkSynchronized(StreamCodec.unit(Unit.INSTANCE)));
 
     private JasmComponents() {}
 }

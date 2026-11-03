@@ -9,9 +9,11 @@ import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
 import dev.micolash.jasm.network.NetworkNode;
+import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -24,7 +26,10 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
@@ -35,6 +40,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The window a Crafting Deck opens to request a craft, laid over the whole main panel: how many, which server runs
  * it, and (worked out by the server) a scrollable list of what it makes, takes, crafts on the way and is missing.
+ * The server is picked from a drop-down: any free server, or one of them by name. The Deck keeps the pick for its
+ * next requests.
  */
 final class CraftRequestWindow {
     /** Darker than the Deck underneath, so the window stands out, but lighter than the list's frame so its edges show. */
@@ -46,6 +53,14 @@ final class CraftRequestWindow {
     private static final int HANDLE_HEIGHT = 15;
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
     private static final JasmButton.Icon MAX = new JasmButton.Icon(Jasm.id("icon/max_craft"), 7, 7);
+    private static final Identifier DROP = Jasm.id("icon/triangle_down");
+    private static final Identifier CHECK = Jasm.id("icon/check");
+    /** The server drop-down's box, from the window's left and top; it reaches the window's right edge less this. */
+    private static final int BOX_X = 58;
+    private static final int BOX_Y = 42;
+    private static final int BOX_H = 17;
+    private static final int BOX_RIGHT = 7;
+    private static final int DROP_ROW = 13;
     /** Ticks between two asks from this window: a little more than the server's own limit, so none is turned away. */
     private static final int ASK_GAP = CraftNetwork.PLAN_EVERY + 1;
     /** Ticks to wait for the Max answer before giving up on it. */
@@ -62,11 +77,14 @@ final class CraftRequestWindow {
     private AmountMath.Result parsed = AmountMath.evaluate("");
     private final List<Placed> buttons = new ArrayList<>();
     private final Button craft;
-    private final Button next;
     private final Button view;
     private final CraftTreeView treeView = new CraftTreeView();
     private @Nullable ItemResource target;
-    private @Nullable NetworkNode wanted;
+    /** The server picked in the drop-down, as the Deck keeps it; null for any free server. */
+    private @Nullable NetworkNode picked;
+    private boolean dropOpen;
+    /** The first row the open drop-down shows. */
+    private int dropScroll;
     private int x;
     private int y;
     private int width;
@@ -112,7 +130,6 @@ final class CraftRequestWindow {
         max.setTooltip(Tooltip.create(Component.empty().append(maxName).append("\n")
                 .append(Component.translatable("screen.jasm.craft.max_hint").withStyle(ChatFormatting.GRAY))));
         place(max, 144, 24, false);
-        next = place(JasmButton.text(Component.translatable("screen.jasm.craft.next_server"), b -> nextServer(), 0, 0, 34, 17), 41, 42, true);
         craft = place(JasmButton.text(Component.translatable("screen.jasm.craft.start"), b -> start(), 0, 0, 44, 17), 51, -23, true);
         view = place(JasmButton.text(viewLabel(), b -> toggleView(), 0, 0, 30, 17), 37, 24, true);
     }
@@ -147,7 +164,8 @@ final class CraftRequestWindow {
 
     void open(ItemResource item, long count, int left, int top, int w, int h) {
         target = item;
-        wanted = null;
+        picked = menu.deck().get(JasmComponents.CRAFT_SERVER.get());
+        dropOpen = false;
         x = left;
         y = top;
         width = w;
@@ -162,6 +180,7 @@ final class CraftRequestWindow {
 
     void close() {
         target = null;
+        dropOpen = false;
         amount.setFocused(false);
         forgetMost();
     }
@@ -251,7 +270,7 @@ final class CraftRequestWindow {
     private void ask() {
         if (target != null && parsed.ok()) {
             askedAt = ticks;
-            ClientPacketDistributor.sendToServer(new CraftPayloads.Ask(menu.containerId, target, amount(), Optional.ofNullable(wanted), treeMode));
+            ClientPacketDistributor.sendToServer(new CraftPayloads.Ask(menu.containerId, target, amount(), Optional.ofNullable(picked), treeMode));
         }
     }
 
@@ -262,21 +281,28 @@ final class CraftRequestWindow {
         return fits && (!treeMode || answer.tree().isPresent()) ? answer : null;
     }
 
-    private void nextServer() {
-        CraftPayloads.Answer answer = answer();
-        if (answer == null || answer.servers().isEmpty()) {
-            return;
+    /** The picked server among those the answer lists, or null; a picked server no longer listed is let go, as on the server. */
+    private CraftPayloads.@Nullable ServerView pickedView(CraftPayloads.@Nullable Answer answer) {
+        if (picked == null || answer == null) {
+            return null;
         }
-        List<CraftPayloads.ServerView> servers = answer.servers();
-        int from = Math.max(0, answer.chosen());
-        for (int i = 1; i <= servers.size(); i++) {
-            CraftPayloads.ServerView option = servers.get((from + i) % servers.size());
-            if (!option.busy() && option.fits()) {
-                wanted = option.pos();
-                ask();
-                return;
+        for (CraftPayloads.ServerView server : answer.servers()) {
+            if (server.pos().equals(picked)) {
+                return server;
             }
         }
+        picked = null;
+        return null;
+    }
+
+    /** Picks {@code server} (null: any free one) and asks for the plan again, as soon as the server takes another ask. */
+    private void pick(@Nullable NetworkNode server) {
+        dropOpen = false;
+        if (Objects.equals(server, picked)) {
+            return;
+        }
+        picked = server;
+        askIn = Math.max(1, ASK_GAP - (ticks - askedAt));
     }
 
     private void start() {
@@ -342,7 +368,18 @@ final class CraftRequestWindow {
         }
         CraftPayloads.Answer answer = answer();
         craft.active = answer != null && answer.problem().isEmpty();
-        next.visible = answer != null && answer.servers().stream().filter(s -> !s.busy() && s.fits()).count() > 1;
+        CraftPayloads.ServerView pickedServer = pickedView(answer);
+        if (dropOpen && answer == null) {
+            dropOpen = false;
+        }
+        // Under the open drop-down nothing else lights up or shows a tooltip.
+        boolean underDrop = dropOpen && inDrop(answer, mouseX, mouseY);
+        int realMouseX = mouseX;
+        int realMouseY = mouseY;
+        if (underDrop) {
+            mouseX = -1000;
+            mouseY = -1000;
+        }
         for (Placed placed : buttons) {
             placed.button().setPosition(placed.fromRight() ? x + width - placed.x() : x + placed.x(),
                     placed.y() < 0 ? y + height + placed.y() : y + placed.y());
@@ -361,7 +398,9 @@ final class CraftRequestWindow {
         for (Placed placed : buttons) {
             placed.button().extractRenderState(graphics, mouseX, mouseY, a);
         }
-        graphics.text(font, trim(serverLine(answer).getString(), next.visible ? width - 56 : width - 14), x + 7, y + 47, JasmGui.SUBTEXT, false);
+        graphics.text(font, trim(Component.translatable("screen.jasm.craft.server_label").getString(), BOX_X - 9), x + 7, y + 47,
+                JasmGui.SUBTEXT, false);
+        drawBox(graphics, answer, pickedServer, mouseX, mouseY);
 
         int listX = x + 6;
         int listY = y + LIST_Y;
@@ -408,6 +447,175 @@ final class CraftRequestWindow {
         if (!hovered.isEmpty()) {
             graphics.setTooltipForNextFrame(font, hovered.getHoverName(), mouseX, mouseY);
         }
+        if (dropOpen && answer != null) {
+            graphics.nextStratum();
+            drawDrop(graphics, answer, realMouseX, realMouseY);
+        }
+    }
+
+    // --- the server drop-down ---
+
+    private int boxX() {
+        return x + BOX_X;
+    }
+
+    private int boxY() {
+        return y + BOX_Y;
+    }
+
+    private int boxWidth() {
+        return width - BOX_RIGHT - BOX_X;
+    }
+
+    private boolean onBox(double mouseX, double mouseY) {
+        return mouseX >= boxX() && mouseX < boxX() + boxWidth() && mouseY >= boxY() && mouseY < boxY() + BOX_H;
+    }
+
+    /** Rows of the open drop-down: any free server, then every server. */
+    private static int dropRows(CraftPayloads.Answer answer) {
+        return answer.servers().size() + 1;
+    }
+
+    /** Rows shown at once: as many as fit under the box inside the window. */
+    private int dropShown(CraftPayloads.Answer answer) {
+        int room = (y + height - 6 - (boxY() + BOX_H)) / DROP_ROW;
+        return Math.max(1, Math.min(dropRows(answer), room));
+    }
+
+    private int dropHeight(CraftPayloads.Answer answer) {
+        return dropShown(answer) * DROP_ROW + 2;
+    }
+
+    private boolean inDrop(CraftPayloads.@Nullable Answer answer, double mouseX, double mouseY) {
+        return answer != null && mouseX >= boxX() && mouseX < boxX() + boxWidth() && mouseY >= boxY() + BOX_H
+                && mouseY < boxY() + BOX_H + dropHeight(answer);
+    }
+
+    /** The drop-down row under the mouse (0 is any free server), or -1. */
+    private int dropRowAt(CraftPayloads.@Nullable Answer answer, double mouseX, double mouseY) {
+        if (!inDrop(answer, mouseX, mouseY)) {
+            return -1;
+        }
+        int row = (int) (mouseY - (boxY() + BOX_H + 1)) / DROP_ROW;
+        return row >= 0 && row < dropShown(answer) ? dropScroll + row : -1;
+    }
+
+    /** Busy and too-small servers stay in the list, greyed, so the player sees why they can't take the job. */
+    private static boolean pickable(CraftPayloads.ServerView server) {
+        return !server.busy() && server.fits();
+    }
+
+    /** The closed box: the picked server's name, or which server "any free" goes to. */
+    private void drawBox(GuiGraphicsExtractor graphics, CraftPayloads.@Nullable Answer answer, CraftPayloads.@Nullable ServerView pickedServer,
+            int mouseX, int mouseY) {
+        int bx = boxX();
+        int by = boxY();
+        int bw = boxWidth();
+        JasmGui.inset(graphics, bx, by, bw, BOX_H);
+        if (dropOpen || onBox(mouseX, mouseY)) {
+            graphics.fill(bx + 1, by + 1, bx + bw - 1, by + BOX_H - 1, JasmGui.HOVER);
+        }
+        Component shown;
+        int color = JasmGui.TEXT;
+        if (answer == null) {
+            shown = Component.translatable("screen.jasm.craft.working");
+            color = JasmGui.MUTED;
+        } else if (pickedServer != null) {
+            shown = pickedServer.name();
+        } else if (answer.chosen() >= 0) {
+            shown = Component.translatable("screen.jasm.craft.server_any_chosen", answer.servers().get(answer.chosen()).name());
+        } else {
+            shown = Component.translatable("screen.jasm.craft.server_any");
+        }
+        graphics.text(font, trim(shown.getString(), bw - 18), bx + 4, by + 5, color, false);
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, DROP, bx + bw - 11, by + 7, 6, 4);
+        if (!dropOpen && onBox(mouseX, mouseY)) {
+            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.craft.server_hint"), mouseX, mouseY);
+        }
+    }
+
+    private void drawDrop(GuiGraphicsExtractor graphics, CraftPayloads.Answer answer, int mouseX, int mouseY) {
+        int dx = boxX();
+        int dy = boxY() + BOX_H;
+        int dw = boxWidth();
+        int shownRows = dropShown(answer);
+        dropScroll = Math.clamp(dropScroll, 0, dropRows(answer) - shownRows);
+        graphics.fill(dx, dy, dx + dw, dy + dropHeight(answer), JasmGui.SELECTED);
+        graphics.fill(dx + 1, dy, dx + dw - 1, dy + dropHeight(answer) - 1, BACKGROUND);
+        int hovered = dropRowAt(answer, mouseX, mouseY);
+        for (int i = 0; i < shownRows; i++) {
+            int row = dropScroll + i;
+            int ry = dy + 1 + i * DROP_ROW;
+            boolean selected = row == 0 ? picked == null : answer.servers().get(row - 1).pos().equals(picked);
+            boolean usable = row == 0 || pickable(answer.servers().get(row - 1));
+            if (selected) {
+                graphics.fill(dx + 1, ry, dx + dw - 1, ry + DROP_ROW, JasmGui.SELECTED);
+            }
+            if (row == hovered && usable) {
+                graphics.fill(dx + 1, ry, dx + dw - 1, ry + DROP_ROW, JasmGui.HOVER);
+            }
+            if (row == 0) {
+                graphics.text(font, trim(Component.translatable("screen.jasm.craft.server_any").getString(), dw - 20), dx + 4, ry + 3,
+                        JasmGui.TEXT, false);
+                if (selected) {
+                    graphics.blitSprite(RenderPipelines.GUI_TEXTURED, CHECK, dx + dw - 13, ry + 3, 9, 7);
+                }
+                continue;
+            }
+            CraftPayloads.ServerView server = answer.servers().get(row - 1);
+            Component status;
+            int statusColor;
+            if (server.busy()) {
+                status = Component.translatable("screen.jasm.craft.server_busy");
+                statusColor = JasmGui.WARN;
+            } else if (!server.fits()) {
+                status = Component.translatable("screen.jasm.craft.server_too_small");
+                statusColor = JasmGui.BAD;
+            } else {
+                status = Component.translatable("screen.jasm.craft.server_free", GridEntries.abbreviate(server.memory()), server.parallel());
+                statusColor = JasmGui.SUBTEXT;
+            }
+            String statusText = trim(status.getString(), dw / 2);
+            int statusWidth = font.width(statusText);
+            graphics.text(font, statusText, dx + dw - 4 - statusWidth, ry + 3, statusColor, false);
+            graphics.text(font, trim(server.name().getString(), dw - 14 - statusWidth), dx + 4, ry + 3,
+                    usable ? JasmGui.TEXT : JasmGui.MUTED, false);
+        }
+        if (dropRows(answer) > shownRows) {
+            // a thin bar on the right shows where the list is scrolled to
+            int track = dropHeight(answer) - 2;
+            int handle = Math.max(4, track * shownRows / dropRows(answer));
+            int offset = Math.round((track - handle) * dropScroll / (float) (dropRows(answer) - shownRows));
+            graphics.fill(dx + dw - 3, dy + 1 + offset, dx + dw - 1, dy + 1 + offset + handle, JasmGui.MUTED);
+        }
+        if (hovered >= 1) {
+            CraftPayloads.ServerView server = answer.servers().get(hovered - 1);
+            List<Component> tip = new ArrayList<>();
+            tip.add(server.name());
+            tip.add(Component.translatable("screen.jasm.craft.server_size", GridEntries.abbreviate(server.memory()), server.parallel())
+                    .withColor(JasmGui.SUBTEXT & 0xFFFFFF));
+            BlockPos at = server.pos().pos();
+            tip.add(Component.translatable("screen.jasm.craft.server_where", at.getX(), at.getY(), at.getZ()).withColor(JasmGui.MUTED & 0xFFFFFF));
+            if (Minecraft.getInstance().level != null && !server.pos().dimension().equals(Minecraft.getInstance().level.dimension())) {
+                tip.add(Component.literal(server.pos().dimension().identifier().toString()).withColor(JasmGui.MUTED & 0xFFFFFF));
+            }
+            graphics.setComponentTooltipForNextFrame(font, tip, mouseX, mouseY);
+        }
+    }
+
+    /** Clicks while the drop-down is open: a row picks (greyed rows do nothing), anywhere else shuts it. */
+    private boolean dropClicked(CraftPayloads.@Nullable Answer answer, double mouseX, double mouseY) {
+        int row = dropRowAt(answer, mouseX, mouseY);
+        if (row < 0) {
+            dropOpen = false;
+            return true;
+        }
+        if (row == 0) {
+            pick(null);
+        } else if (pickable(answer.servers().get(row - 1))) {
+            pick(answer.servers().get(row - 1).pos());
+        }
+        return true;
     }
 
     /** The tree in the list area, or why there is none: still working, too big, or a plan that can't be made. */
@@ -438,14 +646,6 @@ final class CraftRequestWindow {
         return max == 0 ? 0 : Math.round(travel * scroll / (float) max);
     }
 
-    private Component serverLine(CraftPayloads.@Nullable Answer answer) {
-        if (answer == null || answer.chosen() < 0) {
-            return Component.translatable("screen.jasm.craft.server_none");
-        }
-        CraftPayloads.ServerView server = answer.servers().get(answer.chosen());
-        return Component.translatable("screen.jasm.craft.server", GridEntries.abbreviate(server.memory()), server.parallel());
-    }
-
     private String trim(String text, int room) {
         return font.width(text) <= room ? text : font.plainSubstrByWidth(text, room - font.width("...")) + "...";
     }
@@ -453,6 +653,15 @@ final class CraftRequestWindow {
     // --- input ---
 
     boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (dropOpen) {
+            return dropClicked(answer(), event.x(), event.y());
+        }
+        if (onBox(event.x(), event.y()) && answer() != null) {
+            dropOpen = true;
+            dropScroll = 0;
+            amount.setFocused(false);
+            return true;
+        }
         int barX = x + 6 + listWidth() + SCROLL_GAP;
         if (treeMode) {
             if (treeView.mouseClicked(event, x + 6, y + LIST_Y, width - 12, listHeight())) {
@@ -502,6 +711,10 @@ final class CraftRequestWindow {
     }
 
     boolean mouseScrolled(double scrollX, double scrollY) {
+        if (dropOpen) {
+            dropScroll -= (int) Math.signum(scrollY);
+            return true;
+        }
         if (treeMode) {
             return treeView.mouseScrolled(scrollX, scrollY, Minecraft.getInstance().hasShiftDown());
         }
@@ -511,6 +724,10 @@ final class CraftRequestWindow {
 
     /** Keys go to the amount box while it has focus; Enter starts the craft, Escape closes the window. */
     boolean keyPressed(KeyEvent event) {
+        if (event.isEscape() && dropOpen) {
+            dropOpen = false;
+            return true;
+        }
         if (event.isEscape()) {
             close();
             return true;

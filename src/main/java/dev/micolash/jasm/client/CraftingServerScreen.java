@@ -1,6 +1,7 @@
 package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.CraftingJob;
 import dev.micolash.jasm.autocraft.CraftingServerMenu;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
@@ -8,25 +9,34 @@ import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import dev.micolash.jasm.autocraft.PauseReason;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Crafting Server screen: Processors and Storage Modules in a side panel on the left; in
  * the main panel, the job (what it makes, how far along, what holds it up, and what is crafting right now) with buttons to
  * cancel it or collect its results, and the player's inventory. Opened from a Crafting Deck, it also has a button back to the Deck.
+ * Keys on the right light up the machines the job waits on, rename the server, and make it a priority server.
  */
 public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int MAIN_X = CraftingServerMenu.MAIN_X;
@@ -35,6 +45,9 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private static final int KEY_X = MAIN_X + MAIN_WIDTH;
     private static final int WIDTH = KEY_X + JasmGui.SIDE_KEY_WIDTH + 3;
     private static final JasmButton.Icon FIND_ICON = new JasmButton.Icon(Jasm.id("icon/find_machine"), 11, 11);
+    private static final JasmButton.Icon RENAME_ICON = new JasmButton.Icon(Jasm.id("icon/rename"), 12, 12);
+    private static final JasmButton.Icon PRIORITY_ICON = new JasmButton.Icon(Jasm.id("icon/priority"), 12, 12);
+    private static final int KEYS = 3;
     private static final int HEIGHT = CraftingServerMenu.INVENTORY_Y + 58 + 18 + 6;
     private static final int BAR_WIDTH = 50;
     private static final int BAR_X = MAIN_X + MAIN_WIDTH - 8 - HELP_ROOM - BAR_WIDTH;
@@ -60,6 +73,14 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     private Button collect;
     private Button back;
     private JasmButton find;
+    private JasmButton renameKey;
+    private JasmButton priorityKey;
+    /** The priority the key's tooltip was made for. */
+    private @Nullable Boolean tipPriority;
+    private @Nullable RenameWindow renameWindow;
+    /** The name as last set from this screen, empty for the block's own; the title follows it. */
+    private String label;
+    private Component shownTitle;
     private JasmFrame frame;
     private int scroll;
     private boolean draggingHandle;
@@ -69,6 +90,9 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         this.titleLabelX = MAIN_X + 8;
         this.inventoryLabelX = MAIN_X + 8;
         this.inventoryLabelY = CraftingServerMenu.INVENTORY_Y - 10;
+        // The title is the server's own name unless the player gave it one.
+        this.label = title.getContents() instanceof TranslatableContents ? "" : title.getString();
+        this.shownTitle = title;
     }
 
     @Override
@@ -90,6 +114,43 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_FIND),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(0), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         find.setTooltip(Tooltip.create(findLabel));
+        Component renameLabel = Component.translatable("screen.jasm.server.rename");
+        renameKey = addRenderableWidget(JasmButton.icon(() -> RENAME_ICON, renameLabel, b -> toggleRename(),
+                leftPos + KEY_X, topPos + JasmGui.sideKeyY(1), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        renameKey.setTooltip(Tooltip.create(renameLabel));
+        priorityKey = addRenderableWidget(JasmButton.icon(() -> PRIORITY_ICON, Component.translatable("screen.jasm.server.priority"),
+                b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, CraftingServerMenu.BUTTON_PRIORITY),
+                leftPos + KEY_X, topPos + JasmGui.sideKeyY(2), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
+        tipPriority = null;
+        if (renameWindow == null) {
+            renameWindow = new RenameWindow(font, name -> {
+                ClientPacketDistributor.sendToServer(new CraftPayloads.ServerName(menu.containerId, name));
+                label = name;
+                shownTitle = name.isEmpty() ? JasmBlocks.CRAFTING_SERVER.get().getName() : Component.literal(name);
+            });
+        }
+        renameKey.setLatched(renameWindow.isOpen());
+    }
+
+    private void toggleRename() {
+        renameWindow.toggle(leftPos + KEY_X, topPos, label);
+        renameKey.setLatched(renameWindow.isOpen());
+    }
+
+    /** The priority key's tooltip: what it does, and whether it is on. */
+    private static Tooltip priorityTooltip(boolean on) {
+        return Tooltip.create(Component.translatable("screen.jasm.server.priority").append("\n")
+                .append(Component.translatable(on ? "screen.jasm.server.priority_on" : "screen.jasm.server.priority_off")
+                        .withColor((on ? JasmGui.GOOD : JasmGui.BAD) & 0xFFFFFF))
+                .append("\n")
+                .append(Component.translatable("screen.jasm.server.priority_hint").withColor(JasmGui.SUBTEXT & 0xFFFFFF)));
+    }
+
+    /** Where the rename window is while open, so JEI's lists stay clear of it. */
+    public List<Rect2i> extraAreas() {
+        List<Rect2i> areas = new ArrayList<>();
+        if (renameWindow != null) renameWindow.area().ifPresent(areas::add);
+        return areas;
     }
 
     @Override
@@ -99,7 +160,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
         int y = topPos;
         if (frame == null)
             frame = JasmFrame.rounded(new int[]{0, 0, CraftingServerMenu.SIDE_WIDTH, menu.sideHeight()},
-                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight}, JasmGui.sideStrip(KEY_X, 1));
+                    new int[]{MAIN_X, 0, MAIN_WIDTH, imageHeight}, JasmGui.sideStrip(KEY_X, KEYS));
         frame.draw(graphics, x, y);
         for (Slot slot : menu.slots) {
             if (slot.index != menu.shownSlot()) {
@@ -118,7 +179,18 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
     }
 
     @Override
-    public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+    public void extractContents(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float a) {
+        // Under the rename window nothing lights up or shows a tooltip.
+        boolean hidden = renameWindow.contains(realMouseX, realMouseY);
+        int mouseX = hidden ? -1000 : realMouseX;
+        int mouseY = hidden ? -1000 : realMouseY;
+        renameKey.setLatched(renameWindow.isOpen());
+        // On, the key stays pressed in.
+        priorityKey.setLatched(menu.priority());
+        if (!Optional.ofNullable(tipPriority).equals(Optional.of(menu.priority()))) {
+            tipPriority = menu.priority();
+            priorityKey.setTooltip(priorityTooltip(tipPriority));
+        }
         CraftingJob.Phase phase = menu.phase();
         cancel.active = menu.canControlJob() && phase == CraftingJob.Phase.CRAFTING;
         collect.active = menu.canControlJob() && phase == CraftingJob.Phase.RETURNING;
@@ -160,6 +232,10 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
                 graphics.setTooltipForNextFrame(font, tip, mouseX, mouseY);
             }
         }
+        if (renameWindow.isOpen()) {
+            graphics.nextStratum();
+            renameWindow.draw(graphics, realMouseX, realMouseY, a);
+        }
     }
 
     private boolean onScrollBar(double mouseX, double mouseY) {
@@ -175,6 +251,9 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (renameWindow.contains(mouseX, mouseY)) {
+            return true;
+        }
         if (menu.busy() && mouseX >= leftPos + LIST_X && mouseX < leftPos + SCROLL_X + SCROLL_W && mouseY >= topPos + listTop()
                 && mouseY < topPos + listTop() + visibleRows() * ROW_H) {
             scroll = Math.clamp(scroll - (int) Math.signum(scrollY), 0, maxScroll());
@@ -185,6 +264,11 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (renameWindow.contains(event.x(), event.y())) {
+            renameWindow.mouseClicked(event, doubleClick);
+            renameKey.setLatched(renameWindow.isOpen());
+            return true;
+        }
         if (menu.busy() && maxScroll() > 0 && onScrollBar(event.x(), event.y())) {
             draggingHandle = true;
             scrollToMouse(event.y());
@@ -195,6 +279,9 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (renameWindow.mouseDragged(event, width, height)) {
+            return true;
+        }
         if (draggingHandle) {
             scrollToMouse(event.y());
             return true;
@@ -204,11 +291,29 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        if (renameWindow.mouseReleased()) {
+            return true;
+        }
         if (draggingHandle) {
             draggingHandle = false;
             return true;
         }
         return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (renameWindow.isOpen() && renameWindow.keyPressed(event)) {
+            renameKey.setLatched(renameWindow.isOpen());
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (renameWindow.isOpen() && renameWindow.charTyped(event)) return true;
+        return super.charTyped(event);
     }
 
     /** Below the side panel is outside the screen, so items dropped there fall out as usual. */
@@ -219,7 +324,7 @@ public class CraftingServerScreen extends JasmScreen<CraftingServerMenu> {
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
-        graphics.text(font, title, titleLabelX, titleLabelY, JasmGui.TEXT, false);
+        graphics.text(font, trim(shownTitle.getString(), BAR_X - titleLabelX - 4), titleLabelX, titleLabelY, JasmGui.TEXT, false);
         graphics.text(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, JasmGui.SUBTEXT, false);
         int tx = PANEL_X + 4;
         int room = PANEL_W - 8;

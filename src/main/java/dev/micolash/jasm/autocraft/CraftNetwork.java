@@ -76,6 +76,8 @@ public final class CraftNetwork {
                         (payload, context) -> trust((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.PortName.TYPE, CraftPayloads.PortName.STREAM_CODEC,
                         (payload, context) -> portName((ServerPlayer) context.player(), payload))
+                .playToServer(CraftPayloads.ServerName.TYPE, CraftPayloads.ServerName.STREAM_CODEC,
+                        (payload, context) -> serverName((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.PortMachineType.TYPE, CraftPayloads.PortMachineType.STREAM_CODEC,
                         (payload, context) -> portMachineType((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.PortRecipe.TYPE, CraftPayloads.PortRecipe.STREAM_CODEC,
@@ -123,22 +125,38 @@ public final class CraftNetwork {
 
     public static void ask(ServerPlayer player, CraftPayloads.Ask payload) {
         DeckMenu menu = craftingMenu(player, payload.containerId());
-        if (menu == null || payload.target().isEmpty() || !mayPlan(player)) {
+        if (menu == null) {
             return;
         }
-        Jobs.Preview preview = JobPlanning.preview(player, menu.deck(), payload.target(), clamp(payload.amount()),
-                payload.server().orElse(null), payload.tree());
+        // the window's server pick is kept on the Deck, even when this plan is turned away
+        pickServer(menu.deck(), payload.server().orElse(null));
+        if (payload.target().isEmpty() || !mayPlan(player)) {
+            return;
+        }
+        Jobs.Preview preview = JobPlanning.preview(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.tree(),
+                JobPlanning.deckRoute(menu.deck(), null));
         CraftPlanner.Plan<GridKey> plan = preview.plan();
         List<DeckPayloads.Entry> crafts = new ArrayList<>();
         for (CraftPlanner.Step<GridKey> step : plan.steps()) {
             crafts.add(entry(step.pattern().output(), step.made()));
         }
         List<CraftPayloads.ServerView> servers = preview.servers().stream()
-                .map(o -> new CraftPayloads.ServerView(o.pos(), o.memory(), o.parallel(), o.busy(), o.fits())).toList();
+                .map(o -> new CraftPayloads.ServerView(o.pos(), o.memory(), o.parallel(), o.busy(), o.fits(), o.name())).toList();
         PacketDistributor.sendToPlayer(player, new CraftPayloads.Answer(payload.containerId(), payload.target(), clamp(payload.amount()),
                 plan.made(), preview.problem() == null ? "" : preview.problem(), entries(plan.taken()), entries(plan.missing()),
                 limit(crafts), servers.subList(0, Math.min(64, servers.size())), preview.chosen(),
                 payload.tree() ? Optional.of(treeView(plan.tree())) : Optional.empty(), plan.rounds()));
+    }
+
+    /** Keeps {@code server} on the Deck as the one its requests go to; none for any free server. */
+    private static void pickServer(ItemStack deck, @Nullable NetworkNode server) {
+        if (!Objects.equals(server, deck.get(JasmComponents.CRAFT_SERVER.get()))) {
+            if (server == null) {
+                deck.remove(JasmComponents.CRAFT_SERVER.get());
+            } else {
+                deck.set(JasmComponents.CRAFT_SERVER.get(), server);
+            }
+        }
     }
 
     /**
@@ -166,8 +184,8 @@ public final class CraftNetwork {
         if (menu == null || payload.target().isEmpty()) {
             return;
         }
-        String problem = JobPlanning.start(player, menu.deck(), payload.target(), clamp(payload.amount()), payload.server().orElse(null),
-                null, false);
+        String problem = JobPlanning.start(player, menu.deck(), payload.target(), clamp(payload.amount()),
+                JobPlanning.deckRoute(menu.deck(), payload.server().orElse(null)), null, false);
         Notices.tell(player, problem == null
                 ? Component.translatable("message.jasm.craft.started", clamp(payload.amount()), payload.target().toStack(1).getHoverName())
                 : Component.translatable(problem), problem == null);
@@ -346,6 +364,12 @@ public final class CraftNetwork {
     /** Names the open Access Port. Refused for a name the rename panel wouldn't take. */
     public static boolean portName(ServerPlayer player, CraftPayloads.PortName payload) {
         return player.containerMenu instanceof AccessPortMenu menu && menu.containerId == payload.containerId()
+                && menu.rename(player, payload.name());
+    }
+
+    /** Names the open Crafting Server. Refused for a name the rename panel wouldn't take. */
+    public static boolean serverName(ServerPlayer player, CraftPayloads.ServerName payload) {
+        return player.containerMenu instanceof CraftingServerMenu menu && menu.containerId == payload.containerId()
                 && menu.rename(player, payload.name());
     }
 

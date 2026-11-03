@@ -94,7 +94,7 @@ final class PortCrafting {
             long returning = made + pending;
             long deckRoom = fluid == null ? storage.room(target, returning) : storage.roomFluid(fluid, returning);
             if (deckRoom < returning) continue;
-            String problem = Jobs.start(player, deck, target, ask, null, id, false);
+            String problem = Jobs.startFromPort(player, deck, target, ask, id);
             if (problem == null) return true;
             if (!"message.jasm.craft.missing".equals(problem) && !"message.jasm.craft.too_big".equals(problem)) return false;
         }

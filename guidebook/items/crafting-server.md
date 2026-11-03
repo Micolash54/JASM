@@ -27,10 +27,17 @@ The Crafting Server does the work. It runs one crafting job at a time. [Processo
 
 * Its parts are locked in while it works.
 * Broken, it spills whatever its job held.
-* With several servers on a network, a job goes to one that fits and is free.
 * The [Advanced Crafting Server](advanced-crafting-server.md) is a bigger one with ten slots of each.
 * The screen shows what the job is waiting for: power, a card, space or the Deck, no [Access Port](access-port.md) serving the recipe, or what a machine is doing: waiting for it to take the items (in yellow), not loaded, unreachable, unpowered, paused by redstone or in use by another job. A machine that is only busy or slow shows nothing. The magnifier key lights up the machine in the world.
 * A job can be cancelled. What is left comes back.
+
+<br />
+<br />
+## Which server gets a job
+
+* With several servers on a network, a job goes to one that fits and is free. A Crafting Deck's request window can pick one by name instead, and the Deck keeps that pick for its next requests.
+* The rename key gives a server a name. A mined server keeps its name.
+* The star key makes it a priority server. Ports with a [Crafting Upgrade](crafting-upgrade.md) send their crafts to priority servers first, and use the others when those are busy.
 
 <br />
 <br />

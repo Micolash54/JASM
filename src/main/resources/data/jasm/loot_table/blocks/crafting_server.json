@@ -11,7 +11,9 @@
             {
               "include": [
                 "jasm:energy",
-                "jasm:owner"
+                "jasm:owner",
+                "jasm:server_priority",
+                "minecraft:custom_name"
               ],
               "source": "block_entity",
               "function": "minecraft:copy_components"

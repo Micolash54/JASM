@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.AccessPortMenu;
-import dev.micolash.jasm.autocraft.CraftPayloads;
 import java.util.Optional;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.Font;
@@ -15,18 +14,16 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * The Access Port's rename panel: a name box and a Rename key. Renaming sends the name and shuts the panel, but only
- * for a name the port takes. Opened from a side key and moved by dragging any empty spot of it.
+ * A machine's rename panel (Access Port, Crafting Server): a name box and a Rename key. Renaming sends the name and
+ * shuts the panel, but only for a name the machine takes. Opened from a side key and moved by dragging any empty spot of it.
  */
-final class PortRenameWindow {
+final class RenameWindow {
     static final int WIDTH = 150;
     static final int HEIGHT = 51;
     private static final JasmButton.Icon CLOSE = new JasmButton.Icon(Jasm.id("icon/close"), 5, 5);
 
-    private final int containerId;
     private final Font font;
     private final Consumer<String> renamed;
     private final EditBox name;
@@ -39,9 +36,8 @@ final class PortRenameWindow {
     private int grabX = -1;
     private int grabY;
 
-    /** {@code renamed} hears the name sent, so the screen's title can follow it. */
-    PortRenameWindow(int containerId, Font font, Consumer<String> renamed) {
-        this.containerId = containerId;
+    /** {@code renamed} is given the new name, trimmed: it sends it, and the screen's title can follow it. */
+    RenameWindow(Font font, Consumer<String> renamed) {
         this.font = font;
         this.renamed = renamed;
         name = new JasmField(font, 0, 0, 86, 14, Component.translatable("screen.jasm.port.name"));
@@ -77,7 +73,6 @@ final class PortRenameWindow {
     private void submit() {
         String value = name.getValue();
         if (!AccessPortMenu.validName(value)) return;
-        ClientPacketDistributor.sendToServer(new CraftPayloads.PortName(containerId, value.strip()));
         renamed.accept(value.strip());
         close();
     }

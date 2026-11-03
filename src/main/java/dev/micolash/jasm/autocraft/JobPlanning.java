@@ -1,6 +1,7 @@
 package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.autocraft.Jobs.Preview;
+import dev.micolash.jasm.autocraft.Jobs.Route;
 import dev.micolash.jasm.autocraft.Jobs.ServerOption;
 import dev.micolash.jasm.core.CraftPlanner;
 import dev.micolash.jasm.core.GridKey;
@@ -176,15 +177,31 @@ final class JobPlanning {
         return goal instanceof GridKey.Fluid ? FluidAmounts.PER_BUCKET : 1;
     }
 
-    /** Most memory of any server the player may use; none at all puts no limit on the plan's size. */
-    private static long biggestServer(CableNetwork network, ServerPlayer player) {
+    /**
+     * Most memory of any server the player may use, or of the server the Deck has picked while it is one of them; none
+     * at all puts no limit on the plan's size.
+     */
+    private static long biggestServer(CableNetwork network, ServerPlayer player, @Nullable NetworkNode picked) {
         long biggest = -1;
+        long pickedMemory = -1;
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
             if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
                 biggest = Math.max(biggest, server.memory());
+                if (picked != null && server.getLevel() != null && picked.equals(NetworkNode.of(server.getLevel(), server.getBlockPos()))) {
+                    pickedMemory = server.memory();
+                }
             }
         }
-        return biggest < 0 ? Long.MAX_VALUE : biggest;
+        return pickedMemory >= 0 ? pickedMemory : biggest < 0 ? Long.MAX_VALUE : biggest;
+    }
+
+    /**
+     * Where a request from the Deck's window goes: the server kept on the Deck as picked, or else any free one,
+     * preferring {@code shown} (the one the window showed).
+     */
+    static Route deckRoute(ItemStack deck, @Nullable NetworkNode shown) {
+        NetworkNode picked = deck.get(JasmComponents.CRAFT_SERVER.get());
+        return picked != null ? Route.picked(picked) : Route.near(shown);
     }
 
     /**
@@ -202,12 +219,21 @@ final class JobPlanning {
         long unit = unit(goal);
         // the preview asks for at most this many buckets
         long limit = unit > 1 ? Math.min(cap, Integer.MAX_VALUE) : cap;
-        return MaxCraft.most(goal, limit, unit, setup.stock(), setup.book(), biggestServer(setup.network(), player), budget, System::nanoTime);
+        return MaxCraft.most(goal, limit, unit, setup.stock(), setup.book(),
+                biggestServer(setup.network(), player, deck.get(JasmComponents.CRAFT_SERVER.get())), budget, System::nanoTime);
     }
 
     /** As above; with {@code tree} the plan also records which craft feeds which. */
     public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable NetworkNode wanted,
             boolean tree) {
+        return preview(player, deck, target, amount, tree, Route.near(wanted));
+    }
+
+    /**
+     * As above, choosing the server by {@code route}. A picked server that isn't on the list (broken, moved off the
+     * network, out of reach) doesn't hold the request up: it goes to any free server, as it would with none picked.
+     */
+    public static Preview preview(ServerPlayer player, ItemStack deck, ItemResource target, long amount, boolean tree, Route route) {
         CraftPlanner.Plan<GridKey> empty = new CraftPlanner.Plan<>(CraftPlanner.Problem.NO_PATTERN, Map.of(), Map.of(), List.of(), 0, 0);
         Prepared prepared = prepare(player, deck);
         Setup setup = prepared.setup();
@@ -225,16 +251,44 @@ final class JobPlanning {
         for (CraftingServerBlockEntity server : network.machines(CraftingServerBlockEntity.class)) {
             if (MachineAccess.canUse(server, player) && server.parallel() > 0) {
                 servers.add(new ServerOption(NetworkNode.of(server.getLevel(), server.getBlockPos()), server.memory(), server.parallel(),
-                        server.busy(), server.memory() >= plan.size()));
+                        server.busy(), server.memory() >= plan.size(), server.getName(), server.priority()));
             }
         }
         servers.sort(Comparator.comparingInt(ServerOption::memory).thenComparing(o -> o.pos().dimension().identifier().toString())
                 .thenComparingLong(o -> o.pos().pos().asLong()));
         int chosen = -1;
-        for (int i = 0; i < servers.size(); i++) {
-            ServerOption option = servers.get(i);
-            if (!option.busy() && option.fits() && (chosen < 0 || option.pos().equals(wanted))) {
-                chosen = i;
+        String pickProblem = null;
+        int pickedAt = -1;
+        for (int i = 0; route.picked() && i < servers.size(); i++) {
+            if (servers.get(i).pos().equals(route.server())) {
+                pickedAt = i;
+            }
+        }
+        if (pickedAt >= 0) {
+            ServerOption option = servers.get(pickedAt);
+            if (!option.busy() && option.fits()) {
+                chosen = pickedAt;
+            } else {
+                pickProblem = option.busy() ? "message.jasm.craft.picked_busy" : "message.jasm.craft.picked_too_small";
+            }
+        } else {
+            if (route.picked() && route.server().equals(deck.get(JasmComponents.CRAFT_SERVER.get()))) {
+                // the picked server is gone: the Deck goes back to any free server
+                deck.remove(JasmComponents.CRAFT_SERVER.get());
+            }
+            NetworkNode wanted = route.picked() ? null : route.server();
+            for (int i = 0; i < servers.size(); i++) {
+                ServerOption option = servers.get(i);
+                if (!option.busy() && option.fits() && (chosen < 0 || option.pos().equals(wanted))) {
+                    chosen = i;
+                }
+            }
+            for (int i = 0; route.priority() && i < servers.size(); i++) {
+                ServerOption option = servers.get(i);
+                if (option.priority() && !option.busy() && option.fits()) {
+                    chosen = i;
+                    break;
+                }
             }
         }
         if (chosen >= 0 && plan.ok() && servers.get(chosen).parallel() > 1) {
@@ -256,7 +310,8 @@ final class JobPlanning {
             case NONE -> servers.isEmpty()
                     ? "message.jasm.craft.no_server"
                     : chosen < 0
-                            ? (servers.stream().anyMatch(ServerOption::fits) ? "message.jasm.craft.servers_busy" : "message.jasm.craft.too_big")
+                            ? (pickProblem != null ? pickProblem
+                                    : servers.stream().anyMatch(ServerOption::fits) ? "message.jasm.craft.servers_busy" : "message.jasm.craft.too_big")
                             : null;
         };
         return new Preview(plan, servers, chosen, problem);
@@ -270,10 +325,16 @@ final class JobPlanning {
      */
     public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable NetworkNode wanted,
             @Nullable UUID rule, boolean toPlayer) {
+        return start(player, deck, target, amount, Route.near(wanted), rule, toPlayer);
+    }
+
+    /** As above, choosing the server by {@code route}. */
+    public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, Route route,
+            @Nullable UUID rule, boolean toPlayer) {
         // the chest listing can be half a second old, so a start looks in the chests for real
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         if (pool != null) pool.relist();
-        Preview preview = preview(player, deck, target, amount, wanted);
+        Preview preview = preview(player, deck, target, amount, false, route);
         if (preview.problem() != null) {
             return preview.problem();
         }

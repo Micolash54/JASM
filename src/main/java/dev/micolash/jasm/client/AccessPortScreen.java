@@ -124,7 +124,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private @Nullable RedstoneMode shownRedstoneMode;
     private JasmFrame frame;
     private @Nullable DeckLinkWindow linkWindow;
-    private @Nullable PortRenameWindow renameWindow;
+    private @Nullable RenameWindow renameWindow;
     /** The name as last set from this screen; the title follows it. */
     private String label;
     private Component shownTitle;
@@ -204,7 +204,10 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                     () -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.RESET_DECK));
         }
         if (renameWindow == null) {
-            renameWindow = new PortRenameWindow(menu.containerId, font, this::renamed);
+            renameWindow = new RenameWindow(font, name -> {
+                ClientPacketDistributor.sendToServer(new CraftPayloads.PortName(menu.containerId, name));
+                renamed(name);
+            });
         }
         link.setLatched(linkWindow.isOpen());
         renameKey.setLatched(renameWindow.isOpen());

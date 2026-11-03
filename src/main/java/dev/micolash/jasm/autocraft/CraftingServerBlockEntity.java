@@ -2,16 +2,21 @@ package dev.micolash.jasm.autocraft;
 
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmMenus;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponentGetter;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Unit;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.SimpleContainer;
@@ -48,6 +53,10 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
     private final SimpleContainer shown = new SimpleContainer(1);
     /** The parts and power as a player's game last heard them, packed by {@link #looks()}: all it needs to draw the block. */
     private int shownLooks;
+    /** A name the player gave the server; empty for the block's own name. */
+    private String label = "";
+    /** Ports with a Crafting Upgrade send their jobs to priority servers first. */
+    private boolean priority;
 
     private final ContainerData data = new ContainerData() {
         @Override
@@ -67,6 +76,7 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
                 case CraftingServerMenu.DATA_AMOUNT_LOW -> j == null ? 0 : ContainerWords.low((int) Math.min(Integer.MAX_VALUE, j.amount()));
                 case CraftingServerMenu.DATA_AMOUNT_HIGH -> j == null ? 0 : ContainerWords.high((int) Math.min(Integer.MAX_VALUE, j.amount()));
                 case CraftingServerMenu.DATA_DRAIN -> drainPerTick();
+                case CraftingServerMenu.DATA_PRIORITY -> priority ? 1 : 0;
                 default -> 0;
             };
         }
@@ -220,6 +230,26 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         return job != null;
     }
 
+    public String label() {
+        return label;
+    }
+
+    /** Names the server, cut to the longest name the rename panel takes; empty goes back to the block's own name. */
+    public void setLabel(String label) {
+        String cleaned = label.strip();
+        this.label = cleaned.length() > AccessPortMenu.MAX_NAME ? cleaned.substring(0, AccessPortMenu.MAX_NAME) : cleaned;
+        setChanged();
+    }
+
+    public boolean priority() {
+        return priority;
+    }
+
+    public void setPriority(boolean priority) {
+        this.priority = priority;
+        setChanged();
+    }
+
     public SimpleContainer shown() {
         return shown;
     }
@@ -273,6 +303,17 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         return getBlockState().getBlock().getName();
     }
 
+    /** The player's name for the server, if it has one; the block's own name otherwise. */
+    @Override
+    public Component getName() {
+        return label.isEmpty() ? getDefaultName() : Component.literal(label);
+    }
+
+    @Override
+    public @Nullable Component getCustomName() {
+        return label.isEmpty() ? null : Component.literal(label);
+    }
+
     @Override
     protected AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
         return new CraftingServerMenu(containerId, inventory, this, ContainerLevelAccess.create(level, worldPosition));
@@ -292,6 +333,8 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         super.saveAdditional(output);
         ContainerHelper.saveAllItems(output, items);
         output.storeNullable("job", CraftingJob.CODEC, job);
+        output.putString("label", label);
+        output.putBoolean("priority", priority);
     }
 
     @Override
@@ -300,6 +343,36 @@ public class CraftingServerBlockEntity extends MachineBlockEntity {
         items = NonNullList.withSize(slots, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         job = input.read("job", CraftingJob.CODEC).orElse(null);
+        label = input.getStringOr("label", "");
+        priority = input.getBooleanOr("priority", false);
+    }
+
+    /** The mined server keeps its name and its priority. */
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        components.set(DataComponents.CUSTOM_NAME, getCustomName());
+        if (priority) {
+            components.set(JasmComponents.SERVER_PRIORITY.get(), Unit.INSTANCE);
+        }
+    }
+
+    @Override
+    protected void applyImplicitComponents(DataComponentGetter components) {
+        super.applyImplicitComponents(components);
+        Component name = components.get(DataComponents.CUSTOM_NAME);
+        label = name == null ? "" : name.getString();
+        if (label.length() > AccessPortMenu.MAX_NAME) {
+            label = label.substring(0, AccessPortMenu.MAX_NAME);
+        }
+        priority = components.get(JasmComponents.SERVER_PRIORITY.get()) != null;
+    }
+
+    @Override
+    public void removeComponentsFromTag(ValueOutput output) {
+        super.removeComponentsFromTag(output);
+        output.discard("label");
+        output.discard("priority");
     }
 
     // Players only get what the front and back show, not the parts or the job.

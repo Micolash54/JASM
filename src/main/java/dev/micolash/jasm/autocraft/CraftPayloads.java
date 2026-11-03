@@ -72,14 +72,15 @@ public final class CraftPayloads {
         }
     }
 
-    /** A server the request could go to. */
-    public record ServerView(NetworkNode pos, int memory, int parallel, boolean busy, boolean fits) {
+    /** A server the request could go to, with the name its owner gave it (or the block's own). */
+    public record ServerView(NetworkNode pos, int memory, int parallel, boolean busy, boolean fits, Component name) {
         static final StreamCodec<RegistryFriendlyByteBuf, ServerView> STREAM_CODEC = StreamCodec.composite(
                 NetworkNode.STREAM_CODEC, ServerView::pos,
                 ByteBufCodecs.VAR_INT, ServerView::memory,
                 ByteBufCodecs.VAR_INT, ServerView::parallel,
                 ByteBufCodecs.BOOL, ServerView::busy,
                 ByteBufCodecs.BOOL, ServerView::fits,
+                ComponentSerialization.STREAM_CODEC, ServerView::name,
                 ServerView::new);
     }
 
@@ -139,7 +140,10 @@ public final class CraftPayloads {
                 TreeView::new);
     }
 
-    /** Client → server: what would a request for {@code amount} of {@code target} take? {@code tree}: also send the tree. */
+    /**
+     * Client → server: what would a request for {@code amount} of {@code target} take? {@code server}: the server picked
+     * in the window, kept on the Deck for its next requests; none for any free server. {@code tree}: also send the tree.
+     */
     public record Ask(int containerId, ItemResource target, long amount, Optional<NetworkNode> server, boolean tree) implements CustomPacketPayload {
         public static final Type<Ask> TYPE = new Type<>(Jasm.id("craft_ask"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Ask> STREAM_CODEC = StreamCodec.composite(
@@ -227,7 +231,10 @@ public final class CraftPayloads {
         }
     }
 
-    /** Client → server: start the request (planned again on the server). */
+    /**
+     * Client → server: start the request (planned again on the server). It goes to the server the Deck has picked; with
+     * none picked, to {@code server} (the free one the window showed) if it is still free, or else any free server.
+     */
     public record Start(int containerId, ItemResource target, long amount, Optional<NetworkNode> server) implements CustomPacketPayload {
         public static final Type<Start> TYPE = new Type<>(Jasm.id("craft_start"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Start> STREAM_CODEC = StreamCodec.composite(
@@ -364,6 +371,20 @@ public final class CraftPayloads {
 
         @Override
         public Type<PortLinkedPlayer> type() { return TYPE; }
+    }
+
+    /** Client → server: rename the open Crafting Server; empty goes back to the block's name. */
+    public record ServerName(int containerId, String name) implements CustomPacketPayload {
+        public static final Type<ServerName> TYPE = new Type<>(Jasm.id("server_name"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, ServerName> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, ServerName::containerId,
+                ByteBufCodecs.stringUtf8(AccessPortMenu.MAX_NAME), ServerName::name,
+                ServerName::new);
+
+        @Override
+        public Type<ServerName> type() {
+            return TYPE;
+        }
     }
 
     /** Client → server: rename the open Access Port; empty goes back to the machine's name. */

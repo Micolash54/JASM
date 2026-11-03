@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -28,8 +29,29 @@ import org.jspecify.annotations.Nullable;
 public final class Jobs {
     private Jobs() {}
 
-    /** A server a request could go to, in its dimension. */
-    public record ServerOption(NetworkNode pos, int memory, int parallel, boolean busy, boolean fits) {}
+    /** A server a request could go to, in its dimension, with its name and whether it is a priority server. */
+    public record ServerOption(NetworkNode pos, int memory, int parallel, boolean busy, boolean fits, Component name, boolean priority) {}
+
+    /**
+     * Which server a request goes to. Picked: only {@code server}. Otherwise the smallest free server it fits, or
+     * {@code server} if that one is free; with {@code priority}, a free priority server comes before the others.
+     */
+    public record Route(@Nullable NetworkNode server, boolean picked, boolean priority) {
+        /** Any free server, preferring {@code server} when it is free. */
+        public static Route near(@Nullable NetworkNode server) {
+            return new Route(server, false, false);
+        }
+
+        /** Only {@code server}: the request waits for it rather than going elsewhere. */
+        public static Route picked(NetworkNode server) {
+            return new Route(server, true, false);
+        }
+
+        /** As a port with a Crafting Upgrade asks: priority servers first, then any free one. */
+        public static Route priorityFirst() {
+            return new Route(null, false, true);
+        }
+    }
 
     /** A planned request: the plan, the servers, and which one it would go to (-1 when none can take it). */
     public record Preview(CraftPlanner.Plan<GridKey> plan, List<ServerOption> servers, int chosen, @Nullable String problem) {}
@@ -96,6 +118,21 @@ public final class Jobs {
     public static @Nullable String start(ServerPlayer player, ItemStack deck, ItemResource target, long amount, @Nullable BlockPos wanted,
             @Nullable UUID rule, boolean toPlayer) {
         return JobPlanning.start(player, deck, target, amount, nearTerminal(player, deck, wanted), rule, toPlayer);
+    }
+
+    /** As a port with a Crafting Upgrade asks ({@code id} is the port's): a free priority server first, then any free one. */
+    public static @Nullable String startFromPort(ServerPlayer player, ItemStack deck, ItemResource target, long amount, UUID id) {
+        return JobPlanning.start(player, deck, target, amount, Route.priorityFirst(), id, false);
+    }
+
+    /** As the Crafting Deck's request window asks: the server the Deck has picked, or any free one. */
+    public static Preview previewFromDeck(ServerPlayer player, ItemStack deck, ItemResource target, long amount) {
+        return JobPlanning.preview(player, deck, target, amount, false, JobPlanning.deckRoute(deck, null));
+    }
+
+    /** As above, starting the request. */
+    public static @Nullable String startFromDeck(ServerPlayer player, ItemStack deck, ItemResource target, long amount) {
+        return JobPlanning.start(player, deck, target, amount, JobPlanning.deckRoute(deck, null), null, false);
     }
 
     /** A server position given without a dimension is in the dimension of the Deck's terminal. */

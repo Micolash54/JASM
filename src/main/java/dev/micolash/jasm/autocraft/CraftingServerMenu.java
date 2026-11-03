@@ -64,6 +64,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     public static final int BUTTON_BACK = 2;
     /** Lights up the machines the job is waiting on. */
     public static final int BUTTON_FIND = 3;
+    /** Turns the server's priority for ports with a Crafting Upgrade on or off. */
+    public static final int BUTTON_PRIORITY = 4;
 
     static final int DATA_ENERGY_LOW = 0;
     static final int DATA_ENERGY_HIGH = 1;
@@ -78,7 +80,8 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
     static final int DATA_AMOUNT_LOW = 10;
     static final int DATA_AMOUNT_HIGH = 11;
     static final int DATA_DRAIN = 12;
-    static final int DATA_COUNT = 13;
+    static final int DATA_PRIORITY = 13;
+    static final int DATA_COUNT = 14;
 
     private static final Identifier EMPTY_PROCESSOR = Jasm.id("container/empty_processor");
     private static final Identifier EMPTY_MODULE = Jasm.id("container/empty_module");
@@ -293,6 +296,21 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         return phase() != null;
     }
 
+    /** Whether ports with a Crafting Upgrade send their jobs here first. */
+    public boolean priority() {
+        return data.get(DATA_PRIORITY) != 0;
+    }
+
+    /** Server side: names the server, if this is the player's open screen, they may use the server, and the name is valid. */
+    public boolean rename(Player player, String name) {
+        if (server == null || player.containerMenu != this || !stillValid(player) || !MachineAccess.canUse(server, player)
+                || !AccessPortMenu.validName(name)) {
+            return false;
+        }
+        server.setLabel(name);
+        return true;
+    }
+
     @Override
     public boolean stillValid(Player player) {
         if (server == null) {
@@ -340,6 +358,12 @@ public class CraftingServerMenu extends AbstractContainerMenu implements Notices
         }
         if (id == BUTTON_BACK && carriesDeck(serverPlayer)) {
             DeckItem.open(serverPlayer, deckSlot);
+            return true;
+        }
+        if (id == BUTTON_PRIORITY) {
+            if (MachineAccess.canUse(server, serverPlayer)) {
+                server.setPriority(!server.priority());
+            }
             return true;
         }
         if (id == BUTTON_FIND) {
