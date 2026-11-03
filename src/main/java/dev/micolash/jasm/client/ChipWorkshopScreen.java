@@ -10,6 +10,7 @@ import dev.micolash.jasm.workshop.ChipWorkshopMenu;
 import dev.micolash.jasm.workshop.WorkshopNeed;
 import java.util.List;
 import java.util.Locale;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.KeyEvent;
@@ -22,9 +23,8 @@ import net.minecraft.world.inventory.Slot;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Workshop screen. The Workshop's own panel sits in the middle of the screen: the Single/Batch button by the
- * title, the Blank Chip slot and progress in the first column, the output grid in the second, then the player's
- * inventory. The critter's panel hangs off its left side: slot, name, status, a speech bubble, the Byteling's
+ * The Workshop screen. The Workshop's own panel sits in the middle of the screen: the title and the "?" key, the
+ * Blank Chip slot and progress in the first column, the output grid in the second, then the player's inventory. The critter's panel hangs off its left side: slot, name, status, a speech bubble, the Byteling's
  * standard/Advanced switch, then its training and battery bars. The upgrade column hangs off the right side with the I/O
  * grid's key under it, and the redstone key under that while a Redstone Upgrade is in, as on the bays.
  */
@@ -73,11 +73,9 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
     // The Workshop panel.
     private static final int PROGRESS_X = ChipWorkshopMenu.GRID_X + 2 * 18 + 4;
     private static final int PROGRESS_WIDTH = ChipWorkshopMenu.OUTPUT_X - 6 - PROGRESS_X;
-    private static final int MODE_WIDTH = 40;
-    /** The Single/Batch button's top edge; the "?" key shares it and its height. */
+    /** The "?" key's top edge. */
     private static final int MODE_Y = 4;
 
-    private JasmButton batchButton;
     private JasmButton advancedButton;
     private @Nullable IoGridWindow io;
     private final RandomSource random = RandomSource.create();
@@ -100,9 +98,6 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
         // The Workshop's panel is centred like any other machine's; the critter's panel hangs off its left side.
         leftPos = Math.max(0, (width - ChipWorkshopMenu.MAIN_WIDTH) / 2 - MAIN_X);
         addHelp(MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 7, MODE_Y, BAR_HEIGHT, "items/chip-workshop.md");
-        batchButton = addRenderableWidget(JasmButton.text(batchLabel(),
-                b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_BATCH),
-                leftPos + MAIN_X + ChipWorkshopMenu.MAIN_WIDTH - 8 - HELP_ROOM - MODE_WIDTH, topPos + MODE_Y, MODE_WIDTH, BAR_HEIGHT));
         advancedButton = addRenderableWidget(JasmButton.text(advancedLabel(),
                 b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, ChipWorkshopMenu.BUTTON_ADVANCED),
                 leftPos + SIDE_PAD, topPos + ADVANCED_Y, SIDE_TEXT_WIDTH, BAR_HEIGHT));
@@ -139,10 +134,6 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
             frameRedstone = installed;
             frame = null;
         }
-    }
-
-    private Component batchLabel() {
-        return Component.translatable(menu.batch() ? "screen.jasm.workshop.batch" : "screen.jasm.workshop.single");
     }
 
     private Component advancedLabel() {
@@ -220,7 +211,6 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        batchButton.setMessage(batchLabel());
         advancedButton.setMessage(advancedLabel());
         BitlingItem critter = critter();
         advancedButton.visible = critter != null && critter.stage() == BitlingStage.BYTELING;
@@ -269,8 +259,12 @@ public class ChipWorkshopScreen extends JasmScreen<ChipWorkshopMenu> {
             return;
         }
         if (mouseY >= topPos + BATTERY_LABEL_Y && mouseY < topPos + BATTERY_Y + SIDE_BAR_HEIGHT) {
-            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.workshop.battery_tip",
-                    String.format("%,d", menu.critterEnergy()), String.format("%,d", menu.battery())), mouseX, mouseY);
+            graphics.setTooltipForNextFrame(font, List.of(
+                    Component.translatable("screen.jasm.workshop.battery_tip",
+                            String.format("%,d", menu.critterEnergy()), String.format("%,d", menu.battery())).getVisualOrderText(),
+                    Component.translatable("screen.jasm.archive.drain", menu.drain())
+                            .withStyle(ChatFormatting.GRAY).getVisualOrderText()),
+                    mouseX, mouseY);
         } else if (mouseY >= topPos + TRAINING_LABEL_Y && mouseY < topPos + TRAINING_Y + SIDE_BAR_HEIGHT) {
             int required = menu.required();
             Component training = required > 0

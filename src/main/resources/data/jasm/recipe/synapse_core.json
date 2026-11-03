@@ -8,7 +8,7 @@
   ],
   "bitling_kind": "any",
   "bitling_stage": "byteling",
-  "ticks": 3000,
+  "ticks": 2400,
   "energy": 50000,
   "result": {
     "id": "jasm:synapse_core"

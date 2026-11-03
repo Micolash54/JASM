@@ -18,10 +18,10 @@ The key to the two biggest sizes of every wafer, and to the Ultimate Deck and Ul
 | --- | --- |
 | Needs | an Advanced Logic, Memory and Link Chip and a <ItemLink id="data_crystal" /> |
 | Builder | a Byteling of any type |
-| Time | 3,000 ticks, two and a half minutes |
+| Time | 2,400 ticks, two minutes |
 | Cost | 50,000 FE from the Byteling's battery |
 
-Put the four ingredients in the grid in any order.
+Put the four ingredients in the grid in any order. [Speed Upgrades](speed-upgrade.md) in the Workshop make it faster, and it costs more power, as with chips.
 
 <br />
 <br />

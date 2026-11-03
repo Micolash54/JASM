@@ -73,7 +73,6 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | Adv. Processor use (FE/t) | `advancedProcessorDrain` | FE an Advanced Processor uses each tick while its server has a job. |
 | Elite Processor use (FE/t) | `eliteProcessorDrain` | FE an Elite Processor uses each tick while its server has a job. |
 | Resonator drain (FE/t) | `resonatorDrain` | FE a powered Crystal Resonator uses each tick. |
-| Foundry drain (FE/t) | `foundryDrain` | FE the Crystal Foundry uses each tick while it grows. |
 | Battery: Basic Bitling (FE) | `batteryBasic` | FE a Basic Bitling's own battery holds. |
 | Battery: typed Bitling (FE) | `batteryBitling` | FE a typed Bitling's own battery holds: 150,000 in a new world. |
 | Battery: Nibbling (FE) | `batteryNibbling` | FE a Nibbling's own battery holds. |
@@ -103,8 +102,10 @@ These are in `jasm-server.toml`. Each heading below is one screen under **World 
 | Resonator interval | `resonatorInterval` | Ticks between the extra growth tries a Crystal Resonator gives each plant or budding block it touches. |
 | Resonator wear chance | `resonatorWearChance` | Chance that a Seeded Amethyst wears down one stage each time a Crystal Resonator's extra growth makes a bud grow. |
 | Foundry crystals per seed | `foundryCrystalsPerSeed` | Data Crystals, cut straight into Blank Chips, that the Crystal Foundry grows from one Crystal Seed. |
-| Workshop batch ticks | `workshopBatchTicks` | List: ticks a Chip Workshop batch of 8 chips takes with no Speed Upgrades, then one, two and so on. A single chip takes a sixth of that. Extra upgrades use the last entry. Changing this list doesn't change chip prices. |
-| Workshop power per chip (FE) | `workshopEnergyPerChip` | List: FE per chip in single and batch modes with 0 to 4 Speed Upgrades: 2,000, 2,667, 4,000, 8,000 and 16,000. Extra upgrades use the last entry. Independent of the Workshop and Bays speed lists. |
+| Foundry ticks per crystal | `foundryCrystalTicks` | Ticks the Crystal Foundry takes to grow one crystal with no Speed Upgrades. |
+| Foundry power per crystal (FE) | `foundryCrystalEnergy` | FE the Crystal Foundry uses for one crystal with no Speed Upgrades, spread evenly over its time. |
+| Workshop ticks per chip | `workshopChipTicks` | Ticks the Chip Workshop takes to make one chip with no Speed Upgrades. |
+| Workshop power per chip (FE) | `workshopChipEnergy` | FE one chip costs from the critter's battery with no Speed Upgrades, paid a little each tick while it works. |
 | Typed: own-type chance | `oddsOwnTypeBitling` | Chance a typed Bitling makes chips of its own type. The other two types share the rest. |
 | Basic: Advanced chance | `advancedChanceBasic` | Chance a chip made by a Basic Bitling comes out Advanced. |
 | Typed: Advanced chance | `advancedChanceBitling` | Chance a chip made by a typed Bitling comes out Advanced. |
@@ -146,7 +147,7 @@ The three lists start with a lone Network Brain, then a tower of 1 floor, 2 floo
 
 | Setting | Key | What it does |
 | --- | --- | --- |
-| Cycle ticks | `cycleTicks` | List: ticks one bay action takes with no Speed Upgrades, then one, two and so on. Extra upgrades use the last entry. |
+| Ticks per action | `actionTicks` | Ticks one action of the Deployment or Demolition Bay takes with no Speed Upgrades. |
 | Energy capacity (FE) | `energyCapacity` | FE each bay holds. |
 | Tank buckets | `tankBuckets` | Buckets each bay's tank holds. |
 | Demolition cost/point (FE) | `demolitionFePerPoint` | FE the Demolition Bay uses for each point of a block's break cost. |
@@ -154,6 +155,17 @@ The three lists start with a lone Network Brain, then a tower of 1 floor, 2 floo
 | Deployment cost (FE) | `deploymentCost` | FE the Deployment Bay uses for each block placed, fluid placed or stack thrown. |
 | Drop entity limit | `dropEntityLimit` | The Deployment Bay's drop mode pauses while this many entities are near it. |
 | Drop entity radius | `dropEntityRadius` | How far, in blocks, the Deployment Bay's drop mode looks for those entities. |
+
+<br />
+<br />
+## Speed Upgrades
+
+Both lists go 0, 1, 2, 3 and 4 Speed Upgrades. More upgrades use the last entry. They apply to the Deployment and Demolition Bays, the Crystal Foundry and the Chip Workshop (chips and the Synapse Core). Ports have their own steps.
+
+| Setting | Key | What it does |
+| --- | --- | --- |
+| Speed by upgrades (times as fast) | `speedMultipliers` | List: how many times as fast a machine works. A job's time is its base time divided by this, half ticks rounded up, at least 1 tick. |
+| Price by upgrades (times the base) | `priceMultipliers` | List: what one job costs, as a multiple of its base price. |
 
 <br />
 <br />

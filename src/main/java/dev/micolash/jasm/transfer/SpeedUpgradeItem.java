@@ -1,8 +1,8 @@
 package dev.micolash.jasm.transfer;
 
-import dev.micolash.jasm.bay.BayClock;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.registry.JasmItems;
+import java.util.List;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -32,23 +32,28 @@ public final class SpeedUpgradeItem extends Item {
         return others < MAX;
     }
 
-    /**
-     * The power for a job that costs {@code base} on its own, in a machine holding {@code upgrades} Speed Upgrades. A job costs
-     * as many times more as the upgrades make the machine faster: twice as fast, twice the power for the same job.
-     */
-    public static int power(int base, int upgrades) {
-        var table = JasmConfig.BAY_CYCLE_TICKS.get();
-        long slow = BayClock.ticksFor(0, table);
-        long fast = BayClock.ticksFor(upgrades, table);
-        return (int) Math.min(Integer.MAX_VALUE, (Math.max(0L, base) * slow + fast - 1) / fast);
+    /** How many times as fast a machine with {@code upgrades} Speed Upgrades works. Extra upgrades use the last entry. */
+    public static double speed(int upgrades) {
+        return entry(JasmConfig.SPEED_MULTIPLIERS.get(), upgrades);
     }
 
-    /** How long a job of {@code base} ticks takes with {@code upgrades} Speed Upgrades: the bays' speed-up applied to it. */
+    /** What one job costs with {@code upgrades} Speed Upgrades, as a multiple of its base price. */
+    public static double price(int upgrades) {
+        return entry(JasmConfig.PRICE_MULTIPLIERS.get(), upgrades);
+    }
+
+    private static double entry(List<? extends Number> list, int upgrades) {
+        return list.isEmpty() ? 1 : list.get(Math.clamp(upgrades, 0, list.size() - 1)).doubleValue();
+    }
+
+    /** The power for a job that costs {@code base} with no upgrades, in a machine holding {@code upgrades} Speed Upgrades. */
+    public static long power(long base, int upgrades) {
+        return Math.round(Math.max(0L, base) * price(upgrades));
+    }
+
+    /** How long a job of {@code base} ticks takes with {@code upgrades} Speed Upgrades: half ticks round up, at least one tick. */
     public static int ticks(int base, int upgrades) {
-        var table = JasmConfig.BAY_CYCLE_TICKS.get();
-        long slow = BayClock.ticksFor(0, table);
-        long fast = BayClock.ticksFor(upgrades, table);
-        return (int) Math.max(1, (base * fast + slow / 2) / slow);
+        return (int) Math.clamp(Math.round(base / speed(upgrades)), 1L, Integer.MAX_VALUE);
     }
 
     /**
@@ -60,13 +65,9 @@ public final class SpeedUpgradeItem extends Item {
         return Math.clamp((progress * (long) after + before / 2) / before, 0, Math.max(0, after - 1));
     }
 
-    /**
-     * The power a machine uses each tick for a job of {@code baseTicks} ticks, normally drawing {@code baseDrain}, once it takes
-     * {@code ticks} ticks: the same job, paid for with the extra power, in less time.
-     */
-    public static int perTick(int baseDrain, int baseTicks, int ticks, int upgrades) {
-        long whole = (long) power(baseDrain, upgrades) * baseTicks;
+    /** FE a tick for a job costing {@code total} spread over {@code ticks} ticks, rounded up. */
+    public static int perTick(long total, int ticks) {
         long per = Math.max(1, ticks);
-        return (int) Math.min(Integer.MAX_VALUE, (whole + per - 1) / per);
+        return (int) Math.min(Integer.MAX_VALUE, (Math.max(0L, total) + per - 1) / per);
     }
 }

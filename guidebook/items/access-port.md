@@ -82,7 +82,7 @@ Convert one into the other in a crafting grid. Both recipes are below.
 
 * Add a [Power Upgrade](power-upgrade.md) to supply FE to the machines of the chosen type, or the machine a thin port faces.
 * Five upgrade slots take up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md). A paused port moves nothing and shows Paused, and crafting jobs wait for it.
-* It uses no power and counts toward the [machine limit](network-brain.md).
+* It uses no power itself, but the paired Deck pays 1 FE for each item it moves. It counts toward the [machine limit](network-brain.md).
 
 <br />
 <br />

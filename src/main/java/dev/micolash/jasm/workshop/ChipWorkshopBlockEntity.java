@@ -1,9 +1,7 @@
 package dev.micolash.jasm.workshop;
 
-import dev.micolash.jasm.bay.BayClock;
 import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.core.ChipOdds;
 import dev.micolash.jasm.core.ChipType;
@@ -20,7 +18,6 @@ import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -57,10 +54,10 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Chip Workshop: a Bitling turns Blank Chips into Logic, Memory and Link chips. The Workshop itself uses no power:
- * whatever a cable or a neighbour gives it goes straight into the critter's battery, as fast as it comes, and each chip
- * is paid for when its job ends. A job starts once the battery holds one chip's cost; at the end it makes as many chips
- * as the battery can pay for then.
+ * The Chip Workshop: a Bitling turns Blank Chips into Logic, Memory and Link chips, one at a time. The Workshop itself
+ * uses no power: whatever a cable or a neighbour gives it goes straight into the critter's battery, as fast as it comes,
+ * and the critter pays for each chip a little every tick while it works. A chip starts once the battery holds its whole
+ * cost.
  */
 public class ChipWorkshopBlockEntity extends MachineBlockEntity implements WorldlyContainer {
     /** The 2x2 grid: Blank Chips for chips, or a Workshop recipe's ingredients. */
@@ -82,9 +79,14 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
      * battery has room for if that is more.
      */
     public static final int CAPACITY = 1_000;
-    public static final int BATCH_SIZE = 8;
-    /** A single chip takes this share of a batch's time. */
-    private static final int SINGLE_SHARE = 6;
+    /** Marks a Workshop saved before it kept the length of its job. */
+    private static final int OLD_SAVE = -1;
+    /** What a chip, a batch of chips, and a recipe's 40 ticks took in older versions with 0 to 4 Speed Upgrades. */
+    private static final int[] OLD_CHIP_TICKS = {200, 100, 50, 25, 13};
+    private static final int[] OLD_BATCH_TICKS = {1_200, 600, 300, 150, 75};
+    private static final int[] OLD_RECIPE_STEPS = {40, 30, 20, 10, 5};
+    /** Recipes whose time changed since older versions, with the time an old save's progress was counted against. */
+    private static final Map<String, Integer> OLD_RECIPE_TICKS = Map.of("jasm:synapse_core", 3_000);
     /** Layout 1 (no number saved) had 15 outputs, layout 2 had 6; both had a single input slot before the outputs. */
     private static final int LAYOUT = 3;
     private static final int LEGACY_OUTPUTS = 15;
@@ -95,14 +97,24 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     private final ResourceHandler<ItemResource> automation = new Automation(VanillaContainerWrapper.of(this));
     private final MachineSides.Gated<ItemResource> itemGates = new MachineSides.Gated<>(automation);
     private final MachineSides sides = new MachineSides(MachineSides.ALL, false, FaceMode.INPUT, true, this::sidesChanged);
-    private boolean batch;
     private boolean advancedSelected;
     private int progress;
+    /** FE the critter has paid toward the job in progress. */
+    private long paid;
+    /**
+     * How long the job in progress took when it was saved, checked once on the first tick after loading: 0 when there is
+     * nothing to check, {@link #OLD_SAVE} for a Workshop saved before it kept this.
+     */
+    private int loadedTicks;
+    /** An old save's batch mode, only to tell how long its job took then. */
+    private boolean oldBatch;
     private boolean napping;
     /** The critter seen last tick, so a different one put in starts fresh. Not saved: after loading, the one there is it. */
     private @Nullable Item lastCritter;
     /** Whether the last tick moved an operation along. Only for looks and the screen. */
     private boolean working;
+    /** FE a tick the critter pays for the job it worked on last tick, its price spread over its time; 0 when it didn't work. */
+    private int drawing;
     /** Whether power was coming in on the last tick. */
     private boolean fed;
     /** The recipe the grid and critter make, looked up again only when the grid's items or the critter change. */
@@ -130,7 +142,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
             return switch (index) {
                 case ChipWorkshopMenu.DATA_PROGRESS -> progress;
                 case ChipWorkshopMenu.DATA_NEED -> need;
-                case ChipWorkshopMenu.DATA_TICKS -> ticksForMode();
+                case ChipWorkshopMenu.DATA_TICKS -> ticksForJob();
                 case ChipWorkshopMenu.DATA_CRITTER_ENERGY_LOW -> ContainerWords.low(BitlingItem.energy(critter));
                 case ChipWorkshopMenu.DATA_CRITTER_ENERGY_HIGH -> ContainerWords.high(BitlingItem.energy(critter));
                 case ChipWorkshopMenu.DATA_BATTERY_LOW -> ContainerWords.low(battery(critter));
@@ -141,11 +153,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
                 case ChipWorkshopMenu.DATA_REQUIRED_HIGH -> ContainerWords.high(required(critter));
                 case ChipWorkshopMenu.DATA_SIDES -> sides.packed(MachineSides.Kind.ITEMS);
                 case ChipWorkshopMenu.DATA_FLAGS ->
-                    (batch ? ChipWorkshopMenu.FLAG_BATCH : 0) | (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
+                    (advancedSelected ? ChipWorkshopMenu.FLAG_ADVANCED : 0)
                             | (napping ? ChipWorkshopMenu.FLAG_NAPPING : 0) | (working ? ChipWorkshopMenu.FLAG_WORKING : 0)
                             | (running() ? ChipWorkshopMenu.FLAG_POWERED : 0) | (redstonePaused() ? ChipWorkshopMenu.FLAG_PAUSED : 0);
                 case ChipWorkshopMenu.DATA_REDSTONE -> redstoneMode.ordinal();
                 case ChipWorkshopMenu.DATA_AUTO_OUTPUT -> sides.autoOutput() ? 1 : 0;
+                case ChipWorkshopMenu.DATA_DRAW_LOW -> ContainerWords.low(drawing);
+                case ChipWorkshopMenu.DATA_DRAW_HIGH -> ContainerWords.high(drawing);
                 default -> 0;
             };
         }
@@ -231,9 +245,13 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
         if (upgradesKnown && before != upgrades && progress > 0) {
             // The operation stays as far along as it was; only the rest of its time gets shorter or longer.
-            progress = SpeedUpgradeItem.keepShare(progress, ticksForMode(before), ticksForMode(upgrades));
+            progress = SpeedUpgradeItem.keepShare(progress, ticksForJob(before), ticksForJob(upgrades));
         }
         upgradesKnown = true;
+        if (loadedTicks != 0) {
+            settleLoaded(level);
+            loadedTicks = 0;
+        }
         if (!overflow.isEmpty()) {
             for (ItemStack stack : overflow) {
                 Containers.dropItemStack(level, worldPosition.getX() + 0.5, worldPosition.getY() + 1, worldPosition.getZ() + 0.5, stack);
@@ -243,10 +261,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         }
         boolean stopped = checkStopped();
         working = false;
+        drawing = 0;
         ItemStack critter = items.get(CRITTER);
         if (!(critter.getItem() instanceof BitlingItem bitling)) {
             napping = false;
-            progress = 0;
+            restart();
             lastCritter = null;
             fed = false;
             recipe = null;
@@ -257,7 +276,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         }
         if (lastCritter != null && lastCritter != bitling) {
             napping = false;
-            progress = 0;
+            restart();
         }
         lastCritter = bitling;
         feed(critter, bitling);
@@ -282,46 +301,92 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
             need = gridInput().items().stream().allMatch(ItemStack::isEmpty) ? WorkshopNeed.NONE : WorkshopNeed.NO_RECIPE;
         }
         follow("");
-        int perChip = chipPower(upgrades);
-        int affordable = perChip <= 0 ? Integer.MAX_VALUE : BitlingItem.energy(critter) / perChip;
-        if (affordable == 0) {
-            // Not even one chip's worth: it naps, and wakes as soon as it has that much.
-            if (!napping) {
-                napping = true;
-                progress = 0;
-            }
+        int ticks = chipTicks(upgrades);
+        long total = chipPower(upgrades);
+        if (BitlingItem.energy(critter) < total - paid) {
+            // Not enough for the rest of the chip: it naps, keeping its progress, and wakes as soon as it has that much.
+            napping = true;
             return;
         }
         napping = false;
-        int chips = Math.min(Math.min(batch ? BATCH_SIZE : 1, blankChips()), affordable);
-        if (chips == 0) {
-            // Every Blank Chip was taken out: the next operation starts from the beginning.
-            progress = 0;
+        if (blankChips() == 0) {
+            // Every Blank Chip was taken out: the next chip starts from the beginning.
+            restart();
             return;
         }
-        // The count follows the Blank Chips and the battery right up to the end: chips taken out are not made, and
-        // power that comes in meanwhile pays for more.
-        if (!roomFor(bitling, chips)) {
+        if (!roomFor(bitling, 1)) {
             return;
         }
         working = true;
-        if (++progress >= ticksForMode()) {
-            progress = 0;
-            finish(level, critter, bitling, chips, perChip);
+        drawing = SpeedUpgradeItem.perTick(total, ticks);
+        pay(critter, due(total, ticks));
+        if (++progress >= ticks) {
+            restart();
+            finish(level, critter, bitling);
         }
         setChanged();
     }
 
-    /** FE one chip costs with the Workshop's own price list. */
-    public static int chipPower(int upgrades) {
-        var table = JasmConfig.WORKSHOP_ENERGY_PER_CHIP.get();
-        return table.isEmpty() ? Tuning.BITLING_DRAIN_PER_CHIP : table.get(Math.clamp(upgrades, 0, table.size() - 1));
+    /** Starts the job over: nothing done, nothing paid. */
+    private void restart() {
+        progress = 0;
+        paid = 0;
     }
 
-    /** Ticks a chip operation takes: a batch from the Workshop's own speed table, a single chip a sixth of that, rounded. */
-    public static int chipTicks(boolean batch, int upgrades) {
-        int batchTicks = BayClock.ticksFor(upgrades, JasmConfig.WORKSHOP_BATCH_TICKS.get());
-        return batch ? batchTicks : Math.max(1, (batchTicks + SINGLE_SHARE / 2) / SINGLE_SHARE);
+    /** FE due on the tick that moves a job of {@code total} FE over {@code ticks} ticks on: its even share so far, less what was paid. */
+    private long due(long total, int ticks) {
+        int step = Math.min(progress, ticks - 1);
+        return Math.max(0, total * (step + 1) / ticks - paid);
+    }
+
+    private void pay(ItemStack critter, long fe) {
+        if (fe <= 0) return;
+        critter.set(JasmComponents.ENERGY.get(), (int) (BitlingItem.energy(critter) - fe));
+        paid += fe;
+    }
+
+    /** FE one chip costs with {@code upgrades} Speed Upgrades. */
+    public static int chipPower(int upgrades) {
+        return (int) Math.min(Integer.MAX_VALUE, SpeedUpgradeItem.power(JasmConfig.WORKSHOP_CHIP_ENERGY.getAsInt(), upgrades));
+    }
+
+    /** Ticks one chip takes with {@code upgrades} Speed Upgrades. */
+    public static int chipTicks(int upgrades) {
+        return SpeedUpgradeItem.ticks(JasmConfig.WORKSHOP_CHIP_TICKS.getAsInt(), upgrades);
+    }
+
+    /**
+     * A job saved under another length (an older version, or changed settings) keeps the same share done. Chips used to be
+     * paid for at the end, so an old chip still owes the share already done; an old recipe was paid as it went.
+     */
+    private void settleLoaded(ServerLevel level) {
+        if (progress <= 0) {
+            return;
+        }
+        int step = Math.min(upgrades, OLD_CHIP_TICKS.length - 1);
+        if (progressFor.isEmpty()) {
+            int was = loadedTicks != OLD_SAVE ? loadedTicks : (oldBatch ? OLD_BATCH_TICKS : OLD_CHIP_TICKS)[step];
+            progress = SpeedUpgradeItem.keepShare(progress, was, chipTicks(upgrades));
+            if (loadedTicks == OLD_SAVE) paid = 0;
+            return;
+        }
+        for (RecipeHolder<WorkshopRecipe> holder : level.getServer().getRecipeManager().recipeMap().byType(JasmRecipes.WORKSHOP_TYPE.get())) {
+            if (!progressFor.equals(holder.id().toString())) {
+                continue;
+            }
+            WorkshopRecipe made = holder.value();
+            int now = SpeedUpgradeItem.ticks(made.ticks(), upgrades);
+            int was = loadedTicks;
+            if (was == OLD_SAVE) {
+                int base = OLD_RECIPE_TICKS.getOrDefault(holder.id().identifier().toString(), made.ticks());
+                was = Math.max(1, (base * OLD_RECIPE_STEPS[step] + 20) / 40);
+            }
+            progress = SpeedUpgradeItem.keepShare(progress, was, now);
+            if (loadedTicks == OLD_SAVE) paid = SpeedUpgradeItem.power(made.energy(), upgrades) * progress / now;
+            return;
+        }
+        // The recipe is gone: start over.
+        restart();
     }
 
     /**
@@ -365,7 +430,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     private void follow(String key) {
         if (!progressFor.equals(key)) {
             progressFor = key;
-            progress = 0;
+            restart();
         }
     }
 
@@ -374,17 +439,10 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         return SpeedUpgradeItem.ticks(made.ticks(), upgrades);
     }
 
-    /** FE taken from the critter on the tick that moves the recipe on: the same steps as {@link WorkshopRecipe#energyAt}, with the extra power. */
-    private long recipeEnergyAt(WorkshopRecipe made) {
-        long total = SpeedUpgradeItem.power(made.energy(), upgrades);
-        int ticks = recipeTicks(made);
-        int step = Math.min(progress, ticks - 1);
-        return total * (step + 1) / ticks - total * step / ticks;
-    }
-
     private void tickRecipe(ItemStack critter, BitlingItem bitling, WorkshopRecipe made, int[] slots) {
-        long due = recipeEnergyAt(made);
         int ticks = recipeTicks(made);
+        long total = SpeedUpgradeItem.power(made.energy(), upgrades);
+        long due = due(total, ticks);
         if (!napping && due > 0 && BitlingItem.energy(critter) < due) {
             // Unlike a chip, a long recipe keeps its progress through a nap.
             napping = true;
@@ -401,9 +459,10 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
             return;
         }
         working = true;
-        critter.set(JasmComponents.ENERGY.get(), (int) (BitlingItem.energy(critter) - due));
+        drawing = SpeedUpgradeItem.perTick(total, ticks);
+        pay(critter, due);
         if (++progress >= ticks) {
-            progress = 0;
+            restart();
             for (int slot : slots) {
                 items.get(GRID_FIRST + slot).shrink(1);
             }
@@ -451,7 +510,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     }
 
     public int progressPercent() {
-        return Math.min(100, progress * 100 / Math.max(1, ticksForMode()));
+        return Math.min(100, progress * 100 / Math.max(1, ticksForJob()));
     }
 
     /**
@@ -481,17 +540,17 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         }
     }
 
-    /** Ticks an operation takes in the mode it is set to. */
-    private int ticksForMode() {
-        return ticksForMode(upgrades);
+    /** Ticks the job in progress takes: the recipe being built, or one chip. */
+    private int ticksForJob() {
+        return ticksForJob(upgrades);
     }
 
-    /** As {@link #ticksForMode()}, with {@code speedUpgrades} Speed Upgrades inside. */
-    private int ticksForMode(int speedUpgrades) {
+    /** As {@link #ticksForJob()}, with {@code speedUpgrades} Speed Upgrades inside. */
+    private int ticksForJob(int speedUpgrades) {
         if (recipe != null && progressFor.equals(recipe.id().toString())) {
             return SpeedUpgradeItem.ticks(recipe.value().ticks(), speedUpgrades);
         }
-        return chipTicks(batch, speedUpgrades);
+        return chipTicks(speedUpgrades);
     }
 
     /**
@@ -536,19 +595,15 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         return false;
     }
 
-    private void finish(ServerLevel level, ItemStack critter, BitlingItem bitling, int chips, int perChip) {
+    /** The chip is done and already paid for: it goes into the output and uses up one Blank Chip. */
+    private void finish(ServerLevel level, ItemStack critter, BitlingItem bitling) {
         ChipOdds.Odds odds = ChipOdds.of(bitling.kind(), bitling.stage(), advancedSelected, BitlingItem.balance());
-        Map<Item, Integer> made = new LinkedHashMap<>();
-        for (int i = 0; i < chips; i++) {
-            ChipOdds.Roll roll = ChipOdds.roll(odds, level.getRandom()::nextLong);
-            made.merge(JasmItems.chip(roll.type(), roll.advanced()), 1, Integer::sum);
-        }
-        made.forEach(this::output);
-        takeBlankChips(chips);
-        critter.set(JasmComponents.ENERGY.get(), BitlingItem.energy(critter) - chips * perChip);
+        ChipOdds.Roll roll = ChipOdds.roll(odds, level.getRandom()::nextLong);
+        output(JasmItems.chip(roll.type(), roll.advanced()), 1);
+        takeBlankChips(1);
         int required = bitling.trainingRequired();
         if (required > 0) {
-            critter.set(JasmComponents.TRAINING.get(), Training.add(BitlingItem.trained(critter), chips, required));
+            critter.set(JasmComponents.TRAINING.get(), Training.add(BitlingItem.trained(critter), 1, required));
         }
     }
 
@@ -588,15 +643,6 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     // --- settings, for the screen's buttons ---
 
-    public boolean batch() {
-        return batch;
-    }
-
-    public void toggleBatch() {
-        batch = !batch;
-        setChanged();
-    }
-
     public boolean advancedSelected() {
         return advancedSelected;
     }
@@ -620,6 +666,11 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     public int progress() {
         return progress;
+    }
+
+    /** FE a tick the critter used on the last tick, for the screen: the job's price spread over its time, 0 while idle. */
+    public int drawing() {
+        return drawing;
     }
 
     /** The critter in the slot, or null. */
@@ -828,9 +879,15 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
             ValueOutput.TypedOutputList<ItemStack> saved = output.list("overflow", ItemStack.OPTIONAL_CODEC);
             overflow.forEach(saved::add);
         }
-        output.putBoolean("batch", batch);
         output.putBoolean("advanced", advancedSelected);
         output.putInt("progress", progress);
+        output.putLong("paid", paid);
+        if (loadedTicks == OLD_SAVE) {
+            // Not yet checked since loading: still an old save's job, so keep what tells how long it took.
+            output.putBoolean("batch", oldBatch);
+        } else {
+            output.putInt("job_ticks", loadedTicks != 0 ? loadedTicks : ticksForJob());
+        }
         output.putString("progress_for", progressFor);
         output.putBoolean("napping", napping);
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
@@ -852,9 +909,12 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         for (ItemStack stack : input.listOrEmpty("overflow", ItemStack.OPTIONAL_CODEC)) {
             if (!stack.isEmpty()) overflow.add(stack);
         }
-        batch = input.getBooleanOr("batch", false);
         advancedSelected = input.getBooleanOr("advanced", false);
         progress = Math.max(0, input.getIntOr("progress", 0));
+        paid = Math.max(0, input.getLongOr("paid", 0));
+        // Batch mode is gone: an old batch carries on as one chip, the same share done.
+        oldBatch = input.getBooleanOr("batch", false);
+        loadedTicks = progress > 0 ? Math.max(OLD_SAVE, input.getIntOr("job_ticks", OLD_SAVE)) : 0;
         progressFor = input.getStringOr("progress_for", "");
         napping = input.getBooleanOr("napping", false);
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);

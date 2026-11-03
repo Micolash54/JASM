@@ -85,10 +85,6 @@ public final class JasmConfig {
             .comment("FE a powered Crystal Resonator uses each tick")
             .defineInRange("resonatorDrain", 10, 0, 1_000_000);
 
-    public static final ModConfigSpec.IntValue FOUNDRY_DRAIN = BUILDER
-            .comment("FE the Crystal Foundry uses each tick while growing")
-            .defineInRange("foundryDrain", 40, 0, 1_000_000);
-
     public static final ModConfigSpec.IntValue BATTERY_BASIC = BUILDER
             .comment("FE the battery of a Basic Bitling holds")
             .defineInRange("batteryBasic", 50_000, 1, Integer.MAX_VALUE);
@@ -177,13 +173,21 @@ public final class JasmConfig {
             .comment("Data Crystals, cut straight into Blank Chips, that the Crystal Foundry grows from one Crystal Seed")
             .defineInRange("foundryCrystalsPerSeed", 16, 1, 1_000);
 
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> WORKSHOP_BATCH_TICKS = BUILDER
-            .comment("Ticks a Chip Workshop batch of 8 chips takes with 0 to 4 Speed Upgrades. A single chip takes a sixth of that. A four-entry list gives the fourth upgrade half the last entry; otherwise extra upgrades use the last. The power a chip costs doesn't change with these")
-            .defineList("workshopBatchTicks", List.of(1_200, 600, 300, 150, 75), () -> 1_200, value -> value instanceof Integer i && i >= 1);
+    public static final ModConfigSpec.IntValue FOUNDRY_CRYSTAL_TICKS = BUILDER
+            .comment("Ticks the Crystal Foundry takes to grow one crystal with no Speed Upgrades")
+            .defineInRange("foundryCrystalTicks", 160, 1, 30_000);
 
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> WORKSHOP_ENERGY_PER_CHIP = BUILDER
-            .comment("FE per chip in the Chip Workshop, in single and batch modes, with 0 to 4 Speed Upgrades. Extra upgrades use the last entry. Independent of the Workshop and Bays speed lists")
-            .defineList("workshopEnergyPerChip", List.of(2_000, 2_667, 4_000, 8_000, 16_000), () -> 2_000, value -> value instanceof Integer i && i >= 0);
+    public static final ModConfigSpec.IntValue FOUNDRY_CRYSTAL_ENERGY = BUILDER
+            .comment("FE the Crystal Foundry uses for one crystal with no Speed Upgrades, spread evenly over its time")
+            .defineInRange("foundryCrystalEnergy", 8_000, 0, 100_000_000);
+
+    public static final ModConfigSpec.IntValue WORKSHOP_CHIP_TICKS = BUILDER
+            .comment("Ticks the Chip Workshop takes to make one chip with no Speed Upgrades")
+            .defineInRange("workshopChipTicks", 160, 1, 30_000);
+
+    public static final ModConfigSpec.IntValue WORKSHOP_CHIP_ENERGY = BUILDER
+            .comment("FE one chip costs from the critter's battery with no Speed Upgrades, spread evenly over its time")
+            .defineInRange("workshopChipEnergy", 2_000, 0, 100_000_000);
 
     public static final ModConfigSpec.DoubleValue ODDS_OWN_TYPE_BITLING = BUILDER
             .comment("Chance a young typed Bitling makes its own chip type; the other two types share the rest")
@@ -271,9 +275,9 @@ public final class JasmConfig {
         BUILDER.pop().push("bays");
     }
 
-    public static final ModConfigSpec.ConfigValue<List<? extends Integer>> BAY_CYCLE_TICKS = BUILDER
-            .comment("Ticks one bay action takes with 0 to 4 Speed Upgrades. A four-entry list gives the fourth upgrade half the last entry; otherwise extra upgrades use the last. Under 20, two Bitlings take turns")
-            .defineList("cycleTicks", List.of(40, 30, 20, 10, 5), () -> 20, value -> value instanceof Integer i && i >= 1);
+    public static final ModConfigSpec.IntValue BAY_ACTION_TICKS = BUILDER
+            .comment("Ticks one bay action takes with no Speed Upgrades. Under 20, two Bitlings take turns")
+            .defineInRange("actionTicks", 40, 1, 30_000);
 
     public static final ModConfigSpec.IntValue BAY_ENERGY_CAPACITY = BUILDER
             .comment("FE a bay holds")
@@ -302,6 +306,20 @@ public final class JasmConfig {
     public static final ModConfigSpec.IntValue BAY_DROP_ENTITY_RADIUS = BUILDER
             .comment("How far, in blocks, drop mode looks for those entities")
             .defineInRange("dropEntityRadius", 8, 1, 64);
+
+    static {
+        BUILDER.pop().push("speed_upgrades");
+    }
+
+    public static final ModConfigSpec.ConfigValue<List<? extends Number>> SPEED_MULTIPLIERS = BUILDER
+            .comment("How many times as fast a machine works with 0, 1, 2, 3 and 4 Speed Upgrades: the Bays, the Crystal Foundry and the Chip Workshop, its chips and recipes alike. A job's time is its base time divided by this, half ticks rounded up, at least 1 tick. Extra upgrades use the last entry. Ports have their own steps")
+            .defineList("speedMultipliers", List.of(1.0, 2.0, 4.0, 8.0, 16.0), () -> 1.0,
+                    value -> value instanceof Number n && n.doubleValue() >= 0.01 && n.doubleValue() <= 10_000);
+
+    public static final ModConfigSpec.ConfigValue<List<? extends Number>> PRICE_MULTIPLIERS = BUILDER
+            .comment("What one job costs with 0, 1, 2, 3 and 4 Speed Upgrades, as a multiple of its base price, in the same machines. Extra upgrades use the last entry")
+            .defineList("priceMultipliers", List.of(1.0, 1.25, 1.5, 2.0, 2.5), () -> 1.0,
+                    value -> value instanceof Number n && n.doubleValue() >= 0 && n.doubleValue() <= 10_000);
 
     static {
         BUILDER.pop().push("chunkloading");

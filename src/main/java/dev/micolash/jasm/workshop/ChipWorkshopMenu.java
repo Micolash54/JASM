@@ -42,7 +42,6 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     public static final int UPGRADE_X = MAIN_X + MAIN_WIDTH + 2;
     public static final int UPGRADE_Y = 29;
 
-    public static final int BUTTON_BATCH = 0;
     public static final int BUTTON_ADVANCED = 1;
     /** The redstone key; the I/O grid's face buttons start well above it. */
     public static final int BUTTON_REDSTONE = 2;
@@ -62,9 +61,10 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     static final int DATA_SIDES = 12;
     static final int DATA_REDSTONE = 13;
     static final int DATA_AUTO_OUTPUT = 14;
-    static final int DATA_COUNT = 15;
+    static final int DATA_DRAW_LOW = 15;
+    static final int DATA_DRAW_HIGH = 16;
+    static final int DATA_COUNT = 17;
 
-    static final int FLAG_BATCH = 1;
     static final int FLAG_ADVANCED = 2;
     static final int FLAG_NAPPING = 4;
     static final int FLAG_WORKING = 8;
@@ -146,6 +146,11 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
         return wide(DATA_BATTERY_LOW, DATA_BATTERY_HIGH);
     }
 
+    /** FE a tick the critter is using on its chip or recipe; 0 while idle. */
+    public int drain() {
+        return wide(DATA_DRAW_LOW, DATA_DRAW_HIGH);
+    }
+
     public int trained() {
         return wide(DATA_TRAINED_LOW, DATA_TRAINED_HIGH);
     }
@@ -161,10 +166,6 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
 
     private boolean flag(int flag) {
         return (data.get(DATA_FLAGS) & flag) != 0;
-    }
-
-    public boolean batch() {
-        return flag(FLAG_BATCH);
     }
 
     public boolean advancedSelected() {
@@ -230,10 +231,6 @@ public class ChipWorkshopMenu extends AbstractContainerMenu implements MachineVi
     public boolean clickMenuButton(Player player, int id) {
         if (workshop == null) {
             return false;
-        }
-        if (id == BUTTON_BATCH) {
-            workshop.toggleBatch();
-            return true;
         }
         if (id == BUTTON_ADVANCED) {
             workshop.toggleAdvanced();

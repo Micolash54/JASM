@@ -35,8 +35,12 @@ The Crystal Foundry grows Data Crystals in bulk and cuts each one into a <ItemLi
 | | |
 | --- | --- |
 | Chips per seed | 16 |
-| Time per chip | 10 seconds |
-| Power use | 40 FE/t |
+| Time per chip | 8 seconds |
+| Power use | 50 FE/t |
+| Power use with 1 Speed Upgrade | 125 FE/t |
+| Power use with 2 Speed Upgrades | 300 FE/t |
+| Power use with 3 Speed Upgrades | 800 FE/t |
+| Power use with 4 Speed Upgrades | 2,000 FE/t |
 
 <br />
 <br />

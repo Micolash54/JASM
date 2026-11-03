@@ -217,7 +217,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     /** What an action costing {@code fe} on its own really costs, with this bay's Speed Upgrades. */
     private int powerFor(int fe) {
-        return SpeedUpgradeItem.power(fe, speedUpgrades());
+        return (int) Math.min(Integer.MAX_VALUE, SpeedUpgradeItem.power(fe, speedUpgrades()));
     }
 
     /** Whether the buffer holds the whole cost, including the Speed Upgrades' extra. */
@@ -378,7 +378,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     }
 
     public int cycleTicks() {
-        return BayClock.ticksFor(speedUpgrades(), JasmConfig.BAY_CYCLE_TICKS.get());
+        return SpeedUpgradeItem.ticks(JasmConfig.BAY_ACTION_TICKS.getAsInt(), speedUpgrades());
     }
 
     public BayRedstone redstone() {

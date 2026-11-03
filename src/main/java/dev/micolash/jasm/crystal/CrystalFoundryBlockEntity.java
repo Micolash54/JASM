@@ -2,7 +2,6 @@ package dev.micolash.jasm.crystal;
 
 import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.FaceMode;
 import dev.micolash.jasm.network.MachineBlockEntity;
@@ -71,6 +70,14 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     private int upgrades;
     /** Whether {@link #upgrades} has been counted since loading, so a change can be told from the first count. */
     private boolean upgradesKnown;
+    /**
+     * How long the crystal growing when it was saved took then, checked once on the first tick after loading: 0 when
+     * there is nothing to check, {@link #OLD_SAVE} for a Foundry saved before it kept this.
+     */
+    private int loadedTicks;
+    private static final int OLD_SAVE = -1;
+    /** What a crystal took in older versions with 0 to 4 Speed Upgrades, so an old save's progress keeps its share. */
+    private static final int[] OLD_TICKS = {200, 150, 100, 50, 25};
     /** What a Redstone Upgrade in the column does; kept while the upgrade is out, but only followed while it is in. */
     private RedstoneMode redstoneMode = RedstoneMode.IGNORE;
 
@@ -181,9 +188,18 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         shownAt = level == null ? 0 : level.getGameTime();
     }
 
-    /** Ticks one crystal takes: the bays' speed-up for the Speed Upgrades inside. */
+    /** Ticks one crystal takes with the Speed Upgrades inside. */
     public int ticksPerCrystal() {
-        return SpeedUpgradeItem.ticks(Tuning.FOUNDRY_TICKS_PER_CRYSTAL, upgrades);
+        return ticksPerCrystal(upgrades);
+    }
+
+    public static int ticksPerCrystal(int upgrades) {
+        return SpeedUpgradeItem.ticks(JasmConfig.FOUNDRY_CRYSTAL_TICKS.getAsInt(), upgrades);
+    }
+
+    /** FE one crystal costs with {@code upgrades} Speed Upgrades. */
+    public static long crystalPower(int upgrades) {
+        return SpeedUpgradeItem.power(JasmConfig.FOUNDRY_CRYSTAL_ENERGY.getAsInt(), upgrades);
     }
 
     private void tick() {
@@ -191,10 +207,17 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         upgrades = SpeedUpgradeItem.count(this, UPGRADE_START, SLOTS);
         if (upgradesKnown && before != upgrades && progress > 0) {
             // The crystal stays as far along as it was; only the rest of its time gets shorter or longer.
-            progress = SpeedUpgradeItem.keepShare(progress, SpeedUpgradeItem.ticks(Tuning.FOUNDRY_TICKS_PER_CRYSTAL, before), ticksPerCrystal());
+            progress = SpeedUpgradeItem.keepShare(progress, ticksPerCrystal(before), ticksPerCrystal());
             sentState = -1;
         }
         upgradesKnown = true;
+        if (loadedTicks != 0) {
+            // Saved under another crystal time (an older version, or changed settings): the crystal keeps the same share done.
+            int was = loadedTicks == OLD_SAVE ? OLD_TICKS[Math.min(upgrades, OLD_TICKS.length - 1)] : loadedTicks;
+            progress = SpeedUpgradeItem.keepShare(progress, was, ticksPerCrystal());
+            loadedTicks = 0;
+            sentState = -1;
+        }
         busy = false;
         if (redstonePaused()) {
             // Everything waits as it is: the crystal keeps its progress and no new seed is taken.
@@ -258,7 +281,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
 
     @Override
     public int drainPerTick() {
-        return busy ? SpeedUpgradeItem.perTick(JasmConfig.FOUNDRY_DRAIN.getAsInt(), Tuning.FOUNDRY_TICKS_PER_CRYSTAL, ticksPerCrystal(), upgrades) : 0;
+        return busy ? SpeedUpgradeItem.perTick(crystalPower(upgrades), ticksPerCrystal()) : 0;
     }
 
     public boolean growing() {
@@ -392,6 +415,8 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         output.putBoolean("growing", growing);
         output.putInt("made", made);
         output.putInt("progress", progress);
+        // Not yet checked since loading: keep what was loaded, so the next load still knows the crystal's old time.
+        if (loadedTicks != OLD_SAVE) output.putInt("crystal_ticks", loadedTicks != 0 ? loadedTicks : ticksPerCrystal());
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
     }
 
@@ -403,6 +428,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         growing = input.getBooleanOr("growing", false);
         made = Math.max(0, input.getIntOr("made", 0));
         progress = Math.max(0, input.getIntOr("progress", 0));
+        loadedTicks = progress > 0 ? Math.max(OLD_SAVE, input.getIntOr("crystal_ticks", OLD_SAVE)) : 0;
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
     }
 

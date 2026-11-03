@@ -24,8 +24,6 @@ public final class Tuning {
     public static final int RULE_MIN_SECONDS = 10;
     public static final int RULE_RETRY_SECONDS = 5;
     public static final int QUENCH_TICKS = 40;
-    public static final int FOUNDRY_TICKS_PER_CRYSTAL = 200;
-    public static final int BITLING_DRAIN_PER_CHIP = 2_000;
 
     /** Bitling Station: power a roaming Bitling uses each tick, the battery fraction it heads home at, and how far it roams. */
     public static final int STATION_ROAM_DRAIN = 5;
