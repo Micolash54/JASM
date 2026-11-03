@@ -174,9 +174,11 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
                     found.add(battery);
                 }
             }
-            for (CableNetwork network : poolNetworks) {
-                if (network != null) {
-                    found.addAll(network.batteries());
+            for (Direction side : Direction.values()) {
+                CableNetwork network = poolNetworks[side.ordinal()];
+                BlockPos next = worldPosition.relative(side);
+                if (network != null && level.isLoaded(next) && level.getBlockEntity(next) instanceof BlockEntity block) {
+                    found.addAll(network.batteries(block));
                 }
             }
             pool = found;

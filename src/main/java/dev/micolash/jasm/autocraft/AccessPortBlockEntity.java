@@ -479,6 +479,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return level != null && !isRemoved() && !networkBlocked() && !stopped() && hasPowerUpgrade();
     }
 
+    /** A port holds no power, so it passes none on to the network blocks it touches. */
+    @Override
+    public boolean carriesPower() {
+        return false;
+    }
+
     /** A source touching the port hands power straight on to its machines. */
     @Override
     public EnergyHandler powerIn() {

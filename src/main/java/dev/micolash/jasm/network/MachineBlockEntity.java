@@ -69,6 +69,14 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return true;
     }
 
+    /**
+     * Whether the block passes network power on to the blocks it touches, as a cable does. Machines do; ports hold no
+     * power, so they don't.
+     */
+    public boolean carriesPower() {
+        return true;
+    }
+
     /** Whether ports, hoppers and Access Ports may reach this block's own slots: only machines with an I/O grid, as it allows. */
     public boolean opensToPorts() {
         return sides() != null;

@@ -43,4 +43,4 @@ A linked [Deck](../items/decks.md) has a Network tab. It lists every machine, ge
 <br />
 ## Power
 
-Cables carry power too. See [power](power.md).
+Cables carry power too, and so do machines that touch each other. A tower of machines needs only one cable. See [power](power.md).

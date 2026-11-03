@@ -26,9 +26,9 @@ Most JASM blocks run on FE.
 
 * A generator pushes power into every block it touches.
 * [Data Cables](../items/data-cables.md) carry it through a network, as fast as it comes in.
-* A machine that touches a generator needs no cable.
-* Machines don't pass power on to each other. Each one needs a cable, a generator or a Power Interface touching it.
-* Ports use no power. A port with a [Power Upgrade](../items/power-upgrade.md) passes power straight on to its machines.
+* Machines and Archives that touch each other pass power on like a cable. A tower of them needs one cable, or one generator, at any block.
+* Breaking a machine in the middle of a tower cuts off the ones above it, unless a cable reaches them another way.
+* Ports use no power and pass none on to the machines they touch. A port with a [Power Upgrade](../items/power-upgrade.md) passes power straight on to its machines.
 
 <br />
 <br />

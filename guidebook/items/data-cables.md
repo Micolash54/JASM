@@ -20,8 +20,7 @@ Cables hold no power and have no speed limit. Whatever a generator or Power Inte
 <br />
 ## Good to know
 
-* Machines only get power from a cable, a generator or a [Power Interface](power-acceptor.md) they touch. Touching machines don't pass power on to each other.
-* Machines that simply touch each other form a network too, with no cable at all.
+* Machines that simply touch each other form a network too, with no cable at all, and pass power on to each other like a cable.
 * Water and other fluids can't wash a cable or its ports away.
 * Different players' networks never join.
 * Cables don't count toward the [machine limit](network-brain.md).

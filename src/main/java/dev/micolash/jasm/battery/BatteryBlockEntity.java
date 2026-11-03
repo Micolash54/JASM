@@ -1,6 +1,7 @@
 package dev.micolash.jasm.battery;
 
 import dev.micolash.jasm.config.JasmConfig;
+import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.NetworkEnergy;
 import dev.micolash.jasm.network.NetworkPowerSource;
@@ -141,9 +142,9 @@ public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSourc
     }
 
     /**
-     * Placed or loaded: the batteries beside it join up with it, and the networks of the cables beside it look again for
-     * batteries. Done on the first tick, not while the chunk is still loading. A block set without a player (commands,
-     * structures) gets its joined sides here too.
+     * Placed or loaded: the batteries beside it join up with it, and the networks of the cables and machines beside it
+     * look again for batteries. Done on the first tick, not while the chunk is still loading. A block set without a player
+     * (commands, structures) gets its joined sides here too.
      */
     private void announce(ServerLevel level) {
         BlockState state = getBlockState();
@@ -154,7 +155,8 @@ public class BatteryBlockEntity extends BlockEntity implements NetworkPowerSourc
         BatteryGroup.forgetAround(level, worldPosition);
         for (Direction side : Direction.values()) {
             BlockPos next = worldPosition.relative(side);
-            if (level.isLoaded(next) && level.getBlockEntity(next) instanceof DataCableBlockEntity) {
+            BlockEntity beside = level.isLoaded(next) ? level.getBlockEntity(next) : null;
+            if (beside instanceof DataCableBlockEntity || beside != null && CableNetwork.carries(beside)) {
                 Networks.invalidate(level, next);
             }
         }
