@@ -4,8 +4,10 @@ import dev.micolash.jasm.Jasm;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -16,12 +18,16 @@ public final class Presets {
     public static final int HARDCORE_ULTIMATE_SLOTS = 16;
 
     private record Row<T>(ModConfigSpec.ConfigValue<T> value, T relaxed, T hardcore) {
-        void apply(Preset preset) {
-            value.set(switch (preset) {
+        T numberFor(Preset preset) {
+            return switch (preset) {
                 case RELAXED -> relaxed;
                 case HARDCORE -> hardcore;
                 case STANDARD -> value.getDefault();
-            });
+            };
+        }
+
+        void apply(Preset preset) {
+            value.set(numberFor(preset));
         }
     }
 
@@ -41,6 +47,13 @@ public final class Presets {
     }
 
     private Presets() {}
+
+    /** The number each covered setting gets when this preset is chosen, so a screen can show them before they are saved. */
+    public static Map<ModConfigSpec.ConfigValue<?>, Object> numbers(Preset preset) {
+        Map<ModConfigSpec.ConfigValue<?>, Object> out = new LinkedHashMap<>();
+        for (Row<?> row : rows()) out.put(row.value(), row.numberFor(preset));
+        return out;
+    }
 
     /** The settings a preset writes, so a test (or a screen) can tell which ones a preset reaches. */
     public static List<ModConfigSpec.ConfigValue<?>> covered() {

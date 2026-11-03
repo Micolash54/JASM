@@ -14,11 +14,15 @@ Every number and switch JASM lets you change, in the order the config screen sho
 <br />
 ## Changing a value
 
-* In singleplayer, open a world, then choose **Mods**, **JASM**, **Config**.
-* The screen has two parts: **World rules** (`jasm-server.toml`) and **My settings** (`jasm-client.toml`).
-* On a server, edit `jasm-server.toml`.
-* Players who join a server get the server's world rules.
-* Deck slots, the features and the Basic Bitling recipe apply after the world reloads.
+* Choose **Mods**, **JASM**, **Config**. The sections are on the left and each setting has a short description.
+* The screen has two parts: **My settings** (`jasm-client.toml`) and **World rules** (`jasm-server.toml`).
+* My settings can always be changed. World rules can be changed in singleplayer and by operators on a server. Everyone else sees them locked.
+* Without a world open, World rules show the normal values and are locked.
+* A changed value turns yellow and gets a **Reset** key. **Reset section** puts the open section back to its defaults.
+* A value outside its range can't be saved.
+* Changes are saved when you press **Done**.
+* Settings marked **Needs restart** (Deck slots, the features and the Basic Bitling recipe) apply after the world reloads, or after the server restarts. The rest apply at once.
+* Players who join a server get the server's world rules. A server's `jasm-server.toml` can also be edited by hand.
 
 <br />
 <br />

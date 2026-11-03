@@ -17,7 +17,7 @@ final class MochaTooltips {
 
     @SubscribeEvent
     static void onTexture(RenderTooltipEvent.Texture event) {
-        if (event.getItemStack().isEmpty() && event.getOriginalTexture() == null && Minecraft.getInstance().screen instanceof JasmScreen<?>) {
+        if (event.getItemStack().isEmpty() && event.getOriginalTexture() == null && (Minecraft.getInstance().screen instanceof JasmScreen<?> || Minecraft.getInstance().screen instanceof JasmSettingsScreen)) {
             event.setTexture(STYLE);
         }
     }
