@@ -5,6 +5,7 @@ import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.CraftRule;
+import dev.micolash.jasm.core.AmountMath;
 import dev.micolash.jasm.deck.DeckMenu;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,8 @@ final class RuleWindow {
     private final Font font;
     private final EditBox first;
     private final EditBox second;
+    /** What the "how many to craft" box says now, worked out. */
+    private AmountMath.Result parsed = AmountMath.evaluate("");
     private final List<Placed> buttons = new ArrayList<>();
     private final Button kind;
     private final Button enabled;
@@ -66,7 +69,11 @@ final class RuleWindow {
         first = new JasmField(font, 0, 0, 50, 12, Component.translatable("screen.jasm.rule.number"));
         second = new JasmField(font, 0, 0, 50, 12, Component.translatable("screen.jasm.rule.amount"));
         first.setMaxLength(7);
-        second.setMaxLength(7);
+        second.setMaxLength(AmountMath.MAX_LENGTH);
+        second.setResponder(s -> {
+            parsed = AmountMath.evaluate(s);
+            second.setTooltip(AmountTips.tooltip(parsed));
+        });
         place(JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11), WIDTH - 16, 5);
         kind = place(JasmButton.text(Component.empty(), b -> {
             timed = !timed;
@@ -152,12 +159,12 @@ final class RuleWindow {
     }
 
     private void save() {
-        if (item.isEmpty()) {
+        if (item.isEmpty() || !parsed.ok()) {
             return;
         }
         long a = number(first, 1);
         send(Optional.of(new CraftRule(id == null ? UUID.randomUUID() : id, item, timed, timed ? 1 : a, timed ? (int) Math.min(a, 86_400) : 60,
-                number(second, 1), on, toPlayer)));
+                parsed.value(), on, toPlayer)));
         close();
     }
 
@@ -196,7 +203,8 @@ final class RuleWindow {
         graphics.text(font, Component.translatable(timed ? "screen.jasm.rule.seconds" : "screen.jasm.rule.items"), x + 94, y + 52,
                 JasmGui.MUTED, false);
         graphics.text(font, Component.translatable("screen.jasm.rule.craft"), x + 8, y + 72, JasmGui.SUBTEXT, false);
-        graphics.text(font, Component.translatable("screen.jasm.rule.more"), x + 94, y + 72, JasmGui.MUTED, false);
+        graphics.text(font, AmountTips.label(parsed, "screen.jasm.rule.more"), x + 94, y + 72,
+                parsed.ok() && !parsed.sum() ? JasmGui.MUTED : AmountTips.color(parsed), false);
         graphics.text(font, Component.translatable("screen.jasm.rule.send_to"), x + 8, y + 88, JasmGui.SUBTEXT, false);
         first.extractRenderState(graphics, mouseX, mouseY, a);
         second.extractRenderState(graphics, mouseX, mouseY, a);
@@ -269,12 +277,13 @@ final class RuleWindow {
         return false;
     }
 
-    /** Only digits reach the number boxes. */
+    /** Only digits reach the first box; the amount to craft also takes the four signs of a sum. */
     boolean charTyped(CharacterEvent event) {
         EditBox focused = first.isFocused() ? first : second.isFocused() ? second : null;
         if (focused == null) {
             return false;
         }
-        return !Character.isDigit(event.codepoint()) || focused.charTyped(event);
+        boolean allowed = focused == second ? AmountMath.typable(event.codepoint()) : Character.isDigit(event.codepoint());
+        return !allowed || focused.charTyped(event);
     }
 }

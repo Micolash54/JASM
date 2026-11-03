@@ -6,6 +6,7 @@ import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.FaceMode;
 import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.MachineFace;
 import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.registry.JasmItems;
@@ -125,7 +126,10 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         fluidAutomation = new BayAutomation.Fluids(tank, kind().takesIn());
         itemGates = new MachineSides.Gated<>(itemAutomation);
         fluidGates = new MachineSides.Gated<>(fluidAutomation);
-        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true, FaceMode.NONE, false, this::sidesChanged);
+        // A new Deployment Bay takes things in on every side but its front, where it places from.
+        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true,
+                kind().takesIn() ? FaceMode.INPUT : FaceMode.NONE, false, this::sidesChanged);
+        sides.preset(MachineFace.FRONT, FaceMode.NONE);
     }
 
     public abstract BayKind kind();

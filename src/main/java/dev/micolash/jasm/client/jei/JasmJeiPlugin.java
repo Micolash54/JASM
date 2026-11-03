@@ -15,6 +15,7 @@ import dev.micolash.jasm.client.ReceivedRecipes;
 import dev.micolash.jasm.client.StoragePortScreen;
 import dev.micolash.jasm.client.TransferPortScreen;
 import dev.micolash.jasm.config.Feature;
+import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BrainBalance;
 import dev.micolash.jasm.core.BitlingStage;
@@ -131,13 +132,13 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "data_cable", 2, JasmItems.cables());
         info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));
         info(registration, "advanced_crafting_server", 2, List.of(JasmItems.ADVANCED_CRAFTING_SERVER.get()));
-        info(registration, "access_port", 2, List.of(JasmItems.ACCESS_PORT.get()));
+        info(registration, "access_port", 2, List.of(JasmItems.ACCESS_PORT.get(), JasmItems.THIN_ACCESS_PORT.get()));
         info(registration, "speed_upgrade", 1, List.of(JasmItems.SPEED_UPGRADE.get()));
         info(registration, "redstone_upgrade", 1, List.of(JasmItems.REDSTONE_UPGRADE.get()));
         info(registration, "crafting_upgrade", 1, List.of(JasmItems.CRAFTING_UPGRADE.get()));
         info(registration, "stock_upgrade", 1, List.of(JasmItems.STOCK_UPGRADE.get()));
         info(registration, "power_upgrade", 1, List.of(JasmItems.POWER_UPGRADE.get()));
-        info(registration, "dimension_upgrade", 1, List.of(JasmItems.DIMENSION_UPGRADE.get()));
+        info(registration, "dimension_upgrade", 2, List.of(JasmItems.DIMENSION_UPGRADE.get()));
         info(registration, "chunkload_upgrade", 2, List.of(JasmItems.CHUNKLOAD_UPGRADE.get()));
         info(registration, "relay_chatterbox", 2, List.of(JasmItems.RELAY_CHATTERBOX.get()));
         info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
@@ -147,7 +148,7 @@ public class JasmJeiPlugin implements IModPlugin {
                 JasmItems.WORN_SEEDED_AMETHYST.get(), JasmItems.CRACKED_SEEDED_AMETHYST.get()));
         info(registration, "data_crystal", 2, List.of(JasmItems.DATA_CRYSTAL.get()));
         info(registration, "crystal_resonator", 2, List.of(JasmItems.CRYSTAL_RESONATOR.get()));
-        info(registration, "bitling", 3, JasmItems.bitlings());
+        info(registration, "bitling", 4, JasmItems.bitlings());
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
         info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
         BrainBalance brain = BrainBalance.fromConfig();
@@ -162,6 +163,30 @@ public class JasmJeiPlugin implements IModPlugin {
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
         registration.addRecipes(FoundryCategory.TYPE, List.of(FoundryCategory.Grow.fromConfig()));
         info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
+        registration.addItemStackInfo(List.of(new ItemStack(JasmItems.BATTERY.get())), new Component[]{
+                Component.translatable("jei.jasm.info.battery.1", JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS),
+                        JasmConfig.orDefault(JasmConfig.BATTERY_MAX_BLOCKS)),
+                Component.empty(),
+                Component.translatable("jei.jasm.info.battery.2")});
+        info(registration, "creative_battery", 1, List.of(JasmItems.CREATIVE_BATTERY.get()));
+        info(registration, "deployment_bay", 2, List.of(JasmItems.DEPLOYMENT_BAY.get()));
+        info(registration, "demolition_bay", 2, List.of(JasmItems.DEMOLITION_BAY.get()));
+        info(registration, "docking_station", 2, List.of(JasmItems.DOCKING_STATION.get()));
+        info(registration, "item_port", 2, List.of(JasmItems.INPUT_PORT.get(), JasmItems.OUTPUT_PORT.get(), JasmItems.INPUT_OUTPUT_PORT.get(),
+                JasmItems.FULL_INPUT_PORT.get(), JasmItems.FULL_OUTPUT_PORT.get(), JasmItems.FULL_INPUT_OUTPUT_PORT.get()));
+        info(registration, "storage_port", 2, List.of(JasmItems.STORAGE_PORT.get(), JasmItems.FULL_STORAGE_PORT.get()));
+        info(registration, "power_acceptor", 2, List.of(JasmItems.POWER_ACCEPTOR.get(), JasmItems.THIN_POWER_ACCEPTOR.get()));
+        info(registration, "synapse_core", 1, List.of(JasmItems.SYNAPSE_CORE.get()));
+        info(registration, "wrench", 1, List.of(JasmItems.WRENCH.get()));
+        info(registration, "blank_upgrade", 1, List.of(JasmItems.BLANK_UPGRADE.get()));
+        info(registration, "blank_chip", 1, List.of(JasmItems.BLANK_CHIP.get()));
+        info(registration, "chip", 2, List.of(JasmItems.LOGIC_CHIP.get(), JasmItems.MEMORY_CHIP.get(), JasmItems.LINK_CHIP.get(),
+                JasmItems.UNQUENCHED_LOGIC_CHIP.get(), JasmItems.UNQUENCHED_MEMORY_CHIP.get()));
+        info(registration, "advanced_chip", 1, List.of(JasmItems.ADVANCED_LOGIC_CHIP.get(), JasmItems.ADVANCED_MEMORY_CHIP.get(),
+                JasmItems.ADVANCED_LINK_CHIP.get()));
+        info(registration, "crystal_dust", 1, List.of(JasmItems.CRYSTAL_DUST.get()));
+        info(registration, "crystal_bud", 1, List.of(JasmItems.SMALL_DATA_CRYSTAL_BUD.get(), JasmItems.MEDIUM_DATA_CRYSTAL_BUD.get(),
+                JasmItems.LARGE_DATA_CRYSTAL_BUD.get(), JasmItems.DATA_CRYSTAL_CLUSTER.get()));
         info(registration, "combustion_generator", 2, Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
 

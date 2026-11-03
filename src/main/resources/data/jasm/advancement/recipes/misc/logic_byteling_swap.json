@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:logic_byteling_swap"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_memory_byteling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:memory_byteling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_link_byteling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:link_byteling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_memory_byteling",
+      "has_link_byteling"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:logic_byteling_swap"
+    ]
+  }
+}

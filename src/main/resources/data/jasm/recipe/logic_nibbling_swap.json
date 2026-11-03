@@ -1,0 +1,22 @@
+{
+  "type": "jasm:convert",
+  "key": {
+    "C": "jasm:logic_chip",
+    "B": [
+      "jasm:memory_nibbling",
+      "jasm:link_nibbling"
+    ]
+  },
+  "pattern": [
+    "CCC",
+    "CBC",
+    "CCC"
+  ],
+  "source": [
+    "jasm:memory_nibbling",
+    "jasm:link_nibbling"
+  ],
+  "result": {
+    "id": "jasm:logic_nibbling"
+  }
+}

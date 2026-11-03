@@ -1,0 +1,22 @@
+{
+  "type": "jasm:convert",
+  "key": {
+    "C": "jasm:advanced_link_chip",
+    "B": [
+      "jasm:logic_byteling",
+      "jasm:memory_byteling"
+    ]
+  },
+  "pattern": [
+    "CCC",
+    "CBC",
+    "CCC"
+  ],
+  "source": [
+    "jasm:logic_byteling",
+    "jasm:memory_byteling"
+  ],
+  "result": {
+    "id": "jasm:link_byteling"
+  }
+}

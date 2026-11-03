@@ -31,7 +31,7 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 <br />
 ## Good to know
 
-* Its Input / Output key opens sides for items and fluids separately, each Input or closed. An [Output Port](item-ports.md), hopper or pipe fills it through a side set to Input. Every side starts closed.
+* Its Input / Output key opens sides for items and fluids separately, each Input or closed. An [Output Port](item-ports.md), hopper or pipe fills it through a side set to Input. A new bay takes things in on every side except its front.
 * It runs on cable power and doesn't take up a place on the machine limit.
 * Speed Upgrades raise the power per placement or thrown stack as well as the speed. Four upgrades cost two and a half times the power for each action.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can run only while powered or unpowered, or work once for each redstone pulse.

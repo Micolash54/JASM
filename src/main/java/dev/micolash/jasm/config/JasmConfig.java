@@ -127,7 +127,7 @@ public final class JasmConfig {
 
     public static final ModConfigSpec.IntValue BATTERY_CAPACITY_BONUS = BUILDER
             .comment("Extra capacity in each Battery block, in percent per block in the group. A lone block has no bonus. Lowering this keeps stored power, even above the new capacity")
-            .defineInRange("batteryCapacityBonus", 2, 0, 100);
+            .defineInRange("batteryCapacityBonus", 4, 0, 100);
 
     public static final ModConfigSpec.IntValue BATTERY_CHARGE_BASE = BUILDER
             .comment("FE a tick a Battery's charging slot gives an item, before the size bonus")

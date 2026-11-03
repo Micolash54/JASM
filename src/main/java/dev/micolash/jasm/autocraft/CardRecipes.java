@@ -8,6 +8,7 @@ import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.workshop.BitlingItem;
+import dev.micolash.jasm.workshop.ConvertRecipe;
 import dev.micolash.jasm.workshop.EvolveRecipe;
 import java.util.ArrayList;
 import java.util.List;
@@ -245,7 +246,7 @@ public final class CardRecipes {
                 return true;
             }
             ItemStack stack = candidate.toStack(1);
-            if (trainedCritter(slot) || returnsSelf(level, slot)) {
+            if (trainedCritter(slot) || convertedCritter(slot) || returnsSelf(level, slot)) {
                 if (!stack.is(there.getItem())) {
                     return false;
                 }
@@ -273,6 +274,11 @@ public final class CardRecipes {
                     && Training.full(BitlingItem.trained(there), critter.trainingRequired());
         }
 
+        /** Whether the recipe turns the critter in {@code slot} into another type, whatever its charge or training. */
+        private boolean convertedCritter(int slot) {
+            return recipe instanceof ConvertRecipe && encoded.get(slot).getItem() instanceof BitlingItem;
+        }
+
         /**
          * Whether these nine inputs really make this card's output. A wafer made from used wafers carries a note of
          * which ones went in; that note isn't part of what the card makes.
@@ -284,7 +290,7 @@ public final class CardRecipes {
             }
             ItemStack made = recipe.assemble(input);
             made.remove(JasmComponents.WAFER_MERGE.get());
-            if (recipe instanceof EvolveRecipe) {
+            if (recipe instanceof EvolveRecipe || recipe instanceof ConvertRecipe) {
                 // the grown critter keeps the charge and name of the one that went in
                 return made.is(output.getItem()) && made.getCount() == output.getCount();
             }

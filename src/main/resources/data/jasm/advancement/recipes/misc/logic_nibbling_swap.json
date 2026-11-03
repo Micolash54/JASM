@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "jasm:logic_nibbling_swap"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_memory_nibbling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:memory_nibbling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_link_nibbling": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:link_nibbling"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_memory_nibbling",
+      "has_link_nibbling"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "jasm:logic_nibbling_swap"
+    ]
+  }
+}

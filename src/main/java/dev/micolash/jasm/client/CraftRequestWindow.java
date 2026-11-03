@@ -4,6 +4,7 @@ import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftNetwork;
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.autocraft.FluidMarkerItem;
+import dev.micolash.jasm.core.AmountMath;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.deck.DeckMenu;
 import dev.micolash.jasm.deck.DeckPayloads;
@@ -49,14 +50,16 @@ final class CraftRequestWindow {
     private static final int ASK_GAP = CraftNetwork.PLAN_EVERY + 1;
     /** Ticks to wait for the Max answer before giving up on it. */
     private static final int MOST_WAIT = 40;
-    /** The amount box takes 7 digits. */
-    private static final long MOST_SHOWN = 9_999_999;
+    /** The most the amount box takes. */
+    private static final long MOST_SHOWN = AmountMath.MOST;
     /** Kept while the game is open: the list or the tree, as the player last chose. */
     private static boolean treeMode;
 
     private final DeckMenu menu;
     private final Font font;
     private final EditBox amount;
+    /** What the amount box says now, worked out. */
+    private AmountMath.Result parsed = AmountMath.evaluate("");
     private final List<Placed> buttons = new ArrayList<>();
     private final Button craft;
     private final Button next;
@@ -94,8 +97,12 @@ final class CraftRequestWindow {
         this.menu = menu;
         this.font = font;
         amount = new JasmField(font, 0, 0, 50, 12, Component.translatable("screen.jasm.craft.amount"));
-        amount.setMaxLength(7);
-        amount.setResponder(s -> askIn = 6);
+        amount.setMaxLength(AmountMath.MAX_LENGTH);
+        amount.setResponder(s -> {
+            parsed = AmountMath.evaluate(s);
+            amount.setTooltip(AmountTips.tooltip(parsed));
+            askIn = 6;
+        });
         place(JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11), 16, 5, true);
         place(JasmButton.text(Component.literal("-"), b -> step(-1), 0, 0, 15, 17), 58, 24, false);
         place(JasmButton.text(Component.literal("+"), b -> step(1), 0, 0, 15, 17), 127, 24, false);
@@ -212,19 +219,16 @@ final class CraftRequestWindow {
         return isOpen() ? Optional.of(new Rect2i(x, y, width + 3, height + 3)) : Optional.empty();
     }
 
+    /** The amount typed, worked out; 0 when it can't be confirmed. */
     private long amount() {
-        try {
-            return Math.max(1, Long.parseLong(amount.getValue()));
-        } catch (NumberFormatException e) {
-            return 1;
-        }
+        return parsed.value();
     }
 
     /** Minus and plus: 1 at a time, 16 with shift held. */
     private void step(int sign) {
         forgetMost();
         long by = Minecraft.getInstance().hasShiftDown() ? 16 : 1;
-        amount.setValue(String.valueOf(Math.max(1, amount() + sign * by)));
+        amount.setValue(String.valueOf(Math.clamp(amount() + sign * by, 1, MOST_SHOWN)));
     }
 
     void tick() {
@@ -245,7 +249,7 @@ final class CraftRequestWindow {
     }
 
     private void ask() {
-        if (target != null) {
+        if (target != null && parsed.ok()) {
             askedAt = ticks;
             ClientPacketDistributor.sendToServer(new CraftPayloads.Ask(menu.containerId, target, amount(), Optional.ofNullable(wanted), treeMode));
         }
@@ -254,7 +258,7 @@ final class CraftRequestWindow {
     /** The server's answer, if it is about what the window shows now. In tree mode an answer without a tree is an older one. */
     private CraftPayloads.@Nullable Answer answer() {
         CraftPayloads.Answer answer = menu.view().answer();
-        boolean fits = answer != null && target != null && answer.target().equals(target) && answer.amount() == amount();
+        boolean fits = parsed.ok() && answer != null && target != null && answer.target().equals(target) && answer.amount() == amount();
         return fits && (!treeMode || answer.tree().isPresent()) ? answer : null;
     }
 
@@ -351,8 +355,8 @@ final class CraftRequestWindow {
         FluidGrid.drawStack(graphics, shown, x + 6, y + 4);
         graphics.text(font, trim(shown.getHoverName().getString(), width - 44), x + 26, y + 8, JasmGui.TEXT, false);
         graphics.fill(x + 4, y + 22, x + width - 4, y + 23, JasmGui.SELECTED);
-        graphics.text(font, Component.translatable(FluidMarkerItem.isMarker(shown) ? "screen.jasm.craft.amount_fluid" : "screen.jasm.craft.amount"),
-                x + 7, y + 30, JasmGui.SUBTEXT, false);
+        Component label = AmountTips.label(parsed, FluidMarkerItem.isMarker(shown) ? "screen.jasm.craft.amount_fluid" : "screen.jasm.craft.amount");
+        graphics.text(font, trim(label.getString(), 51), x + 7, y + 30, AmountTips.color(parsed), false);
         amount.extractRenderState(graphics, mouseX, mouseY, a);
         for (Placed placed : buttons) {
             placed.button().extractRenderState(graphics, mouseX, mouseY, a);
@@ -523,12 +527,12 @@ final class CraftRequestWindow {
         return false;
     }
 
-    /** Only digits reach the amount box. */
+    /** Only digits and the four signs reach the amount box. */
     boolean charTyped(CharacterEvent event) {
         if (!amount.isFocused()) {
             return false;
         }
-        if (!Character.isDigit(event.codepoint())) {
+        if (!AmountMath.typable(event.codepoint())) {
             return true;
         }
         forgetMost();

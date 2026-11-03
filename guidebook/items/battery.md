@@ -21,7 +21,7 @@ A Battery stores FE. It connects to adjacent machines or to a JASM network via [
 | | |
 | --- | --- |
 | Holds | 2,000,000 FE each block |
-| Size bonus | 2% more FE for every battery in a multiblock |
+| Size bonus | 4% more FE for every battery in a multiblock |
 | Largest multiblock size | 64 blocks |
 
 <br />

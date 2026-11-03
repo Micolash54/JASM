@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * A machine's I/O grid: for each of its six faces, what hoppers, pipes and ports may do through it, once for items and,
  * on machines with a tank, once for fluids. A newly placed machine starts every face at the mode it is given (Input on
- * the Workshop and Foundry, None on the bays). The screen's face buttons step through the modes this machine offers.
+ * the Workshop and Foundry and, apart from its front, the Deployment Bay; None on the Demolition Bay). The screen's face buttons step through the modes this machine offers.
  * Machines with an Auto Output switch only push their results out on their own while it is on; the bays always do.
  */
 public final class MachineSides {
@@ -59,6 +59,16 @@ public final class MachineSides {
         this.switchable = switchable;
         this.changed = changed;
         fill(offered.contains(start) ? start : FaceMode.NONE);
+    }
+
+    /** Sets one face on a machine that is just being built, if offered, without telling anyone. */
+    public void preset(MachineFace face, FaceMode mode) {
+        if (!offered.contains(mode)) return;
+        for (Kind kind : Kind.values()) {
+            if (kind == Kind.FLUIDS && !fluids) continue;
+            modes[kind.ordinal()][face.ordinal()] = mode;
+        }
+        refreshOut();
     }
 
     public boolean hasAutoOutputSwitch() {

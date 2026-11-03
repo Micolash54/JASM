@@ -33,6 +33,8 @@ Open the Craft tab on the Deck, pick an item and an amount, and press **Craft**.
 * **Crafts first:** the steps in between, as a list or a tree.
 * **Missing:** anything it can't find.
 
+The amount box takes a sum: type `200-50` to craft 150. It understands `+ - * /`, does times and divide first, and rounds a divide down. The answer shows beside the box, and **Craft** stays off while it is not a whole number from 1 to 9999999. Crafting rules take the same sums in their craft box.
+
 A hammer in the Items tab marks items with a known recipe, even when some are already stored.
 
 Items a recipe hands back, like Mystical Agriculture's Infusion Crystals, are reused: one copy serves every craft in the job, even if it is enchanted or renamed.

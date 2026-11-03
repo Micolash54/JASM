@@ -5,6 +5,7 @@ import dev.micolash.jasm.autocraft.WipeCardRecipe;
 import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.crafting.UpgradeRecipe;
 import dev.micolash.jasm.crystal.QuenchingRecipe;
+import dev.micolash.jasm.workshop.ConvertRecipe;
 import dev.micolash.jasm.workshop.EvolveRecipe;
 import dev.micolash.jasm.workshop.WorkshopRecipe;
 import java.util.function.Supplier;
@@ -27,6 +28,9 @@ public final class JasmRecipes {
 
     /** A fully trained critter grows up. */
     public static final Supplier<RecipeSerializer<EvolveRecipe>> EVOLVE = SERIALIZERS.register("evolve", () -> EvolveRecipe.SERIALIZER);
+
+    /** A critter and a chip of another type make the critter of that type. */
+    public static final Supplier<RecipeSerializer<ConvertRecipe>> CONVERT = SERIALIZERS.register("convert", () -> ConvertRecipe.SERIALIZER);
 
     /** Things a critter builds in the Chip Workshop's grid. */
     public static final Supplier<RecipeSerializer<WorkshopRecipe>> WORKSHOP = SERIALIZERS.register("workshop", () -> WorkshopRecipe.SERIALIZER);

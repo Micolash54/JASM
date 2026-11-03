@@ -73,6 +73,13 @@ Surround a Basic Bitling with 8 chips of one type in a crafting grid to get a Lo
 
 <br />
 <br />
+## Changing type
+
+* A Logic, Memory or Link Bitling, Nibbling or Byteling turns into another type of the same stage. Put it in the middle of a crafting grid and surround it with eight chips of the new type: Logic, Memory or Link Chips, or the Advanced ones for a Byteling.
+* It keeps its charge. Its training starts again from zero.
+
+<br />
+<br />
 ## Recipes
 
 <Column>
