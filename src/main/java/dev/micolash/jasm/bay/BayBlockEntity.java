@@ -57,6 +57,8 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidStacksResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
 import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
+import net.neoforged.neoforge.transfer.transaction.RootCommitJournal;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -85,6 +87,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     private final ResourceHandler<FluidResource> fluidAutomation;
     private final MachineSides.Gated<ItemResource> itemGates;
     private final MachineSides.Gated<FluidResource> fluidGates;
+    /** Runs {@link #gridChanged()} when a port's or pipe's transfer is committed. */
+    private final RootCommitJournal transferJournal = new RootCommitJournal(this::gridChanged);
     /** The Deployment Bay only takes in and the Demolition Bay only gives out, so each offers just that or None. */
     private final MachineSides sides;
     private final BayClock clock = new BayClock();
@@ -468,6 +472,15 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         int moved = before - stack.getCount();
         if (moved > 0) gridChanged();
         return moved;
+    }
+
+    /**
+     * Ports and pipes change slots through the item handler, which skips {@link #setItem(int, ItemStack)}, so wake
+     * once their transfer is committed. A transfer that is rolled back changes nothing and wakes nothing.
+     */
+    @Override
+    public void onTransfer(int slot, int amountChange, TransactionContext transaction) {
+        transferJournal.updateSnapshots(transaction);
     }
 
     /** Call after changing grid stacks in place. */

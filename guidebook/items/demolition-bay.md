@@ -36,6 +36,7 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 
 * Its Input / Output key opens sides for items and fluids separately, each Output or closed. A side set to Output sends what it broke or scooped into whatever is there, and an [Input Port](item-ports.md), hopper or pipe can empty it there. Every side starts closed.
 * It runs on cable power and doesn't take up a place on the machine limit.
+* Pipes and other mods' cables can't power it: put a [Power Interface](power-acceptor.md) against it.
 * Speed Upgrades raise the power per break or scoop as well as the speed. Four upgrades cost two and a half times the power for each action.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can run only while powered or unpowered, or work once for each redstone pulse.
 * You can add [filters](../mechanics/type-filters.md) to decide what it may or may not break. Works for items and fluids.
