@@ -36,7 +36,7 @@ import org.jspecify.annotations.Nullable;
  * Draws what moves in a Network Tether: the Network Brain's power pole in its glass tube, and its operator at the Brain's
  * desk. On watch the operator types through the Brain's desk loop, the screen glows and the pole spins, lit; without
  * power the pole stands dark, the screen is off and the operator dozes face down on the desk; with nobody inside the
- * stool is empty and a "brb" note leans on the desk. The rest is the block's own model.
+ * stool is empty and a "brb" note hangs on the tube's glass from a string over a nail. The rest is the block's own model.
  */
 public class NetworkTetherRenderer implements BlockEntityRenderer<NetworkTetherBlockEntity, NetworkTetherRenderer.State> {
     /** The extra models, by where they are, so they can be registered. */

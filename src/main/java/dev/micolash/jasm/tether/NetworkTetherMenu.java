@@ -33,7 +33,9 @@ public class NetworkTetherMenu extends AbstractContainerMenu implements MachineV
     static final int DATA_POWER_LOW = 1;
     static final int DATA_POWER_HIGH = 2;
     static final int DATA_CHUNKS = 3;
-    static final int DATA_COUNT = 4;
+    /** While the server's limit cuts the Tether short, how many chunks its network touches; else 0. */
+    static final int DATA_LIMITED_OF = 4;
+    static final int DATA_COUNT = 5;
 
     private final @Nullable NetworkTetherBlockEntity tether;
     private final ContainerLevelAccess access;
@@ -76,6 +78,7 @@ public class NetworkTetherMenu extends AbstractContainerMenu implements MachineV
                     case DATA_POWER_LOW -> tether.powerUse() & 0xFFFF;
                     case DATA_POWER_HIGH -> tether.powerUse() >>> 16;
                     case DATA_CHUNKS -> tether.chunksHeld();
+                    case DATA_LIMITED_OF -> Math.min(tether.limitedOf(), 0xFFFF);
                     default -> 0;
                 };
             }
@@ -105,6 +108,11 @@ public class NetworkTetherMenu extends AbstractContainerMenu implements MachineV
 
     public int chunks() {
         return data.get(DATA_CHUNKS);
+    }
+
+    /** While the server's limit cuts the Tether short, how many chunks its network touches; else 0. */
+    public int limitedOf() {
+        return data.get(DATA_LIMITED_OF) & 0xFFFF;
     }
 
     public ItemStack operator() {

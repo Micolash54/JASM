@@ -16,21 +16,22 @@ import snownee.jade.api.ITooltip;
 import snownee.jade.api.StreamServerDataProvider;
 import snownee.jade.api.config.IPluginConfig;
 
-/** A Network Tether: what it is doing, and how many chunks it holds. */
+/** A Network Tether: what it is doing, and how many chunks it holds, out of how many when the server's limit cuts it short. */
 public class TetherInfo implements StreamServerDataProvider<BlockAccessor, TetherInfo.Data> {
     public static final TetherInfo INSTANCE = new TetherInfo();
 
-    public record Data(int status, int chunks) {
+    public record Data(int status, int chunks, int limitedOf) {
         static final StreamCodec<RegistryFriendlyByteBuf, Data> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Data::status,
                 ByteBufCodecs.VAR_INT, Data::chunks,
+                ByteBufCodecs.VAR_INT, Data::limitedOf,
                 Data::new);
     }
 
     @Override
     public @Nullable Data streamData(BlockAccessor accessor) {
         if (!(accessor.getBlockEntity() instanceof NetworkTetherBlockEntity tether)) return null;
-        return new Data(tether.status().ordinal(), tether.chunksHeld());
+        return new Data(tether.status().ordinal(), tether.chunksHeld(), tether.limitedOf());
     }
 
     @Override
@@ -52,7 +53,9 @@ public class TetherInfo implements StreamServerDataProvider<BlockAccessor, Tethe
             decodeFromData(accessor).ifPresent(data -> {
                 TetherStatus status = TetherStatus.values()[Math.clamp(data.status(), 0, TetherStatus.values().length - 1)];
                 tooltip.add(Component.translatable("jade.jasm.network_tether." + status.name().toLowerCase(Locale.ROOT)));
-                tooltip.add(Component.translatable("screen.jasm.network_tether.chunks", data.chunks()));
+                tooltip.add(data.limitedOf() > 0
+                        ? Component.translatable("jade.jasm.network_tether.chunks_limited", data.chunks(), data.limitedOf())
+                        : Component.translatable("screen.jasm.network_tether.chunks", data.chunks()));
             });
         }
     }

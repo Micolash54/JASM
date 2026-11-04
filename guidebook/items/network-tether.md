@@ -41,6 +41,7 @@ Keeps every chunk its network touches loaded, even with nobody near: every cable
 * The chunks stay loaded while you are away, and after a restart. Mobs spawn in them as they do near a player.
 * When the battery runs flat, the chunks are let go a few seconds later. Take the operator out and they are let go at once.
 * A chunk is only known once a cable or machine in it has been loaded with the Tether in place.
+* A server can switch Tethers off, or limit how many chunks each network keeps loaded. Then only the chunks nearest the Tether on watch are held, and its panel shows how many of the network's chunks that is.
 
 <br />
 <br />

@@ -4,6 +4,7 @@ import dev.micolash.jasm.config.Setting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -31,6 +32,8 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
     /** The least room the name beside a control is given; with less, the control goes under the name. */
     private static final int MIN_WORDS = 110;
     private static final int LINE = 10;
+    /** Whole numbers with a range too wide for the usual slider that still get one. */
+    private static final Set<String> WIDE_SLIDERS = Set.of("tetherMaxChunks");
 
     private final JasmSettingsScreen screen;
     private final Font font;
@@ -216,7 +219,9 @@ final class SettingsRowList extends SettingsPane<SettingsRowList.Row> {
             Number min = setting.min();
             Number max = setting.max();
             if (min == null || max == null) return 0;
-            if (setting.kind() == Setting.Kind.WHOLE && max.intValue() - min.intValue() <= 128) return max.intValue() - min.intValue();
+            if (setting.kind() == Setting.Kind.WHOLE && (max.intValue() - min.intValue() <= 128 || WIDE_SLIDERS.contains(setting.key()))) {
+                return max.intValue() - min.intValue();
+            }
             if (setting.kind() == Setting.Kind.DECIMAL && min.doubleValue() == 0.0 && max.doubleValue() == 1.0) return 100;
             return 0;
         }

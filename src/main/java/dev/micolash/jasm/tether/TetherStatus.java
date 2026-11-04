@@ -13,14 +13,16 @@ public enum TetherStatus {
     /** The operator can't pay: the chunks stay held for a short while, then are let go. */
     NO_POWER,
     /** The operator couldn't pay and the chunks have been let go. */
-    ASLEEP;
+    ASLEEP,
+    /** Tethers are switched off on this server: nothing is held and nothing is paid. */
+    DISABLED;
 
     /** How the block looks: the operator at work, dozing, or not there. */
     public Mood mood() {
         return switch (this) {
             case EMPTY -> Mood.EMPTY;
             case STARTING, WATCHING -> Mood.WATCH;
-            case STANDBY, NO_POWER, ASLEEP -> Mood.DOZE;
+            case STANDBY, NO_POWER, ASLEEP, DISABLED -> Mood.DOZE;
         };
     }
 

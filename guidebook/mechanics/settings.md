@@ -186,6 +186,8 @@ Both lists go 0, 1, 2, 3 and 4 Speed Upgrades. More upgrades use the last entry.
 
 | Setting | Key | What it does |
 | --- | --- | --- |
+| Network Tethers | `tetherEnabled` | Network Tethers keep chunks loaded. Off: they load nothing, let go of the chunks they held and draw no power. The blocks, items and recipe stay. |
+| Tether chunk limit | `tetherMaxChunks` | Most chunks one network's Tether keeps loaded, 0 for no limit. A network that touches more has only the chunks nearest its Tether held, and pays for those. |
 | Tether base cost | `tetherBaseCost` | FE a Network Tether's operator pays each tick while it keeps chunks loaded, before the cost of the chunks. |
 | Tether chunk cost | `tetherChunkCost` | How fast a Network Tether's cost rises with the chunks it holds. For n chunks it pays the base cost plus this times n(n+1)/2 FE each tick. |
 

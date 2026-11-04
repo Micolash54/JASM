@@ -69,11 +69,18 @@ public class NetworkTetherBlockEntity extends MachineBlockEntity implements Worl
     private long paidAt = Long.MIN_VALUE;
     /** When the operator first couldn't pay while chunks were held; -1 while it pays. */
     private long unpaidSince = -1;
-    /** The network the held chunks were last matched to; a new one means its chunks may have changed. */
-    private @Nullable CableNetwork matched;
+    /**
+     * The chunks it was last told to hold. They are worked out once for each network and limit, so a new set means the
+     * network or the server's limit has changed.
+     */
+    private @Nullable Set<ChunkKey> matched;
     private boolean trimmed;
     /** The list it last held every chunk of {@link #matched} in; null until it does, and once it lets go. */
     private @Nullable ChunkLoaders heldAllIn;
+    /** Its own chunk, which it holds while on no network. */
+    private @Nullable Set<ChunkKey> own;
+    /** While it keeps watch under the server's limit: how many chunks its network touches. 0 otherwise. */
+    private int limitedOf;
 
     /** The look as this player's game was told it. Client only. */
     private int shownLook = look(TetherStatus.Mood.EMPTY, null);
@@ -179,38 +186,45 @@ public class NetworkTetherBlockEntity extends MachineBlockEntity implements Worl
             placedAt = now;
             setChanged();
         }
-        topUp();
+        boolean enabled = JasmConfig.orDefault(JasmConfig.TETHER_ENABLED);
+        if (enabled) topUp();
         ChunkLoaders loaders = ChunkLoaders.get(level.getServer());
         // Asking for the network every tick also keeps it alive, so it passes power on each tick.
         CableNetwork network = Networks.at(level, worldPosition);
         TetherWatch watch = network == null ? null : network.derived(TetherWatch.OF);
-        Set<ChunkKey> wanted = watch == null ? Set.of(ChunkKey.of(level, worldPosition)) : watch.chunks();
+        int limit = JasmConfig.orDefault(JasmConfig.TETHER_MAX_CHUNKS);
+        if (own == null) own = Set.of(ChunkKey.of(level, worldPosition));
+        int count = watch == null ? 1 : watch.held(limit);
         boolean holding = !loaders.held(level, worldPosition).isEmpty();
+        limitedOf = 0;
         TetherStatus next;
-        if (seated() == null) {
+        if (!enabled || seated() == null) {
             loaders.release(level, worldPosition);
             heldAllIn = null;
             unpaidSince = -1;
-            next = TetherStatus.EMPTY;
-        } else if (canLead(wanted.size()) && (watch == null || watch.leader(now) == this)) {
+            next = enabled ? TetherStatus.EMPTY : TetherStatus.DISABLED;
+        } else if (canLead(count) && (watch == null || watch.leader(now, count) == this)) {
             unpaidSince = -1;
-            boolean fresh = network != matched;
+            // Only the leader asks which chunks, so the network works the pick out once.
+            Set<ChunkKey> wanted = watch == null ? own : watch.wanted(level.dimension(), worldPosition, limit);
+            boolean fresh = wanted != matched;
             if (fresh) {
-                matched = network;
+                matched = wanted;
                 trimmed = false;
             }
-            // A network's chunks change only with the network, so once all are held there is nothing to add.
+            if (watch != null && wanted.size() < watch.chunks().size()) limitedOf = watch.chunks().size();
+            // The chunks change only with the network or the limit, so once all are held there is nothing to add.
             boolean all = !fresh && heldAllIn == loaders || loaders.hold(level, worldPosition, wanted, false);
             heldAllIn = all ? loaders : null;
-            // Chunks it holds that the network no longer touches go only once every held chunk is loaded: until then
-            // the network may look smaller than it is, as after a restart.
+            // Chunks it holds and no longer wants (the network shrank, or the limit fell) go only once every held chunk
+            // is loaded: until then the network may look smaller than it is, as after a restart.
             if (all && !trimmed && (now + worldPosition.asLong()) % TRIM_TICKS == 0 && loaders.allLoaded(level, worldPosition)) {
                 loaders.hold(level, worldPosition, wanted, true);
                 trimmed = true;
             }
             spend(cost(loaders.held(level, worldPosition).size()), now);
             next = all ? TetherStatus.WATCHING : TetherStatus.STARTING;
-        } else if (canLead(wanted.size())) {
+        } else if (canLead(count)) {
             loaders.release(level, worldPosition);
             heldAllIn = null;
             unpaidSince = -1;
@@ -228,7 +242,11 @@ public class NetworkTetherBlockEntity extends MachineBlockEntity implements Worl
             next = TetherStatus.ASLEEP;
         }
         status = next;
-        sizeIntake();
+        if (enabled) {
+            sizeIntake();
+        } else if (energy.getCapacityAsInt() != 0) {
+            energy.resize(0);
+        }
         showLook(level);
     }
 
@@ -242,6 +260,11 @@ public class NetworkTetherBlockEntity extends MachineBlockEntity implements Worl
         return level instanceof ServerLevel serverLevel ? ChunkLoaders.count(serverLevel, worldPosition) : 0;
     }
 
+    /** While it keeps watch with the server's limit cutting it short, how many chunks its network touches; else 0. Server only. */
+    public int limitedOf() {
+        return limitedOf;
+    }
+
     // --- what players' games are told: the mood and which critter sits there ---
 
     /** The look packed in one number: the mood, then the operator's kind and stage. */
@@ -252,7 +275,8 @@ public class NetworkTetherBlockEntity extends MachineBlockEntity implements Worl
     }
 
     private int look() {
-        return look(status.mood(), seated());
+        BitlingItem critter = seated();
+        return look(critter == null ? TetherStatus.Mood.EMPTY : status.mood(), critter);
     }
 
     /** Tells players' games when the block would be drawn differently, and lights the base's strips while on watch. */

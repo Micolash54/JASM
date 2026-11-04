@@ -329,6 +329,14 @@ public final class JasmConfig {
         BUILDER.pop().push("chunkloading");
     }
 
+    public static final ModConfigSpec.BooleanValue TETHER_ENABLED = BUILDER
+            .comment("Network Tethers keep chunks loaded. Off: they load nothing, let go of the chunks they held and draw no power. The blocks, items and recipe stay. Turned back on, each starts again once its chunk is loaded")
+            .define("tetherEnabled", true);
+
+    public static final ModConfigSpec.IntValue TETHER_MAX_CHUNKS = BUILDER
+            .comment("Most chunks one network's Tether keeps loaded, 0 for no limit. A network that touches more has only the chunks nearest its Tether held, and pays for those")
+            .defineInRange("tetherMaxChunks", 0, 0, 1_024);
+
     public static final ModConfigSpec.IntValue TETHER_BASE_COST = BUILDER
             .comment("FE a Network Tether's operator pays each tick while it keeps chunks loaded, before the cost of the chunks")
             .defineInRange("tetherBaseCost", 80, 0, 1_000_000);
@@ -370,6 +378,11 @@ public final class JasmConfig {
     /** The value, or its default while no world has loaded the config yet (the guide draws blocks at the title screen). */
     public static int orDefault(ModConfigSpec.IntValue value) {
         return SPEC.isLoaded() ? value.getAsInt() : value.getDefault();
+    }
+
+    /** The switch, or its default while no world has loaded the config yet. */
+    public static boolean orDefault(ModConfigSpec.BooleanValue value) {
+        return SPEC.isLoaded() ? value.getAsBoolean() : value.getDefault();
     }
 
     /** Wafer slots a Deck of this tier has in this world. */
