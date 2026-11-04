@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.neoforged.neoforge.transfer.EmptyResourceHandler;
 import net.neoforged.neoforge.transfer.ResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -175,6 +176,20 @@ public class TransferPortBlockEntity extends AccessPortBlockEntity {
      */
     @Override
     public boolean takesPushes() { return kind.imports(); }
+
+    /**
+     * Pipes join only a face that shows them a handler. An Output Port takes nothing in, so it shows an empty one: a pipe
+     * joins it, takes what the port sends and can push nothing back.
+     */
+    @Override
+    public @Nullable ResourceHandler<ItemResource> itemInput(@Nullable Direction side) {
+        return takesPushes() ? super.itemInput(side) : kind.exports() ? EmptyResourceHandler.instance() : null;
+    }
+
+    @Override
+    public @Nullable ResourceHandler<FluidResource> fluidInput(@Nullable Direction side) {
+        return takesPushes() ? super.fluidInput(side) : kind.exports() ? EmptyResourceHandler.instance() : null;
+    }
 
     @Override
     protected boolean acceptsPushedFluid(FluidResource fluid) { return takesPushes() && filters.input().rank(fluid.getFluid()) >= 0; }
