@@ -206,8 +206,9 @@ public class JasmJeiPlugin implements IModPlugin {
     /** Fuel burn times are only known once JEI has worked out its own furnace fuel list, so the pages are added then. */
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
-        // The terminal's fluid marker is not a real item: keep it out of the item list.
-        runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, List.of(new ItemStack(JasmItems.FLUID_MARKER.get())));
+        // The terminal's fluid and material markers are not real items: keep them out of the item list.
+        runtime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK,
+                List.of(new ItemStack(JasmItems.FLUID_MARKER.get()), new ItemStack(JasmItems.MATERIAL_MARKER.get())));
         IRecipeManager recipes = runtime.getRecipeManager();
         List<GeneratorFuelCategory.Fuel> fuels = recipes.createRecipeLookup(RecipeTypes.SMELTING_FUEL).get()
                 .map(fuel -> new GeneratorFuelCategory.Fuel(fuel.getInputs(), fuel.getBurnTime()))
