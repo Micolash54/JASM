@@ -83,6 +83,10 @@ public final class JasmClientConfig {
             .comment("Folds the port list away on Advanced Encoder screens")
             .define("encoderPortsFolded", false);
 
+    public static final ModConfigSpec.BooleanValue RACK_CONTROLLER_PORTS_FOLDED = BUILDER
+            .comment("Folds the port list away on Rack Controller screens")
+            .define("rackControllerPortsFolded", false);
+
     public static final ModConfigSpec.EnumValue<DeckSize> RACK_CONTROLLER_SIZE = BUILDER
             .comment("Height of the Rack Controller's rack list")
             .defineEnum("rackControllerSize", DeckSize.SMALL);
@@ -211,6 +215,15 @@ public final class JasmClientConfig {
 
     public static void setEncoderPortsFolded(boolean folded) {
         ENCODER_PORTS_FOLDED.set(folded);
+        SPEC.save();
+    }
+
+    public static boolean rackControllerPortsFolded() {
+        return SPEC.isLoaded() && RACK_CONTROLLER_PORTS_FOLDED.get();
+    }
+
+    public static void setRackControllerPortsFolded(boolean folded) {
+        RACK_CONTROLLER_PORTS_FOLDED.set(folded);
         SPEC.save();
     }
 

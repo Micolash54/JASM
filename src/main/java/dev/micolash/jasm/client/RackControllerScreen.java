@@ -19,6 +19,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
@@ -30,7 +31,8 @@ import org.jspecify.annotations.Nullable;
  * The Rack Controller's screen: a search box over a scrolling list with one section per Recipe Rack (its name, how full
  * it is, its 16 slots in two rows), then the inventory. Click a card to take it, click an empty slot to put the held
  * card in, Shift-click a card to send it to the inventory. While searching, cards that make what was typed stay lit,
- * the rest dim, and racks with no match fold to their name.
+ * the rest dim, and racks with no match fold to their name. Left of it, the network's Access Ports, as on the Advanced
+ * Encoder: a click opens a port's screen, and shutting that comes back here.
  */
 public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     private static final int WIDTH = RackControllerMenu.WIDTH;
@@ -80,6 +82,8 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     private int scroll;
     private boolean dragging;
     private JasmButton sizeKey;
+    private @Nullable PortsPanel portsPanel;
+    private JasmFrame frame;
 
     public RackControllerScreen(RackControllerMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, WIDTH, menu.screenHeight());
@@ -115,6 +119,15 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
         imageHeight = menu.screenHeight();
         inventoryLabelY = menu.inventoryY() - 10;
         super.init();
+        // The main panel stays in the middle whether the port list is open or folded; on a window too narrow for the
+        // open list, it moves right just enough.
+        leftPos = Math.max((width - WIDTH) / 2, Math.min(PortsPanel.REACH, width - WIDTH));
+        if (portsPanel == null) {
+            portsPanel = new PortsPanel(menu, font, JasmClientConfig::rackControllerPortsFolded,
+                    JasmClientConfig::setRackControllerPortsFolded, this::buildFrame);
+        }
+        addRenderableWidget(portsPanel.foldKey(leftPos, topPos, imageHeight));
+        buildFrame();
         addHelp(WIDTH - 7, "items/rack-controller.md");
         sizeKey = addRenderableWidget(JasmButton.icon(() -> SIZE_ICONS[JasmClientConfig.rackControllerSize().ordinal()], sizeLabel(),
                 b -> changeSize(false), leftPos + SIZE_KEY_X, topPos + titleLabelY - 3, SIZE_KEY, SIZE_KEY));
@@ -129,6 +142,26 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
         search.setResponder(text -> scroll = 0);
         addRenderableWidget(search);
         laidOutFor = -1;
+    }
+
+    /** The main panel and the port list beside it. */
+    private void buildFrame() {
+        List<int[]> parts = new ArrayList<>();
+        parts.add(new int[]{0, 0, imageWidth, imageHeight});
+        if (portsPanel != null) parts.addAll(portsPanel.frameParts());
+        frame = JasmFrame.rounded(parts.toArray(int[][]::new));
+    }
+
+    /** The port list, or the strip that brings it back, so JEI's lists stay clear of it. */
+    public List<Rect2i> extraAreas() {
+        return portsPanel == null ? List.of() : portsPanel.areas();
+    }
+
+    /** The port list sits outside the main panel, but clicking it doesn't throw the held item away. */
+    @Override
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top) {
+        boolean inside = extraAreas().stream().anyMatch(area -> area.contains((int) mouseX, (int) mouseY));
+        return !inside && super.hasClickedOutside(mouseX, mouseY, left, top);
     }
 
     // --- the list ---
@@ -218,7 +251,8 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractBackground(graphics, mouseX, mouseY, a);
-        JasmGui.panel(graphics, leftPos, topPos, imageWidth, imageHeight);
+        frame.draw(graphics, leftPos, topPos);
+        if (portsPanel != null) portsPanel.drawBackground(graphics);
         for (var slot : menu.slots) {
             JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
         }
@@ -233,6 +267,12 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     public void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
         super.extractContents(graphics, mouseX, mouseY, a);
         drawList(graphics, mouseX, mouseY);
+        if (portsPanel != null) portsPanel.draw(graphics, mouseX, mouseY);
+        // A port that couldn't be opened says why, over the foot of the rack list.
+        Component notice = menu.notices().current(minecraft.level.getGameTime());
+        if (notice != null) {
+            JasmGui.notice(graphics, font, notice, menu.notices().ok(), leftPos + LIST_X, topPos + LIST_Y + menu.listHeight(), LIST_W);
+        }
         if (mouseX >= leftPos + BAR_X && mouseX < leftPos + BAR_X + BAR_WIDTH && mouseY >= topPos + BAR_Y && mouseY < topPos + BAR_Y + 7) {
             graphics.setTooltipForNextFrame(font, List.of(
                     Component.translatable("screen.jasm.machine.charge", String.format("%,d", menu.energy()),
@@ -371,6 +411,9 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
             changeSize(true);
             return true;
         }
+        if (portsPanel != null && portsPanel.mouseClicked(x, y, event.button() == InputConstants.MOUSE_BUTTON_LEFT)) {
+            return true;
+        }
         if (inList(x, y)) {
             Spot spot = spotAt(x, y);
             if (spot != null && spot.slot() >= 0 && menu.running()) {
@@ -407,6 +450,9 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
             dragTo(event.y());
             return true;
         }
+        if (portsPanel != null && portsPanel.mouseDragged(event.y())) {
+            return true;
+        }
         return super.mouseDragged(event, dragX, dragY);
     }
 
@@ -416,6 +462,9 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
             dragging = false;
             return true;
         }
+        if (portsPanel != null && portsPanel.mouseReleased()) {
+            return true;
+        }
         return super.mouseReleased(event);
     }
 
@@ -423,6 +472,9 @@ public class RackControllerScreen extends JasmScreen<RackControllerMenu> {
     public boolean mouseScrolled(double x, double y, double scrollX, double scrollY) {
         if (inList(x, y) || onTrack(x, y)) {
             scroll = Math.clamp(scroll - (int) Math.signum(scrollY) * SCROLL_STEP, 0, maxScroll());
+            return true;
+        }
+        if (portsPanel != null && portsPanel.mouseScrolled(x, y, scrollY)) {
             return true;
         }
         return super.mouseScrolled(x, y, scrollX, scrollY);

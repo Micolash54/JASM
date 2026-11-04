@@ -1,5 +1,6 @@
 package dev.micolash.jasm.autocraft;
 
+import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.network.MachineAccess;
@@ -38,9 +39,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Rack Controller's menu: the player's inventory (27) and hotbar (9), and, sent apart, every Recipe Rack on the
  * controller's network that the player may use, with its name and its 16 slots. Cards are taken and put in by message,
- * straight in the real rack, so two players working on the same rack never see a card twice or lose one.
+ * straight in the real rack, so two players working on the same rack never see a card twice or lose one. Beside it,
+ * the network's Access Ports, as on the Advanced Encoder.
  */
-public class RackControllerMenu extends AbstractContainerMenu implements MachineView {
+public class RackControllerMenu extends AbstractContainerMenu implements MachineView, PortList.Menu, Notices.Board {
     public static final int WIDTH = 176;
     /** The rack list: under the title and the search box, as wide as eight slots plus its scroll bar. */
     public static final int LIST_X = 8;
@@ -110,6 +112,10 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
     private int sends;
     /** Client side: goes up with each message, so the screen knows to lay the list out again. */
     private int version;
+    /** The port list beside the racks. */
+    private final PortList portList = new PortList();
+    /** Client side: the last message for this screen. */
+    private final Notices.Shown notices = new Notices.Shown();
 
     /** Server side. */
     public RackControllerMenu(int containerId, Inventory inventory, RackControllerBlockEntity controller, ContainerLevelAccess access) {
@@ -309,6 +315,44 @@ public class RackControllerMenu extends AbstractContainerMenu implements Machine
             lookNow = false;
             if (stillValid(serverPlayer)) look(serverPlayer);
         }
+        if (portList.due(serverPlayer, containerId) && stillValid(serverPlayer)) {
+            portList.look(serverPlayer, containerId, PortList.usable(controller, serverPlayer));
+        }
+    }
+
+    // --- the port list ---
+
+    @Override
+    public PortList portList() {
+        return portList;
+    }
+
+    /**
+     * Server side: the port the player asked to open from the list, or null with a line on the screen saying why not.
+     * Refused unless this is the player's open, usable Rack Controller screen with power, the port is on its network and
+     * loaded, the player may use the port, and it stands in the player's dimension.
+     */
+    public @Nullable AccessPortBlockEntity portToOpen(ServerPlayer player, NetworkNode at, int face) {
+        if (controller == null || player.containerMenu != this || !stillValid(player)) return null;
+        if (!controller.running()) {
+            Notices.bad(player, Component.translatable("message.jasm.rack_controller.no_power"));
+            return null;
+        }
+        return PortList.find(player, PortList.usable(controller, player), at, face);
+    }
+
+    @Override
+    public boolean openPort(ServerPlayer player, NetworkNode at, int face) {
+        AccessPortBlockEntity port = portToOpen(player, at, face);
+        if (port == null || controller == null) return false;
+        PortList.open(player, port, controller);
+        return true;
+    }
+
+    /** Client side: the last message for this screen. */
+    @Override
+    public Notices.Shown notices() {
+        return notices;
     }
 
     /**

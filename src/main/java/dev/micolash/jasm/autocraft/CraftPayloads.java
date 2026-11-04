@@ -361,19 +361,19 @@ public final class CraftPayloads {
         public Type<PortMachines> type() { return TYPE; }
     }
 
-    /** Server → client: the Access Ports the open Advanced Encoder's port list shows. */
-    public record EncoderPorts(int containerId, List<EncodingTerminalMenu.PortRow> rows) implements CustomPacketPayload {
-        public static final Type<EncoderPorts> TYPE = new Type<>(Jasm.id("encoder_ports"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, EncoderPorts> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.VAR_INT, EncoderPorts::containerId,
-                EncodingTerminalMenu.PortRow.STREAM_CODEC.apply(ByteBufCodecs.list(EncodingTerminalMenu.MAX_PORTS)), EncoderPorts::rows,
-                EncoderPorts::new);
+    /** Server → client: the Access Ports the open screen's port list shows (Advanced Encoder, Rack Controller). */
+    public record PortRows(int containerId, List<PortList.Row> rows) implements CustomPacketPayload {
+        public static final Type<PortRows> TYPE = new Type<>(Jasm.id("port_rows"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PortRows> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PortRows::containerId,
+                PortList.Row.STREAM_CODEC.apply(ByteBufCodecs.list(PortList.MAX)), PortRows::rows,
+                PortRows::new);
 
         @Override
-        public Type<EncoderPorts> type() { return TYPE; }
+        public Type<PortRows> type() { return TYPE; }
     }
 
-    /** Client → server: open the screen of a port in the open Advanced Encoder's port list; {@code face} -1 for a block port. */
+    /** Client → server: open the screen of a port in the open screen's port list; {@code face} -1 for a block port. */
     public record OpenPort(int containerId, NetworkNode at, int face) implements CustomPacketPayload {
         public static final Type<OpenPort> TYPE = new Type<>(Jasm.id("open_port"));
         public static final StreamCodec<RegistryFriendlyByteBuf, OpenPort> STREAM_CODEC = StreamCodec.composite(

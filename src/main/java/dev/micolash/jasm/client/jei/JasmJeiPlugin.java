@@ -7,6 +7,7 @@ import dev.micolash.jasm.autocraft.MemoryTier;
 import dev.micolash.jasm.autocraft.ProcessorTier;
 import dev.micolash.jasm.client.AccessPortScreen;
 import dev.micolash.jasm.client.CraftingServerScreen;
+import dev.micolash.jasm.client.RackControllerScreen;
 import dev.micolash.jasm.client.RecipeRackScreen;
 import dev.micolash.jasm.client.ArchiveScreen;
 import dev.micolash.jasm.client.BayScreen;
@@ -306,6 +307,10 @@ public class JasmJeiPlugin implements IModPlugin {
             public List<Rect2i> getGuiExtraAreas(CraftingServerScreen screen) {
                 return screen.extraAreas();
             }
+        });
+        registration.addGuiContainerHandler(RackControllerScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public List<Rect2i> getGuiExtraAreas(RackControllerScreen screen) { return screen.extraAreas(); }
         });
         registration.addGuiContainerHandler(RecipeRackScreen.class, new IGuiContainerHandler<>() {
             @Override

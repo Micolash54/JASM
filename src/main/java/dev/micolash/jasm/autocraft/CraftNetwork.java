@@ -28,6 +28,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -88,7 +89,7 @@ public final class CraftNetwork {
                         (payload, context) -> processingGhost((ServerPlayer) context.player(), payload))
                 .playToServer(CraftPayloads.OpenPort.TYPE, CraftPayloads.OpenPort.STREAM_CODEC,
                         (payload, context) -> openPort((ServerPlayer) context.player(), payload))
-                .playToClient(CraftPayloads.EncoderPorts.TYPE, CraftPayloads.EncoderPorts.STREAM_CODEC, CraftNetwork::onEncoderPorts)
+                .playToClient(CraftPayloads.PortRows.TYPE, CraftPayloads.PortRows.STREAM_CODEC, CraftNetwork::onPortRows)
                 .playToClient(CraftPayloads.PortMachines.TYPE, CraftPayloads.PortMachines.STREAM_CODEC, CraftNetwork::onPortMachines)
                 .playToClient(CraftPayloads.PortRecipes.TYPE, CraftPayloads.PortRecipes.STREAM_CODEC, CraftNetwork::onPortRecipes)
                 .playToClient(CraftPayloads.PortPasted.TYPE, CraftPayloads.PortPasted.STREAM_CODEC, CraftNetwork::onPortPasted)
@@ -327,15 +328,17 @@ public final class CraftNetwork {
         }
     }
 
-    private static void onEncoderPorts(CraftPayloads.EncoderPorts payload, IPayloadContext context) {
-        if (context.player().containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()) {
+    private static void onPortRows(CraftPayloads.PortRows payload, IPayloadContext context) {
+        AbstractContainerMenu open = context.player().containerMenu;
+        if (open instanceof PortList.Menu menu && open.containerId == payload.containerId()) {
             menu.setPorts(payload.rows());
         }
     }
 
-    /** Opens a port's screen from the open Advanced Encoder's port list; see {@link EncodingTerminalMenu#portToOpen}. */
+    /** Opens a port's screen from the open screen's port list (Advanced Encoder, Rack Controller). */
     public static boolean openPort(ServerPlayer player, CraftPayloads.OpenPort payload) {
-        return player.containerMenu instanceof EncodingTerminalMenu menu && menu.containerId == payload.containerId()
+        AbstractContainerMenu open = player.containerMenu;
+        return open instanceof PortList.Menu menu && open.containerId == payload.containerId()
                 && menu.openPort(player, payload.at(), payload.face());
     }
 

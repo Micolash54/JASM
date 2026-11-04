@@ -5,6 +5,7 @@ import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.network.LinkWindowCover;
 import dev.micolash.jasm.network.MachineAccess;
+import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.MachineView;
 import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.registry.JasmItems;
@@ -76,7 +77,7 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public static final int RESET_DECK = 0;
     public static final int TOGGLE_BLOCKING = 1;
     public static final int CYCLE_REDSTONE = 2;
-    /** A screen opened from an Advanced Encoder's port list goes back to that encoder instead of shutting. */
+    /** A screen opened from a port list (Advanced Encoder, Rack Controller) goes back to that machine instead of shutting. */
     public static final int BACK = 3;
     /** Switches the port between Active and Passive. */
     public static final int TOGGLE_MODE = 4;
@@ -102,10 +103,10 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     private final ContainerData data;
     private final ContainerLevelAccess access;
     private final @Nullable AccessPortBlockEntity port;
-    /** Server side: the Advanced Encoder this screen was opened from, or null when opened at the port. */
-    private final @Nullable EncodingTerminalBlockEntity encoder;
-    /** Opened from an Advanced Encoder's port list; on the client, as the server said when the screen opened. */
-    private final boolean fromEncoder;
+    /** Server side: the machine whose port list this screen was opened from, or null when opened at the port. */
+    private final @Nullable MachineBlockEntity from;
+    /** Opened from a port list; on the client, as the server said when the screen opened. */
+    private final boolean fromList;
     /** Client side: the name when the screen opened. */
     private final String label;
     private @Nullable BlockPos openedAt;
@@ -135,10 +136,13 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         this(containerId, inventory, port.data(), access, port, null, false, port.label(), connectedMachines(port));
     }
 
-    /** Server side: the screen of a port on an Advanced Encoder's network, opened from the encoder's port list. */
-    public static AccessPortMenu remote(int containerId, Inventory inventory, AccessPortBlockEntity port, EncodingTerminalBlockEntity encoder) {
+    /**
+     * Server side: the screen of a port on the network of {@code from} (an Advanced Encoder or a Rack Controller), opened
+     * from that machine's port list.
+     */
+    public static AccessPortMenu remote(int containerId, Inventory inventory, AccessPortBlockEntity port, MachineBlockEntity from) {
         return new AccessPortMenu(containerId, inventory, port.data(), ContainerLevelAccess.create(port.getLevel(), port.getBlockPos()),
-                port, encoder, true, port.label(), connectedMachines(port));
+                port, from, true, port.label(), connectedMachines(port));
     }
 
     /** Client side. */
@@ -146,9 +150,9 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         BlockPos pos = buf.readBlockPos();
         String label = buf.readUtf(MAX_NAME);
         List<MachineView> machines = MachineView.STREAM_CODEC.apply(ByteBufCodecs.list(6)).decode(buf);
-        boolean fromEncoder = buf.readBoolean();
+        boolean fromList = buf.readBoolean();
         AccessPortMenu menu = new AccessPortMenu(containerId, inventory, new SimpleContainerData(DATA_COUNT), ContainerLevelAccess.NULL,
-                null, null, fromEncoder, label, machines);
+                null, null, fromList, label, machines);
         menu.openedAt = pos;
         return menu;
     }
@@ -159,14 +163,14 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     }
 
     private AccessPortMenu(int containerId, Inventory inventory, ContainerData data, ContainerLevelAccess access,
-            @Nullable AccessPortBlockEntity port, @Nullable EncodingTerminalBlockEntity encoder, boolean fromEncoder,
+            @Nullable AccessPortBlockEntity port, @Nullable MachineBlockEntity from, boolean fromList,
             String label, List<MachineView> machines) {
         super(JasmMenus.ACCESS_PORT.get(), containerId);
         this.data = data;
         this.access = access;
         this.port = port;
-        this.encoder = encoder;
-        this.fromEncoder = fromEncoder;
+        this.from = from;
+        this.fromList = fromList;
         this.label = label;
         this.machines = List.copyOf(machines);
         this.player = inventory.player;
@@ -243,9 +247,9 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         return PortOperations.itemsPerOperation(upgrades);
     }
 
-    /** Whether this screen was opened from an Advanced Encoder's port list, and goes back there when shut. */
-    public boolean fromEncoder() {
-        return fromEncoder;
+    /** Whether this screen was opened from a machine's port list, and goes back there when shut. */
+    public boolean fromList() {
+        return fromList;
     }
 
     @Override
@@ -253,9 +257,10 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
         if (port == null || !stillValid(player)) return false;
         if (id == BACK) {
             if (!(player instanceof ServerPlayer serverPlayer)) return false;
-            EncodingTerminalBlockEntity back = backTo(player);
-            if (back != null) serverPlayer.openMenu(back);
-            else serverPlayer.closeContainer();
+            MachineBlockEntity back = backTo(player);
+            if (back == null) serverPlayer.closeContainer();
+            else if (back.sendsPosToScreen()) serverPlayer.openMenu(back, back::writeScreenData);
+            else serverPlayer.openMenu(back);
             return true;
         }
         if (id == RESET_DECK) return port.resetDeck(player);
@@ -605,30 +610,35 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     }
 
     /**
-     * At the port: while the player stands within reach of it. From an Advanced Encoder: while the player stands within
-     * reach of the encoder and may still use it, and the port is still on the encoder's network in the player's
+     * At the port: while the player stands within reach of it. From a port list: while the player stands within reach
+     * of the machine with the list and may still use it, and the port is still on its network in the player's
      * dimension. Either way, only while the player may use the port.
      */
     @Override
     public boolean stillValid(Player player) {
         if (port == null) return true;
         if (!port.installed() || !MachineAccess.canUse(port, player)) return false;
-        return encoder == null ? player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64 : encoderReaches(player);
+        return from == null ? player.distanceToSqr(Vec3.atCenterOf(port.getBlockPos())) <= 64 : listReaches(player);
     }
 
-    private boolean encoderReaches(Player player) {
-        if (encoder == null || port == null || encoder.isRemoved() || !encoder.advanced()
-                || !(encoder.getLevel() instanceof ServerLevel level) || player.level() != level || port.getLevel() != level
-                || player.distanceToSqr(Vec3.atCenterOf(encoder.getBlockPos())) > 64 || !encoder.isAuthorized(player)) {
+    private boolean listReaches(Player player) {
+        if (from == null || port == null || from.isRemoved() || !listsPorts(from)
+                || !(from.getLevel() instanceof ServerLevel level) || player.level() != level || port.getLevel() != level
+                || player.distanceToSqr(Vec3.atCenterOf(from.getBlockPos())) > 64 || !MachineAccess.canUse(from, player)) {
             return false;
         }
-        CableNetwork network = Networks.at(level, encoder.getBlockPos());
+        CableNetwork network = Networks.at(level, from.getBlockPos());
         return network != null && network.contains(NetworkNode.of(level, port.getBlockPos()));
     }
 
-    /** Server side: the encoder the screen goes back to when shut, if it came from one the player can still use. */
-    public @Nullable EncodingTerminalBlockEntity backTo(Player player) {
-        return encoder != null && stillValid(player) ? encoder : null;
+    /** The machines with a port list: the Advanced Encoder (not the plain one) and the Rack Controller. */
+    private static boolean listsPorts(MachineBlockEntity machine) {
+        return machine instanceof EncodingTerminalBlockEntity encoder ? encoder.advanced() : machine instanceof RackControllerBlockEntity;
+    }
+
+    /** Server side: the machine the screen goes back to when shut, if it came from a port list the player can still use. */
+    public @Nullable MachineBlockEntity backTo(Player player) {
+        return from != null && stillValid(player) ? from : null;
     }
 
     @Override

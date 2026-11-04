@@ -9,6 +9,7 @@ import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.InputFace;
 import dev.micolash.jasm.autocraft.MaterialMarkerItem;
 import dev.micolash.jasm.autocraft.ProcessingCard;
+import dev.micolash.jasm.config.JasmClientConfig;
 import dev.micolash.jasm.core.GridEntries;
 import dev.micolash.jasm.core.MaterialKey;
 import dev.micolash.jasm.network.LinkWindowCover;
@@ -91,7 +92,7 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
     private static final int KEY_X = WIDTH;
     private JasmFrame frame;
     /** The Advanced Encoder's port list, left of the main panel; null on the plain terminal. */
-    private @Nullable EncoderPortsPanel portsPanel;
+    private @Nullable PortsPanel portsPanel;
     /** Whether the Deck tab shows in place of the inventory; kept while the game runs. */
     private static boolean showDeck;
     /** The sheet under the inventory or the Deck list, and the tabs along its top. */
@@ -131,11 +132,12 @@ public class EncodingTerminalScreen extends JasmScreen<EncodingTerminalMenu> {
         if (menu.advanced()) {
             // The main panel stays in the middle whether the port list is open or folded; on a window too narrow for the
             // open list, it moves right just enough, as long as the side keys still fit.
-            leftPos = Math.max((width - WIDTH) / 2, Math.min(EncoderPortsPanel.REACH, width - (KEY_X + JasmGui.SIDE_KEY_WIDTH + 3)));
+            leftPos = Math.max((width - WIDTH) / 2, Math.min(PortsPanel.REACH, width - (KEY_X + JasmGui.SIDE_KEY_WIDTH + 3)));
             if (portsPanel == null) {
-                portsPanel = new EncoderPortsPanel(menu, font, imageHeight, this::buildFrame);
+                portsPanel = new PortsPanel(menu, font, JasmClientConfig::encoderPortsFolded, JasmClientConfig::setEncoderPortsFolded,
+                        this::buildFrame);
             }
-            addRenderableWidget(portsPanel.foldKey(leftPos, topPos));
+            addRenderableWidget(portsPanel.foldKey(leftPos, topPos, imageHeight));
         }
         buildFrame();
         addHelp(WIDTH - 7, "items/encoding-terminal.md");

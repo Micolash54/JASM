@@ -2,26 +2,29 @@ package dev.micolash.jasm.client;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.CraftPayloads;
-import dev.micolash.jasm.autocraft.EncodingTerminalMenu;
-import dev.micolash.jasm.config.JasmClientConfig;
+import dev.micolash.jasm.autocraft.PortList;
 import dev.micolash.jasm.registry.JasmItems;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * The Advanced Encoder's port list, in a panel left of the main one: every Access Port on the network the player may
- * use, with the machine it serves and its name. A click opens that port's own screen. Ports in another dimension are
- * greyed and can't be opened; a port whose machine another port keeps is tinted red. The list folds away to a thin
- * strip, like the Access Port's recipe list, and stays folded or open from one screen to the next.
+ * The port list in a panel left of the main one, on the Advanced Encoder and the Rack Controller: every Access Port on
+ * the network the player may use, with the machine it serves and its name. A click opens that port's own screen. Ports
+ * in another dimension are greyed and can't be opened; a port whose machine another port keeps is tinted red. The list
+ * is as tall as the main panel and shows as many whole rows as fit. It folds away to a thin strip, like the Access
+ * Port's recipe list, and each screen remembers whether it was folded.
  */
-final class EncoderPortsPanel {
+final class PortsPanel {
     /** The panel, left of the main one, and its rows. */
     private static final int LIST = 113;
     private static final int LIST_X = -LIST;
@@ -40,34 +43,50 @@ final class EncoderPortsPanel {
     private static final JasmButton.Icon FOLD = new JasmButton.Icon(Jasm.id("icon/triangle_right"), 4, 6);
     private static final JasmButton.Icon UNFOLD = new JasmButton.Icon(Jasm.id("icon/triangle_left"), 4, 6);
 
-    private final EncodingTerminalMenu menu;
+    private final AbstractContainerMenu container;
+    private final PortList.Menu menu;
     private final Font font;
-    private final int height;
-    private final int rows;
+    private final BooleanSupplier foldedSetting;
+    private final Consumer<Boolean> keepFolded;
+    private final Runnable changed;
+    private int height;
+    /** The list's well, under the title: whole rows, then any room left over. */
+    private int well;
+    private int rows;
     private int left;
     private int top;
     private int first;
     private boolean dragging;
     private JasmButton fold;
-    private final Runnable folded;
 
-    /** {@code height} is the main panel's; {@code folded} runs when the list folds or opens, so the screen redraws its frame. */
-    EncoderPortsPanel(EncodingTerminalMenu menu, Font font, int height, Runnable folded) {
+    /**
+     * {@code foldedSetting} reads and {@code keepFolded} stores the screen's own folded setting; {@code changed} runs when
+     * the list folds or opens, so the screen redraws its frame.
+     */
+    <M extends AbstractContainerMenu & PortList.Menu> PortsPanel(M menu, Font font, BooleanSupplier foldedSetting,
+            Consumer<Boolean> keepFolded, Runnable changed) {
+        this.container = menu;
         this.menu = menu;
         this.font = font;
-        this.height = height;
-        this.rows = (height - ROWS_Y - 6) / ROW_HEIGHT;
-        this.folded = folded;
+        this.foldedSetting = foldedSetting;
+        this.keepFolded = keepFolded;
+        this.changed = changed;
     }
 
-    static boolean folded() {
-        return JasmClientConfig.encoderPortsFolded();
+    private boolean folded() {
+        return foldedSetting.getAsBoolean();
     }
 
-    /** The fold key, for the screen to add; one key in the same spot either way, on the left edge of whatever is leftmost. */
-    JasmButton foldKey(int left, int top) {
+    /**
+     * The fold key, for the screen to add; one key in the same spot either way, on the left edge of whatever is leftmost.
+     * {@code height} is the main panel's, which the list matches.
+     */
+    JasmButton foldKey(int left, int top, int height) {
         this.left = left;
         this.top = top;
+        this.height = height;
+        this.well = Math.max(ROW_HEIGHT, height - ROWS_Y - 6);
+        this.rows = well / ROW_HEIGHT;
         fold = JasmButton.icon(() -> folded() ? UNFOLD : FOLD, Component.translatable("screen.jasm.terminal.ports_fold"),
                 b -> setFolded(!folded()), 0, top + 29, 11, 22);
         showFold();
@@ -75,10 +94,10 @@ final class EncoderPortsPanel {
     }
 
     private void setFolded(boolean folded) {
-        JasmClientConfig.setEncoderPortsFolded(folded);
+        keepFolded.accept(folded);
         dragging = false;
         showFold();
-        this.folded.run();
+        changed.run();
     }
 
     private void showFold() {
@@ -124,14 +143,14 @@ final class EncoderPortsPanel {
     void drawBackground(GuiGraphicsExtractor graphics) {
         if (folded()) return;
         first = Math.clamp(first, 0, max());
-        JasmGui.inset(graphics, left + ROWS_X, top + ROWS_Y, ROW_WIDTH, rows * ROW_HEIGHT);
-        int offset = max() == 0 ? 0 : Math.round((rows * ROW_HEIGHT - KNOB) * first / (float) max());
-        JasmGui.track(graphics, left + TRACK_X, top + ROWS_Y, rows * ROW_HEIGHT, offset, KNOB, max() > 0);
+        JasmGui.inset(graphics, left + ROWS_X, top + ROWS_Y, ROW_WIDTH, well);
+        int offset = max() == 0 ? 0 : Math.round((well - KNOB) * first / (float) max());
+        JasmGui.track(graphics, left + TRACK_X, top + ROWS_Y, well, offset, KNOB, max() > 0);
     }
 
     void draw(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (folded()) return;
-        List<EncodingTerminalMenu.PortRow> ports = menu.ports();
+        List<PortList.Row> ports = menu.ports();
         graphics.text(font, Component.translatable("screen.jasm.terminal.ports"), left + LIST_X + 8, top + 6, JasmGui.TEXT, false);
         String count = String.valueOf(ports.size());
         graphics.text(font, count, left + LIST_X + 110 - font.width(count) + 1, top + 6, JasmGui.MUTED, false);
@@ -139,9 +158,9 @@ final class EncoderPortsPanel {
         if (ports.isEmpty()) {
             boolean power = menu.running();
             Component empty = power ? Component.translatable("screen.jasm.terminal.ports_none")
-                    : MachineStatusText.noPower(menu.containerId, "screen.jasm.terminal.ports_no_power");
+                    : MachineStatusText.noPower(container.containerId, "screen.jasm.terminal.ports_no_power");
             List<FormattedCharSequence> lines = font.split(empty, ROW_WIDTH - 6);
-            int y = top + ROWS_Y + rows * ROW_HEIGHT / 2 - lines.size() * 5;
+            int y = top + ROWS_Y + well / 2 - lines.size() * 5;
             for (int i = 0; i < lines.size(); i++) {
                 graphics.text(font, lines.get(i), x + (ROW_WIDTH - font.width(lines.get(i))) / 2, y + i * 10,
                         power ? JasmGui.MUTED : JasmGui.BAD, false);
@@ -151,7 +170,7 @@ final class EncoderPortsPanel {
         int hovered = rowAt(mouseX, mouseY);
         int last = Math.min(ports.size(), first + rows);
         for (int i = first; i < last; i++) {
-            EncodingTerminalMenu.PortRow row = ports.get(i);
+            PortList.Row row = ports.get(i);
             int y = top + ROWS_Y + (i - first) * ROW_HEIGHT;
             if (row.taken()) graphics.fill(x + 1, y + 1, x + ROW_WIDTH - 1, y + ROW_HEIGHT - 1, TAKEN_TINT);
             if (i == hovered && row.here()) graphics.fill(x + 1, y + 1, x + ROW_WIDTH - 1, y + ROW_HEIGHT - 1, JasmGui.HOVER);
@@ -173,7 +192,7 @@ final class EncoderPortsPanel {
     }
 
     /** The port's name, the machine it serves, then why it can't be opened, or how to open it. */
-    private List<FormattedCharSequence> tooltip(EncodingTerminalMenu.PortRow row) {
+    private List<FormattedCharSequence> tooltip(PortList.Row row) {
         List<Component> lines = new ArrayList<>();
         lines.add(row.name().copy().withColor(JasmGui.TEXT & 0xFFFFFF));
         if (!row.icon().is(JasmItems.ACCESS_PORT.get()) && !row.icon().is(JasmItems.THIN_ACCESS_PORT.get())) {
@@ -200,9 +219,9 @@ final class EncoderPortsPanel {
         if (folded()) return false;
         int row = rowAt(mouseX, mouseY);
         if (row >= 0) {
-            EncodingTerminalMenu.PortRow port = menu.ports().get(row);
-            if (left && port.here() && menu.getCarried().isEmpty()) {
-                ClientPacketDistributor.sendToServer(new CraftPayloads.OpenPort(menu.containerId, port.at(), port.face()));
+            PortList.Row port = menu.ports().get(row);
+            if (left && port.here() && container.getCarried().isEmpty()) {
+                ClientPacketDistributor.sendToServer(new CraftPayloads.OpenPort(container.containerId, port.at(), port.face()));
             }
             return true;
         }
@@ -238,11 +257,11 @@ final class EncoderPortsPanel {
     }
 
     private boolean onTrack(double x, double y) {
-        return x >= left + TRACK_X - 1 && x < left + TRACK_X + 11 && y >= top + ROWS_Y && y < top + ROWS_Y + rows * ROW_HEIGHT;
+        return x >= left + TRACK_X - 1 && x < left + TRACK_X + 11 && y >= top + ROWS_Y && y < top + ROWS_Y + well;
     }
 
     private void dragTo(double y) {
-        double fraction = Math.clamp((y - top - ROWS_Y - KNOB / 2.0) / (rows * ROW_HEIGHT - KNOB), 0.0, 1.0);
+        double fraction = Math.clamp((y - top - ROWS_Y - KNOB / 2.0) / (well - KNOB), 0.0, 1.0);
         first = (int) Math.round(fraction * max());
     }
 }
