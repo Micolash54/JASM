@@ -119,88 +119,77 @@ public class JasmJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        info(registration, "capacity_wafer", 3, Arrays.stream(WaferTier.values()).filter(tier -> !tier.isTyped() && !tier.isFluid()).map(JasmItems::wafer).toList());
-        info(registration, "type_wafer", 3, Arrays.stream(WaferTier.values()).filter(tier -> tier.isTyped() && !tier.isFluid()).map(JasmItems::wafer).toList());
-        info(registration, "fluid_capacity_wafer", 3, Arrays.stream(WaferTier.values()).filter(tier -> !tier.isTyped() && tier.isFluid()).map(JasmItems::wafer).toList());
-        info(registration, "fluid_type_wafer", 3, Arrays.stream(WaferTier.values()).filter(tier -> tier.isTyped() && tier.isFluid()).map(JasmItems::wafer).toList());
-        info(registration, "deck", 3, Arrays.stream(DeckTier.values()).map(JasmItems::deck).toList());
-        info(registration, "crafting_deck", 3, craftingDecks());
-        info(registration, "recipe_card", 2, List.of(JasmItems.RECIPE_CARD.get(), JasmItems.FILLED_RECIPE_CARD.get()));
-        info(registration, "encoding_terminal", 2, List.of(JasmItems.ENCODING_TERMINAL.get()));
-        info(registration, "advanced_encoder", 1, List.of(JasmItems.ADVANCED_ENCODER.get()));
-        info(registration, "recipe_rack", 2, List.of(JasmItems.RECIPE_RACK.get()));
-        info(registration, "rack_controller", 2, List.of(JasmItems.RACK_CONTROLLER.get()));
-        info(registration, "data_cable", 2, JasmItems.cables());
-        info(registration, "crafting_server", 2, List.of(JasmItems.CRAFTING_SERVER.get()));
-        info(registration, "advanced_crafting_server", 2, List.of(JasmItems.ADVANCED_CRAFTING_SERVER.get()));
-        info(registration, "access_port", 2, List.of(JasmItems.ACCESS_PORT.get(), JasmItems.THIN_ACCESS_PORT.get()));
-        info(registration, "speed_upgrade", 1, List.of(JasmItems.SPEED_UPGRADE.get()));
-        info(registration, "redstone_upgrade", 1, List.of(JasmItems.REDSTONE_UPGRADE.get()));
-        info(registration, "crafting_upgrade", 1, List.of(JasmItems.CRAFTING_UPGRADE.get()));
-        info(registration, "stock_upgrade", 1, List.of(JasmItems.STOCK_UPGRADE.get()));
-        info(registration, "power_upgrade", 1, List.of(JasmItems.POWER_UPGRADE.get()));
-        info(registration, "dimension_upgrade", 2, List.of(JasmItems.DIMENSION_UPGRADE.get()));
-        info(registration, "chunkload_upgrade", 2, List.of(JasmItems.CHUNKLOAD_UPGRADE.get()));
-        info(registration, "relay_chatterbox", 2, List.of(JasmItems.RELAY_CHATTERBOX.get()));
-        info(registration, "processor", 1, Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
-        info(registration, "storage_module", 1, Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
-        info(registration, "archive", 2, Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
-        info(registration, "crystal_seed", 3, List.of(JasmItems.CRYSTAL_SEED.get(), JasmItems.SEEDED_AMETHYST.get(),
+        info(registration, "capacity_wafer", Arrays.stream(WaferTier.values()).filter(tier -> !tier.isTyped() && !tier.isFluid()).map(JasmItems::wafer).toList());
+        info(registration, "type_wafer", Arrays.stream(WaferTier.values()).filter(tier -> tier.isTyped() && !tier.isFluid()).map(JasmItems::wafer).toList());
+        info(registration, "fluid_capacity_wafer", Arrays.stream(WaferTier.values()).filter(tier -> !tier.isTyped() && tier.isFluid()).map(JasmItems::wafer).toList());
+        info(registration, "fluid_type_wafer", Arrays.stream(WaferTier.values()).filter(tier -> tier.isTyped() && tier.isFluid()).map(JasmItems::wafer).toList());
+        info(registration, "deck", Arrays.stream(DeckTier.values()).map(JasmItems::deck).toList());
+        info(registration, "crafting_deck", craftingDecks());
+        info(registration, "recipe_card", List.of(JasmItems.RECIPE_CARD.get(), JasmItems.FILLED_RECIPE_CARD.get()));
+        info(registration, "encoding_terminal", List.of(JasmItems.ENCODING_TERMINAL.get()));
+        info(registration, "advanced_encoder", List.of(JasmItems.ADVANCED_ENCODER.get()));
+        info(registration, "recipe_rack", List.of(JasmItems.RECIPE_RACK.get()));
+        info(registration, "rack_controller", List.of(JasmItems.RACK_CONTROLLER.get()));
+        info(registration, "data_cable", JasmItems.cables());
+        info(registration, "crafting_server", List.of(JasmItems.CRAFTING_SERVER.get()));
+        info(registration, "advanced_crafting_server", List.of(JasmItems.ADVANCED_CRAFTING_SERVER.get()));
+        info(registration, "access_port", List.of(JasmItems.ACCESS_PORT.get(), JasmItems.THIN_ACCESS_PORT.get()));
+        info(registration, "speed_upgrade", List.of(JasmItems.SPEED_UPGRADE.get()));
+        info(registration, "redstone_upgrade", List.of(JasmItems.REDSTONE_UPGRADE.get()));
+        info(registration, "crafting_upgrade", List.of(JasmItems.CRAFTING_UPGRADE.get()));
+        info(registration, "stock_upgrade", List.of(JasmItems.STOCK_UPGRADE.get()));
+        info(registration, "power_upgrade", List.of(JasmItems.POWER_UPGRADE.get()));
+        info(registration, "dimension_upgrade", List.of(JasmItems.DIMENSION_UPGRADE.get()));
+        info(registration, "chunkload_upgrade", List.of(JasmItems.CHUNKLOAD_UPGRADE.get()));
+        info(registration, "relay_chatterbox", List.of(JasmItems.RELAY_CHATTERBOX.get()));
+        info(registration, "processor", Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
+        info(registration, "storage_module", Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
+        info(registration, "archive", Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
+        info(registration, "crystal_seed", List.of(JasmItems.CRYSTAL_SEED.get(), JasmItems.SEEDED_AMETHYST.get(),
                 JasmItems.WORN_SEEDED_AMETHYST.get(), JasmItems.CRACKED_SEEDED_AMETHYST.get()));
-        info(registration, "data_crystal", 2, List.of(JasmItems.DATA_CRYSTAL.get()));
-        info(registration, "crystal_resonator", 2, List.of(JasmItems.CRYSTAL_RESONATOR.get()));
+        info(registration, "data_crystal", List.of(JasmItems.DATA_CRYSTAL.get()));
+        info(registration, "crystal_resonator", List.of(JasmItems.CRYSTAL_RESONATOR.get()));
         List<ItemLike> bitlingPage = new ArrayList<>(JasmItems.bitlings());
         bitlingPage.add(JasmItems.WILD_BITLING_SPAWN_EGG.get());
-        info(registration, "bitling", 4, bitlingPage);
-        info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
-        info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
+        info(registration, "bitling", bitlingPage);
+        info(registration, "chip_workshop", List.of(JasmItems.CHIP_WORKSHOP.get()));
+        info(registration, "bitling_station", List.of(JasmItems.BITLING_STATION.get()));
         BrainBalance brain = BrainBalance.fromConfig();
-        registration.addItemStackInfo(List.of(new ItemStack(JasmItems.NETWORK_BRAIN.get())), new Component[]{
-                Component.translatable("jei.jasm.info.network_brain.1", BrainBalance.shown(brain.limit(false, 0)),
-                        BrainBalance.shown(brain.limit(true, 0))),
-                Component.empty(),
-                Component.translatable("jei.jasm.info.network_brain.2", BrainBalance.shown(brain.limit(true, 1)))});
-        info(registration, "network_chamber", 1, List.of(JasmItems.NETWORK_CHAMBER.get()));
+        registration.addItemStackInfo(List.of(new ItemStack(JasmItems.NETWORK_BRAIN.get())),
+                Component.translatable("jei.jasm.info.network_brain", BrainBalance.shown(brain.limit(false, 0)),
+                        BrainBalance.shown(brain.limit(true, 0)), BrainBalance.shown(brain.limit(true, 1))));
+        info(registration, "network_chamber", List.of(JasmItems.NETWORK_CHAMBER.get()));
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
         registration.addRecipes(FoundryCategory.TYPE, List.of(FoundryCategory.Grow.fromConfig()));
-        info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
-        registration.addItemStackInfo(List.of(new ItemStack(JasmItems.BATTERY.get())), new Component[]{
-                Component.translatable("jei.jasm.info.battery.1", JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS),
-                        JasmConfig.orDefault(JasmConfig.BATTERY_MAX_BLOCKS)),
-                Component.empty(),
-                Component.translatable("jei.jasm.info.battery.2")});
-        info(registration, "creative_battery", 1, List.of(JasmItems.CREATIVE_BATTERY.get()));
-        info(registration, "deployment_bay", 2, List.of(JasmItems.DEPLOYMENT_BAY.get()));
-        info(registration, "demolition_bay", 2, List.of(JasmItems.DEMOLITION_BAY.get()));
-        info(registration, "docking_station", 2, List.of(JasmItems.DOCKING_STATION.get()));
-        info(registration, "item_port", 2, List.of(JasmItems.INPUT_PORT.get(), JasmItems.OUTPUT_PORT.get(), JasmItems.INPUT_OUTPUT_PORT.get(),
+        info(registration, "crystal_foundry", List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
+        registration.addItemStackInfo(List.of(new ItemStack(JasmItems.BATTERY.get())),
+                Component.translatable("jei.jasm.info.battery", JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS),
+                        JasmConfig.orDefault(JasmConfig.BATTERY_MAX_BLOCKS)));
+        info(registration, "creative_battery", List.of(JasmItems.CREATIVE_BATTERY.get()));
+        info(registration, "deployment_bay", List.of(JasmItems.DEPLOYMENT_BAY.get()));
+        info(registration, "demolition_bay", List.of(JasmItems.DEMOLITION_BAY.get()));
+        info(registration, "docking_station", List.of(JasmItems.DOCKING_STATION.get()));
+        info(registration, "item_port", List.of(JasmItems.INPUT_PORT.get(), JasmItems.OUTPUT_PORT.get(), JasmItems.INPUT_OUTPUT_PORT.get(),
                 JasmItems.FULL_INPUT_PORT.get(), JasmItems.FULL_OUTPUT_PORT.get(), JasmItems.FULL_INPUT_OUTPUT_PORT.get()));
-        info(registration, "storage_port", 2, List.of(JasmItems.STORAGE_PORT.get(), JasmItems.FULL_STORAGE_PORT.get()));
-        info(registration, "power_acceptor", 2, List.of(JasmItems.POWER_ACCEPTOR.get(), JasmItems.THIN_POWER_ACCEPTOR.get()));
-        info(registration, "synapse_core", 1, List.of(JasmItems.SYNAPSE_CORE.get()));
-        info(registration, "wrench", 1, List.of(JasmItems.WRENCH.get()));
-        info(registration, "blank_upgrade", 1, List.of(JasmItems.BLANK_UPGRADE.get()));
-        info(registration, "blank_chip", 1, List.of(JasmItems.BLANK_CHIP.get()));
-        info(registration, "chip", 2, List.of(JasmItems.LOGIC_CHIP.get(), JasmItems.MEMORY_CHIP.get(), JasmItems.LINK_CHIP.get(),
+        info(registration, "storage_port", List.of(JasmItems.STORAGE_PORT.get(), JasmItems.FULL_STORAGE_PORT.get()));
+        info(registration, "power_acceptor", List.of(JasmItems.POWER_ACCEPTOR.get(), JasmItems.THIN_POWER_ACCEPTOR.get()));
+        info(registration, "synapse_core", List.of(JasmItems.SYNAPSE_CORE.get()));
+        info(registration, "wrench", List.of(JasmItems.WRENCH.get()));
+        info(registration, "blank_upgrade", List.of(JasmItems.BLANK_UPGRADE.get()));
+        info(registration, "blank_chip", List.of(JasmItems.BLANK_CHIP.get()));
+        info(registration, "chip", List.of(JasmItems.LOGIC_CHIP.get(), JasmItems.MEMORY_CHIP.get(), JasmItems.LINK_CHIP.get(),
                 JasmItems.UNQUENCHED_LOGIC_CHIP.get(), JasmItems.UNQUENCHED_MEMORY_CHIP.get()));
-        info(registration, "advanced_chip", 1, List.of(JasmItems.ADVANCED_LOGIC_CHIP.get(), JasmItems.ADVANCED_MEMORY_CHIP.get(),
+        info(registration, "advanced_chip", List.of(JasmItems.ADVANCED_LOGIC_CHIP.get(), JasmItems.ADVANCED_MEMORY_CHIP.get(),
                 JasmItems.ADVANCED_LINK_CHIP.get()));
-        info(registration, "crystal_dust", 1, List.of(JasmItems.CRYSTAL_DUST.get()));
-        info(registration, "crystal_bud", 1, List.of(JasmItems.SMALL_DATA_CRYSTAL_BUD.get(), JasmItems.MEDIUM_DATA_CRYSTAL_BUD.get(),
+        info(registration, "crystal_dust", List.of(JasmItems.CRYSTAL_DUST.get()));
+        info(registration, "crystal_bud", List.of(JasmItems.SMALL_DATA_CRYSTAL_BUD.get(), JasmItems.MEDIUM_DATA_CRYSTAL_BUD.get(),
                 JasmItems.LARGE_DATA_CRYSTAL_BUD.get(), JasmItems.DATA_CRYSTAL_CLUSTER.get()));
-        info(registration, "combustion_generator", 2, Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
+        info(registration, "combustion_generator", Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
 
-    /** An info page of {@code paragraphs} paragraphs, shared by every tier of an item. */
-    private static void info(IRecipeRegistration registration, String page, int paragraphs, List<? extends ItemLike> items) {
-        Component[] text = new Component[paragraphs * 2 - 1];
-        for (int i = 0; i < paragraphs; i++) {
-            text[i * 2] = Component.translatable("jei.jasm.info." + page + "." + (i + 1));
-            if (i > 0) {
-                text[i * 2 - 1] = Component.empty();
-            }
-        }
-        registration.addItemStackInfo(items.stream().map(ItemStack::new).toList(), text);
+    /** An info page of one language key, shared by every tier of an item. Paragraphs are split in the lang file by \\n\\n (a backslash and an n, not a real line break), which JEI turns into a blank line. */
+    private static void info(IRecipeRegistration registration, String page, List<? extends ItemLike> items) {
+        registration.addItemStackInfo(items.stream().map(ItemStack::new).toList(), Component.translatable("jei.jasm.info." + page));
     }
 
     /** Fuel burn times are only known once JEI has worked out its own furnace fuel list, so the pages are added then. */
