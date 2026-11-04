@@ -7,11 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_synapse_core": {
+    "has_dimension_upgrade": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:synapse_core"
+            "items": "jasm:dimension_upgrade"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_synapse_core"
+      "has_dimension_upgrade"
     ]
   ],
   "rewards": {

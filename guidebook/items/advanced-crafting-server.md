@@ -24,7 +24,7 @@ A [Crafting Server](crafting-server.md) two blocks tall, with room for ten of ev
 <br />
 ## Good to know
 
-* Its front screen shows what the job makes and what is crafting right now.
+* Its front screen shows what the job makes and what is crafting right now. A key on its screen switches the front between big icons only and more details.
 * Its parts are locked in while it works.
 * Breaking either half breaks both, and spills whatever its job held.
 * Servers of both kinds can share a network. A job goes to one that fits and is free.
