@@ -5,12 +5,14 @@ import com.mojang.math.Axis;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.brain.NetworkBrainBlock;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
+import dev.micolash.jasm.client.BrainScenes.Scene;
 import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.network.MachineBlock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -56,27 +58,7 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     static final Identifier ROOM_ID = Jasm.id("block/brain_frame");
     static final StandaloneModelKey<BlockStateModelPart> ROOM = new StandaloneModelKey<>(ROOM_ID::toString);
 
-    /**
-     * One scene of a lone brain: its loop and props, where its middle is (from the Bitling's feet, in model pixels), how far
-     * it is turned so it reads best from the front, and what the Bitling carries. The see-through props, like a hologram, are
-     * drawn last.
-     */
-    private record Scene(String name, float x, float z, float turn, List<String> props, List<String> seeThrough, List<Held> held) {
-        String loop() {
-            return "brain_" + name;
-        }
-    }
-
-    /** Something the Bitling carries all through a scene: its model, and the part it hangs from. */
-    private record Held(String model, String bone) {}
-
-    private static final List<Scene> SCENES = List.of(
-            new Scene("shapes", 0, -1.45F, 0, List.of("base", "box", "block_1", "block_2", "block_3", "ball"), List.of(), List.of()),
-            new Scene("desk", 0.5F, -1, 0, List.of("desk", "juice"), List.of("holo"), List.of()),
-            new Scene("nap", 0, 0.35F, 0, List.of("bag", "pillow", "zzz"), List.of(), List.of()),
-            new Scene("crystal", 2, -0.2F, 0, List.of("stand", "crystal"), List.of(), List.of(new Held("pad", "pad"))),
-            new Scene("doodle", 3, -1.7F, -116, List.of("easel"), List.of(), List.of(new Held("toy_marker", "toy"))),
-            new Scene("snack", 0, -2.9F, 0, List.of("snack"), List.of(), List.of(new Held("toy_shard", "toy"))));
+    private static final List<Scene> SCENES = BrainScenes.SCENES;
     /** The scene a brain without power shows. */
     private static final int NAP_SCENE = 2;
     /** How many times each scene plays before the next. */
@@ -94,42 +76,17 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     /** The top of the brain's floor, in model pixels. */
     private static final float FLOOR_Y = 2;
 
-    private static final Map<String, StandaloneModelKey<BlockStateModelPart>> SCENE_MODELS = new HashMap<>();
     private static final List<StandaloneModelKey<BlockStateModelPart>> GLASS = new ArrayList<>();
     /** The glass of a whole floor, with a hole in its lid round the core. */
     private static final List<StandaloneModelKey<BlockStateModelPart>> FLOOR_GLASS = new ArrayList<>();
 
     static {
-        for (Scene scene : SCENES) {
-            for (String part : scene.props()) {
-                sceneModel(propPath(scene, part));
-            }
-            for (String part : scene.seeThrough()) {
-                sceneModel(propPath(scene, part));
-            }
-            for (Held held : scene.held()) {
-                sceneModel(heldPath(held));
-            }
-        }
         for (int i = 0; i < GLASS_STAGES; i++) {
             Identifier id = Jasm.id("block/brain_glass/stage_" + i);
             GLASS.add(new StandaloneModelKey<>(id::toString));
             Identifier floorId = Jasm.id("block/brain_glass_floor/stage_" + i);
             FLOOR_GLASS.add(new StandaloneModelKey<>(floorId::toString));
         }
-    }
-
-    private static String propPath(Scene scene, String part) {
-        return "block/brain_prop/" + scene.name() + "/" + part;
-    }
-
-    private static String heldPath(Held held) {
-        return "block/bitling/" + held.model();
-    }
-
-    private static void sceneModel(String path) {
-        Identifier id = Jasm.id(path);
-        SCENE_MODELS.computeIfAbsent(path, p -> new StandaloneModelKey<>(id::toString));
     }
 
     /**
@@ -142,15 +99,12 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     /** Bitlings and props are only drawn this close, in blocks; further off a floor shows its room and core. */
     private static final double SCENE_DISTANCE = 32;
     /** How fast the core's pillar turns. */
-    private static final float PILLAR_DEGREES_PER_SECOND = 30;
+    private static final float PILLAR_DEGREES_PER_SECOND = BrainScenes.PILLAR_DEGREES_PER_SECOND;
     /** Full brightness, for the core's glow. */
-    private static final int GLOW = 0xF000F0;
-    /** The Bitling model's own feet centre. */
-    private static final float FEET_X = 8;
+    private static final int GLOW = BrainScenes.GLOW;
 
+    private final BrainScenes scenes;
     private final BitlingAnimations animations;
-    /** Each scene's props: their parts and how they move. */
-    private final Map<String, BitlingAnimations> props = new HashMap<>();
     /** When each brain last fell asleep or woke, so the change eases in. */
     private final Map<NetworkBrainBlockEntity, Wake> wakes = new WeakHashMap<>();
 
@@ -158,19 +112,15 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
 
     public NetworkBrainRenderer(BlockEntityRendererProvider.Context context) {
         ResourceManager resources = Minecraft.getInstance().getResourceManager();
-        animations = BitlingAnimations.load(resources);
-        for (Scene scene : SCENES) {
-            props.put(scene.name(), BitlingAnimations.load(resources, Jasm.id("animations/brain/" + scene.name() + ".json")));
-        }
+        scenes = new BrainScenes(resources);
+        animations = scenes.animations();
     }
 
     static void registerModels(ModelEvent.RegisterStandalone event) {
         event.register(CORE, SimpleUnbakedStandaloneModel.simpleModelWrapper(CORE_ID));
         event.register(PILLAR, SimpleUnbakedStandaloneModel.simpleModelWrapper(PILLAR_ID));
         event.register(ROOM, SimpleUnbakedStandaloneModel.simpleModelWrapper(ROOM_ID));
-        for (Map.Entry<String, StandaloneModelKey<BlockStateModelPart>> e : SCENE_MODELS.entrySet()) {
-            event.register(e.getValue(), SimpleUnbakedStandaloneModel.simpleModelWrapper(Jasm.id(e.getKey())));
-        }
+        BrainScenes.registerModels(event);
         for (int i = 0; i < GLASS_STAGES; i++) {
             event.register(GLASS.get(i), SimpleUnbakedStandaloneModel.simpleModelWrapper(Jasm.id("block/brain_glass/stage_" + i)));
             event.register(FLOOR_GLASS.get(i),
@@ -265,8 +215,7 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     }
 
     private float loopLength(Scene scene) {
-        BitlingAnimations.Clip clip = animations.clip(scene.loop());
-        return clip == null || clip.length() <= 0 ? 30 : clip.length();
+        return scenes.loopLength(scene);
     }
 
     /** Drawn even when the brain's own block is off screen, as long as part of its floor is in view. */
@@ -364,35 +313,12 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
     private void submitScene(Scene scene, float time, boolean awake, float scale, float heading, State state, PoseStack poseStack,
             SubmitNodeCollector collector, ModelManager models) {
         poseStack.pushPose();
-        poseStack.mulPose(Axis.YP.rotationDegrees(heading + scene.turn()));
-        poseStack.scale(scale, scale, scale);
-        // The scene's models sit where the Bitling's do, its middle here.
-        poseStack.translate(-(FEET_X + scene.x()) / 16, 0, -(FEET_X + scene.z()) / 16);
-
-        BitlingAnimations sceneProps = props.get(scene.name());
-        if (sceneProps != null) {
-            Map<String, float[]> propPose = sceneProps.sample(sceneProps.clip(scene.loop()), awake ? time : 0);
-            for (String part : scene.props()) {
-                submitPart(models, propPath(scene, part), part, sceneProps, propPose, false, state, poseStack, collector);
-            }
-            for (String part : scene.seeThrough()) {
-                submitPart(models, propPath(scene, part), part, sceneProps, propPose, true, state, poseStack, collector);
-            }
-        }
-
-        Map<String, float[]> pose = awake ? animations.sample(animations.clip(scene.loop()), time) : napAtStart(scene, time);
-        Map<String, StandaloneModelKey<BlockStateModelPart>> keys = ChipWorkshopRenderer.KEYS.get(BitlingKind.BASIC);
-        for (String part : ChipWorkshopRenderer.PARTS) {
-            // The chip is only ever in the Workshop's hand.
-            if (part.equals("chip")) {
-                continue;
-            }
-            submitPart(models.getStandaloneModel(keys.get(part)), part, animations, pose, false, state, poseStack, collector);
-        }
+        BrainScenes.enter(scene, scale, heading, poseStack);
+        scenes.submitProps(scene, awake ? time : 0, true, state.lightCoords, poseStack, collector, models);
+        Map<String, float[]> pose = awake ? scenes.pose(scene, time) : napAtStart(scene, time);
+        scenes.submitBitling(BitlingKind.BASIC, pose, Set.of(), state.lightCoords, poseStack, collector, models);
         if (awake) {
-            for (Held held : scene.held()) {
-                submitPart(models, heldPath(held), held.bone(), animations, pose, false, state, poseStack, collector);
-            }
+            scenes.submitHeld(scene, pose, state.lightCoords, poseStack, collector, models);
         }
         poseStack.popPose();
     }
@@ -420,24 +346,6 @@ public class NetworkBrainRenderer implements BlockEntityRenderer<NetworkBrainBlo
             collector.submitBlockModel(poseStack, Sheets.translucentBlockItemSheet(), List.of(glass), BlockModelRenderState.EMPTY_TINTS,
                     state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
         }
-    }
-
-    private static void submitPart(ModelManager models, String path, String bone, BitlingAnimations moves, Map<String, float[]> pose,
-            boolean seeThrough, State state, PoseStack poseStack, SubmitNodeCollector collector) {
-        StandaloneModelKey<BlockStateModelPart> key = SCENE_MODELS.get(path);
-        submitPart(key == null ? null : models.getStandaloneModel(key), bone, moves, pose, seeThrough, state, poseStack, collector);
-    }
-
-    private static void submitPart(@Nullable BlockStateModelPart model, String bone, BitlingAnimations moves, Map<String, float[]> pose,
-            boolean seeThrough, State state, PoseStack poseStack, SubmitNodeCollector collector) {
-        if (model == null) {
-            return;
-        }
-        poseStack.pushPose();
-        moves.pose(bone, pose, poseStack);
-        collector.submitBlockModel(poseStack, seeThrough ? Sheets.translucentBlockItemSheet() : Sheets.cutoutBlockItemSheet(), List.of(model),
-                BlockModelRenderState.EMPTY_TINTS, state.lightCoords, OverlayTexture.NO_OVERLAY, 0);
-        poseStack.popPose();
     }
 
     public static class State extends BlockEntityRenderState {

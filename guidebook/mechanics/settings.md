@@ -186,7 +186,8 @@ Both lists go 0, 1, 2, 3 and 4 Speed Upgrades. More upgrades use the last entry.
 
 | Setting | Key | What it does |
 | --- | --- | --- |
-| Chunks per player | `chunksPerPlayer` | Chunks each player's Chunkload Upgrades may keep loaded at once. Upgrades past it wait. 0 means no limit. |
+| Tether base cost | `tetherBaseCost` | FE a Network Tether's operator pays each tick while it keeps chunks loaded, before the cost of the chunks. |
+| Tether chunk cost | `tetherChunkCost` | How fast a Network Tether's cost rises with the chunks it holds. For n chunks it pays the base cost plus this times n(n+1)/2 FE each tick. |
 
 <br />
 <br />
@@ -200,7 +201,6 @@ Each one turns a part of JASM on or off for the world.
 | Bays | `bays` | The Deployment and Demolition Bays. Off: they can't be crafted, and placed ones stop working but keep their contents. |
 | Combustion Generators | `generators` | The Combustion Generators. Off: they can't be crafted, and placed ones stop burning but keep their fuel and charge. |
 | Elite Combustion Generator | `eliteGenerator` | The Elite Combustion Generator. Off: it can't be crafted, and placed ones stop burning but keep their fuel and charge. |
-| Chunkload Upgrade | `chunkloadUpgrade` | The Chunkload Upgrade. Off: it can't be crafted, and upgrades already in machines do nothing. |
 
 <br />
 <br />

@@ -133,12 +133,11 @@ public final class NetworkViewPayloads {
      * ("Access Port (Crusher)") and its badge; every other port and a Power Interface show the block they work with the
      * same way ("Storage Port (Chest)", "Power Interface (Energy Cell)"). Every other row has none. {@code status}: {@link #WORKING}, {@link #STOPPED} (stopped,
      * or a power source giving nothing) or {@link #IDLE} (a machine with nothing to do). {@code power} is the FE a tick
-     * it adds (above 0) or uses (below 0), {@code chunk} the part of that use a Chunkload Upgrade pays. A Battery shows
-     * its {@code charge} instead; every other row has {@link Charge#NONE}. {@code note} is one more hover line, like a
+     * it adds (above 0) or uses (below 0). A Battery shows its {@code charge} instead; every other row has {@link Charge#NONE}. {@code note} is one more hover line, like a
      * Relay Chatterbox's frequency.
      */
     public record Node(Category category, ItemStack icon, Component name, Optional<Serving> serving, BlockPos pos,
-            ResourceKey<Level> dimension, int status, int power, int chunk, Charge charge, Optional<Component> note) {
+            ResourceKey<Level> dimension, int status, int power, Charge charge, Optional<Component> note) {
         public static final int WORKING = 0;
         public static final int STOPPED = 1;
         public static final int IDLE = 2;
@@ -152,7 +151,6 @@ public final class NetworkViewPayloads {
                 ResourceKey.streamCodec(Registries.DIMENSION), Node::dimension,
                 ByteBufCodecs.VAR_INT, Node::status,
                 ByteBufCodecs.VAR_INT, Node::power,
-                ByteBufCodecs.VAR_INT, Node::chunk,
                 Charge.STREAM_CODEC, Node::charge,
                 ComponentSerialization.OPTIONAL_STREAM_CODEC, Node::note,
                 Node::new);

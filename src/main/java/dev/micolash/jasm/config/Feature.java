@@ -19,8 +19,7 @@ public enum Feature implements StringRepresentable {
     BAYS,
     GENERATORS,
     ELITE_GENERATOR,
-    BASIC_BITLING_RECIPE,
-    CHUNKLOAD_UPGRADE;
+    BASIC_BITLING_RECIPE;
 
     public static final Codec<Feature> CODEC = StringRepresentable.fromEnum(Feature::values);
     public static final StreamCodec<ByteBuf, Feature> STREAM_CODEC = ByteBufCodecs.idMapper(i -> values()[i], Feature::ordinal);
@@ -37,7 +36,6 @@ public enum Feature implements StringRepresentable {
             case GENERATORS -> JasmConfig.FEATURE_GENERATORS;
             case ELITE_GENERATOR -> JasmConfig.FEATURE_ELITE_GENERATOR;
             case BASIC_BITLING_RECIPE -> JasmConfig.BASIC_BITLING_RECIPE;
-            case CHUNKLOAD_UPGRADE -> JasmConfig.FEATURE_CHUNKLOAD_UPGRADE;
         };
     }
 
@@ -53,7 +51,6 @@ public enum Feature implements StringRepresentable {
             case BAYS -> List.of(JasmItems.DEPLOYMENT_BAY.get(), JasmItems.DEMOLITION_BAY.get());
             case GENERATORS -> Arrays.stream(GeneratorTier.values()).<ItemLike>map(JasmItems::generator).toList();
             case ELITE_GENERATOR -> List.of(JasmItems.generator(GeneratorTier.ELITE));
-            case CHUNKLOAD_UPGRADE -> List.of(JasmItems.CHUNKLOAD_UPGRADE.get());
             case DECK_TO_DECK, BASIC_BITLING_RECIPE -> List.of();
         };
     }

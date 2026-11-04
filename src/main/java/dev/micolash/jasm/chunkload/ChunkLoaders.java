@@ -3,31 +3,24 @@ package dev.micolash.jasm.chunkload;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.micolash.jasm.Jasm;
-import dev.micolash.jasm.config.Feature;
-import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.config.Tuning;
-import dev.micolash.jasm.network.DataCableBlockEntity;
-import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.storage.ArchiveRecord.Placement;
+import dev.micolash.jasm.tether.NetworkTetherBlockEntity;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -36,90 +29,79 @@ import net.neoforged.neoforge.common.world.chunk.RegisterTicketControllersEvent;
 import net.neoforged.neoforge.common.world.chunk.TicketController;
 import net.neoforged.neoforge.common.world.chunk.TicketHelper;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Every Chunkload Upgrade in a machine, in the order they went in, and which of them keep a chunk loaded. In each chunk
- * the first one loads it and the rest wait; a waiting one takes over as soon as the one before it stops. Kept with the
- * world, so the chunks stay loaded while their owners are away and across restarts.
+ * The chunks each Network Tether keeps loaded, kept with the world, so they stay loaded while their owners are away and
+ * come back by themselves after a restart. Several Tethers may hold one chunk: it has one ticket, filed under the
+ * chunk's own corner, for as long as any of them holds it. Mobs spawn in held chunks as they do near a player.
  *
- * <p>Machines only ask for their position to be looked at (an upgrade slot changed, the machine loaded, went away or
- * changed owner); the list checks those against the world once, at the end of the tick. Each tick only the loading
- * upgrades are visited, to pay for their chunk. Server thread only.
+ * <p>Tethers say what they hold during their own tick; the tickets follow at the end of the tick. A chunk no ticket
+ * holds yet is taken only a few a tick, as taking one loads it on the spot. Server thread only.
  */
 @EventBusSubscriber(modid = Jasm.MODID)
 public final class ChunkLoaders extends SavedData {
-    /** Loads one chunk, owned by the chunk's own corner, whichever upgrade pays for it. */
-    public static final TicketController TICKETS = new TicketController(Jasm.id("chunkload_upgrade"), ChunkLoaders::validate);
-    /** Counts toward the limit for machines with no owner. */
-    private static final UUID NOBODY = new UUID(0, 0);
-    private static final int RECHECK_TICKS = 20;
+    /** Loads the chunks Tethers hold, each owned by the chunk's own corner, whichever Tethers hold it. */
+    public static final TicketController TICKETS = new TicketController(Jasm.id("network_tether"), ChunkLoaders::validate);
+    /** New chunks taken a tick, across every Tether. Chunks that already have a ticket are free to share. */
+    public static final int NEW_PER_TICK = 2;
+    /** How often the list checks that each Tether it knows is still there, where its chunk is loaded. */
+    private static final int SWEEP_TICKS = 100;
 
-    /** Where an upgrade sits: a machine block, or the thin port on that face of a cable. */
-    public record Spot(Placement at, @Nullable Direction face) {
-        ChunkKey chunk() {
-            return new ChunkKey(at.dimension(), ChunkPos.containing(at.pos()).pack());
+    /** One chunk in one dimension. */
+    public record ChunkKey(ResourceKey<Level> dimension, long chunk) {
+        static final Codec<ChunkKey> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Level.RESOURCE_KEY_CODEC.fieldOf("dimension").forGetter(ChunkKey::dimension),
+                Codec.LONG.fieldOf("chunk").forGetter(ChunkKey::chunk))
+                .apply(i, ChunkKey::new));
+
+        public static ChunkKey of(Level level, BlockPos pos) {
+            return new ChunkKey(level.dimension(), ChunkPos.containing(pos).pack());
         }
     }
 
-    private record ChunkKey(ResourceKey<Level> dimension, long chunk) {}
-
-    private static final class Entry {
-        UUID owner;
-        boolean unpowered;
-
-        Entry(UUID owner, boolean unpowered) {
-            this.owner = owner;
-            this.unpowered = unpowered;
-        }
-    }
-
-    private record Saved(Placement at, Optional<Direction> face, UUID owner, boolean unpowered) {
+    private record Saved(Placement at, List<ChunkKey> chunks) {
         static final Codec<Saved> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Placement.CODEC.fieldOf("at").forGetter(Saved::at),
-                Direction.CODEC.optionalFieldOf("face").forGetter(Saved::face),
-                UUIDUtil.CODEC.fieldOf("owner").forGetter(Saved::owner),
-                Codec.BOOL.optionalFieldOf("unpowered", false).forGetter(Saved::unpowered))
+                ChunkKey.CODEC.listOf().optionalFieldOf("chunks", List.of()).forGetter(Saved::chunks))
                 .apply(i, Saved::new));
     }
 
     public static final Codec<ChunkLoaders> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Saved.CODEC.listOf().optionalFieldOf("upgrades", List.of()).forGetter(ChunkLoaders::saved))
+            Saved.CODEC.listOf().optionalFieldOf("tethers", List.of()).forGetter(ChunkLoaders::saved))
             .apply(i, ChunkLoaders::new));
-    public static final SavedDataType<ChunkLoaders> TYPE = new SavedDataType<>(Jasm.id("chunk_loaders"), ChunkLoaders::new, CODEC);
+    public static final SavedDataType<ChunkLoaders> TYPE = new SavedDataType<>(Jasm.id("network_tethers"), ChunkLoaders::new, CODEC);
 
-    /** What players asked for: every upgrade, first in first. */
-    private final LinkedHashMap<Spot, Entry> entries = new LinkedHashMap<>();
-    private final Map<Placement, Set<Spot>> byPlace = new HashMap<>();
-    /** The upgrades that couldn't pay for their chunk: they step aside until their machine has the power again. */
-    private final Set<Spot> unpowered = new LinkedHashSet<>();
+    /** What each Tether holds. */
+    private final Map<Placement, Set<ChunkKey>> held = new LinkedHashMap<>();
 
     // Worked out from the above, never saved.
-    private final Set<Placement> pending = new HashSet<>();
-    /** The chunks loaded right now, each with the upgrade paying for it. Its keys are the tickets held. */
-    private Map<ChunkKey, Spot> loading = Map.of();
-    private final Map<Spot, MachineBlockEntity> machines = new HashMap<>();
-    private boolean replan = true;
-    private @Nullable Boolean lastOn;
-    private int lastLimit = -1;
+    /** How many Tethers hold each chunk. Its keys are the chunks that should have a ticket. */
+    private final Map<ChunkKey, Integer> holders = new HashMap<>();
+    /** The chunks this list has a ticket for. After a load it starts empty and every held chunk is asked for again. */
+    private final Set<ChunkKey> tickets = new LinkedHashSet<>();
+    /** Chunks whose holders went from none to some or back since the tickets were last brought in line. */
+    private final Set<ChunkKey> touched = new LinkedHashSet<>();
+    private long budgetTick = -1;
+    private int budget;
 
     public ChunkLoaders() {}
 
     private ChunkLoaders(List<Saved> saved) {
         for (Saved one : saved) {
-            Spot spot = new Spot(one.at(), one.face().orElse(null));
-            add(spot, new Entry(one.owner(), one.unpowered()));
+            Set<ChunkKey> chunks = new LinkedHashSet<>(one.chunks());
+            held.put(one.at(), chunks);
+            chunks.forEach(this::addHolder);
         }
     }
 
     private List<Saved> saved() {
-        List<Saved> out = new ArrayList<>(entries.size());
-        entries.forEach((spot, entry) -> out.add(new Saved(spot.at(), Optional.ofNullable(spot.face()), entry.owner, entry.unpowered)));
+        List<Saved> out = new ArrayList<>(held.size());
+        held.forEach((at, chunks) -> out.add(new Saved(at, List.copyOf(chunks))));
         return out;
     }
 
-    /** The list, made the first time an upgrade is seen. */
+    /** The list, made the first time a Tether holds a chunk. */
     public static ChunkLoaders get(MinecraftServer server) {
         return server.getDataStorage().computeIfAbsent(TYPE);
     }
@@ -128,59 +110,106 @@ public final class ChunkLoaders extends SavedData {
         return server.getDataStorage().get(TYPE);
     }
 
-    /** FE a tick a Chunkload Upgrade in {@code machine} pays right now: its cost while it loads a chunk, otherwise 0. */
-    public static int drawOf(MachineBlockEntity machine) {
-        if (!(machine.getLevel() instanceof ServerLevel level)) return 0;
-        ChunkLoaders data = peek(level.getServer());
-        return data != null && data.machines.containsValue(machine) ? Math.max(0, Tuning.CHUNKLOAD_UPGRADE_DRAIN) : 0;
-    }
-
     private static Placement placement(ServerLevel level, BlockPos pos) {
         return new Placement(level.dimension(), pos.immutable());
     }
 
-    // --- what machines tell the list ---
+    // --- what Tethers tell the list ---
 
-    /** An upgrade slot of the machine changed. */
-    public static void look(MachineBlockEntity machine) {
-        if (machine.getLevel() instanceof ServerLevel level) {
-            get(level.getServer()).pending.add(placement(level, machine.getBlockPos()));
-        }
+    /** The chunks the Tether at {@code pos} holds; empty if none. */
+    public Set<ChunkKey> held(ServerLevel level, BlockPos pos) {
+        Set<ChunkKey> chunks = held.get(placement(level, pos));
+        return chunks == null ? Set.of() : Collections.unmodifiableSet(chunks);
     }
 
-    /** The machine loaded or was placed: worth a look if it holds the upgrade or the list knows its place. */
-    public static void loaded(MachineBlockEntity machine) {
-        if (ChunkloadUpgradeItem.installedIn(machine)) look(machine);
-        else known(machine);
-    }
-
-    /** The machine went away or changed owner: worth a look only if the list knows its place. */
-    public static void known(MachineBlockEntity machine) {
-        if (!(machine.getLevel() instanceof ServerLevel level)) return;
+    /** How many chunks the Tether at {@code pos} holds, wherever it is asked from. */
+    public static int count(ServerLevel level, BlockPos pos) {
         ChunkLoaders data = peek(level.getServer());
-        if (data == null) return;
-        Placement at = placement(level, machine.getBlockPos());
-        if (data.byPlace.containsKey(at)) data.pending.add(at);
+        return data == null ? 0 : data.held(level, pos).size();
     }
 
-    // --- what tests and screens can ask ---
-
-    public enum Status { NONE, LOADING, WAITING }
-
-    /** Whether the upgrade at {@code pos} (a thin port's {@code face}, or null for a machine block) loads its chunk, waits, or isn't listed. */
-    public Status status(ServerLevel level, BlockPos pos, @Nullable Direction face) {
-        Spot spot = new Spot(placement(level, pos), face);
-        if (!entries.containsKey(spot)) return Status.NONE;
-        return spot.equals(loading.get(spot.chunk())) ? Status.LOADING : Status.WAITING;
+    /**
+     * The Tether at {@code pos} takes what {@code wanted} has that it doesn't hold yet: at once for a chunk that already
+     * has a ticket, otherwise only while this tick has room for new ones. With {@code trim} it also lets go of every
+     * chunk {@code wanted} lacks. Returns whether it now holds all of {@code wanted}.
+     */
+    public boolean hold(ServerLevel level, BlockPos pos, Collection<ChunkKey> wanted, boolean trim) {
+        Placement at = placement(level, pos);
+        Set<ChunkKey> chunks = held.get(at);
+        if (chunks == null) {
+            if (wanted.isEmpty()) return true;
+            chunks = new LinkedHashSet<>();
+            held.put(at, chunks);
+        }
+        long now = level.getServer().getTickCount();
+        if (budgetTick != now) {
+            budgetTick = now;
+            budget = NEW_PER_TICK;
+        }
+        // its own chunk is loaded, as it is ticking, and is always taken: a Tether holding chunks keeps itself loaded
+        ChunkKey own = ChunkKey.of(level, pos);
+        boolean all = true;
+        boolean changed = false;
+        for (ChunkKey key : wanted) {
+            if (chunks.contains(key)) continue;
+            boolean free = key.equals(own) || holders.containsKey(key) || tickets.contains(key);
+            if (!free && budget <= 0) {
+                all = false;
+                continue;
+            }
+            if (!free) budget--;
+            chunks.add(key);
+            addHolder(key);
+            changed = true;
+        }
+        if (trim) {
+            Set<ChunkKey> keep = wanted instanceof Set<ChunkKey> set ? set : new LinkedHashSet<>(wanted);
+            for (Iterator<ChunkKey> it = chunks.iterator(); it.hasNext(); ) {
+                ChunkKey key = it.next();
+                if (!keep.contains(key)) {
+                    it.remove();
+                    removeHolder(key);
+                    changed = true;
+                }
+            }
+        }
+        if (chunks.isEmpty()) held.remove(at);
+        if (changed) setDirty();
+        return all;
     }
 
-    /** Whether a ticket for {@code chunk}, owned by {@code owner}, is one the list wants. What a loading world keeps. */
-    public boolean wantsTicket(ServerLevel level, BlockPos owner, long chunk) {
-        return wanted(plan(), level, owner, chunk);
+    /** The Tether at {@code pos} lets go of everything it holds. */
+    public void release(ServerLevel level, BlockPos pos) {
+        Set<ChunkKey> chunks = held.remove(placement(level, pos));
+        if (chunks == null) return;
+        chunks.forEach(this::removeHolder);
+        setDirty();
     }
 
-    private static boolean wanted(Map<ChunkKey, Spot> plan, ServerLevel level, BlockPos owner, long chunk) {
-        return plan.containsKey(new ChunkKey(level.dimension(), chunk)) && owner.equals(corner(chunk));
+    /** The Tether at {@code pos} went away: what it held goes with it. */
+    public static void removed(ServerLevel level, BlockPos pos) {
+        ChunkLoaders data = peek(level.getServer());
+        if (data != null) data.release(level, pos);
+    }
+
+    /**
+     * Whether every chunk the Tether at {@code pos} holds is loaded right now. Until then its network may look smaller than
+     * it is (just after a restart, its far blocks are still coming back), so nothing should be let go.
+     */
+    public boolean allLoaded(ServerLevel level, BlockPos pos) {
+        MinecraftServer server = level.getServer();
+        for (ChunkKey key : held(level, pos)) {
+            ServerLevel there = server.getLevel(key.dimension());
+            if (there == null) continue;
+            ChunkPos chunk = ChunkPos.unpack(key.chunk());
+            if (!there.hasChunk(chunk.x(), chunk.z())) return false;
+        }
+        return true;
+    }
+
+    /** Whether any Tether holds {@code chunk} in {@code level}, so it has a ticket from the end of this tick. */
+    public boolean isHeld(ServerLevel level, long chunk) {
+        return holders.containsKey(new ChunkKey(level.dimension(), chunk));
     }
 
     // --- the tick ---
@@ -196,149 +225,66 @@ public final class ChunkLoaders extends SavedData {
         if (data != null) data.tick(event.getServer());
     }
 
-    /** As the world loads, before its saved tickets take effect: drops every ticket the list no longer backs. */
+    /** As the world loads, before its saved tickets take effect: drops every ticket no Tether holds any more. */
     private static void validate(ServerLevel level, TicketHelper helper) {
         ChunkLoaders data = peek(level.getServer());
-        Map<ChunkKey, Spot> plan = data == null ? Map.of() : data.plan();
         helper.getBlockTickets().forEach((owner, tickets) -> {
-            for (long chunk : tickets.normal()) {
-                if (!wanted(plan, level, owner, chunk)) helper.removeTicket(owner, chunk, false);
+            for (long chunk : tickets.naturalSpawning()) {
+                if (data == null || !data.isHeld(level, chunk) || !owner.equals(corner(chunk))) helper.removeTicket(owner, chunk, true);
             }
-            for (long chunk : tickets.naturalSpawning()) helper.removeTicket(owner, chunk, true);
+            for (long chunk : tickets.normal()) helper.removeTicket(owner, chunk, false);
         });
         helper.getEntityTickets().keySet().forEach(helper::removeAllTickets);
     }
 
     private void tick(MinecraftServer server) {
-        boolean on = Feature.CHUNKLOAD_UPGRADE.on();
-        int limit = JasmConfig.CHUNKS_PER_PLAYER.getAsInt();
-        if (lastOn == null || on != lastOn || limit != lastLimit) {
-            lastOn = on;
-            lastLimit = limit;
-            replan = true;
-        }
-        if (!pending.isEmpty()) checkPending(server);
-        if (on && !unpowered.isEmpty() && server.getTickCount() % RECHECK_TICKS == 0) recheckUnpowered(server);
-        if (replan) assign(server);
-        if (pay(server)) assign(server);
+        if (!touched.isEmpty()) applyTickets(server);
+        if (server.getTickCount() % SWEEP_TICKS == 0 && !held.isEmpty()) sweep(server);
     }
 
-    /** Matches the list to what now stands at each position a machine asked about. Unloaded positions wait for their chunk. */
-    private void checkPending(MinecraftServer server) {
-        for (Placement at : pending) {
+    /** Takes or lets go of tickets so exactly the held chunks have one. */
+    private void applyTickets(MinecraftServer server) {
+        for (Iterator<ChunkKey> it = touched.iterator(); it.hasNext(); ) {
+            ChunkKey key = it.next();
+            boolean want = holders.containsKey(key);
+            if (want == tickets.contains(key)) {
+                it.remove();
+                continue;
+            }
+            ServerLevel level = server.getLevel(key.dimension());
+            if (level == null) {
+                // the dimension isn't there now: try again when something else changes
+                if (!want) tickets.remove(key);
+                it.remove();
+                continue;
+            }
+            ChunkPos pos = ChunkPos.unpack(key.chunk());
+            TICKETS.forceChunk(level, corner(key.chunk()), pos.x(), pos.z(), want, true);
+            if (want) tickets.add(key);
+            else tickets.remove(key);
+            it.remove();
+        }
+    }
+
+    /**
+     * Forgets Tethers that are no longer there, as far as can be seen without loading anything: one in a gone dimension,
+     * one whose chunk is loaded but holds no Tether, and one that doesn't hold its own chunk, so it can't be ticking to
+     * look after the rest.
+     */
+    private void sweep(MinecraftServer server) {
+        List<Placement> gone = new ArrayList<>();
+        held.forEach((at, chunks) -> {
             ServerLevel level = server.getLevel(at.dimension());
-            if (level == null || !level.isLoaded(at.pos())) continue;
-            Map<Spot, MachineBlockEntity> found = installedAt(level, at);
-            for (Spot spot : List.copyOf(byPlace.getOrDefault(at, Set.of()))) {
-                if (!found.containsKey(spot)) {
-                    remove(spot);
-                    replan = true;
-                }
+            if (level == null || !chunks.contains(new ChunkKey(at.dimension(), ChunkPos.containing(at.pos()).pack()))) {
+                gone.add(at);
+            } else if (level.isLoaded(at.pos()) && !(level.getBlockEntity(at.pos()) instanceof NetworkTetherBlockEntity)) {
+                gone.add(at);
             }
-            found.forEach((spot, machine) -> {
-                UUID owner = machine.owner() == null ? NOBODY : machine.owner();
-                Entry entry = entries.get(spot);
-                if (entry == null) {
-                    add(spot, new Entry(owner, false));
-                    replan = true;
-                } else if (!entry.owner.equals(owner)) {
-                    entry.owner = owner;
-                    setDirty();
-                    replan = true;
-                }
-            });
-        }
-        pending.clear();
-    }
-
-    /** Upgrades that stepped aside for lack of power go back in line, at the end, once their machine can pay again. */
-    private void recheckUnpowered(MinecraftServer server) {
-        List<Spot> back = new ArrayList<>();
-        for (Spot spot : unpowered) {
-            ServerLevel level = server.getLevel(spot.at().dimension());
-            if (level == null || !level.isLoaded(spot.at().pos())) continue;
-            MachineBlockEntity machine = machineAt(level, spot);
-            if (machine != null && machine.chunkloadPower().getAmountAsInt() >= Tuning.CHUNKLOAD_UPGRADE_DRAIN) back.add(spot);
-        }
-        for (Spot spot : back) {
-            Entry entry = entries.remove(spot);
-            entry.unpowered = false;
-            entries.put(spot, entry);
-            unpowered.remove(spot);
-        }
-        if (!back.isEmpty()) {
-            setDirty();
-            replan = true;
-        }
-    }
-
-    /** Who loads which chunk: first in line per chunk, among those with power and owners under the limit. */
-    private Map<ChunkKey, Spot> plan() {
-        if (!Feature.CHUNKLOAD_UPGRADE.on()) return Map.of();
-        int limit = JasmConfig.CHUNKS_PER_PLAYER.getAsInt();
-        Map<ChunkKey, Spot> next = new HashMap<>();
-        Map<UUID, Integer> counts = new HashMap<>();
-        entries.forEach((spot, entry) -> {
-            if (entry.unpowered) return;
-            ChunkKey key = spot.chunk();
-            if (next.containsKey(key)) return;
-            if (limit > 0 && counts.getOrDefault(entry.owner, 0) >= limit) return;
-            next.put(key, spot);
-            counts.merge(entry.owner, 1, Integer::sum);
         });
-        return next;
-    }
-
-    /** Takes or lets go of tickets so exactly the planned chunks are held. A chunk changing hands keeps its ticket. */
-    private void assign(MinecraftServer server) {
-        replan = false;
-        Map<ChunkKey, Spot> next = plan();
-        for (ChunkKey key : next.keySet()) {
-            if (!loading.containsKey(key)) force(server, key, true);
+        for (Placement at : gone) {
+            held.remove(at).forEach(this::removeHolder);
+            setDirty();
         }
-        for (ChunkKey key : loading.keySet()) {
-            if (!next.containsKey(key)) force(server, key, false);
-        }
-        loading = next;
-        machines.keySet().retainAll(next.values());
-    }
-
-    /** Each loading upgrade pays for its tick. Returns whether one had to stop: its machine is gone or out of power. */
-    private boolean pay(MinecraftServer server) {
-        int cost = Tuning.CHUNKLOAD_UPGRADE_DRAIN;
-        boolean changed = false;
-        for (Spot spot : loading.values()) {
-            ServerLevel level = server.getLevel(spot.at().dimension());
-            if (level == null || !level.isLoaded(spot.at().pos())) continue;
-            MachineBlockEntity machine = machines.get(spot);
-            if (machine == null || machine.isRemoved()) {
-                machine = machineAt(level, spot);
-                if (machine == null) {
-                    remove(spot);
-                    changed = true;
-                    continue;
-                }
-                machines.put(spot, machine);
-            }
-            SimpleEnergyHandler power = machine.chunkloadPower();
-            int amount = power.getAmountAsInt();
-            if (amount < cost) {
-                entries.get(spot).unpowered = true;
-                unpowered.add(spot);
-                setDirty();
-                changed = true;
-            } else if (cost > 0) {
-                power.set(amount - cost);
-            }
-        }
-        return changed;
-    }
-
-    private static void force(MinecraftServer server, ChunkKey key, boolean add) {
-        ServerLevel level = server.getLevel(key.dimension());
-        if (level == null) return;
-        ChunkPos pos = ChunkPos.unpack(key.chunk());
-        TICKETS.forceChunk(level, corner(key.chunk()), pos.x(), pos.z(), add, false);
     }
 
     /** The block a chunk's ticket is filed under. */
@@ -347,42 +293,12 @@ public final class ChunkLoaders extends SavedData {
         return new BlockPos(pos.getMinBlockX(), 0, pos.getMinBlockZ());
     }
 
-    // --- the list ---
-
-    private void add(Spot spot, Entry entry) {
-        entries.put(spot, entry);
-        byPlace.computeIfAbsent(spot.at(), at -> new HashSet<>()).add(spot);
-        if (entry.unpowered) unpowered.add(spot);
-        setDirty();
+    private void addHolder(ChunkKey key) {
+        if (holders.merge(key, 1, Integer::sum) == 1) touched.add(key);
     }
 
-    private void remove(Spot spot) {
-        if (entries.remove(spot) == null) return;
-        Set<Spot> here = byPlace.get(spot.at());
-        if (here != null && here.remove(spot) && here.isEmpty()) byPlace.remove(spot.at());
-        unpowered.remove(spot);
-        machines.remove(spot);
-        setDirty();
-    }
-
-    /** The machines at {@code at} holding the upgrade: the machine block, or each thin port of the cable there. */
-    private static Map<Spot, MachineBlockEntity> installedAt(ServerLevel level, Placement at) {
-        BlockEntity entity = level.getBlockEntity(at.pos());
-        if (entity instanceof MachineBlockEntity machine) {
-            return ChunkloadUpgradeItem.installedIn(machine) ? Map.of(new Spot(at, null), machine) : Map.of();
-        }
-        if (!(entity instanceof DataCableBlockEntity cable)) return Map.of();
-        Map<Spot, MachineBlockEntity> found = new HashMap<>();
-        for (Direction side : Direction.values()) {
-            MachineBlockEntity port = cable.port(side);
-            if (port != null && ChunkloadUpgradeItem.installedIn(port)) found.put(new Spot(at, side), port);
-        }
-        return found;
-    }
-
-    private static @Nullable MachineBlockEntity machineAt(ServerLevel level, Spot spot) {
-        BlockEntity entity = level.getBlockEntity(spot.at().pos());
-        if (spot.face() == null) return entity instanceof MachineBlockEntity machine ? machine : null;
-        return entity instanceof DataCableBlockEntity cable ? cable.port(spot.face()) : null;
+    private void removeHolder(ChunkKey key) {
+        Integer now = holders.computeIfPresent(key, (k, n) -> n > 1 ? n - 1 : null);
+        if (now == null) touched.add(key);
     }
 }

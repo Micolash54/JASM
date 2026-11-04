@@ -57,6 +57,7 @@ public final class JasmTabs {
                 output.accept(JasmItems.CRAFTING_SERVER);
                 output.accept(JasmItems.ADVANCED_CRAFTING_SERVER);
                 output.accept(JasmItems.RELAY_CHATTERBOX);
+                output.accept(JasmItems.NETWORK_TETHER);
                 output.accept(JasmItems.ACCESS_PORT);
                 output.accept(JasmItems.THIN_ACCESS_PORT);
                 output.accept(JasmItems.FULL_INPUT_PORT);
@@ -74,7 +75,6 @@ public final class JasmTabs {
                 output.accept(JasmItems.STOCK_UPGRADE);
                 output.accept(JasmItems.POWER_UPGRADE);
                 output.accept(JasmItems.DIMENSION_UPGRADE);
-                if (Feature.CHUNKLOAD_UPGRADE.on()) output.accept(JasmItems.CHUNKLOAD_UPGRADE);
                 for (ProcessorTier tier : ProcessorTier.values()) {
                     output.accept(JasmItems.processor(tier));
                 }

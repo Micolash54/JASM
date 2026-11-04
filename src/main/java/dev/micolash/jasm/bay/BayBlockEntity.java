@@ -1,7 +1,6 @@
 package dev.micolash.jasm.bay;
 
 import com.mojang.authlib.GameProfile;
-import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.network.FaceMode;
@@ -538,19 +537,13 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     /**
      * Grid slots take anything on a Deployment Bay and nothing on a Demolition Bay; upgrade slots take Speed Upgrades,
-     * up to the limit, one Redstone Upgrade and one Chunkload Upgrade.
+     * up to the limit, and one Redstone Upgrade.
      */
     public static boolean accepts(BayKind kind, Container container, int slot, ItemStack stack, IntPredicate otherRedstone) {
         if (slot < GRID) return kind.takesIn();
         if (slot >= SLOTS) return false;
         if (stack.is(JasmItems.SPEED_UPGRADE.get())) return SpeedUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
-        if (stack.is(JasmItems.CHUNKLOAD_UPGRADE.get())) return ChunkloadUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
         return stack.is(JasmItems.REDSTONE_UPGRADE.get()) && !otherRedstone.test(slot);
-    }
-
-    @Override
-    public boolean isUpgradeSlot(int slot) {
-        return slot >= UPGRADE_START && slot < SLOTS;
     }
 
     @Override

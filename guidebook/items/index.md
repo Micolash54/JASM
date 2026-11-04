@@ -58,6 +58,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Network Brain](network-brain.md): lifts the machine limit.
 * [Network Chamber](network-chamber.md): builds brain floors and towers.
 * [Relay Chatterbox](relay-chatterbox.md): links two networks like a wireless cable.
+* [Network Tether](network-tether.md): keeps every chunk of its network loaded.
 
 <br />
 <br />
@@ -70,7 +71,6 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Blank Upgrade](blank-upgrade.md): the base for other upgrades.
 * [Speed Upgrade](speed-upgrade.md), [Redstone Upgrade](redstone-upgrade.md) and [Power Upgrade](power-upgrade.md).
 * [Crafting Upgrade](crafting-upgrade.md) and [Stock Upgrade](stock-upgrade.md): for Output Ports.
-* [Chunkload Upgrade](chunkload-upgrade.md): keeps a machine's chunk loaded.
 * [Deployment Bay](deployment-bay.md): places blocks and fluids.
 * [Demolition Bay](demolition-bay.md): breaks blocks.
 * [Wrench](wrench.md): turn machines and pick them up.

@@ -2,6 +2,7 @@
   "replace": false,
   "values": [
     "jasm:docking_station",
-    "jasm:relay_chatterbox"
+    "jasm:relay_chatterbox",
+    "jasm:network_tether"
   ]
 }

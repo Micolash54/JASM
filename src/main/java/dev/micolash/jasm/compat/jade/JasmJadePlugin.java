@@ -24,6 +24,8 @@ import dev.micolash.jasm.network.MachineBlock;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.bay.BayBlock;
 import dev.micolash.jasm.bay.BayBlockEntity;
+import dev.micolash.jasm.tether.NetworkTetherBlock;
+import dev.micolash.jasm.tether.NetworkTetherBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopBlock;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import snownee.jade.api.BlockAccessor;
@@ -35,7 +37,8 @@ import snownee.jade.api.WailaPlugin;
 
 /**
  * Jade support: who owns an Archive and how many wafers it protects, what a generator is doing, the endless battery, the
- * power of a whole Battery, the crafting-network blocks (owner, power, cards, the running job), and the Network Brain.
+ * power of a whole Battery, the crafting-network blocks (owner, power, cards, the running job), the Network Brain and the
+ * Network Tether.
  */
 @WailaPlugin
 public class JasmJadePlugin implements IWailaPlugin {
@@ -55,6 +58,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(FoundryInfo.INSTANCE, CrystalFoundryBlockEntity.class);
         registration.registerBlockDataProvider(BrainInfo.INSTANCE, NetworkBrainBlockEntity.class);
         registration.registerBlockDataProvider(BrainInfo.INSTANCE, NetworkChamberBlockEntity.class);
+        registration.registerBlockDataProvider(TetherInfo.INSTANCE, NetworkTetherBlockEntity.class);
     }
 
     @Override
@@ -73,6 +77,7 @@ public class JasmJadePlugin implements IWailaPlugin {
         registration.registerBlockComponent(MachineInfo.Client.INSTANCE, AccessPortBlock.class);
         registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkBrainBlock.class);
         registration.registerBlockComponent(BrainInfo.Client.INSTANCE, NetworkChamberBlock.class);
+        registration.registerBlockComponent(TetherInfo.Client.INSTANCE, NetworkTetherBlock.class);
         // The top half of an Advanced Crafting Server shows the server below it.
         registration.addRayTraceCallback((hit, accessor, original) -> {
             if (accessor instanceof BlockAccessor block && block.getBlockEntity() instanceof AdvancedCraftingServerTopBlockEntity top

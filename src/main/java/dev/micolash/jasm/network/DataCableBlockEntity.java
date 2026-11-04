@@ -3,7 +3,6 @@ package dev.micolash.jasm.network;
 import dev.micolash.jasm.acceptor.ThinPowerAcceptor;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.autocraft.AccessPortBlockEntity;
-import dev.micolash.jasm.chunkload.ChunkLoaders;
 import dev.micolash.jasm.pool.StoragePortBlockEntity;
 import dev.micolash.jasm.registry.JasmBlocks;
 import dev.micolash.jasm.registry.JasmItems;
@@ -128,7 +127,6 @@ public class DataCableBlockEntity extends BlockEntity {
         port.applyComponentsFromItemStack(stack);
         port.setOwner(player);
         ports.put(side, port);
-        ChunkLoaders.loaded(port);
         if (level instanceof ServerLevel serverLevel) {
             CableClaims claims = CableClaims.get(serverLevel);
             if (claims.owner(serverLevel, worldPosition) == null && !claims.blocked(serverLevel, worldPosition)) {
@@ -243,12 +241,6 @@ public class DataCableBlockEntity extends BlockEntity {
         super.setLevel(level);
         ownersDirty = true;
         ports.values().forEach(port -> port.setLevel(level));
-    }
-
-    @Override
-    public void onLoad() {
-        super.onLoad();
-        ports.values().forEach(ChunkLoaders::loaded);
     }
 
     @Override

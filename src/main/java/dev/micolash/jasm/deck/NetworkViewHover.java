@@ -67,10 +67,6 @@ public final class NetworkViewHover {
         if (node.power() < 0 && node.category() == Category.POWER) {
             return Component.translatable("screen.jasm.network.drawing", String.format("%,d", -(long) node.power()));
         }
-        if (node.power() < 0 && node.chunk() > 0) {
-            return Component.translatable("screen.jasm.network.using_chunk", String.format("%,d", -(long) node.power()),
-                    String.format("%,d", node.chunk()));
-        }
         if (node.power() < 0) {
             return Component.translatable("screen.jasm.network.using", String.format("%,d", -(long) node.power()));
         }

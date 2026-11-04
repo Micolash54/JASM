@@ -3,15 +3,15 @@
   "criteria": {
     "has_the_recipe": {
       "conditions": {
-        "recipe": "jasm:chunkload_upgrade"
+        "recipe": "jasm:network_tether"
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_dimension_upgrade": {
+    "has_synapse_core": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:dimension_upgrade"
+            "items": "jasm:synapse_core"
           }
         ]
       },
@@ -21,12 +21,12 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_dimension_upgrade"
+      "has_synapse_core"
     ]
   ],
   "rewards": {
     "recipes": [
-      "jasm:chunkload_upgrade"
+      "jasm:network_tether"
     ]
   }
 }

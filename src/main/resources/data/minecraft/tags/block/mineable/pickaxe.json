@@ -37,6 +37,7 @@
     "jasm:network_chamber",
     "jasm:deployment_bay",
     "jasm:demolition_bay",
-    "jasm:relay_chatterbox"
+    "jasm:relay_chatterbox",
+    "jasm:network_tether"
   ]
 }

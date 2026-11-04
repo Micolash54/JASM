@@ -14,7 +14,6 @@ import dev.micolash.jasm.battery.BatteryGroup;
 import dev.micolash.jasm.battery.CreativeBatteryBlockEntity;
 import dev.micolash.jasm.brain.NetworkBrainBlockEntity;
 import dev.micolash.jasm.brain.NetworkChamberBlockEntity;
-import dev.micolash.jasm.chunkload.ChunkLoaders;
 import dev.micolash.jasm.core.JasmServerData;
 import dev.micolash.jasm.core.JasmServerData.NetworkAnswer;
 import dev.micolash.jasm.deck.NetworkViewPayloads.Category;
@@ -33,6 +32,7 @@ import dev.micolash.jasm.registry.JasmItems;
 import dev.micolash.jasm.relay.RelayChatterboxBlockEntity;
 import dev.micolash.jasm.relay.RelayChatterboxTopBlockEntity;
 import dev.micolash.jasm.relay.RelayEnd;
+import dev.micolash.jasm.tether.NetworkTetherBlockEntity;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
 import dev.micolash.jasm.workshop.ChipWorkshopBlockEntity;
 import java.util.ArrayList;
@@ -226,7 +226,7 @@ public final class NetworkViewService {
             out += group.flowOut();
             counts[Category.BATTERIES.ordinal()]++;
             rows.add(new NetworkViewPayloads.Node(Category.BATTERIES, new ItemStack(holder.getBlockState().getBlock()),
-                    holder.getDisplayName(), Optional.empty(), holder.getBlockPos(), at.dimension(), NetworkViewPayloads.Node.WORKING, 0, 0,
+                    holder.getDisplayName(), Optional.empty(), holder.getBlockPos(), at.dimension(), NetworkViewPayloads.Node.WORKING, 0,
                     new NetworkViewPayloads.Charge(held, room, group.flowIn(), group.flowOut()), Optional.empty()));
         }
         // The Batteries' own figures: a source or a use the tab doesn't see still shows in them.
@@ -263,10 +263,8 @@ public final class NetworkViewService {
     // --- rows ---
 
     private static NetworkViewPayloads.Node machineRow(BlockEntity entity, ServerLevel level) {
-        int chunk = entity instanceof MachineBlockEntity machine ? ChunkLoaders.drawOf(machine) : 0;
-        int use = power(entity) + chunk;
         return new NetworkViewPayloads.Node(category(entity), new ItemStack(entity.getBlockState().getBlock()), name(entity),
-                Optional.empty(), entity.getBlockPos(), level.dimension(), status(entity), -use, chunk, NetworkViewPayloads.Charge.NONE,
+                Optional.empty(), entity.getBlockPos(), level.dimension(), status(entity), -power(entity), NetworkViewPayloads.Charge.NONE,
                 note(entity));
     }
 
@@ -297,14 +295,13 @@ public final class NetworkViewService {
             serving = Optional.of(new NetworkViewPayloads.Serving(
                     Component.translatable("screen.jasm.network.serving", portItem.getHoverName(), served), badge(port)));
         }
-        int chunk = ChunkLoaders.drawOf(port);
-        int use = port.networkPowerFlow() + chunk;
+        int use = port.networkPowerFlow();
         // a port whose machine another port keeps serves nothing there: idle, with the reason
         boolean taken = port.anyTaken();
         int status = !port.running() ? NetworkViewPayloads.Node.STOPPED
                 : taken && serving.isEmpty() ? NetworkViewPayloads.Node.IDLE : NetworkViewPayloads.Node.WORKING;
         return new NetworkViewPayloads.Node(category, icon, name, serving, port.getBlockPos(), level.dimension(),
-                status, -use, chunk, NetworkViewPayloads.Charge.NONE,
+                status, -use, NetworkViewPayloads.Charge.NONE,
                 taken ? Optional.of(Component.translatable("screen.jasm.port.machine_taken")) : Optional.empty());
     }
 
@@ -361,7 +358,7 @@ public final class NetworkViewService {
         }
         return new NetworkViewPayloads.Node(Category.POWER, new ItemStack(entity.getBlockState().getBlock()), name(entity),
                 Optional.empty(), entity.getBlockPos(), level.dimension(),
-                working ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, power, 0, NetworkViewPayloads.Charge.NONE,
+                working ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, power, NetworkViewPayloads.Charge.NONE,
                 Optional.empty());
     }
 
@@ -382,13 +379,14 @@ public final class NetworkViewService {
                     NetworkViewPayloads.Badge.POWER_INTERFACE));
         }
         return new NetworkViewPayloads.Node(Category.POWER, icon, name, serving, pos, level.dimension(),
-                flow > 0 ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, power, 0, NetworkViewPayloads.Charge.NONE,
+                flow > 0 ? NetworkViewPayloads.Node.WORKING : NetworkViewPayloads.Node.STOPPED, power, NetworkViewPayloads.Charge.NONE,
                 Optional.empty());
     }
 
     private static Category category(BlockEntity entity) {
         if (entity instanceof NetworkBrainBlockEntity || entity instanceof EncodingTerminalBlockEntity
-                || entity instanceof RelayChatterboxBlockEntity || entity instanceof DockingStationBlockEntity) {
+                || entity instanceof RelayChatterboxBlockEntity || entity instanceof NetworkTetherBlockEntity
+                || entity instanceof DockingStationBlockEntity) {
             return Category.NETWORK;
         }
         return entity instanceof ArchiveBlockEntity ? Category.STORAGE : Category.CRAFTING;
@@ -421,6 +419,10 @@ public final class NetworkViewService {
         // A Chatterbox costs nothing itself: it works while its Link Byteling pays for the link.
         if (entity instanceof RelayChatterboxBlockEntity relay) {
             return relay.powerUse() > 0;
+        }
+        // A Tether too: it works while its operator pays for the chunks.
+        if (entity instanceof NetworkTetherBlockEntity tether) {
+            return tether.powerUse() > 0;
         }
         if (entity instanceof MachineBlockEntity machine) {
             return machine.running() || machine.drawingNow() > 0;

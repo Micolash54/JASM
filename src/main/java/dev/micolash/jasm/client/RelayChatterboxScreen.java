@@ -158,7 +158,7 @@ public class RelayChatterboxScreen extends JasmScreen<RelayChatterboxMenu> {
     }
 
     /** The Chip Workshop's speech bubble, {@code lines} lines tall, its tail pointing up at the operator slot. */
-    private static void bubble(GuiGraphicsExtractor graphics, int x, int y, int lines, int fill, int edge) {
+    static void bubble(GuiGraphicsExtractor graphics, int x, int y, int lines, int fill, int edge) {
         int w = BUBBLE_WIDTH;
         int h = lines * LINE_HEIGHT + 2 * BUBBLE_PAD - 2;
         // Edge, then fill, each with its corners cut off.

@@ -140,8 +140,8 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "stock_upgrade", List.of(JasmItems.STOCK_UPGRADE.get()));
         info(registration, "power_upgrade", List.of(JasmItems.POWER_UPGRADE.get()));
         info(registration, "dimension_upgrade", List.of(JasmItems.DIMENSION_UPGRADE.get()));
-        info(registration, "chunkload_upgrade", List.of(JasmItems.CHUNKLOAD_UPGRADE.get()));
         info(registration, "relay_chatterbox", List.of(JasmItems.RELAY_CHATTERBOX.get()));
+        info(registration, "network_tether", List.of(JasmItems.NETWORK_TETHER.get()));
         info(registration, "processor", Arrays.stream(ProcessorTier.values()).map(JasmItems::processor).toList());
         info(registration, "storage_module", Arrays.stream(MemoryTier.values()).map(JasmItems::module).toList());
         info(registration, "archive", Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());

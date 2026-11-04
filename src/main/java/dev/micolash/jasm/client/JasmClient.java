@@ -70,6 +70,7 @@ public final class JasmClient {
         event.registerBlockEntityRenderer(JasmBlocks.DEMOLITION_BAY_ENTITY.get(), BayRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.DOCKING_STATION_ENTITY.get(), DockingStationRenderer::new);
         event.registerBlockEntityRenderer(JasmBlocks.RELAY_CHATTERBOX_ENTITY.get(), RelayChatterboxRenderer::new);
+        event.registerBlockEntityRenderer(JasmBlocks.NETWORK_TETHER_ENTITY.get(), NetworkTetherRenderer::new);
         event.registerEntityRenderer(JasmEntities.STATION_BITLING.get(), BitlingBodyRenderer::new);
         event.registerEntityRenderer(JasmEntities.WILD_BITLING.get(), BitlingBodyRenderer::new);
     }
@@ -89,6 +90,7 @@ public final class JasmClient {
         CrystalFoundryRenderer.registerModels(event);
         BayRenderer.registerModels(event);
         RelayChatterboxRenderer.registerModels(event);
+        NetworkTetherRenderer.registerModels(event);
     }
 
     @SubscribeEvent
@@ -111,6 +113,7 @@ public final class JasmClient {
         event.register(JasmMenus.RACK_CONTROLLER.get(), RackControllerScreen::new);
         event.register(JasmMenus.DOCKING_STATION.get(), DockingStationScreen::new);
         event.register(JasmMenus.RELAY_CHATTERBOX.get(), RelayChatterboxScreen::new);
+        event.register(JasmMenus.NETWORK_TETHER.get(), NetworkTetherScreen::new);
         event.register(JasmMenus.CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ADVANCED_CRAFTING_SERVER.get(), CraftingServerScreen::new);
         event.register(JasmMenus.ACCESS_PORT.get(), AccessPortScreen::new);

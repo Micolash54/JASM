@@ -1,6 +1,5 @@
 package dev.micolash.jasm.crystal;
 
-import dev.micolash.jasm.chunkload.ChunkloadUpgradeItem;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.ContainerWords;
 import dev.micolash.jasm.network.FaceMode;
@@ -345,21 +344,14 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     }
 
     public static boolean accepts(int slot, ItemStack stack) {
-        if (slot >= UPGRADE_START && slot < SLOTS) return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get())
-                || stack.is(JasmItems.CHUNKLOAD_UPGRADE.get());
+        if (slot >= UPGRADE_START && slot < SLOTS) return stack.is(JasmItems.SPEED_UPGRADE.get()) || stack.is(JasmItems.REDSTONE_UPGRADE.get());
         return slot == INPUT && stack.is(JasmItems.CRYSTAL_SEED.get());
     }
 
-    /** {@link #accepts(int, ItemStack)}, with no more Speed Upgrades than the limit and one Redstone and one Chunkload Upgrade in what {@code container} holds. */
+    /** {@link #accepts(int, ItemStack)}, with no more Speed Upgrades than the limit and one Redstone Upgrade in what {@code container} holds. */
     public static boolean accepts(Container container, int slot, ItemStack stack) {
         return accepts(slot, stack) && SpeedUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack)
-                && RedstoneUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack)
-                && ChunkloadUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
-    }
-
-    @Override
-    public boolean isUpgradeSlot(int slot) {
-        return slot >= UPGRADE_START && slot < SLOTS;
+                && RedstoneUpgradeItem.fits(container, UPGRADE_START, SLOTS, slot, stack);
     }
 
     @Override

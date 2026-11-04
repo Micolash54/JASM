@@ -47,6 +47,8 @@ import dev.micolash.jasm.pool.StoragePortBlockEntity;
 import dev.micolash.jasm.relay.RelayChatterboxBlock;
 import dev.micolash.jasm.relay.RelayChatterboxBlockEntity;
 import dev.micolash.jasm.relay.RelayChatterboxTopBlockEntity;
+import dev.micolash.jasm.tether.NetworkTetherBlock;
+import dev.micolash.jasm.tether.NetworkTetherBlockEntity;
 import dev.micolash.jasm.station.BitlingStationBlock;
 import dev.micolash.jasm.station.BitlingStationBlockEntity;
 import dev.micolash.jasm.transfer.FullPortBlock;
@@ -176,6 +178,14 @@ public final class JasmBlocks {
 
     public static final Supplier<BlockEntityType<RelayChatterboxTopBlockEntity>> RELAY_CHATTERBOX_TOP_ENTITY = BLOCK_ENTITIES.register(
             "relay_chatterbox_top", () -> new BlockEntityType<>(RelayChatterboxTopBlockEntity::new, RELAY_CHATTERBOX.get()));
+
+    /** As blast-proof as the Relay Chatterbox: its operator is kept, never scattered. */
+    public static final DeferredBlock<NetworkTetherBlock> NETWORK_TETHER = BLOCKS.registerBlock("network_tether",
+            NetworkTetherBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F, 1200.0F).sound(SoundType.METAL)
+                    .noOcclusion());
+
+    public static final Supplier<BlockEntityType<NetworkTetherBlockEntity>> NETWORK_TETHER_ENTITY = BLOCK_ENTITIES.register(
+            "network_tether", () -> new BlockEntityType<>(NetworkTetherBlockEntity::new, NETWORK_TETHER.get()));
 
     public static final DeferredBlock<AccessPortBlock> ACCESS_PORT = BLOCKS.registerBlock("access_port",
             AccessPortBlock::new, p -> p.mapColor(MapColor.COLOR_GRAY).requiresCorrectToolForDrops().strength(3.0F).sound(SoundType.METAL)

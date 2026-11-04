@@ -329,9 +329,13 @@ public final class JasmConfig {
         BUILDER.pop().push("chunkloading");
     }
 
-    public static final ModConfigSpec.IntValue CHUNKS_PER_PLAYER = BUILDER
-            .comment("Chunks each player's Chunkload Upgrades may keep loaded at once. Upgrades past it wait. 0 means no limit")
-            .defineInRange("chunksPerPlayer", 0, 0, 100_000);
+    public static final ModConfigSpec.IntValue TETHER_BASE_COST = BUILDER
+            .comment("FE a Network Tether's operator pays each tick while it keeps chunks loaded, before the cost of the chunks")
+            .defineInRange("tetherBaseCost", 80, 0, 1_000_000);
+
+    public static final ModConfigSpec.IntValue TETHER_CHUNK_COST = BUILDER
+            .comment("How fast a Network Tether's cost rises with the chunks it holds. For n chunks it pays the base cost plus this times n(n+1)/2 FE each tick, so each chunk costs a little more than the one before")
+            .defineInRange("tetherChunkCost", 1, 0, 10_000);
 
     static {
         BUILDER.pop().push("features");
@@ -356,11 +360,6 @@ public final class JasmConfig {
             .worldRestart()
             .comment("Elite Combustion Generator. Off: it can't be crafted, and placed ones stop burning but keep their fuel and charge")
             .define("eliteGenerator", true);
-
-    public static final ModConfigSpec.BooleanValue FEATURE_CHUNKLOAD_UPGRADE = BUILDER
-            .worldRestart()
-            .comment("Chunkload Upgrade. Off: it can't be crafted, and upgrades already in machines do nothing")
-            .define("chunkloadUpgrade", true);
 
     static {
         BUILDER.pop();

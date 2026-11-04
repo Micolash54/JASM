@@ -1,0 +1,310 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "textures": {
+    "sheet": "jasm:block/network_tether",
+    "particle": "jasm:block/network_tether"
+  },
+  "elements": [
+    {
+      "name": "glass_0",
+      "from": [
+        4.33236,
+        3.2,
+        7.78
+      ],
+      "to": [
+        6.86764,
+        14.8,
+        7.82
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_1",
+      "from": [
+        6.45368,
+        3.2,
+        8.65868
+      ],
+      "to": [
+        8.98896,
+        14.8,
+        8.69868
+      ],
+      "rotation": {
+        "angle": -45,
+        "axis": "y",
+        "origin": [
+          7.72132,
+          2.7,
+          8.67868
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_2",
+      "from": [
+        8.58,
+        3.2,
+        9.53236
+      ],
+      "to": [
+        8.62,
+        14.8,
+        12.06764
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "west": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_3",
+      "from": [
+        6.45368,
+        3.2,
+        12.90132
+      ],
+      "to": [
+        8.98896,
+        14.8,
+        12.94132
+      ],
+      "rotation": {
+        "angle": 45,
+        "axis": "y",
+        "origin": [
+          7.72132,
+          2.7,
+          12.92132
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_4",
+      "from": [
+        4.33236,
+        3.2,
+        13.78
+      ],
+      "to": [
+        6.86764,
+        14.8,
+        13.82
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_5",
+      "from": [
+        2.21104,
+        3.2,
+        12.90132
+      ],
+      "to": [
+        4.74632,
+        14.8,
+        12.94132
+      ],
+      "rotation": {
+        "angle": -45,
+        "axis": "y",
+        "origin": [
+          3.47868,
+          2.7,
+          12.92132
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_6",
+      "from": [
+        2.58,
+        3.2,
+        9.53236
+      ],
+      "to": [
+        2.62,
+        14.8,
+        12.06764
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "west": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    },
+    {
+      "name": "glass_7",
+      "from": [
+        2.21104,
+        3.2,
+        8.65868
+      ],
+      "to": [
+        4.74632,
+        14.8,
+        8.69868
+      ],
+      "rotation": {
+        "angle": 45,
+        "axis": "y",
+        "origin": [
+          3.47868,
+          2.7,
+          8.67868
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            14.5,
+            1.5
+          ],
+          "texture": "#sheet"
+        }
+      }
+    }
+  ]
+}

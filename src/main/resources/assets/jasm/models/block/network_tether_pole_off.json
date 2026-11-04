@@ -1,0 +1,7 @@
+{
+  "parent": "jasm:block/brain_core_pillar",
+  "textures": {
+    "core": "jasm:block/network_tether_pole_off",
+    "particle": "jasm:block/network_tether_pole_off"
+  }
+}

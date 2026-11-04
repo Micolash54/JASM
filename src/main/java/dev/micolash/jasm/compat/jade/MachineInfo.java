@@ -13,6 +13,7 @@ import dev.micolash.jasm.network.DataCableBlockEntity;
 import dev.micolash.jasm.network.MachineBlockEntity;
 import dev.micolash.jasm.network.NetworkLimit;
 import dev.micolash.jasm.network.Networks;
+import dev.micolash.jasm.tether.NetworkTetherBlockEntity;
 import java.util.stream.IntStream;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -109,8 +110,9 @@ public class MachineInfo implements StreamServerDataProvider<BlockAccessor, Mach
                     tooltip.add(Component.translatable("screen.jasm.machine.network_full", data.fullCount(), data.fullLimit()));
                 } else
                     if (!data.running() && !(accessor.getBlockEntity() instanceof NetworkBrainBlockEntity)
-                            && !(accessor.getBlockEntity() instanceof NetworkChamberBlockEntity)) {
-                                // A brain's own status line says when it has no power, and a chamber never runs by itself.
+                            && !(accessor.getBlockEntity() instanceof NetworkChamberBlockEntity)
+                            && !(accessor.getBlockEntity() instanceof NetworkTetherBlockEntity)) {
+                                // A brain's or Tether's own status line says when it has no power, and a chamber never runs by itself.
                                 tooltip.add(Component.translatable("screen.jasm.machine.no_power"));
                             }
                 if (!data.machine().isEmpty()) {

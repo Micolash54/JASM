@@ -213,7 +213,7 @@ public final class JasmSettingsScreen extends Screen {
             case "wild_bitling" -> JasmItems.WILD_BITLING_SPAWN_EGG.get();
             case "bays" -> JasmItems.DEPLOYMENT_BAY.get();
             case "speed_upgrades" -> JasmItems.SPEED_UPGRADE.get();
-            case "chunkloading" -> JasmItems.CHUNKLOAD_UPGRADE.get();
+            case "chunkloading" -> JasmItems.NETWORK_TETHER.get();
             case "features" -> JasmItems.WRENCH.get();
             case "screens" -> Items.PAINTING;
             case "sounds" -> Items.NOTE_BLOCK;

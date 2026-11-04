@@ -19,6 +19,7 @@ import dev.micolash.jasm.network.NetworkNode;
 import dev.micolash.jasm.network.TrustList;
 import dev.micolash.jasm.pool.StorageSettings;
 import dev.micolash.jasm.relay.RelayContents;
+import dev.micolash.jasm.tether.TetherContents;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.TransferFilters;
@@ -167,6 +168,10 @@ public final class JasmComponents {
     /** The frequency, Link Byteling and Dimension Upgrade a mined Relay Chatterbox keeps, given back when it is placed again. */
     public static final Supplier<DataComponentType<RelayContents>> RELAY_CONTENTS = COMPONENTS.registerComponentType(
             "relay_contents", b -> b.persistent(RelayContents.CODEC).networkSynchronized(RelayContents.STREAM_CODEC));
+
+    /** The operator a mined Network Tether keeps, given back when it is placed again. */
+    public static final Supplier<DataComponentType<TetherContents>> TETHER_CONTENTS = COMPONENTS.registerComponentType(
+            "tether_contents", b -> b.persistent(TetherContents.CODEC).networkSynchronized(TetherContents.STREAM_CODEC));
 
     /** Left on Access Ports mined in early test builds; read so they still load, never written. */
     public static final Supplier<DataComponentType<PortMemory>> PORT_MEMORY = COMPONENTS.registerComponentType(

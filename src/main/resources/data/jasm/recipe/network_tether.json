@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "E": "minecraft:ender_eye",
+    "D": "jasm:dimension_upgrade",
+    "G": "minecraft:glass",
+    "S": "jasm:synapse_core",
+    "I": "minecraft:iron_block",
+    "P": "jasm:power_acceptor"
+  },
+  "pattern": [
+    "EDE",
+    "GSG",
+    "IPI"
+  ],
+  "result": {
+    "id": "jasm:network_tether"
+  }
+}

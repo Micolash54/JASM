@@ -1,6 +1,5 @@
 package dev.micolash.jasm.network;
 
-import dev.micolash.jasm.chunkload.ChunkLoaders;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.List;
@@ -257,48 +256,6 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return energy;
     }
 
-    /** What a Chunkload Upgrade in this block pays its chunk from: the block's own power, unless it holds none. */
-    public SimpleEnergyHandler chunkloadPower() {
-        return energy();
-    }
-
-    /** Whether {@code slot} is one of the block's upgrade slots. None by default. */
-    public boolean isUpgradeSlot(int slot) {
-        return false;
-    }
-
-    @Override
-    public void setItem(int slot, ItemStack stack) {
-        super.setItem(slot, stack);
-        if (isUpgradeSlot(slot)) ChunkLoaders.look(this);
-    }
-
-    @Override
-    public ItemStack removeItem(int slot, int amount) {
-        ItemStack taken = super.removeItem(slot, amount);
-        if (isUpgradeSlot(slot) && !taken.isEmpty()) ChunkLoaders.look(this);
-        return taken;
-    }
-
-    @Override
-    public ItemStack removeItemNoUpdate(int slot) {
-        ItemStack taken = super.removeItemNoUpdate(slot);
-        if (isUpgradeSlot(slot) && !taken.isEmpty()) ChunkLoaders.look(this);
-        return taken;
-    }
-
-    @Override
-    public void onLoad() {
-        super.onLoad();
-        ChunkLoaders.loaded(this);
-    }
-
-    @Override
-    public void setRemoved() {
-        super.setRemoved();
-        ChunkLoaders.known(this);
-    }
-
     /** What a power source touching the block hands power to: its own buffer, unless the block passes power on. */
     public EnergyHandler powerIn() {
         return energy();
@@ -353,7 +310,6 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         if (level instanceof ServerLevel serverLevel) {
             CableClaims.get(serverLevel).rememberOwner(id, name);
             Networks.ownerChanged(serverLevel, worldPosition);
-            ChunkLoaders.known(this);
         }
     }
 
