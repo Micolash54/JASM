@@ -156,15 +156,15 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "bitling_station", List.of(JasmItems.BITLING_STATION.get()));
         BrainBalance brain = BrainBalance.fromConfig();
         registration.addItemStackInfo(List.of(new ItemStack(JasmItems.NETWORK_BRAIN.get())),
-                Component.translatable("jei.jasm.info.network_brain", BrainBalance.shown(brain.limit(false, 0)),
-                        BrainBalance.shown(brain.limit(true, 0)), BrainBalance.shown(brain.limit(true, 1))));
+                PageText.lines(Component.translatable("jei.jasm.info.network_brain", BrainBalance.shown(brain.limit(false, 0)),
+                        BrainBalance.shown(brain.limit(true, 0)), BrainBalance.shown(brain.limit(true, 1)))));
         info(registration, "network_chamber", List.of(JasmItems.NETWORK_CHAMBER.get()));
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
         registration.addRecipes(FoundryCategory.TYPE, List.of(FoundryCategory.Grow.fromConfig()));
         info(registration, "crystal_foundry", List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
         registration.addItemStackInfo(List.of(new ItemStack(JasmItems.BATTERY.get())),
-                Component.translatable("jei.jasm.info.battery", JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS),
-                        JasmConfig.orDefault(JasmConfig.BATTERY_MAX_BLOCKS)));
+                PageText.lines(Component.translatable("jei.jasm.info.battery", JasmConfig.orDefault(JasmConfig.BATTERY_CAPACITY_BONUS),
+                        JasmConfig.orDefault(JasmConfig.BATTERY_MAX_BLOCKS))));
         info(registration, "creative_battery", List.of(JasmItems.CREATIVE_BATTERY.get()));
         info(registration, "deployment_bay", List.of(JasmItems.DEPLOYMENT_BAY.get()));
         info(registration, "demolition_bay", List.of(JasmItems.DEMOLITION_BAY.get()));
@@ -187,9 +187,9 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "combustion_generator", Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
 
-    /** An info page of one language key, shared by every tier of an item. Paragraphs are split in the lang file by \\n\\n (a backslash and an n, not a real line break), which JEI turns into a blank line. */
+    /** An info page of one language key, shared by every tier of an item. {@link PageText} splits its paragraphs. */
     private static void info(IRecipeRegistration registration, String page, List<? extends ItemLike> items) {
-        registration.addItemStackInfo(items.stream().map(ItemStack::new).toList(), Component.translatable("jei.jasm.info." + page));
+        registration.addItemStackInfo(items.stream().map(ItemStack::new).toList(), PageText.lines(Component.translatable("jei.jasm.info." + page)));
     }
 
     /** Fuel burn times are only known once JEI has worked out its own furnace fuel list, so the pages are added then. */
