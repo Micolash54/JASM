@@ -2,6 +2,7 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.autocraft.CraftPayloads;
 import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.core.ResourceKeys;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,12 +18,12 @@ import org.jspecify.annotations.Nullable;
  * slot's status. Filled from server messages; never trusted by the server.
  */
 public final class DeckView {
-    private final Map<ItemResource, Long> contents = new LinkedHashMap<>();
-    private final Map<FluidResource, Long> fluids = new LinkedHashMap<>();
+    private final Map<ItemResource, Long> contents = ResourceKeys.newMap();
+    private final Map<FluidResource, Long> fluids = ResourceKeys.newMap();
     private final Map<MaterialKey, Long> materials = new LinkedHashMap<>();
     /** How much of each total sits in the network's storage blocks rather than on wafers. */
-    private final Map<ItemResource, Long> chest = new LinkedHashMap<>();
-    private final Map<FluidResource, Long> fluidChest = new LinkedHashMap<>();
+    private final Map<ItemResource, Long> chest = ResourceKeys.newMap();
+    private final Map<FluidResource, Long> fluidChest = ResourceKeys.newMap();
     private int energy;
     private List<DeckStorage.SlotStatus> slots = List.of();
     private int version;

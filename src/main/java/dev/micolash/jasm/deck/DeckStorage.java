@@ -4,6 +4,7 @@ import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.config.JasmConfig;
 import dev.micolash.jasm.core.DepositRouter;
 import dev.micolash.jasm.core.PoolRouter;
+import dev.micolash.jasm.core.ResourceKeys;
 import dev.micolash.jasm.core.StampPolicy.Verdict;
 import dev.micolash.jasm.pool.Material;
 import dev.micolash.jasm.pool.NetworkPool;
@@ -591,7 +592,7 @@ public final class DeckStorage {
 
     /** Everything on the Deck's usable wafers, added up (wafers only). Assumes {@link #checkAll} ran this tick. */
     public static Map<ItemResource, Long> contents(WaferStore store, ItemStack deck) {
-        Map<ItemResource, Long> total = new LinkedHashMap<>();
+        Map<ItemResource, Long> total = ResourceKeys.newMap();
         for (WaferRecord record : records(store, deck)) {
             if (record != null) {
                 record.contents().forEach((key, count) -> total.merge(key, count, Long::sum));

@@ -3,6 +3,7 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.MaterialKey;
+import dev.micolash.jasm.core.ResourceKeys;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.storage.WaferRecord;
@@ -109,8 +110,8 @@ public final class DeckViewTracker {
             sent.wafers = wafers;
             List<WaferRecord> records = DeckStorage.records(store, menu.deck()).stream().filter(Objects::nonNull).toList();
             Set<UUID> ids = new HashSet<>();
-            Map<ItemResource, Long> contents = new HashMap<>();
-            Map<FluidResource, Long> fluids = new HashMap<>();
+            Map<ItemResource, Long> contents = ResourceKeys.newMap();
+            Map<FluidResource, Long> fluids = ResourceKeys.newMap();
             for (WaferRecord record : records) {
                 ids.add(record.id());
                 record.contents().forEach((key, count) -> contents.merge(key, count, Long::sum));
@@ -135,8 +136,8 @@ public final class DeckViewTracker {
                             changes.subList(from, Math.min(changes.size(), from + PAGE_SIZE))));
                 }
             }
-            sent.contents = new HashMap<>();
-            sent.chest = new HashMap<>();
+            sent.contents = ResourceKeys.newMap();
+            sent.chest = ResourceKeys.newMap();
             totals.forEach((key, t) -> {
                 sent.contents.put(key, t[0]);
                 if (t[1] > 0) sent.chest.put(key, t[1]);
@@ -181,8 +182,8 @@ public final class DeckViewTracker {
                         changes.subList(from, Math.min(changes.size(), from + PAGE_SIZE))));
             }
         }
-        sent.fluids = new HashMap<>();
-        sent.fluidChest = new HashMap<>();
+        sent.fluids = ResourceKeys.newMap();
+        sent.fluidChest = ResourceKeys.newMap();
         totals.forEach((key, t) -> {
             sent.fluids.put(key, t[0]);
             if (t[1] > 0) sent.fluidChest.put(key, t[1]);
@@ -222,7 +223,7 @@ public final class DeckViewTracker {
 
     /** The total and the part of it held in storage blocks, for each key. */
     public static <K> Map<K, long[]> totals(Map<K, Long> stored, Map<K, Long> chests) {
-        Map<K, long[]> out = new HashMap<>();
+        Map<K, long[]> out = ResourceKeys.newMap();
         stored.forEach((key, count) -> out.put(key, new long[]{count, 0}));
         chests.forEach((key, count) -> out.merge(key, new long[]{count, count}, (a, b) -> new long[]{a[0] + b[0], b[1]}));
         return out;

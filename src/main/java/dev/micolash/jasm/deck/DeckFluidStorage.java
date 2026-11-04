@@ -2,6 +2,7 @@ package dev.micolash.jasm.deck;
 
 import dev.micolash.jasm.core.DepositRouter;
 import dev.micolash.jasm.core.PoolRouter;
+import dev.micolash.jasm.core.ResourceKeys;
 import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.pool.PoolStore;
@@ -15,7 +16,6 @@ import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.wafer.WaferValidator;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import dev.micolash.jasm.network.NetworkNode;
@@ -149,7 +149,7 @@ public final class DeckFluidStorage {
 
     /** Every fluid on the Deck's usable wafers, added up (wafers only). Assumes the wafers were checked this tick. */
     public static Map<FluidResource, Long> contents(WaferStore store, ItemStack deck) {
-        Map<FluidResource, Long> total = new LinkedHashMap<>();
+        Map<FluidResource, Long> total = ResourceKeys.newMap();
         for (WaferRecord record : DeckStorage.records(store, deck)) {
             if (record != null) {
                 record.fluids().forEach((key, amount) -> total.merge(key, amount, Long::sum));
