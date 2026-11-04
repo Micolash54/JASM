@@ -147,7 +147,6 @@ public class JasmJeiPlugin implements IModPlugin {
         info(registration, "archive", Arrays.stream(ArchiveTier.values()).map(JasmItems::archive).toList());
         info(registration, "crystal_seed", List.of(JasmItems.CRYSTAL_SEED.get(), JasmItems.SEEDED_AMETHYST.get(),
                 JasmItems.WORN_SEEDED_AMETHYST.get(), JasmItems.CRACKED_SEEDED_AMETHYST.get()));
-        info(registration, "data_crystal", List.of(JasmItems.DATA_CRYSTAL.get()));
         info(registration, "crystal_resonator", List.of(JasmItems.CRYSTAL_RESONATOR.get()));
         List<ItemLike> bitlingPage = new ArrayList<>(JasmItems.bitlings());
         bitlingPage.add(JasmItems.WILD_BITLING_SPAWN_EGG.get());
@@ -173,17 +172,12 @@ public class JasmJeiPlugin implements IModPlugin {
                 JasmItems.FULL_INPUT_PORT.get(), JasmItems.FULL_OUTPUT_PORT.get(), JasmItems.FULL_INPUT_OUTPUT_PORT.get()));
         info(registration, "storage_port", List.of(JasmItems.STORAGE_PORT.get(), JasmItems.FULL_STORAGE_PORT.get()));
         info(registration, "power_acceptor", List.of(JasmItems.POWER_ACCEPTOR.get(), JasmItems.THIN_POWER_ACCEPTOR.get()));
-        info(registration, "synapse_core", List.of(JasmItems.SYNAPSE_CORE.get()));
         info(registration, "wrench", List.of(JasmItems.WRENCH.get()));
-        info(registration, "blank_upgrade", List.of(JasmItems.BLANK_UPGRADE.get()));
         info(registration, "blank_chip", List.of(JasmItems.BLANK_CHIP.get()));
         info(registration, "chip", List.of(JasmItems.LOGIC_CHIP.get(), JasmItems.MEMORY_CHIP.get(), JasmItems.LINK_CHIP.get(),
                 JasmItems.UNQUENCHED_LOGIC_CHIP.get(), JasmItems.UNQUENCHED_MEMORY_CHIP.get()));
         info(registration, "advanced_chip", List.of(JasmItems.ADVANCED_LOGIC_CHIP.get(), JasmItems.ADVANCED_MEMORY_CHIP.get(),
                 JasmItems.ADVANCED_LINK_CHIP.get()));
-        info(registration, "crystal_dust", List.of(JasmItems.CRYSTAL_DUST.get()));
-        info(registration, "crystal_bud", List.of(JasmItems.SMALL_DATA_CRYSTAL_BUD.get(), JasmItems.MEDIUM_DATA_CRYSTAL_BUD.get(),
-                JasmItems.LARGE_DATA_CRYSTAL_BUD.get(), JasmItems.DATA_CRYSTAL_CLUSTER.get()));
         info(registration, "combustion_generator", Arrays.stream(GeneratorTier.values()).map(JasmItems::generator).toList());
     }
 

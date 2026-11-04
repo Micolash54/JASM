@@ -4,15 +4,17 @@
   "recipe": {
     "type": "minecraft:crafting_shaped",
     "key": {
-      "L": "jasm:link_chip",
-      "E": "minecraft:ender_pearl",
-      "R": "minecraft:redstone",
-      "B": "jasm:blank_upgrade"
+      "E": "minecraft:ender_eye",
+      "D": "jasm:dimension_upgrade",
+      "R": "jasm:redstone_upgrade",
+      "B": "jasm:blank_upgrade",
+      "S": "jasm:speed_upgrade",
+      "P": "jasm:power_upgrade"
     },
     "pattern": [
-      "ELE",
-      "RBR",
-      "ELE"
+      "EDE",
+      "RBS",
+      "EPE"
     ],
     "result": {
       "id": "jasm:chunkload_upgrade"
