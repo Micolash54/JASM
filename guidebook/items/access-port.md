@@ -51,13 +51,25 @@ Editing a card makes a new recipe: pick the new one again.
 
 <br />
 <br />
-## One machine type
+## Machine types
 
-A full block port works with one kind of machine, even if several touch it. The first one it finds sets the type. When more kinds are touching, click another icon in the Machine row to switch. If the machine is swapped for another kind, the port follows once the old kind is gone.
+A full block port works with the kinds of machine picked in its Machine row, even if others touch it. The first one it finds is picked. When more kinds are touching, click their icons to pick or unpick them; one always stays picked. If the machine is swapped for another kind, the port follows once the old kind is gone.
+
+With several machines picked, even of different kinds, a job splits its sets evenly between all of them. Make sure each one can run the recipe: a job waits for a machine that won't take its share.
 
 A thin port has one machine, the one it faces.
 
 Only one port works with a machine. A second port facing a machine another port already uses does nothing with it, and its screen says "Machine in use by another port". It takes the machine over when the first port is broken or turned away.
+
+<br />
+<br />
+## Active and Passive
+
+* The key at the start of the Machine row switches a full block port between **Active** and **Passive**. It can't be switched while a job is using the port.
+* **Active** sends each set of ingredients straight into the picked machines.
+* **Passive** has no machines. Each set waits hidden inside the port, and pipes or hoppers pull it out from any face. They can take only those ingredients, never the incoming items or the network's storage. Push the results back into the port to finish the set.
+* A Passive port holds up to nine stacks of items, plus the fluids of its sets, and works on one recipe at a time. With Blocking Mode on, the next set waits until the last one's results are back. Recipes with other mods' materials don't run through it.
+* Cancelling a job takes back what is still waiting in the port; what the pipes already took is yours. Breaking the port sends what it holds to the network, or drops the items when it has none.
 
 <br />
 <br />
@@ -75,7 +87,7 @@ Convert one into the other in a crafting grid. Both recipes are below.
 * Machines and pipes can push items and fluids into it, and they go into the network's storage when there's room.
 * A thin port serves and accepts items only through its outward face, including from pipes and hoppers while idle.
 * Blocking mode waits to send new ingredients while the machine still holds some for this recipe.
-* Mined or picked up with a [Wrench](wrench.md), the port keeps its name, machine type, recipes, Blocking Mode and redstone mode, and has them again when placed.
+* Mined or picked up with a [Wrench](wrench.md), the port keeps its name, machine types, recipes, Active or Passive, Blocking Mode and redstone mode, and has them again when placed.
 * A job whose recipe no port serves waits and says so, and carries on once a port serves it again. Ingredients already sent to a port that is then mined are no longer waited on.
 
 <br />

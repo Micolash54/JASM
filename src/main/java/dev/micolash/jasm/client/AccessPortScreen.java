@@ -99,6 +99,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     private static final JasmButton.Icon BLOCKING_ON = new JasmButton.Icon(Jasm.id("icon_blocking_on"), 12, 12);
     private static final JasmButton.Icon BLOCKING_OFF = new JasmButton.Icon(Jasm.id("icon_blocking_off"), 12, 12);
     private static final JasmButton.Icon RENAME = new JasmButton.Icon(Jasm.id("icon/rename"), 12, 12);
+    private static final JasmButton.Icon MODE_ACTIVE = new JasmButton.Icon(Jasm.id("icon/port_active"), 12, 12);
+    private static final JasmButton.Icon MODE_PASSIVE = new JasmButton.Icon(Jasm.id("icon/port_passive"), 12, 12);
     private static final JasmButton.Icon FOLD = new JasmButton.Icon(Jasm.id("icon/triangle_right"), 4, 6);
     private static final JasmButton.Icon UNFOLD = new JasmButton.Icon(Jasm.id("icon/triangle_left"), 4, 6);
     /** The Copy and Paste keys' own face, drawn as is at their 13 x 13. */
@@ -109,6 +111,10 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
 
 
     private JasmButton blocking;
+    /** Active or Passive, at the start of the machine row; a thin port has none. */
+    private JasmButton modeKey;
+    /** What the mode key's tooltip was made for: Passive, and whether it could be pressed. */
+    private int modeTipFor = -1;
     private JasmButton link;
     private JasmButton renameKey;
     private JasmButton copyKey;
@@ -187,6 +193,11 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         renameKey = addRenderableWidget(JasmButton.icon(() -> RENAME, renameLabel, b -> toggleRename(),
                 leftPos + KEY_X, topPos + JasmGui.sideKeyY(2), JasmGui.SIDE_KEY_WIDTH, JasmGui.SIDE_KEY_HEIGHT));
         renameKey.setTooltip(Tooltip.create(renameLabel));
+        modeKey = addRenderableWidget(JasmButton.icon(() -> menu.passive() ? MODE_PASSIVE : MODE_ACTIVE, modeLabel(),
+                b -> minecraft.gameMode.handleInventoryButtonClick(menu.containerId, AccessPortMenu.TOGGLE_MODE),
+                leftPos + machineX(), topPos + MACHINE_KEY_Y, MACHINE_KEY_WIDTH, MACHINE_KEY_HEIGHT));
+        modeTipFor = -1;
+        showModeKey();
         Component copyLabel = Component.translatable("screen.jasm.port.copy");
         copyKey = addRenderableWidget(JasmButton.icon(() -> COPY, copyLabel, b -> copySettings(),
                 leftPos + COPY_KEY_X, topPos + COPY_KEY_Y, COPY_KEY_SIZE, COPY_KEY_SIZE).withSkin(COPY_PASTE_KEY));
@@ -548,30 +559,67 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         return 8 + font.width(Component.translatable("screen.jasm.port.machine_row")) + 3;
     }
 
+    /** Where the machines start: just past the Active/Passive key, or where it would be on a thin port. */
+    private int machinesX() {
+        return machineX() + (menu.modeKey() != AccessPortMenu.MODE_KEY_NONE ? MACHINE_KEY_WIDTH + 2 : 0);
+    }
+
     /** How far apart the machine keys stand: a little closer when many kinds would run into the state on the right. */
     private int machineStep() {
         int count = menu.machines().size();
-        int room = WIDTH - 8 - font.width(status()) - 3 - machineX();
+        int room = WIDTH - 8 - font.width(status()) - 3 - machinesX();
         return count <= 1 ? MACHINE_KEY_WIDTH + 1 : Math.clamp(room / count, 17, MACHINE_KEY_WIDTH + 1);
+    }
+
+    /** Whether the machines show: not while another port keeps the machine, and not at all while Passive. */
+    private boolean machinesShown() {
+        return !rowTaken() && !menu.passive();
     }
 
     /** Whether the mouse is on the icon shown when only one kind of machine is in range. */
     private boolean overOnlyMachine(double mouseX, double mouseY) {
-        double x = mouseX - leftPos - machineX();
+        double x = mouseX - leftPos - machinesX();
         double y = mouseY - topPos;
-        return !rowTaken() && menu.machines().size() == 1 && x >= 0 && x < 16 && y >= MACHINE_KEY_Y + 3 && y < MACHINE_KEY_Y + 19;
+        return machinesShown() && menu.machines().size() == 1 && x >= 0 && x < 16 && y >= MACHINE_KEY_Y + 3 && y < MACHINE_KEY_Y + 19;
     }
 
+    /** A click on a kind adds it to the kinds the port serves, or takes it off; the server keeps the last one. */
     private void chooseMachine(AccessPortMenu.MachineView machine) {
         Block block = Block.byItem(machine.icon().getItem());
-        if (machine.chosen() || machine.icon().isEmpty()) return;
+        if (machine.icon().isEmpty()) return;
         ClientPacketDistributor.sendToServer(new CraftPayloads.PortMachineType(menu.containerId, BuiltInRegistries.BLOCK.getKey(block)));
     }
 
+    private Component modeLabel() {
+        return Component.translatable(menu.passive() ? "screen.jasm.port.mode_passive" : "screen.jasm.port.mode_active");
+    }
+
     /**
-     * With several kinds in range, one key per kind, made like the encoder's Crafting / Processing keys: the chosen
-     * one is pressed in and its item sinks with it. Made again when the kinds change, moved when the state beside them
-     * changes width.
+     * The Active/Passive key: shown on a full port unless another port keeps the machine (that line takes the whole row),
+     * greyed while a job holds the port, its tooltip saying what the mode does and what a click does.
+     */
+    private void showModeKey() {
+        int key = menu.modeKey();
+        modeKey.visible = key != AccessPortMenu.MODE_KEY_NONE && !rowTaken();
+        modeKey.active = key == AccessPortMenu.MODE_KEY_ON;
+        modeKey.setX(leftPos + machineX());
+        int tipFor = (menu.passive() ? 1 : 0) + (modeKey.active ? 2 : 0);
+        if (tipFor == modeTipFor) return;
+        modeTipFor = tipFor;
+        modeKey.setMessage(modeLabel());
+        Component hint = Component.translatable(menu.passive() ? "screen.jasm.port.mode_passive_hint" : "screen.jasm.port.mode_active_hint")
+                .withColor(JasmGui.MUTED & 0xFFFFFF);
+        Component click = modeKey.active
+                ? Component.translatable(menu.passive() ? "screen.jasm.port.mode_to_active" : "screen.jasm.port.mode_to_passive")
+                        .withColor(JasmGui.SUBTEXT & 0xFFFFFF)
+                : Component.translatable("screen.jasm.port.mode_busy").withColor(JasmGui.WARN & 0xFFFFFF);
+        modeKey.setTooltip(Tooltip.create(modeLabel().copy().append("\n").append(hint).append("\n").append(click)));
+    }
+
+    /**
+     * With several kinds in range, one key per kind, made like the encoder's Crafting / Processing keys: the kinds the
+     * port serves are pressed in and their items sink with them, and a click picks or unpicks one. Made again when the
+     * kinds change, moved when the state beside them changes width. None while Passive.
      */
     private void placeMachineKeys() {
         List<AccessPortMenu.MachineView> machines = menu.machines();
@@ -583,7 +631,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
                 for (AccessPortMenu.MachineView machine : machines) {
                     JasmButton key = JasmButton.item(machine.icon(), machine.name(), b -> chooseMachine(machine), 0, 0,
                             MACHINE_KEY_WIDTH, MACHINE_KEY_HEIGHT);
-                    key.setSelected(machine.chosen());
+                    key.setLatched(machine.chosen());
                     key.setTooltip(Tooltip.create(machine.name()));
                     machineKeys.add(addRenderableWidget(key));
                 }
@@ -592,9 +640,9 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         int step = machineStep();
         for (int i = 0; i < machineKeys.size(); i++) {
             JasmButton key = machineKeys.get(i);
-            key.setPosition(leftPos + machineX() + i * step, topPos + MACHINE_KEY_Y);
+            key.setPosition(leftPos + machinesX() + i * step, topPos + MACHINE_KEY_Y);
             key.setWidth(step - 1);
-            key.visible = !rowTaken();
+            key.visible = machinesShown();
         }
     }
 
@@ -663,6 +711,7 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
         int mouseX = hidden ? -1000 : realMouseX;
         int mouseY = hidden ? -1000 : realMouseY;
         placeMachineKeys();
+        showModeKey();
         super.extractContents(graphics, mouseX, mouseY, a);
         linkWindow.setResetActive(menu.canResetDeck());
         blocking.setLatched(menu.blockingMode());
@@ -686,8 +735,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
     /** The one machine's icon when only one kind is in range; several kinds are keys of their own. */
     private void drawMachines(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         List<AccessPortMenu.MachineView> machines = menu.machines();
-        if (machines.size() != 1 || rowTaken()) return;
-        graphics.item(machines.getFirst().icon(), leftPos + machineX(), topPos + MACHINE_KEY_Y + 3);
+        if (machines.size() != 1 || !machinesShown()) return;
+        graphics.item(machines.getFirst().icon(), leftPos + machinesX(), topPos + MACHINE_KEY_Y + 3);
         if (overOnlyMachine(mouseX, mouseY)) graphics.setTooltipForNextFrame(font, machines.getFirst().name(), mouseX, mouseY);
     }
 
@@ -809,8 +858,8 @@ public class AccessPortScreen extends JasmScreen<AccessPortMenu> {
             graphics.text(font, taken, 8, MACHINE_Y, JasmGui.BAD, false);
         } else {
             graphics.text(font, Component.translatable("screen.jasm.port.machine_row"), 8, MACHINE_Y, JasmGui.SUBTEXT, false);
-            if (menu.machines().isEmpty()) {
-                graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), machineX(), MACHINE_Y, JasmGui.MUTED, false);
+            if (menu.machines().isEmpty() && !menu.passive()) {
+                graphics.text(font, Component.translatable("screen.jasm.port.no_machine"), machinesX(), MACHINE_Y, JasmGui.MUTED, false);
             }
             Component state = status();
             graphics.text(font, state, WIDTH - 8 - font.width(state) + 1, MACHINE_Y, statusColor(), false);

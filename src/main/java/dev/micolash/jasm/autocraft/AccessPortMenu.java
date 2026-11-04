@@ -78,6 +78,8 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public static final int CYCLE_REDSTONE = 2;
     /** A screen opened from an Advanced Encoder's port list goes back to that encoder instead of shutting. */
     public static final int BACK = 3;
+    /** Switches the port between Active and Passive. */
+    public static final int TOGGLE_MODE = 4;
 
     static final int DATA_FLOW_LOW = 0;
     static final int DATA_FLOW_HIGH = 1;
@@ -89,7 +91,13 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     static final int DATA_PAUSED = 7;
     static final int DATA_REDSTONE = 8;
     static final int DATA_TAKEN = 9;
-    public static final int DATA_COUNT = 10;
+    static final int DATA_PASSIVE = 10;
+    static final int DATA_MODE_KEY = 11;
+    public static final int DATA_COUNT = 12;
+    /** The Active/Passive key: none (a thin port), there to press, or greyed while the port is in use. */
+    public static final int MODE_KEY_NONE = 0;
+    public static final int MODE_KEY_ON = 1;
+    public static final int MODE_KEY_GREYED = 2;
 
     private final ContainerData data;
     private final ContainerLevelAccess access;
@@ -255,6 +263,9 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
             port.setBlockingMode(!port.blockingMode());
             return true;
         }
+        if (id == TOGGLE_MODE) {
+            return port.setPassive(!port.passive());
+        }
         if (id == CYCLE_REDSTONE && port.hasRedstoneUpgrade()) {
             port.setRedstoneMode(port.redstoneMode().next());
             return true;
@@ -289,22 +300,23 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
                 MachineView::new);
     }
 
-    /** The kinds of machine touching the port now, in the order of its sides, with the one it serves marked. */
+    /** The kinds of machine touching the port now, in the order of its sides, with those it serves marked. */
     static List<MachineView> connectedMachines(AccessPortBlockEntity port) {
         if (port.getLevel() == null) return List.of();
-        Block served = port.servedType();
+        List<Block> served = port.servedTypes();
         return port.machineTypesInRange().stream()
-                .map(type -> new MachineView(type.getName(), new ItemStack(type), type == served)).toList();
+                .map(type -> new MachineView(type.getName(), new ItemStack(type), served.contains(type))).toList();
     }
 
     /**
-     * Server side: the player picks which kind of machine the port serves. Refused if the menu is not valid for the player
-     * or no machine of that kind touches the port.
+     * Server side: the player clicks a kind of machine in the picker, which adds it to the kinds the port serves or takes
+     * it off (never the last one). Refused if the menu is not valid for the player, no machine of that kind touches the
+     * port, or the port is Passive.
      */
     public boolean chooseMachine(Player player, Identifier block) {
         if (port == null || !stillValid(player)) return false;
         Block type = BuiltInRegistries.BLOCK.getOptional(block).orElse(null);
-        return type != null && port.chooseMachineType(type);
+        return type != null && port.toggleMachineType(type);
     }
 
     public List<MachineView> machines() { return machines; }
@@ -570,6 +582,16 @@ public class AccessPortMenu extends AbstractContainerMenu implements MachineView
     public boolean hasRedstoneUpgrade() {
         for (int i = 0; i < PortOperations.UPGRADE_SLOTS; i++) if (getSlot(SLOT_SPEED + i).getItem().is(JasmItems.REDSTONE_UPGRADE.get())) return true;
         return false;
+    }
+
+    /** Whether the port is Passive: its sets wait in it for pipes, and the machine picker is gone. */
+    public boolean passive() {
+        return data.get(DATA_PASSIVE) != 0;
+    }
+
+    /** The Active/Passive key's state: {@link #MODE_KEY_NONE}, {@link #MODE_KEY_ON} or {@link #MODE_KEY_GREYED}. */
+    public int modeKey() {
+        return data.get(DATA_MODE_KEY);
     }
 
     /** Another port keeps a machine this port is after, so this port does nothing with it. */

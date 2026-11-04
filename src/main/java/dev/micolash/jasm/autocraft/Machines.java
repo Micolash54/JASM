@@ -82,17 +82,29 @@ public final class Machines {
         }
     }
 
-    /** The machine at {@code at}, if its port stands on {@code network}, is loaded, and something there takes items. */
+    /**
+     * The machine at {@code at}, if its port stands on {@code network}, is loaded, and something there takes items. A
+     * Passive port's spot is the port itself, while it is still Passive.
+     */
     public static @Nullable AccessPortBlockEntity reach(ServerLevel level, @Nullable CableNetwork network, At at) {
         AccessPortBlockEntity port = port(at.level(level), network, at.port(), at.side());
-        return port != null && port.hasMachine(at.side()) ? port : null;
+        if (port == null) {
+            return null;
+        }
+        return port.passive() ? at.side() == AccessPortBlockEntity.HELD_SIDE ? port : null : port.hasMachine(at.side()) ? port : null;
+    }
+
+    /** Whether {@code card} brings or makes another mod's materials, which a Passive port can't hold or take back. */
+    static boolean usesMaterials(ProcessingCard card) {
+        return card.usedInputs().stream().anyMatch(ProcessingCard.Amount::isMaterial)
+                || card.outputs().stream().anyMatch(ProcessingCard.Amount::isMaterial);
     }
 
     /**
      * The machines {@code card}'s recipe can run on: every side with a machine of the served kind, on each loaded port on
      * {@code network} that serves the recipe. A thin port's one face counts, machine or not, and so does a block port's
      * side facing a machine whose grid keeps that face shut, so a job can say what is wrong there. A machine another port
-     * keeps is not listed for this one.
+     * keeps is not listed for this one. A Passive port is one spot of its own, for any recipe without materials.
      */
     public static List<At> spots(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
         if (network == null) {
@@ -104,7 +116,11 @@ public final class Machines {
                 continue;
             }
             ResourceKey<Level> dimension = port.getLevel().dimension();
-            if (port.face() != null) {
+            if (port.passive()) {
+                if (!usesMaterials(card)) {
+                    spots.add(new At(port.getBlockPos(), AccessPortBlockEntity.HELD_SIDE, dimension));
+                }
+            } else if (port.face() != null) {
                 if (!port.takenElsewhere(port.face())) {
                     spots.add(new At(port.getBlockPos(), port.face(), dimension));
                 }
@@ -122,10 +138,17 @@ public final class Machines {
         return level.isLoaded(pos) && level.getBlockEntity(pos) instanceof MachineBlockEntity grid && grid.opensToPorts();
     }
 
-    /** {@code card} with the machines its recipe runs on now filled in, for looking at those machines. */
+    /**
+     * {@code card} with the machines its recipe runs on now filled in, for looking at those machines. A Passive port has
+     * no machine to look at.
+     */
     public static ProcessingCard located(ServerLevel level, @Nullable CableNetwork network, ProcessingCard card) {
         List<ProcessingCard.Machine> machines = new ArrayList<>();
         for (At at : spots(level, network, card)) {
+            AccessPortBlockEntity port = port(at.level(level), network, at.port(), at.side());
+            if (port != null && port.passive()) {
+                continue;
+            }
             machines.add(new ProcessingCard.Machine(at.port(), at.side(), "", at.dimension()));
         }
         return card.at(machines);

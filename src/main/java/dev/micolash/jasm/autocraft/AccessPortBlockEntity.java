@@ -2,6 +2,7 @@ package dev.micolash.jasm.autocraft;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.archive.ArchiveBlockEntity;
 import dev.micolash.jasm.config.Tuning;
 import dev.micolash.jasm.core.ContainerWords;
@@ -25,6 +26,7 @@ import dev.micolash.jasm.transfer.RedstoneMode;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import dev.micolash.jasm.transfer.TransferPortBlockEntity;
+import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -36,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.ToLongBiFunction;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
@@ -52,6 +55,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
+import net.minecraft.world.Containers;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -95,9 +99,20 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     public static final int DECK_OUT = DECK_IN + 1;
     public static final int SPEED_START = DECK_OUT + 1;
     public static final int INVENTORY_SIZE = SPEED_START + PortOperations.UPGRADE_SLOTS;
+    /**
+     * A Passive port's hidden buffer: the sets it holds for pipes to pull out. These slots come after the port's own
+     * slots and are left out of its size, so screens and anything that walks the container never see them; only the
+     * faces open them (see {@link #getSlotsForFace}).
+     */
+    public static final int HELD_START = INVENTORY_SIZE;
+    public static final int HELD_SLOTS = 9;
+    /** The side a Passive port's sets are locked under: it has no machines, so any side would do. */
+    public static final Direction HELD_SIDE = Direction.DOWN;
     /** Most processing recipes one port serves. */
     public static final int MAX_RECIPES = 16;
     private static final int[] BUFFER = {0, 1, 2, 3, 4, 5, 6, 7};
+    private static final int[] BUFFER_AND_HELD = java.util.stream.IntStream.concat(Arrays.stream(BUFFER),
+            java.util.stream.IntStream.range(HELD_START, HELD_START + HELD_SLOTS)).toArray();
     private static final Direction[] SIDES = Direction.values();
     /** Ticks between checks that the jobs holding locks still exist. */
     private static final int LOCK_CHECK = 40;
@@ -113,7 +128,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 .apply(i, SavedLock::new));
     }
 
-    private NonNullList<ItemStack> items = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
+    private NonNullList<ItemStack> items = NonNullList.withSize(INVENTORY_SIZE + HELD_SLOTS, ItemStack.EMPTY);
     private final Map<Direction, Lock> locks = new EnumMap<>(Direction.class);
     /** A name the player gave the port; empty for the machines' own names. */
     private String label = "";
@@ -123,8 +138,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     private @Nullable UUID destinationDeck;
     private @Nullable UUID pendingLinker;
     private final PortOperations operations = new PortOperations();
-    /** The kind of machine the port serves; null until one is set. */
-    private @Nullable Block machineType;
+    /** The kinds of machine the port serves, in the order they were picked; empty until one is set. */
+    private final Set<Block> machineTypes = new LinkedHashSet<>();
+    /**
+     * Passive: the port sends no sets into machines. Each set waits in its hidden buffer for pipes to pull out, and the
+     * results come back in as usual. Only the full Access Port has it.
+     */
+    private boolean passive;
     /** What stood on each side when the type was last settled, so a later look only does the work when something changed. */
     private final @Nullable Block[] around = new Block[SIDES.length];
     /** The processing recipes the port serves, in the order they were picked. Never sent along with block updates. */
@@ -161,6 +181,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                 case AccessPortMenu.DATA_PAUSED -> redstonePaused() ? 1 : 0;
                 case AccessPortMenu.DATA_REDSTONE -> redstoneMode.ordinal();
                 case AccessPortMenu.DATA_TAKEN -> anyTaken() ? 1 : 0;
+                case AccessPortMenu.DATA_PASSIVE -> passive ? 1 : 0;
+                case AccessPortMenu.DATA_MODE_KEY -> !canBePassive() ? AccessPortMenu.MODE_KEY_NONE
+                        : modeSwitchable() ? AccessPortMenu.MODE_KEY_ON : AccessPortMenu.MODE_KEY_GREYED;
                 default -> 0;
             };
         }
@@ -210,6 +233,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
                     port.unlockJob(id);
                 }
             }
+        }
+        if (port.locks.isEmpty() && (level.getGameTime() + pos.asLong()) % LOCK_CHECK == 0 && !port.heldEmpty()) {
+            // Held items whose job ended without taking them back (it was gone when the port let go) go to the network.
+            port.returnHeldToNetwork((ServerLevel) level);
         }
     }
 
@@ -424,7 +451,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     /** The upgrade powers only blocks of the kind of machine the port serves. */
     protected boolean canPowerSide(Direction side) {
-        return machineType != null && blockAt(side) == machineType && !takenElsewhere(side);
+        return !passive && picked(blockAt(side)) && !takenElsewhere(side);
     }
 
     /** The sides the Power Upgrade may ever reach: every side of a full port, the mounted face of a thin one. */
@@ -548,8 +575,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     List<Direction> spotSides() {
         List<Direction> sides = new ArrayList<>();
         settleType(false);
-        for (Direction side : SIDES) {
-            if (machineType != null && blockAt(side) == machineType && detects(side) && !takenElsewhere(side)) {
+        for (Direction side : passive ? new Direction[0] : SIDES) {
+            if (picked(blockAt(side)) && detects(side) && !takenElsewhere(side)) {
                 sides.add(side);
             }
         }
@@ -578,6 +605,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     private PortSide sideLooks(Direction side) {
+        BlockPos pos = worldPosition.relative(side);
+        boolean network = level.getBlockState(pos).getBlock() instanceof DataCableBlock
+                || level.getBlockEntity(pos) instanceof MachineBlockEntity || level.getBlockEntity(pos) instanceof ArchiveBlockEntity;
+        if (passive) {
+            // pipes may use every face of a Passive port: each shows a chute, in use while it holds a set; a cable keeps its neck
+            return network ? PortSide.LINK : locks.isEmpty() ? PortSide.MACHINE : PortSide.BUSY;
+        }
         if (shownAsMachine(side)) {
             return locks.containsKey(side) ? PortSide.BUSY : PortSide.MACHINE;
         }
@@ -586,12 +620,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         if (servesRecipes() && detects(side)) {
             return PortSide.NONE;
         }
-        BlockPos pos = worldPosition.relative(side);
         BlockState there = level.getBlockState(pos);
         boolean hopperIn = there.getBlock() instanceof HopperBlock
                 && there.getValue(HopperBlock.FACING) == side.getOpposite();
-        boolean network = there.getBlock() instanceof DataCableBlock || level.getBlockEntity(pos) instanceof MachineBlockEntity
-                || level.getBlockEntity(pos) instanceof ArchiveBlockEntity;
         return hopperIn || network ? PortSide.LINK : PortSide.NONE;
     }
 
@@ -603,7 +634,12 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
      */
     public boolean hasMachine(Direction side) {
         settleType(false);
-        return machineType != null && blockAt(side) == machineType && touches(side) && !takenElsewhere(side);
+        return !passive && picked(blockAt(side)) && touches(side) && !takenElsewhere(side);
+    }
+
+    /** Whether {@code block} is one of the kinds the port serves. */
+    private boolean picked(@Nullable Block block) {
+        return block != null && machineTypes.contains(block);
     }
 
     // --- one port per machine ---
@@ -663,7 +699,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     /** Whether the block on {@code side} is a machine of the served kind that the port is after. */
     private boolean wants(Direction side) {
         settleType(false);
-        return servesRecipes() && machineType != null && blockAt(side) == machineType && detects(side);
+        return servesRecipes() && !passive && picked(blockAt(side)) && detects(side);
     }
 
     /** The other ports going for the machine on {@code side}: block ports beside it, and thin ports on cables beside it. */
@@ -790,17 +826,23 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     }
 
     /**
-     * The kind of machine the port serves, after looking at what touches it now; null with none set. The port keeps its
-     * kind while a machine of it touches the port, takes the first machine's kind when none does, and keeps its last kind
-     * while no machine touches at all.
+     * The first kind of machine the port serves, after looking at what touches it now; null with none set. The port keeps
+     * its kinds while a machine of one of them touches the port, takes the first machine's kind when none does, and keeps
+     * its last kinds while no machine touches at all.
      */
     public @Nullable Block servedType() {
         settleType(false);
-        return machineType;
+        return machineType();
+    }
+
+    /** Every kind of machine the port serves, in the order they were picked, after looking at what touches it now. */
+    public List<Block> servedTypes() {
+        settleType(false);
+        return List.copyOf(machineTypes);
     }
 
     /**
-     * Picks which kind of machine the port serves, from those touching it now.
+     * Makes the port serve only this kind of machine, from those touching it now.
      *
      * @return false if no machine of that kind touches the port
      */
@@ -809,6 +851,33 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             return false;
         }
         setMachineType(type);
+        refreshSides();
+        return true;
+    }
+
+    /**
+     * The machine picker's click: a kind the port doesn't serve yet is added, one it serves is taken off. The last kind it
+     * serves among those touching it stays, so the port always has a machine. Kinds picked earlier that touch it no longer
+     * are kept. Refused while Passive.
+     *
+     * @return false if refused or nothing changed
+     */
+    public boolean toggleMachineType(Block type) {
+        List<Block> inRange = machineTypesInRange();
+        if (passive || !inRange.contains(type)) {
+            return false;
+        }
+        if (machineTypes.contains(type)) {
+            if (inRange.stream().filter(machineTypes::contains).count() <= 1) {
+                return false;
+            }
+            machineTypes.remove(type);
+        } else {
+            machineTypes.add(type);
+        }
+        // claims are settled side by side: a side the port no longer wants is let go, a new one waits its turn
+        claimsStale = true;
+        setChanged();
         refreshSides();
         return true;
     }
@@ -837,9 +906,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             return;
         }
         claimsStale = true;
-        if (machineType != null) {
+        if (passive) {
+            // the picks are kept as they were for when the port is Active again
+            return;
+        }
+        if (!machineTypes.isEmpty()) {
             for (Direction side : SIDES) {
-                if (around[side.ordinal()] == machineType && detects(side)) {
+                if (picked(around[side.ordinal()]) && detects(side)) {
                     return;
                 }
             }
@@ -861,6 +934,10 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
      * block's after it when the port has more than one machine).
      */
     public Component machineName(Direction side) {
+        if (passive) {
+            // a Passive port's sets wait in the port itself
+            return getName();
+        }
         Component block = Machines.blockName(level, worldPosition.relative(side));
         if (label.isEmpty()) {
             return block;
@@ -919,19 +996,55 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     // --- the recipes it serves ---
 
-    /** The kind of machine the port serves, or null when none is set yet. */
+    /** The first kind of machine the port serves, or null when none is set yet. */
     public @Nullable Block machineType() {
-        return machineType;
+        return machineTypes.isEmpty() ? null : machineTypes.iterator().next();
     }
 
+    /** Makes {@code type} the one kind the port serves (none for null). */
     public void setMachineType(@Nullable Block type) {
-        if (machineType != type) {
-            machineType = type;
+        Set<Block> wanted = type == null ? Set.of() : Set.of(type);
+        if (!machineTypes.equals(wanted)) {
+            machineTypes.clear();
+            machineTypes.addAll(wanted);
             // a new kind is a new claim: the time spent after the old machines counts for nothing
             Arrays.fill(wantedSince, 0);
             claimsStale = true;
             setChanged();
         }
+    }
+
+    // --- Active and Passive ---
+
+    /** Whether the port is Passive: its sets wait in its hidden buffer for pipes instead of going into machines. */
+    public boolean passive() {
+        return passive;
+    }
+
+    /** Only the full Access Port can be Passive. */
+    public boolean canBePassive() {
+        return face() == null && servesRecipes();
+    }
+
+    /** Whether Active and Passive can be switched now: not while a job holds the port or its hidden buffer holds anything. */
+    public boolean modeSwitchable() {
+        return canBePassive() && locks.isEmpty() && heldEmpty();
+    }
+
+    /** Makes the port Passive or Active. Refused (false) while it can't be switched. */
+    public boolean setPassive(boolean on) {
+        if (on == passive || !modeSwitchable()) {
+            return false;
+        }
+        passive = on;
+        // Passive gives its machines up to other ports; Active goes after them again, behind any port already there
+        claimsStale = true;
+        Arrays.fill(wantedSince, 0);
+        settleType(true);
+        settleClaims();
+        setChanged();
+        refreshSides();
+        return true;
     }
 
     /** The processing recipes the port serves, in the order they were picked. */
@@ -997,7 +1110,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     /** What the port's item keeps when it is mined or wrenched. */
     public PortSettings portSettings() {
         return servesRecipes()
-                ? new PortSettings(Optional.ofNullable(machineType), List.copyOf(recipes), blockingMode, redstoneMode)
+                ? new PortSettings(Optional.ofNullable(machineType()), List.copyOf(recipes), blockingMode, redstoneMode,
+                        machineTypes.stream().skip(1).toList(), passive)
                 : PortSettings.NONE;
     }
 
@@ -1147,8 +1261,167 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level instanceof ServerLevel serverLevel && !heldEmpty()) {
+            returnHeldOnBreak(serverLevel);
+        }
         super.preRemoveSideEffects(pos, state);
         releaseHeldFluids();
+    }
+
+    // --- the hidden buffer (Passive) ---
+
+    private static boolean isHeld(int slot) {
+        return slot >= HELD_START && slot < HELD_START + HELD_SLOTS;
+    }
+
+    /** Whether the hidden buffer and the hidden tank hold nothing. */
+    public boolean heldEmpty() {
+        for (int i = HELD_START; i < HELD_START + HELD_SLOTS; i++) {
+            if (!items.get(i).isEmpty()) {
+                return false;
+            }
+        }
+        return intake.outgoingEmpty();
+    }
+
+    /** What the hidden buffer holds, by item. */
+    public Map<ItemResource, Long> heldItems() {
+        Map<ItemResource, Long> held = new LinkedHashMap<>();
+        for (int i = HELD_START; i < HELD_START + HELD_SLOTS; i++) {
+            ItemStack stack = items.get(i);
+            if (!stack.isEmpty()) {
+                held.merge(ItemResource.of(stack), (long) stack.getCount(), Long::sum);
+            }
+        }
+        return held;
+    }
+
+    /** What the hidden tank holds, by fluid. */
+    public Map<FluidResource, Long> heldFluids() {
+        return intake.outgoing();
+    }
+
+    /**
+     * Puts one set into the hidden buffer, all of it or nothing, as {@link Machines#push} puts one into a machine. It waits
+     * for the port's allowance like a push; with Blocking Mode on it waits until no set of the job is out here; it is
+     * refused while the buffer or the tank has no room for the whole set. Materials can't be held.
+     */
+    Machines.Push hold(List<ProcessingCard.Amount> set) {
+        long shares = 0;
+        Map<FluidResource, Long> fluids = new LinkedHashMap<>();
+        for (ProcessingCard.Amount amount : set) {
+            if (amount.isMaterial()) {
+                return Machines.Push.SHUT;
+            }
+            if (amount.isFluid()) {
+                fluids.merge(amount.fluid(), (long) amount.count(), Long::sum);
+                shares += FluidAmounts.shares(amount.count());
+            } else if (!amount.isEmpty()) {
+                shares += amount.count();
+            }
+        }
+        int count = (int) Math.min(shares, Integer.MAX_VALUE);
+        if (!canSendBatch(count)) {
+            return Machines.Push.WAIT;
+        }
+        if (blockingMode && !locks.isEmpty()) {
+            return Machines.Push.BUSY;
+        }
+        List<ItemStack> after = new ArrayList<>(HELD_SLOTS);
+        for (int i = HELD_START; i < HELD_START + HELD_SLOTS; i++) {
+            after.add(items.get(i).copy());
+        }
+        for (ProcessingCard.Amount amount : set) {
+            if (!amount.isFluid() && !amount.isEmpty() && !fits(after, amount.item(), amount.count())) {
+                return Machines.Push.REFUSED;
+            }
+        }
+        if (!intake.holdOutgoing(fluids, true)) {
+            return Machines.Push.REFUSED;
+        }
+        for (int i = 0; i < HELD_SLOTS; i++) {
+            items.set(HELD_START + i, after.get(i));
+        }
+        intake.holdOutgoing(fluids, false);
+        transferred(count);
+        setChanged();
+        return Machines.Push.SENT;
+    }
+
+    /** Adds {@code count} of {@code item} to {@code slots}, filling matching stacks first. False if it doesn't all fit. */
+    private static boolean fits(List<ItemStack> slots, ItemResource item, int count) {
+        int left = count;
+        for (ItemStack stack : slots) {
+            if (left > 0 && !stack.isEmpty() && item.matches(stack)) {
+                int n = Math.min(left, stack.getMaxStackSize() - stack.getCount());
+                if (n > 0) {
+                    stack.grow(n);
+                    left -= n;
+                }
+            }
+        }
+        for (int i = 0; i < slots.size() && left > 0; i++) {
+            if (slots.get(i).isEmpty()) {
+                ItemStack put = item.toStack(Math.min(left, item.toStack(1).getMaxStackSize()));
+                slots.set(i, put);
+                left -= put.getCount();
+            }
+        }
+        return left <= 0;
+    }
+
+    /**
+     * Hands what the hidden buffer and tank hold to {@code items} and {@code fluids}, each taking what it can and saying how
+     * much it took; the rest stays.
+     */
+    public void emptyHeld(ToLongBiFunction<ItemResource, Long> items, ToLongBiFunction<FluidResource, Long> fluids) {
+        for (int i = HELD_START; i < HELD_START + HELD_SLOTS; i++) {
+            ItemStack stack = this.items.get(i);
+            if (!stack.isEmpty()) {
+                long took = Math.clamp(items.applyAsLong(ItemResource.of(stack), (long) stack.getCount()), 0, stack.getCount());
+                stack.shrink((int) took);
+            }
+        }
+        intake.emptyOutgoing(fluids);
+        setChanged();
+    }
+
+    /** What is held goes to the network's storage, as far as there is room and its Deck can be reached; the rest stays. */
+    void returnHeldToNetwork(ServerLevel serverLevel) {
+        DeckTarget target = deckTarget(serverLevel);
+        if (target == null) {
+            return;
+        }
+        var storage = DeckStorage.checked(WaferStore.get(serverLevel.getServer()), target.deck(), target.player());
+        Map<ItemResource, Long> accepted = new LinkedHashMap<>(storage.depositAmounts(heldItems(), DeckStorage.Excess.KEEP));
+        emptyHeld((key, n) -> {
+            long took = Math.min(n, accepted.getOrDefault(key, 0L));
+            accepted.merge(key, -took, Long::sum);
+            return took;
+        }, (fluid, n) -> storage.depositFluidResult(fluid, n, DeckStorage.Excess.KEEP).stored());
+        Jobs.refreshOpenDeck(target.player(), target.deck());
+    }
+
+    /**
+     * The port is being broken with something held. Fluid goes back to the job holding the port (jobs keep their
+     * ingredients outside the network, so this works with or without one); items too while the port is on a network.
+     * Anything left goes to the network's storage, and items that still have nowhere to go drop where the port stood.
+     */
+    private void returnHeldOnBreak(ServerLevel serverLevel) {
+        boolean onNetwork = Networks.at(serverLevel, worldPosition) != null;
+        JobRunner.takeBackHeld(serverLevel, this, onNetwork);
+        if (onNetwork) {
+            returnHeldToNetwork(serverLevel);
+        }
+        for (int i = HELD_START; i < HELD_START + HELD_SLOTS; i++) {
+            ItemStack stack = items.get(i);
+            if (!stack.isEmpty()) {
+                Containers.dropItemStack(serverLevel, worldPosition.getX(), worldPosition.getY(), worldPosition.getZ(), stack);
+                items.set(i, ItemStack.EMPTY);
+            }
+        }
+        heldFluids().forEach((fluid, amount) -> Jasm.LOGGER.warn(
+                "Passive port at {} was broken holding {} mB of {} with no job or network to take it", worldPosition, amount, fluid.getFluid()));
     }
 
     /** Items can enter the buffer even while the port is idle or stopped. */
@@ -1167,14 +1440,15 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         return slot >= 0 && slot < BUFFER_SLOTS;
     }
 
+    /** Hoppers and pipes may only take what a Passive port holds for them. */
     @Override
     public boolean canTakeItem(Container target, int slot, ItemStack stack) {
-        return false;
+        return passive && isHeld(slot);
     }
 
     @Override
     public int[] getSlotsForFace(Direction side) {
-        return BUFFER;
+        return passive ? BUFFER_AND_HELD : BUFFER;
     }
 
     @Override
@@ -1184,7 +1458,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
 
     @Override
     public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
-        return false;
+        return passive && isHeld(slot);
     }
 
     public ContainerData data() {
@@ -1251,7 +1525,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.store("redstone_mode", RedstoneMode.CODEC, redstoneMode);
         output.storeNullable("destination_deck", UUIDUtil.CODEC, destinationDeck);
         output.storeNullable("pending_linker", UUIDUtil.CODEC, pendingLinker);
-        output.storeNullable("machine_type", BuiltInRegistries.BLOCK.byNameCodec(), machineType);
+        output.storeNullable("machine_type", BuiltInRegistries.BLOCK.byNameCodec(), machineType());
+        if (machineTypes.size() > 1) {
+            output.store("more_machine_types", BuiltInRegistries.BLOCK.byNameCodec().listOf(), machineTypes.stream().skip(1).toList());
+        }
+        if (passive) {
+            output.putBoolean("passive", true);
+        }
         if (Arrays.stream(wantedSince).anyMatch(since -> since != 0)) {
             output.store("wanted_since", Codec.LONG.listOf(), Arrays.stream(wantedSince).boxed().toList());
         }
@@ -1264,7 +1544,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        items = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
+        items = NonNullList.withSize(INVENTORY_SIZE + HELD_SLOTS, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(input, items);
         locks.clear();
         input.read("locks", SavedLock.CODEC.listOf()).orElse(List.of()).forEach(l -> locks.put(l.side(), new Lock(l.job(), l.step())));
@@ -1273,7 +1553,13 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         redstoneMode = input.read("redstone_mode", RedstoneMode.CODEC).orElse(RedstoneMode.IGNORE);
         destinationDeck = input.read("destination_deck", UUIDUtil.CODEC).orElse(null);
         pendingLinker = input.read("pending_linker", UUIDUtil.CODEC).orElse(null);
-        machineType = input.read("machine_type", BuiltInRegistries.BLOCK.byNameCodec()).orElse(null);
+        // older saves have one kind and no mode: Active, serving that kind
+        machineTypes.clear();
+        input.read("machine_type", BuiltInRegistries.BLOCK.byNameCodec()).ifPresent(machineTypes::add);
+        if (!machineTypes.isEmpty()) {
+            input.read("more_machine_types", BuiltInRegistries.BLOCK.byNameCodec().listOf()).orElse(List.of()).forEach(machineTypes::add);
+        }
+        passive = canBePassive() && input.getBooleanOr("passive", false);
         Arrays.fill(wantedSince, 0);
         List<Long> savedSince = input.read("wanted_since", Codec.LONG.listOf()).orElse(List.of());
         for (int i = 0; i < Math.min(savedSince.size(), wantedSince.length); i++) {
@@ -1310,7 +1596,9 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         components.get(JasmComponents.PORT_MEMORY.get());
         if (servesRecipes()) {
             PortSettings settings = components.getOrDefault(JasmComponents.PORT_SETTINGS.get(), PortSettings.NONE);
-            machineType = settings.machine().orElse(null);
+            machineTypes.clear();
+            machineTypes.addAll(settings.machines());
+            passive = canBePassive() && settings.passive();
             recipes.clear();
             recipes.addAll(settings.recipes());
             blockingMode = settings.blocking();
@@ -1325,6 +1613,8 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         output.discard("wanted_since");
         if (servesRecipes()) {
             output.discard("machine_type");
+            output.discard("more_machine_types");
+            output.discard("passive");
             output.discard("recipes");
             output.discard("blocking_mode");
             output.discard("redstone_mode");

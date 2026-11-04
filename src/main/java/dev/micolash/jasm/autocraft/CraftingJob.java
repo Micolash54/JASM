@@ -78,8 +78,10 @@ public final class CraftingJob {
                 Codec.LONG.fieldOf("left").forGetter(s -> s.left),
                 Codec.LONG.fieldOf("total").forGetter(s -> s.total),
                 Use.CODEC.listOf().optionalFieldOf("uses").forGetter(s -> Optional.ofNullable(s.uses).map(Step::list)),
-                Use.CODEC.listOf().optionalFieldOf("returned", List.of()).forGetter(s -> list(s.returned)))
-                .apply(i, (card, left, total, uses, returned) -> new Step(card, left, total, uses.map(Step::map).orElse(null), map(returned))));
+                Use.CODEC.listOf().optionalFieldOf("returned", List.of()).forGetter(s -> list(s.returned)),
+                Share.CODEC.listOf().optionalFieldOf("sent_to", List.of()).forGetter(s -> Share.list(s.sentTo)))
+                .apply(i, (card, left, total, uses, returned, sentTo) -> new Step(card, left, total, uses.map(Step::map).orElse(null),
+                        map(returned), Share.map(sentTo))));
 
         final Card card;
         long left;
@@ -91,13 +93,29 @@ public final class CraftingJob {
          * name), by item. The step's next sets may use them in place of the card's own copy; nothing else may.
          */
         final Map<ItemResource, Long> returned;
+        /**
+         * How many sets each machine has been given so far, so every machine serving the recipe gets its even share over
+         * the whole job. Jobs saved before this was kept start counting from where they are.
+         */
+        final Map<Machines.At, Long> sentTo;
 
         Step(Card card, long left, long total, @Nullable Map<ItemResource, Long> uses, Map<ItemResource, Long> returned) {
+            this(card, left, total, uses, returned, new LinkedHashMap<>());
+        }
+
+        private Step(Card card, long left, long total, @Nullable Map<ItemResource, Long> uses, Map<ItemResource, Long> returned,
+                Map<Machines.At, Long> sentTo) {
             this.card = card;
             this.left = left;
             this.total = total;
             this.uses = uses;
             this.returned = returned;
+            this.sentTo = sentTo;
+        }
+
+        /** How many sets the machine at {@code at} has been given by this step. */
+        long sentTo(Machines.At at) {
+            return sentTo.getOrDefault(at, 0L);
         }
 
         /** How many copies of {@code key} came back to the step that it hasn't used again yet. */
@@ -175,6 +193,24 @@ public final class CraftingJob {
      * that took it and its name then, what has yet to come back, and when it went. It holds a Processor slot until
      * nothing is left to wait for.
      */
+    /** How many sets one machine has been given by a step. */
+    private record Share(Machines.At at, long sets) {
+        static final Codec<Share> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Machines.At.CODEC.fieldOf("at").forGetter(Share::at),
+                Codec.LONG.fieldOf("sets").forGetter(Share::sets))
+                .apply(i, Share::new));
+
+        static List<Share> list(Map<Machines.At, Long> map) {
+            return map.entrySet().stream().map(e -> new Share(e.getKey(), e.getValue())).toList();
+        }
+
+        static Map<Machines.At, Long> map(List<Share> list) {
+            Map<Machines.At, Long> map = new LinkedHashMap<>();
+            list.forEach(share -> map.merge(share.at(), share.sets(), Long::sum));
+            return map;
+        }
+    }
+
     public static final class Sent {
         static final Codec<Sent> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.INT.fieldOf("step").forGetter(s -> s.step),
@@ -187,9 +223,11 @@ public final class CraftingJob {
                 ComponentSerialization.CODEC.optionalFieldOf("machine_name").forGetter(s -> Optional.ofNullable(s.name)),
                 Use.CODEC.listOf().optionalFieldOf("copies", List.of()).forGetter(s -> Step.list(s.copies)),
                 // sets sent before far links have none: the port is in the server's dimension
-                Level.RESOURCE_KEY_CODEC.optionalFieldOf("dimension").forGetter(s -> Optional.ofNullable(s.dimension)))
-                .apply(i, (step, port, side, waiting, since, machine, name, copies, dimension) -> new Sent(step, port, side,
-                        dimension.orElse(null), waiting, since, machine.orElse(null), name.orElse(null), Step.map(copies))));
+                Level.RESOURCE_KEY_CODEC.optionalFieldOf("dimension").forGetter(s -> Optional.ofNullable(s.dimension)),
+                // a set held in a Passive port for pipes, not put into a machine
+                Codec.BOOL.optionalFieldOf("held", false).forGetter(s -> s.held))
+                .apply(i, (step, port, side, waiting, since, machine, name, copies, dimension, held) -> new Sent(step, port, side,
+                        dimension.orElse(null), waiting, since, machine.orElse(null), name.orElse(null), Step.map(copies), held)));
 
         final int step;
         final BlockPos port;
@@ -209,20 +247,28 @@ public final class CraftingJob {
          * next sets once this set is done, so a copy never serves two sets at once.
          */
         final Map<ItemResource, Long> copies;
+        /** Held in a Passive port's hidden buffer for pipes to take, rather than put into a machine. */
+        final boolean held;
 
         /** A set as it was written before the port's dimension was kept. */
         Sent(int step, BlockPos port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
                 @Nullable Component name) {
-            this(step, port, side, null, waiting, since, machine, name, new LinkedHashMap<>());
+            this(step, port, side, null, waiting, since, machine, name, new LinkedHashMap<>(), false);
         }
 
         Sent(int step, NetworkNode port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
                 @Nullable Component name) {
-            this(step, port.pos(), side, port.dimension(), waiting, since, machine, name, new LinkedHashMap<>());
+            this(step, port, side, waiting, since, machine, name, false);
+        }
+
+        Sent(int step, NetworkNode port, Direction side, List<ProcessingCard.Amount> waiting, long since, @Nullable Block machine,
+                @Nullable Component name, boolean held) {
+            this(step, port.pos(), side, port.dimension(), waiting, since, machine, name, new LinkedHashMap<>(), held);
         }
 
         private Sent(int step, BlockPos port, Direction side, @Nullable ResourceKey<Level> dimension, List<ProcessingCard.Amount> waiting,
-                long since, @Nullable Block machine, @Nullable Component name, Map<ItemResource, Long> copies) {
+                long since, @Nullable Block machine, @Nullable Component name, Map<ItemResource, Long> copies, boolean held) {
+            this.held = held;
             this.step = step;
             this.port = port.immutable();
             this.side = side;

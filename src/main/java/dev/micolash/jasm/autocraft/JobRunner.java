@@ -298,6 +298,9 @@ final class JobRunner {
     /** Whether a machine holding one of the job's sets can't work on it: only JASM machines can tell. */
     private static boolean halted(ServerLevel level, CraftingJob job) {
         for (CraftingJob.Sent set : job.sent) {
+            if (set.held) {
+                continue;
+            }
             BlockPos machine = set.port.relative(set.side);
             ServerLevel there = set.level(level);
             if (Machines.running(there, machine) && there.getBlockEntity(machine) instanceof MachineBlockEntity jasm && jasm.halted()) {
@@ -334,8 +337,10 @@ final class JobRunner {
     }
 
     /**
-     * Sends sets of a processing card's ingredients into its machines, one set at a time, each to the machine with
-     * the fewest sets out, while there are free Processor slots and ingredients.
+     * Sends sets of a processing card's ingredients into its machines, one set at a time, while there are free Processor
+     * slots and ingredients. Every machine serving the recipe gets an even share of the step's sets over the whole job:
+     * the set goes to the machine given the fewest so far, and while that one can't take it the step waits for it. A
+     * Passive port holds the set for pipes instead of putting it into a machine.
      */
     static Sending send(ServerLevel level, @Nullable CableNetwork network, CraftingJob job, int stepIndex, ProcessingCard card,
             WaferRecord record, @Nullable WaferRecord fluids, WaferStore store, Map<ItemResource, Long> reserved, Map<ItemResource, Long> keep,
@@ -370,10 +375,6 @@ final class JobRunner {
             }
         }
         List<ProcessingCard.Amount> expected = card.outputs().stream().filter(a -> !a.isEmpty()).toList();
-        Map<Machines.At, Long> out = new HashMap<>();
-        for (CraftingJob.Sent already : job.sent) {
-            out.merge(already.at(level), 1L, Long::sum);
-        }
         NetworkPool pool = materialSet.isEmpty() || network == null ? null : NetworkPool.of(level, network);
         int sent = 0;
         Wait blocked = Wait.NONE;
@@ -411,28 +412,30 @@ final class JobRunner {
                 blocked = sent > 0 ? Wait.NONE : problem.and(tried);
                 break;
             }
-            targets.sort(Comparator.comparingLong(t -> out.getOrDefault(t.at(), 0L)));
+            // whose turn it is: the machine given the fewest of the step's sets so far, the first of those listed on a tie
+            targets.sort(Comparator.comparingLong(t -> step.sentTo(t.at())));
             Target target = targets.getFirst();
-            Machines.Push pushed = Machines.push(target.port(), target.side(), chosen, card.usedFaces(), pool);
+            boolean held = target.port().passive();
+            Machines.Push pushed = held ? target.port().hold(chosen) : Machines.push(target.port(), target.side(), chosen, card.usedFaces(), pool);
             if (pushed == Machines.Push.SHORT) {
                 blocked = sent > 0 ? Wait.NONE : Wait.NO_MATERIAL;
                 break;
             }
-            if (pushed == Machines.Push.REFUSED && turnedAway(job, stepIndex, card, chosen, target)) {
+            if (pushed == Machines.Push.REFUSED && !held && turnedAway(job, stepIndex, card, chosen, target)) {
                 // The machine never takes an item planned in place of the card's own: choose the set again without it.
                 refusedHere = true;
                 continue;
             }
             if (pushed != Machines.Push.SENT) {
-                // Not now: try the others, and this one again next tick.
+                // Not now: the step waits for this machine's turn, and tries it again next tick.
                 tried = tried.and(switch (pushed) {
                     case WAIT -> Wait.UNTRIED;
                     case BUSY -> Wait.WORKING;
                     case SHUT -> Wait.SIDE;
                     default -> Wait.FULL;
                 });
-                targets.remove(target);
-                continue;
+                blocked = sent > 0 ? Wait.NONE : problem.and(tried);
+                break;
             }
             set.forEach((key, n) -> {
                 store.extract(record, key, n, false, null);
@@ -442,12 +445,13 @@ final class JobRunner {
                 step.cameBack(key, -Math.min(n - planned, step.returned(key)));
             });
             fluidSet.forEach((key, n) -> store.extractFluid(fluids, key, n, false, null));
-            BlockPos machine = target.port().getBlockPos().relative(target.side());
+            // a held set waits in the port itself
+            BlockPos machine = held ? target.port().getBlockPos() : target.port().getBlockPos().relative(target.side());
             // the port may stand in another dimension than the server
             Level there = target.port().getLevel();
             job.sent.add(new CraftingJob.Sent(stepIndex, NetworkNode.of(there, target.port().getBlockPos()), target.side(), expected,
-                    level.getGameTime(), there.getBlockState(machine).getBlock(), target.port().machineName(target.side())));
-            out.merge(target.at(), 1L, Long::sum);
+                    level.getGameTime(), there.getBlockState(machine).getBlock(), target.port().machineName(target.side()), held));
+            step.sentTo.merge(target.at(), 1L, Long::sum);
             target.port().lock(target.side(), job.id, stepIndex);
             step.left--;
             sent++;
@@ -659,9 +663,11 @@ final class JobRunner {
                     left -= set.arriveCopy(key, left, job.returnedItems(set.step));
                 }
             }
-            any |= pullFluids(port, here, fluids, store);
+            // what a held set makes is pushed back into the port by the player's pipes: nothing to pull out of a machine
+            List<CraftingJob.Sent> inMachines = here.stream().filter(s -> !s.held).toList();
+            any |= pullFluids(port, inMachines, fluids, store);
             checked = true;
-            any |= pullMaterials(port, here, level, network, noRoom);
+            any |= pullMaterials(port, inMachines, level, network, noRoom);
             for (CraftingJob.Sent set : job.sent) {
                 if (set.done() && set.step < job.steps.size()) {
                     // the set is over: the copies that came back for it serve the step's next sets
@@ -674,6 +680,10 @@ final class JobRunner {
                 AccessPortBlockEntity.Lock lock = port.lock(set.side);
                 if (lock != null && lock.job().equals(job.id) && job.sent.stream().noneMatch(s -> s.at(level).equals(set.at(level)))) {
                     port.unlock(set.side);
+                    if (set.held) {
+                        // ingredients the pipes never took (the results came another way) go back to the job
+                        takeBack(port, record, fluids, store);
+                    }
                 }
             }
         }
@@ -884,16 +894,58 @@ final class JobRunner {
         return any;
     }
 
-    /** The job stops waiting on machines: its sets are forgotten and its machines let go. */
+    /**
+     * The job stops waiting on machines: its sets are forgotten and its machines let go. What a Passive port still holds
+     * of its sets comes back to the job; what pipes already took out does not.
+     */
     static void release(ServerLevel level, CraftingJob job) {
+        WaferStore store = WaferStore.ifOpen(level.getServer());
         for (CraftingJob.Sent set : job.sent) {
             ServerLevel there = set.level(level);
             if (Machines.running(there, set.port)
                     && Machines.port(there, Networks.at(there, set.port), set.port, set.side) instanceof AccessPortBlockEntity port) {
+                boolean holds = set.held && port.lock(set.side) != null && job.id.equals(port.lock(set.side).job());
                 port.unlockJob(job.id);
+                if (holds && store != null) {
+                    takeBack(port, record(store, job), fluidRecord(store, job), store);
+                }
             }
         }
         job.sent.clear();
+    }
+
+    /** What {@code port} holds goes into the job's records, as far as they take it; anything left stays held. */
+    private static void takeBack(AccessPortBlockEntity port, @Nullable WaferRecord record, @Nullable WaferRecord fluids, WaferStore store) {
+        if (port.heldEmpty()) {
+            return;
+        }
+        port.emptyHeld((key, n) -> record == null ? 0 : store.insert(record, key, n, false, null),
+                (fluid, n) -> fluids == null ? 0 : store.insertFluid(fluids, fluid, n, false, null));
+    }
+
+    /**
+     * A Passive port is being broken: what it holds goes back to the job holding it, fluid always and items when
+     * {@code items} is set; the rest stays for the port to deal with. Nothing happens if that job can't be reached.
+     */
+    static void takeBackHeld(ServerLevel level, AccessPortBlockEntity port, boolean items) {
+        WaferStore store = WaferStore.ifOpen(level.getServer());
+        if (store == null || !port.locked()) {
+            return;
+        }
+        AutocraftState state = AutocraftState.get(level.getServer());
+        for (UUID id : port.lockedJobs()) {
+            AutocraftState.Job entry = state.job(id).orElse(null);
+            if (entry == null || entry.finished()) continue;
+            ServerLevel jobLevel = level.getServer().getLevel(entry.server().dimension());
+            BlockPos pos = entry.server().pos();
+            if (jobLevel == null || !jobLevel.isLoaded(pos) || !(jobLevel.getBlockEntity(pos) instanceof CraftingServerBlockEntity server)
+                    || server.job() == null || !server.job().id().equals(id))
+                continue;
+            CraftingJob job = server.job();
+            WaferRecord record = items ? record(store, job) : null;
+            takeBack(port, record, fluidRecord(store, job), store);
+            server.setChanged();
+        }
     }
 
     /** The machine the job has waited on longest: its name, what is still to come, and for how long. */
@@ -911,8 +963,9 @@ final class JobRunner {
         }
         ServerLevel there = oldest.level(level);
         AccessPortBlockEntity port = Machines.port(there, network, oldest.port, oldest.side);
+        BlockPos shown = oldest.held ? oldest.port : oldest.port.relative(oldest.side);
         String name = port == null
-                ? Machines.blockName(Machines.running(there, oldest.port) ? there : null, oldest.port.relative(oldest.side)).getString()
+                ? Machines.blockName(Machines.running(there, oldest.port) ? there : null, shown).getString()
                 : port.machineName(oldest.side).getString();
         return new CraftingJob.Waiting(name, what, count, Math.max(0, level.getGameTime() - oldest.since));
     }
