@@ -41,9 +41,13 @@ public final class ServerScreenText {
         return both.length() > MAX_RUNNING ? Integer.toString(running) : both;
     }
 
-    /** Lit segments of the core bar: the share of crafts running, out of eight. */
+    /**
+     * Lit segments of the core bar: one per craft running while the server runs at most eight at once; past eight, the
+     * share of crafts running, out of eight.
+     */
     public static int litSegments(int running, int max) {
-        return max <= 0 ? 0 : Math.clamp(Math.round(SEGMENTS * running / (float) max), 0, SEGMENTS);
+        if (max <= SEGMENTS) return Math.clamp(running, 0, SEGMENTS);
+        return Math.clamp(Math.round(SEGMENTS * running / (float) max), 0, SEGMENTS);
     }
 
     /** The glyph's cell on the sheet, or -1 for a character the sheet doesn't have. */
