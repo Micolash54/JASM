@@ -18,9 +18,7 @@ import dev.micolash.jasm.client.StoragePortScreen;
 import dev.micolash.jasm.client.TransferPortScreen;
 import dev.micolash.jasm.config.Feature;
 import dev.micolash.jasm.config.JasmConfig;
-import dev.micolash.jasm.core.BitlingKind;
 import dev.micolash.jasm.core.BrainBalance;
-import dev.micolash.jasm.core.BitlingStage;
 import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.generator.GeneratorTier;
@@ -161,8 +159,6 @@ public class JasmJeiPlugin implements IModPlugin {
                 Component.empty(),
                 Component.translatable("jei.jasm.info.network_brain.2", BrainBalance.shown(brain.limit(true, 1)))});
         info(registration, "network_chamber", 1, List.of(JasmItems.NETWORK_CHAMBER.get()));
-        info(registration, "basic_bitling", 2, List.of(JasmItems.bitling(BitlingKind.BASIC, BitlingStage.BITLING),
-                JasmItems.WILD_BITLING_SPAWN_EGG.get()));
         registration.addRecipes(WorkshopCategory.TYPE, JasmItems.bitlings());
         registration.addRecipes(FoundryCategory.TYPE, List.of(FoundryCategory.Grow.fromConfig()));
         info(registration, "crystal_foundry", 2, List.of(JasmItems.CRYSTAL_FOUNDRY.get()));
