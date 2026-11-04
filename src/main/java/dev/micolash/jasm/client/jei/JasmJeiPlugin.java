@@ -149,7 +149,9 @@ public class JasmJeiPlugin implements IModPlugin {
                 JasmItems.WORN_SEEDED_AMETHYST.get(), JasmItems.CRACKED_SEEDED_AMETHYST.get()));
         info(registration, "data_crystal", 2, List.of(JasmItems.DATA_CRYSTAL.get()));
         info(registration, "crystal_resonator", 2, List.of(JasmItems.CRYSTAL_RESONATOR.get()));
-        info(registration, "bitling", 4, JasmItems.bitlings());
+        List<ItemLike> bitlingPage = new ArrayList<>(JasmItems.bitlings());
+        bitlingPage.add(JasmItems.WILD_BITLING_SPAWN_EGG.get());
+        info(registration, "bitling", 4, bitlingPage);
         info(registration, "chip_workshop", 2, List.of(JasmItems.CHIP_WORKSHOP.get()));
         info(registration, "bitling_station", 2, List.of(JasmItems.BITLING_STATION.get()));
         BrainBalance brain = BrainBalance.fromConfig();
