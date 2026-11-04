@@ -99,11 +99,11 @@ public final class JasmClientConfig {
         BUILDER.pop().push("blocks");
     }
 
-    public static final int RACK_ICON_DISTANCE_DEFAULT = 32;
+    public static final int RACK_ICON_DISTANCE_DEFAULT = 16;
 
     public static final ModConfigSpec.IntValue RACK_ICON_DISTANCE = BUILDER
             .comment("How close, in blocks, you need to be to a Recipe Rack to see what each card makes. 0 turns it off")
-            .defineInRange("rackIconDistance", RACK_ICON_DISTANCE_DEFAULT, 0, 64);
+            .defineInRange("rackIconDistance", RACK_ICON_DISTANCE_DEFAULT, 0, 32);
 
     static {
         BUILDER.pop();

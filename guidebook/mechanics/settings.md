@@ -234,4 +234,4 @@ These are your own, in `jasm-client.toml`. They don't change with the world.
 
 | Setting | Key | What it does |
 | --- | --- | --- |
-| Rack icon distance | `rackIconDistance` | How close, in blocks, you need to be to a [Recipe Rack](../items/recipe-rack.md) to see what each card makes. Further away, the cards show plain. 0 turns the pictures off, 64 at most. Normally 32. |
+| Rack icon distance | `rackIconDistance` | How close, in blocks, you need to be to a [Recipe Rack](../items/recipe-rack.md) to see what each card makes. Further away, the cards show plain. 0 turns the pictures off, 32 at most. Normally 16. |
