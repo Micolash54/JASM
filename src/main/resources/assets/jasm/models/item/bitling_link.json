@@ -2,6 +2,7 @@
   "parent": "jasm:item/bitling",
   "textures": {
     "skin": "jasm:block/bitling/link",
+    "screen": "jasm:block/bitling/link_screen",
     "particle": "jasm:block/bitling/link"
   }
 }

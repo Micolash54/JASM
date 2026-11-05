@@ -1,149 +1,78 @@
 {
-  "ambientocclusion": false,
   "textures": {
+    "skin": "jasm:block/bitling/link",
+    "screen": "jasm:block/bitling/link_screen",
     "operator": "jasm:block/relay_chatterbox_operator",
     "particle": "jasm:block/relay_chatterbox"
   },
   "elements": [
     {
-      "name": "helmet_rim",
-      "from": [
-        6.1472,
-        7.4028,
-        6.8512
-      ],
-      "to": [
-        10.6528,
-        7.966,
-        10.7936
-      ],
-      "faces": {
-        "south": {
-          "uv": [
-            6,
-            10.75,
-            8.25,
-            11
-          ],
-          "texture": "#operator"
-        },
-        "west": {
-          "uv": [
-            0,
-            11.25,
-            2,
-            11.5
-          ],
-          "texture": "#operator"
-        },
-        "north": {
-          "uv": [
-            3.5,
-            10.75,
-            5.75,
-            11
-          ],
-          "texture": "#operator"
-        },
-        "east": {
-          "uv": [
-            13.5,
-            10.75,
-            15.5,
-            11
-          ],
-          "texture": "#operator"
-        },
-        "up": {
-          "uv": [
-            0,
-            0,
-            2.25,
-            2
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        },
-        "down": {
-          "uv": [
-            2.5,
-            0,
-            4.75,
-            2
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        }
-      }
-    },
-    {
       "name": "helmet",
       "from": [
         5.8656,
-        7.966,
-        6.992
+        8.1068,
+        6.5696
       ],
       "to": [
         10.9344,
         11.486,
-        10.6528
+        11.0752
       ],
+      "shade_direction_override": "up",
       "faces": {
         "south": {
           "uv": [
-            12.75,
-            0,
-            15.25,
-            1.75
+            2,
+            4,
+            4.25,
+            7
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "west": {
           "uv": [
-            6.5,
-            4.25,
-            8.25,
-            6
+            0,
+            4,
+            2,
+            7
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "north": {
           "uv": [
-            10,
-            0,
-            12.5,
-            1.75
+            6.25,
+            4,
+            8.5,
+            7
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "east": {
           "uv": [
-            4.5,
             4.25,
+            4,
             6.25,
-            6
+            7
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "up": {
           "uv": [
+            2,
             0,
-            2.25,
-            2.5,
+            4.25,
             4
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         },
         "down": {
           "uv": [
-            2.75,
-            2.25,
-            5.25,
+            4.25,
+            0,
+            6.5,
             4
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         }
       }
     },
@@ -159,62 +88,52 @@
         11.7676,
         10.7936
       ],
+      "shade_direction_override": "up",
       "faces": {
         "south": {
           "uv": [
-            11,
-            10.75,
-            13.25,
-            11
+            8.375,
+            3.5,
+            10.375,
+            3.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "west": {
           "uv": [
-            4.5,
-            11.25,
-            6.5,
-            11.5
+            6.625,
+            3.5,
+            8.375,
+            3.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "north": {
           "uv": [
-            8.5,
-            10.75,
-            10.75,
-            11
+            12.125,
+            3.5,
+            14.125,
+            3.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "east": {
           "uv": [
-            2.25,
-            11.25,
-            4.25,
-            11.5
+            10.375,
+            3.5,
+            12.125,
+            3.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "up": {
           "uv": [
-            5,
+            8.375,
             0,
-            7.25,
-            2
+            10.375,
+            3.5
           ],
-          "texture": "#operator",
-          "rotation": 180
-        },
-        "down": {
-          "uv": [
-            7.5,
-            0,
-            9.75,
-            2
-          ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         }
       }
     },
@@ -230,62 +149,200 @@
         12.0492,
         10.512
       ],
+      "shade_direction_override": "up",
       "faces": {
         "south": {
           "uv": [
-            9,
-            11.25,
-            11,
-            11.5
+            10.125,
+            7,
+            11.875,
+            7.25
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "west": {
           "uv": [
-            11,
-            11.75,
-            12.75,
-            12
+            8.625,
+            7,
+            10.125,
+            7.25
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "north": {
           "uv": [
-            6.75,
-            11.25,
-            8.75,
-            11.5
+            13.375,
+            7,
+            15.125,
+            7.25
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "east": {
           "uv": [
-            9,
-            11.75,
-            10.75,
-            12
+            11.875,
+            7,
+            13.375,
+            7.25
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "up": {
           "uv": [
-            5.5,
-            2.25,
-            7.5,
-            4
+            10.125,
+            4,
+            11.875,
+            7
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
+        }
+      }
+    },
+    {
+      "name": "ear_left",
+      "from": [
+        10.9344,
+        8.9516,
+        7.9776
+      ],
+      "to": [
+        11.4976,
+        10.6412,
+        9.6672
+      ],
+      "shade_direction_override": "up",
+      "faces": {
+        "south": {
+          "uv": [
+            5.875,
+            12,
+            6.125,
+            13.5
+          ],
+          "texture": "#skin"
+        },
+        "north": {
+          "uv": [
+            6.875,
+            12,
+            7.125,
+            13.5
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            6.125,
+            12,
+            6.875,
+            13.5
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            5.875,
+            10.5,
+            6.125,
+            12
+          ],
+          "texture": "#skin"
         },
         "down": {
           "uv": [
-            7.75,
-            2.25,
-            9.75,
-            4
+            6.125,
+            10.5,
+            6.375,
+            12
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
+        }
+      }
+    },
+    {
+      "name": "ear_right",
+      "from": [
+        5.3024,
+        8.9516,
+        7.9776
+      ],
+      "to": [
+        5.8656,
+        10.6412,
+        9.6672
+      ],
+      "shade_direction_override": "up",
+      "faces": {
+        "south": {
+          "uv": [
+            6.125,
+            12,
+            5.875,
+            13.5
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            6.875,
+            12,
+            6.125,
+            13.5
+          ],
+          "texture": "#skin"
+        },
+        "north": {
+          "uv": [
+            7.125,
+            12,
+            6.875,
+            13.5
+          ],
+          "texture": "#skin"
+        },
+        "up": {
+          "uv": [
+            6.125,
+            10.5,
+            5.875,
+            12
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            6.375,
+            10.5,
+            6.125,
+            12
+          ],
+          "texture": "#skin"
+        }
+      }
+    },
+    {
+      "name": "screen",
+      "from": [
+        6.4288,
+        8.3884,
+        11.1034
+      ],
+      "to": [
+        10.3712,
+        10.9228,
+        11.1034
+      ],
+      "light_emission": 15,
+      "shade": false,
+      "faces": {
+        "south": {
+          "uv": [
+            0,
+            0,
+            14,
+            9
+          ],
+          "texture": "#screen"
         }
       }
     },
@@ -354,77 +411,6 @@
             11.25,
             15.5,
             11.5
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        }
-      }
-    },
-    {
-      "name": "forehead_panel",
-      "from": [
-        7.696,
-        10.9228,
-        11.0752
-      ],
-      "to": [
-        9.104,
-        11.486,
-        11.1597
-      ],
-      "faces": {
-        "south": {
-          "uv": [
-            0,
-            12.25,
-            0.75,
-            12.5
-          ],
-          "texture": "#operator"
-        },
-        "west": {
-          "uv": [
-            9.5,
-            13.25,
-            9.75,
-            13.5
-          ],
-          "texture": "#operator"
-        },
-        "north": {
-          "uv": [
-            15,
-            11.75,
-            15.75,
-            12
-          ],
-          "texture": "#operator"
-        },
-        "east": {
-          "uv": [
-            9,
-            13.25,
-            9.25,
-            13.5
-          ],
-          "texture": "#operator"
-        },
-        "up": {
-          "uv": [
-            1,
-            12.25,
-            1.75,
-            12.5
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        },
-        "down": {
-          "uv": [
-            2,
-            12.25,
-            2.75,
-            12.5
           ],
           "texture": "#operator",
           "rotation": 180
@@ -1064,148 +1050,6 @@
             12.25,
             15.25,
             12.5
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        }
-      }
-    },
-    {
-      "name": "helmet_front_back",
-      "from": [
-        6.288,
-        7.966,
-        10.6528
-      ],
-      "to": [
-        10.512,
-        11.486,
-        11.0752
-      ],
-      "faces": {
-        "south": {
-          "uv": [
-            12.25,
-            2.25,
-            14.25,
-            4
-          ],
-          "texture": "#operator"
-        },
-        "west": {
-          "uv": [
-            9,
-            4.25,
-            9.25,
-            6
-          ],
-          "texture": "#operator"
-        },
-        "north": {
-          "uv": [
-            10,
-            2.25,
-            12,
-            4
-          ],
-          "texture": "#operator"
-        },
-        "east": {
-          "uv": [
-            8.5,
-            4.25,
-            8.75,
-            6
-          ],
-          "texture": "#operator"
-        },
-        "up": {
-          "uv": [
-            0,
-            11.75,
-            2,
-            12
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        },
-        "down": {
-          "uv": [
-            2.25,
-            11.75,
-            4.25,
-            12
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        }
-      }
-    },
-    {
-      "name": "helmet_front_back",
-      "from": [
-        6.288,
-        7.966,
-        6.5696
-      ],
-      "to": [
-        10.512,
-        11.486,
-        6.992
-      ],
-      "faces": {
-        "south": {
-          "uv": [
-            2.25,
-            4.25,
-            4.25,
-            6
-          ],
-          "texture": "#operator"
-        },
-        "west": {
-          "uv": [
-            10,
-            4.25,
-            10.25,
-            6
-          ],
-          "texture": "#operator"
-        },
-        "north": {
-          "uv": [
-            0,
-            4.25,
-            2,
-            6
-          ],
-          "texture": "#operator"
-        },
-        "east": {
-          "uv": [
-            9.5,
-            4.25,
-            9.75,
-            6
-          ],
-          "texture": "#operator"
-        },
-        "up": {
-          "uv": [
-            4.5,
-            11.75,
-            6.5,
-            12
-          ],
-          "texture": "#operator",
-          "rotation": 180
-        },
-        "down": {
-          "uv": [
-            6.75,
-            11.75,
-            8.75,
-            12
           ],
           "texture": "#operator",
           "rotation": 180

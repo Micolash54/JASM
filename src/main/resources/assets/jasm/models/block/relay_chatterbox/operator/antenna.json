@@ -1,149 +1,139 @@
 {
-  "ambientocclusion": false,
   "textures": {
-    "operator": "jasm:block/relay_chatterbox_operator",
+    "skin": "jasm:block/bitling/link",
+    "screen": "jasm:block/bitling/link_screen",
     "particle": "jasm:block/relay_chatterbox"
   },
   "elements": [
     {
-      "name": "antenna",
+      "name": "antenna_ball",
       "from": [
-        8.2592,
-        12.0492,
-        8.6816
+        7.8368,
+        12.894,
+        8.2592
       ],
       "to": [
-        8.5408,
-        13.0348,
-        8.9632
+        8.9632,
+        14.0204,
+        9.3856
       ],
+      "light_emission": 15,
+      "shade": false,
       "faces": {
         "south": {
           "uv": [
-            12.5,
-            9.25,
-            12.75,
-            9.75
+            7.75,
+            11.5,
+            8.25,
+            12.5
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "west": {
           "uv": [
-            13.5,
-            9.25,
-            13.75,
-            9.75
+            7.25,
+            11.5,
+            7.75,
+            12.5
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "north": {
           "uv": [
-            12,
+            8.75,
+            11.5,
             9.25,
-            12.25,
-            9.75
+            12.5
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "east": {
           "uv": [
-            13,
-            9.25,
-            13.25,
-            9.75
+            8.25,
+            11.5,
+            8.75,
+            12.5
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "up": {
           "uv": [
-            7,
-            13.75,
-            7.25,
-            14
+            7.75,
+            10.5,
+            8.25,
+            11.5
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         },
         "down": {
           "uv": [
-            7.5,
-            13.75,
-            7.75,
-            14
+            8.25,
+            10.5,
+            8.75,
+            11.5
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         }
       }
     },
     {
-      "name": "antenna_ball",
+      "name": "antenna",
       "from": [
-        7.9776,
-        13.0348,
-        8.4
+        8.1184,
+        12.0492,
+        8.5408
       ],
       "to": [
-        8.8224,
-        13.8796,
-        9.2448
+        8.6816,
+        12.894,
+        9.104
       ],
+      "shade_direction_override": "up",
       "faces": {
         "south": {
           "uv": [
-            6.25,
-            9.25,
-            6.75,
-            9.75
+            12,
+            11,
+            12.25,
+            11.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "west": {
           "uv": [
-            7.75,
-            9.25,
-            8.25,
-            9.75
+            11.75,
+            11,
+            12,
+            11.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "north": {
           "uv": [
-            5.5,
-            9.25,
-            6,
-            9.75
+            12.5,
+            11,
+            12.75,
+            11.75
           ],
-          "texture": "#operator"
+          "texture": "#skin"
         },
         "east": {
           "uv": [
-            7,
-            9.25,
-            7.5,
-            9.75
+            12.25,
+            11,
+            12.5,
+            11.75
           ],
-          "texture": "#operator"
-        },
-        "up": {
-          "uv": [
-            8.5,
-            9.25,
-            9,
-            9.75
-          ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         },
         "down": {
           "uv": [
-            9.25,
-            9.25,
-            9.75,
-            9.75
+            12.25,
+            10.5,
+            12.5,
+            11
           ],
-          "texture": "#operator",
-          "rotation": 180
+          "texture": "#skin"
         }
       }
     }

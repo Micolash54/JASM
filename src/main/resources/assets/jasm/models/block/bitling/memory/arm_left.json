@@ -2,6 +2,7 @@
   "parent": "jasm:block/bitling/arm_left",
   "textures": {
     "skin": "jasm:block/bitling/memory",
+    "screen": "jasm:block/bitling/memory_screen",
     "particle": "jasm:block/bitling/memory"
   }
 }
