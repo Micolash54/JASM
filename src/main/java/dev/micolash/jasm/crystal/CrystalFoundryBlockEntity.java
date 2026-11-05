@@ -153,7 +153,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
         return Math.clamp((shownProgress + elapsed) / shownTicks, 0F, 1F);
     }
 
-    // Players only get how the crystal is coming along, not the slots.
+    // Players only get how the crystal is coming along and the I/O grid, not the slots.
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
@@ -161,7 +161,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
+        CompoundTag tag = super.getUpdateTag(registries);
         tag.putBoolean("growing", growing);
         tag.putBoolean("busy", busy);
         tag.putInt("progress", progress);
@@ -180,6 +180,7 @@ public class CrystalFoundryBlockEntity extends MachineBlockEntity implements Wor
     }
 
     private void shown(ValueInput input) {
+        readSides(input);
         shownGrowing = input.getBooleanOr("growing", false);
         shownBusy = input.getBooleanOr("busy", false);
         shownProgress = input.getIntOr("progress", 0);

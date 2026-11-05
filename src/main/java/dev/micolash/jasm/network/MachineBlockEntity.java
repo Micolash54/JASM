@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -35,6 +37,8 @@ import org.jspecify.annotations.Nullable;
 public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
     private static final int PUSH_TICKS = 10;
     private static final int PUSH_ITEMS = 64;
+    /** The I/O grid as players' games get it. */
+    private static final String SYNCED_SIDES = "io";
     protected final NetworkEnergy energy;
     private @Nullable UUID owner;
     private String ownerName = "";
@@ -91,7 +95,11 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         buf.writeBlockPos(worldPosition);
     }
 
-    /** The I/O grid, for the machines that have one. */
+    /**
+     * The I/O grid, for the machines that have one. Players' games get it too, so pipes and hoppers asking from there
+     * see the same faces: a machine with a grid starts its update tag from {@link #getUpdateTag} here and reads it back
+     * with {@link #readSides} in both update handlers.
+     */
     public @Nullable MachineSides sides() {
         return null;
     }
@@ -127,10 +135,34 @@ public abstract class MachineBlockEntity extends BaseContainerBlockEntity {
         return gates.through(sides.mode(MachineSides.Kind.FLUIDS, MachineFace.of(frontSide(), side)));
     }
 
-    /** A player changed the grid: what neighbours reach through each face changed with it. */
-    protected void sidesChanged() {
+    /**
+     * A player changed the grid. A face change also changes what neighbours reach through it, so they ask again once,
+     * and players are told in one block update. The Auto Output switch only needs saving.
+     */
+    protected void sidesChanged(boolean faces) {
         setChanged();
-        if (level != null) level.invalidateCapabilities(worldPosition);
+        if (!faces || level == null) return;
+        level.invalidateCapabilities(worldPosition);
+        if (!level.isClientSide()) {
+            BlockState state = getBlockState();
+            level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** Sent with the chunk and with each block update; a few bytes, only for machines with a grid. */
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        MachineSides sides = sides();
+        if (sides != null) tag.putInt(SYNCED_SIDES, sides.synced());
+        return tag;
+    }
+
+    /** On a player's game: takes the faces the server sent, if it sent any. */
+    protected final void readSides(ValueInput input) {
+        MachineSides sides = sides();
+        int synced = input.getIntOr(SYNCED_SIDES, -1);
+        if (sides != null && synced >= 0 && sides.applySynced(synced) && level != null) level.invalidateCapabilities(worldPosition);
     }
 
     /**

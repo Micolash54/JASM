@@ -216,7 +216,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
         return shownLooks;
     }
 
-    // Players only get the critter's looks, not the slots.
+    // Players only get the critter's looks and the I/O grid, not the slots.
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
@@ -224,7 +224,7 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
+        CompoundTag tag = super.getUpdateTag(registries);
         tag.putInt("looks", looks());
         return tag;
     }
@@ -232,11 +232,12 @@ public class ChipWorkshopBlockEntity extends MachineBlockEntity implements World
     @Override
     public void handleUpdateTag(ValueInput input) {
         shownLooks = input.getIntOr("looks", 0);
+        readSides(input);
     }
 
     @Override
     public void onDataPacket(Connection connection, ValueInput input) {
-        shownLooks = input.getIntOr("looks", 0);
+        handleUpdateTag(input);
     }
 
     private void tick(ServerLevel level) {

@@ -657,7 +657,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag();
+        CompoundTag tag = super.getUpdateTag(registries);
         tag.putInt("looks", looks());
         ItemStack held = held();
         if (!held.isEmpty()) {
@@ -675,6 +675,7 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
             clientRefusedSince = level == null ? Long.MIN_VALUE : level.getGameTime();
         }
         shownHeld = input.read("held", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        readSides(input);
     }
 
     @Override

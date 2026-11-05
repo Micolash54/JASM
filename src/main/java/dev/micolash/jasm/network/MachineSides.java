@@ -41,9 +41,15 @@ public final class MachineSides {
         }
     }
 
+    /** Hears about every change a player makes; {@code faces} is false when only the Auto Output switch moved. */
+    @FunctionalInterface
+    public interface Listener {
+        void changed(boolean faces);
+    }
+
     private final List<FaceMode> offered;
     private final boolean fluids;
-    private final Runnable changed;
+    private final Listener changed;
     private final FaceMode[][] modes = new FaceMode[Kind.values().length][FACES];
     private final boolean switchable;
     private boolean anyOut;
@@ -53,7 +59,7 @@ public final class MachineSides {
      * Every face starts at {@code start}, if offered, else None. With {@code switchable}, the machine has an Auto Output
      * switch, off on a new machine. {@code changed} hears about every change a player makes.
      */
-    public MachineSides(List<FaceMode> offered, boolean fluids, FaceMode start, boolean switchable, Runnable changed) {
+    public MachineSides(List<FaceMode> offered, boolean fluids, FaceMode start, boolean switchable, Listener changed) {
         this.offered = offered;
         this.fluids = fluids;
         this.switchable = switchable;
@@ -83,7 +89,7 @@ public final class MachineSides {
     public void setAutoOutput(boolean on) {
         if (!switchable || autoOutput == on) return;
         autoOutput = on;
-        changed.run();
+        changed.changed(false);
     }
 
     /** Every face this machine has set to {@code mode}; fluid faces stay None on a machine without a tank. */
@@ -105,7 +111,7 @@ public final class MachineSides {
         if (!offered.contains(mode) || kind == Kind.FLUIDS && !fluids || mode(kind, face) == mode) return;
         modes[kind.ordinal()][face.ordinal()] = mode;
         refreshOut();
-        changed.run();
+        changed.changed(true);
     }
 
     /** Whether any face sends results out, so the machine has pushing to do. */
@@ -148,6 +154,28 @@ public final class MachineSides {
 
     public static FaceMode unpack(int packed, MachineFace face) {
         return FaceMode.byId(packed >> face.ordinal() * 2 & 3);
+    }
+
+    /** Every face, items in the low 12 bits and fluids above, as players' games are told it. */
+    public int synced() {
+        return packed(Kind.ITEMS) | (fluids ? packed(Kind.FLUIDS) << 2 * FACES : 0);
+    }
+
+    /** Takes the faces the server sent, on a player's game. Whether any face changed. */
+    public boolean applySynced(int synced) {
+        boolean moved = false;
+        for (Kind kind : Kind.values()) {
+            if (kind == Kind.FLUIDS && !fluids) continue;
+            int packed = synced >> kind.ordinal() * 2 * FACES;
+            for (MachineFace face : MachineFace.values()) {
+                FaceMode mode = unpack(packed, face);
+                if (!offered.contains(mode)) mode = FaceMode.NONE;
+                moved |= modes[kind.ordinal()][face.ordinal()] != mode;
+                modes[kind.ordinal()][face.ordinal()] = mode;
+            }
+        }
+        if (moved) refreshOut();
+        return moved;
     }
 
     public void save(ValueOutput output) {
