@@ -15,6 +15,7 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.control.MoveControl;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
@@ -55,6 +56,7 @@ public abstract class BitlingBody extends PathfinderMob {
     private static final EntityDataAccessor<Integer> DATA_STAGE = SynchedEntityData.defineId(BitlingBody.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_ACT = SynchedEntityData.defineId(BitlingBody.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<ItemStack> DATA_HELD = SynchedEntityData.defineId(BitlingBody.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Boolean> DATA_GLANCING = SynchedEntityData.defineId(BitlingBody.class, EntityDataSerializers.BOOLEAN);
 
     protected static final double WALK = 0.5;
     protected static final double SPRINT = 1.0;
@@ -75,6 +77,11 @@ public abstract class BitlingBody extends PathfinderMob {
     private static final float BODY_FOLLOW_ANGLE = 35;
     private static final int BODY_FOLLOW_DELAY = 8;
     private static final float BODY_STEP = 8;
+    /** A player this close, in sight, gets a look; it looks round for one this often, in ticks. */
+    private static final double GLANCE_RANGE = 3;
+    private static final int GLANCE_SEARCH_EVERY = 5;
+    /** Walking, it only glances at a player this far either side of the way it is going. */
+    private static final float GLANCE_WALKING_ANGLE = 90;
 
     /** Ticks left of a timed act (a hop, a rest, a startle). */
     protected int actTicks;
@@ -91,6 +98,8 @@ public abstract class BitlingBody extends PathfinderMob {
     /** Ticks its head has been turned far from the body, and whether the body is turning round after it. */
     private int headTurnedTicks;
     private boolean bodyFollowing;
+    /** The player it is glancing at, if any. Checked every tick, dropped once out of reach. */
+    private @Nullable Player glancing;
 
     protected BitlingBody(EntityType<? extends BitlingBody> type, Level level) {
         super(type, level);
@@ -113,6 +122,7 @@ public abstract class BitlingBody extends PathfinderMob {
         builder.define(DATA_STAGE, 0);
         builder.define(DATA_ACT, 0);
         builder.define(DATA_HELD, ItemStack.EMPTY);
+        builder.define(DATA_GLANCING, false);
     }
 
     protected void setKindAndStage(BitlingKind kind, BitlingStage stage) {
@@ -145,6 +155,11 @@ public abstract class BitlingBody extends PathfinderMob {
 
     protected void setHeld(ItemStack stack) {
         entityData.set(DATA_HELD, stack);
+    }
+
+    /** True while it looks at a player nearby, for the client to let the idle loop's head sweep make way. */
+    public boolean glancing() {
+        return entityData.get(DATA_GLANCING);
     }
 
     /** The middle of the patch of ground it roams. */
@@ -191,7 +206,9 @@ public abstract class BitlingBody extends PathfinderMob {
     private void steerHead(ServerLevel level) {
         Act act = act();
         boolean moving = act == Act.WALK || act == Act.SPRINT || act == Act.TIRED;
-        Vec3 target = moving ? pathAhead() : act == Act.LOOK ? lookAround(level) : null;
+        Player player = glance(level, act, moving);
+        entityData.set(DATA_GLANCING, player != null);
+        Vec3 target = player != null ? player.getEyePosition() : moving ? pathAhead() : act == Act.LOOK ? lookAround(level) : null;
         if (act != Act.LOOK) {
             lookSpot = null;
         }
@@ -221,6 +238,63 @@ public abstract class BitlingBody extends PathfinderMob {
         float head = Mth.approachDegrees(yHeadRot, wantYaw, HEAD_STEP);
         yHeadRot = body + Mth.clamp(Mth.wrapDegrees(head - body), -HEAD_YAW_LIMIT, HEAD_YAW_LIMIT);
         setXRot(Mth.approach(getXRot(), wantPitch, PITCH_STEP));
+    }
+
+    /**
+     * The player it glances at: one within a few blocks that it can see. Walking, only one ahead of it. Not while asleep,
+     * while a loop of its own moves the head, or while it runs from a hit. The player it follows comes first.
+     */
+    private @Nullable Player glance(ServerLevel level, Act act, boolean moving) {
+        boolean free = switch (act) {
+            case REST, RECHARGE, INSPECT, NOD, EAT, SHAKE -> false;
+            default -> !running();
+        };
+        if (!free) {
+            glancing = null;
+            return null;
+        }
+        if (glancing != null && !worthAGlance(glancing, moving)) {
+            glancing = null;
+        }
+        if ((tickCount + getId()) % GLANCE_SEARCH_EVERY == 0) {
+            Player first = glanceFirst();
+            if (first != null && worthAGlance(first, moving)) {
+                glancing = first;
+            } else {
+                Player nearest = null;
+                double best = GLANCE_RANGE * GLANCE_RANGE;
+                for (Player player : level.players()) {
+                    double distance = distanceToSqr(player);
+                    if (distance <= best && worthAGlance(player, moving)) {
+                        nearest = player;
+                        best = distance;
+                    }
+                }
+                glancing = nearest;
+            }
+        }
+        return glancing;
+    }
+
+    /** The player to glance at before any other, like the one it follows. */
+    protected @Nullable Player glanceFirst() {
+        return null;
+    }
+
+    private boolean worthAGlance(Player player, boolean moving) {
+        if (player.isRemoved() || !player.isAlive() || player.level() != level() || player.isSpectator() || player.isInvisible()
+                || distanceToSqr(player) > GLANCE_RANGE * GLANCE_RANGE) {
+            return false;
+        }
+        if (moving) {
+            double dx = player.getX() - getX();
+            double dz = player.getZ() - getZ();
+            float yaw = (float) (Mth.atan2(dz, dx) * Mth.RAD_TO_DEG) - 90;
+            if (Math.abs(Mth.wrapDegrees(yaw - getYRot())) > GLANCE_WALKING_ANGLE) {
+                return false;
+            }
+        }
+        return getSensing().hasLineOfSight(player);
     }
 
     /** Where the head looks while walking: a little way along its path, so it turns into a bend before the body does. */

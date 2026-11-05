@@ -131,6 +131,12 @@ public class WildBitling extends BitlingBody {
         waitTicks = 20;
     }
 
+    /** The player it follows gets its glances before anyone else. */
+    @Override
+    protected @Nullable Player glanceFirst() {
+        return followTicks > 0 ? leader : null;
+    }
+
     private boolean inSequence() {
         Act act = act();
         return act == Act.INSPECT || act == Act.NOD || act == Act.EAT;

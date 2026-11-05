@@ -98,7 +98,7 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         Motion motion = motions.computeIfAbsent(bitling, b -> new Motion());
         float headYaw = Mth.wrapDegrees(Mth.rotLerp(partialTicks, bitling.yHeadRotO, bitling.yHeadRot) - state.bodyYaw);
         state.pose = motion.update(bitling.act(), (bitling.tickCount + partialTicks) / 20F, bitling.walkAnimation.position(partialTicks),
-                bitling.walkAnimation.speed(partialTicks), headYaw, bitling.getXRot(partialTicks));
+                bitling.walkAnimation.speed(partialTicks), headYaw, bitling.getXRot(partialTicks), bitling.glancing());
         // It only ever holds something up to look at it or eat it, whichever loop stands in for that.
         Act act = bitling.act();
         if (act == Act.INSPECT || act == Act.EAT) {
@@ -154,7 +154,7 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         private float looking;
         private float lastTime = -1;
 
-        Map<String, float[]> update(Act now, float time, float walk, float speed, float headYaw, float headPitch) {
+        Map<String, float[]> update(Act now, float time, float walk, float speed, float headYaw, float headPitch, boolean glancing) {
             // The step cycle moves on with the ground covered, in longer strides the faster it goes.
             float moved = Float.isNaN(lastWalk) ? 0 : walk - lastWalk;
             lastWalk = walk;
@@ -193,11 +193,11 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             }
             shown = pose;
 
-            // The head turns where the Bitling really looks. While it looks around, the idle loop's own sweep makes way,
-            // so the two never add up.
+            // The head turns where the Bitling really looks. While it looks around or at a player, the idle loop's own
+            // sweep makes way, so the two never add up.
             float step = lastTime < 0 ? 1 : 1 - (float) Math.exp(-Mth.clamp(time - lastTime, 0, 0.25F) * LOOK_FADE);
             lastTime = time;
-            looking += ((now == Act.LOOK ? 1 : 0) - looking) * step;
+            looking += ((now == Act.LOOK || glancing ? 1 : 0) - looking) * step;
             float[] head = pose.get("head");
             if (head == null || (looking < 0.001F && Math.abs(headYaw) + Math.abs(headPitch) < 0.01F)) {
                 return pose;
