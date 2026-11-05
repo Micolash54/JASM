@@ -42,6 +42,7 @@ One page for each item, block and machine, with its recipe. Hold the guide key o
 * [Type Wafers](type-wafers.md): a few kinds, in bulk.
 * [Fluid Capacity Wafers](fluid-capacity-wafers.md): any mix of fluids.
 * [Fluid Type Wafers](fluid-type-wafers.md): a few fluids, in bulk.
+* [Infinite Wafers](infinite-wafers.md): water or lava that never runs out.
 * [Decks](decks.md): the handheld reader.
 * [Crafting Decks](crafting-decks.md): a Deck with a crafting grid.
 * [Dimension Upgrade](dimension-upgrade.md): use a Deck outside the Overworld.

@@ -1398,7 +1398,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
             long took = Math.min(n, accepted.getOrDefault(key, 0L));
             accepted.merge(key, -took, Long::sum);
             return took;
-        }, (fluid, n) -> storage.depositFluidResult(fluid, n, DeckStorage.Excess.KEEP).stored());
+        }, (fluid, n) -> storage.depositFluidResult(fluid, n, DeckStorage.Excess.KEEP).total());
         Jobs.refreshOpenDeck(target.player(), target.deck());
     }
 

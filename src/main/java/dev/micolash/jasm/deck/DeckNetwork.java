@@ -51,10 +51,13 @@ public final class DeckNetwork {
                         (payload, context) -> pourSlot((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.EmptyWafer.TYPE, DeckPayloads.EmptyWafer.STREAM_CODEC,
                         (payload, context) -> emptyWafer((ServerPlayer) context.player(), payload))
+                .playToServer(DeckPayloads.PullInfinite.TYPE, DeckPayloads.PullInfinite.STREAM_CODEC,
+                        (payload, context) -> pullInfinite((ServerPlayer) context.player(), payload))
                 .playToServer(DeckPayloads.OpenKey.TYPE, DeckPayloads.OpenKey.STREAM_CODEC,
                         (payload, context) -> openByKey((ServerPlayer) context.player()))
                 .playToClient(DeckPayloads.EmptyProgress.TYPE, DeckPayloads.EmptyProgress.STREAM_CODEC, DeckNetwork::onEmptyProgress)
                 .playToClient(DeckPayloads.Emptied.TYPE, DeckPayloads.Emptied.STREAM_CODEC, DeckNetwork::onEmptied)
+                .playToClient(DeckPayloads.Pulled.TYPE, DeckPayloads.Pulled.STREAM_CODEC, DeckNetwork::onPulled)
                 .playToClient(DeckPayloads.FluidSnapshot.TYPE, DeckPayloads.FluidSnapshot.STREAM_CODEC, DeckNetwork::onFluidSnapshot)
                 .playToClient(DeckPayloads.FluidDelta.TYPE, DeckPayloads.FluidDelta.STREAM_CODEC, DeckNetwork::onFluidDelta)
                 .playToClient(DeckPayloads.MaterialSnapshot.TYPE, DeckPayloads.MaterialSnapshot.STREAM_CODEC, DeckNetwork::onMaterialSnapshot)
@@ -189,6 +192,25 @@ public final class DeckNetwork {
         menu.startEmptying(payload.slot(), plan.total());
         send(player, new DeckPayloads.EmptyProgress(menu.containerId, payload.slot(), 0, plan.total(), plan.fluid()));
         return true;
+    }
+
+    /**
+     * The Pull all key of an infinite wafer: deletes its fluid from the Deck's other wafers at the normal fluid charge
+     * and tells the window how much. Returns what it told the window, or null when refused.
+     */
+    public static DeckPayloads.@Nullable Pulled pullInfinite(ServerPlayer player, DeckPayloads.PullInfinite payload) {
+        DeckMenu menu = openMenu(player, payload.containerId());
+        if (menu == null || !allow(player) || !menu.dimensionAllowed() || payload.slot() < 0 || payload.slot() >= menu.waferSlots()) {
+            return null;
+        }
+        DeckFluidStorage.Pull pull = DeckFluidStorage.pullIntoInfinite(WaferStore.get(player.level().getServer()), menu.deck(), payload.slot(), player);
+        if (pull == null) {
+            return null;
+        }
+        finish(player, menu);
+        DeckPayloads.Pulled result = new DeckPayloads.Pulled(menu.containerId, payload.slot(), pull.amount(), pull.outOfCharge());
+        send(player, result);
+        return result;
     }
 
     /** One tick of an emptying: moves a share, then reports the bar or, when it can go no further, the result. */
@@ -393,6 +415,13 @@ public final class DeckNetwork {
         DeckView view = view(context, payload.containerId());
         if (view != null) {
             view.setEmptying(payload);
+        }
+    }
+
+    private static void onPulled(DeckPayloads.Pulled payload, IPayloadContext context) {
+        DeckView view = view(context, payload.containerId());
+        if (view != null) {
+            view.setPulled(payload);
         }
     }
 

@@ -15,6 +15,7 @@ import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
@@ -86,8 +87,10 @@ public final class DeckStorage {
      * own unit: items, or millibuckets when {@code fluid} is set.
      */
     public record SlotStatus(boolean present, long used, long capacity, long fromMissingMods, boolean linked, long typesUsed, int types,
-            WaferSettings settings, boolean fluid) {
-        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT, false);
+            WaferSettings settings, boolean fluid, boolean infinite) {
+        public static final SlotStatus NONE = new SlotStatus(false, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT, false, false);
+        /** An infinite wafer: no room, no types, no settings and no backup; it adds nothing to the usage line. */
+        public static final SlotStatus INFINITE = new SlotStatus(true, 0, 0, 0, false, 0, 0, WaferSettings.DEFAULT, true, true);
     }
 
     /** What happens to items no wafer has room for: they stay where they were, or a Void row destroys them. */
@@ -193,6 +196,8 @@ public final class DeckStorage {
         /** Puts back fluid a move could not finish: wafers first whatever their filters say, then wherever there is room. */
         public long restoreQuietlyFluid(FluidResource key, long amount) {
             check();
+            // it came from the infinite wafer: putting it back deletes it, free like any put-back
+            if (InfiniteWaferItem.covers(deck, key)) return amount;
             long left = amount;
             for (var record : DeckStorage.records(store, deck)) {
                 if (record != null && left > 0) left -= store.insertFluid(record, key, left, false, player);
@@ -697,6 +702,10 @@ public final class DeckStorage {
         List<SlotStatus> status = new ArrayList<>();
         for (int slot = 0; slot < tier.slots(); slot++) {
             ItemStack wafer = wafers.get(slot);
+            if (wafer.getItem() instanceof InfiniteWaferItem) {
+                status.add(SlotStatus.INFINITE);
+                continue;
+            }
             if (!(wafer.getItem() instanceof WaferItem item)) {
                 status.add(SlotStatus.NONE);
                 continue;
@@ -704,9 +713,9 @@ public final class DeckStorage {
             WaferRecord record = usableRecord(store, wafer);
             status.add(record == null
                     ? new SlotStatus(true, 0, item.tier().capacityAmount(), 0, false, 0, item.tier().types(), WaferSettings.DEFAULT,
-                            item.tier().isFluid())
+                            item.tier().isFluid(), false)
                     : new SlotStatus(true, record.used(), record.capacityAmount(), record.quarantinedCount(), record.archiveId() != null,
-                            record.typesUsed(), record.types(), record.settings(), record.isFluid()));
+                            record.typesUsed(), record.types(), record.settings(), record.isFluid(), false));
         }
         return status;
     }

@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/flow_state",
+  "criteria": {
+    "bottomless_well": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:infinite_water_wafer"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:infinite_water_wafer"
+    },
+    "title": {
+      "translate": "advancements.jasm.bottomless_well.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.bottomless_well.description"
+    },
+    "frame": "task"
+  },
+  "requirements": [
+    [
+      "bottomless_well"
+    ]
+  ]
+}

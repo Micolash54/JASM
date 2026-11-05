@@ -40,6 +40,8 @@ public final class JasmTabs {
                 for (WaferTier tier : WaferTier.values()) {
                     output.accept(JasmItems.wafer(tier));
                 }
+                output.accept(JasmItems.INFINITE_WATER_WAFER);
+                output.accept(JasmItems.INFINITE_LAVA_WAFER);
                 for (ArchiveTier tier : ArchiveTier.values()) {
                     output.accept(JasmItems.archive(tier));
                 }

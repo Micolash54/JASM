@@ -200,6 +200,36 @@ public final class DeckPayloads {
         }
     }
 
+    /** Client → server: the infinite wafer in {@code slot} pulls its fluid off the Deck's other wafers. */
+    public record PullInfinite(int containerId, int slot) implements CustomPacketPayload {
+        public static final Type<PullInfinite> TYPE = new Type<>(Jasm.id("deck_pull_infinite"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, PullInfinite> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, PullInfinite::containerId,
+                ByteBufCodecs.VAR_INT, PullInfinite::slot,
+                PullInfinite::new);
+
+        @Override
+        public Type<PullInfinite> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server → client: millibuckets the infinite wafer in {@code slot} pulled in and deleted. */
+    public record Pulled(int containerId, int slot, long amount, boolean outOfCharge) implements CustomPacketPayload {
+        public static final Type<Pulled> TYPE = new Type<>(Jasm.id("deck_pulled"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Pulled> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Pulled::containerId,
+                ByteBufCodecs.VAR_INT, Pulled::slot,
+                ByteBufCodecs.VAR_LONG, Pulled::amount,
+                ByteBufCodecs.BOOL, Pulled::outOfCharge,
+                Pulled::new);
+
+        @Override
+        public Type<Pulled> type() {
+            return TYPE;
+        }
+    }
+
     /** Server → client: how much of {@code slot}'s emptying is done, in items (millibuckets for a fluid wafer). */
     public record EmptyProgress(int containerId, int slot, long moved, long total, boolean fluid) implements CustomPacketPayload {
         public static final Type<EmptyProgress> TYPE = new Type<>(Jasm.id("deck_empty_progress"));
@@ -245,6 +275,7 @@ public final class DeckPayloads {
                 ByteBufCodecs.VAR_INT, DeckStorage.SlotStatus::types,
                 WaferSettings.STREAM_CODEC, DeckStorage.SlotStatus::settings,
                 ByteBufCodecs.BOOL, DeckStorage.SlotStatus::fluid,
+                ByteBufCodecs.BOOL, DeckStorage.SlotStatus::infinite,
                 DeckStorage.SlotStatus::new);
         public static final StreamCodec<RegistryFriendlyByteBuf, Status> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Status::containerId,

@@ -3,6 +3,7 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.Notices;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -234,6 +235,8 @@ public final class DeckFluids {
 
     /** Puts fluid that a container refused back on the wafers, without charge. */
     private static void giveBack(ServerPlayer player, DeckMenu menu, FluidResource key, long amount) {
+        // it came from the infinite wafer, so it goes back there and is deleted
+        if (InfiniteWaferItem.covers(menu.deck(), key)) return;
         WaferStore store = WaferStore.get(player.level().getServer());
         long left = amount;
         for (WaferRecord record : DeckStorage.records(store, menu.deck())) {

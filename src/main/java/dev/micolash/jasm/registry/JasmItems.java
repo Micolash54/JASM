@@ -26,6 +26,7 @@ import dev.micolash.jasm.tether.NetworkTetherItem;
 import dev.micolash.jasm.transfer.RedstoneUpgradeItem;
 import dev.micolash.jasm.transfer.SpeedUpgradeItem;
 import dev.micolash.jasm.transfer.TransferPortItem;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferTier;
 import dev.micolash.jasm.workshop.BitlingItem;
@@ -33,6 +34,8 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
@@ -135,6 +138,10 @@ public final class JasmItems {
     public static final DeferredItem<BlockItem> NETWORK_CHAMBER = ITEMS.registerSimpleBlockItem(JasmBlocks.NETWORK_CHAMBER);
     public static final DeferredItem<SpawnEggItem> WILD_BITLING_SPAWN_EGG = ITEMS.registerItem("wild_bitling_spawn_egg", SpawnEggItem::new,
             p -> p.spawnEgg(JasmEntities.WILD_BITLING.get()));
+    public static final DeferredItem<InfiniteWaferItem> INFINITE_WATER_WAFER = ITEMS.registerItem("infinite_water_wafer",
+            p -> new InfiniteWaferItem(p.rarity(Rarity.EPIC), Fluids.WATER));
+    public static final DeferredItem<InfiniteWaferItem> INFINITE_LAVA_WAFER = ITEMS.registerItem("infinite_lava_wafer",
+            p -> new InfiniteWaferItem(p.rarity(Rarity.EPIC).fireResistant(), Fluids.LAVA));
     private static final Map<ProcessorTier, DeferredItem<ServerPartItem>> PROCESSORS = new EnumMap<>(ProcessorTier.class);
     private static final Map<MemoryTier, DeferredItem<ServerPartItem>> MODULES = new EnumMap<>(MemoryTier.class);
 

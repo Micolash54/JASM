@@ -2,6 +2,7 @@ package dev.micolash.jasm.registry;
 
 import dev.micolash.jasm.Jasm;
 import dev.micolash.jasm.autocraft.WipeCardRecipe;
+import dev.micolash.jasm.crafting.EmptyWafersRecipe;
 import dev.micolash.jasm.crafting.SwitchableRecipe;
 import dev.micolash.jasm.crafting.UpgradeRecipe;
 import dev.micolash.jasm.crystal.QuenchingRecipe;
@@ -19,6 +20,10 @@ public final class JasmRecipes {
 
     /** A crafting recipe that only works while its feature is on in the world. */
     public static final Supplier<RecipeSerializer<SwitchableRecipe>> SWITCHABLE = SERIALIZERS.register("switchable", () -> SwitchableRecipe.SERIALIZER);
+
+    /** A crafting recipe that takes wafers only while they are empty. */
+    public static final Supplier<RecipeSerializer<EmptyWafersRecipe>> EMPTY_WAFERS = SERIALIZERS.register("empty_wafers",
+            () -> EmptyWafersRecipe.SERIALIZER);
 
     /** Tier upgrades that keep the lower tier's contents. */
     public static final Supplier<RecipeSerializer<UpgradeRecipe>> UPGRADE = SERIALIZERS.register("upgrade", () -> UpgradeRecipe.SERIALIZER);

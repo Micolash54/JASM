@@ -19,6 +19,7 @@ import dev.micolash.jasm.deck.DeckStorage;
 import dev.micolash.jasm.deck.DeckTier;
 import dev.micolash.jasm.deck.DeckView;
 import dev.micolash.jasm.storage.WaferSettings;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -142,6 +143,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     private int rows = SMALL_ROWS;
     private Button sizeButton;
     private WaferFilterWindow filterWindow;
+    private InfinitePullWindow pullWindow;
     /** The Network tab: kept while the screen is open. */
     private @Nullable NetworkPanel networkPanel;
 
@@ -349,6 +351,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         updateTabs();
 
         if (filterWindow == null) filterWindow = new WaferFilterWindow(menu, font);
+        if (pullWindow == null) pullWindow = new InfinitePullWindow(menu, font);
     }
 
     /** Top of the strip under the wafers, where the Dimension Upgrade slot sits. */
@@ -571,7 +574,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     // --- wafer settings ---
 
     private boolean inWindow(double mouseX, double mouseY) {
-        return filterWindow != null && filterWindow.contains(mouseX, mouseY);
+        return filterWindow != null && filterWindow.contains(mouseX, mouseY) || pullWindow != null && pullWindow.contains(mouseX, mouseY);
     }
 
     private void openSettings(int slot) {
@@ -579,11 +582,13 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         craftWindow.close();
         ruleWindow.close();
         jobsWindow.close();
+        pullWindow.close();
         filterWindow.open(slot, leftPos + mainX, topPos + 20, width, height);
     }
 
     private void closeSettings() {
         if (filterWindow != null) filterWindow.close();
+        if (pullWindow != null) pullWindow.close();
     }
 
     /** A fluid or modded material dragged from JEI fills a Material row in the open filter window. */
@@ -605,6 +610,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
     public List<Rect2i> windowAreas() {
         List<Rect2i> areas = new ArrayList<>();
         settingsWindowArea().ifPresent(areas::add);
+        if (pullWindow != null) pullWindow.area().ifPresent(areas::add);
         if (sendWindow != null) sendWindow.area().ifPresent(areas::add);
         return areas;
     }
@@ -953,6 +959,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
                 && !(filterWindow.selected() < menu.view().slots().size() && menu.view().slots().get(filterWindow.selected()).present())) {
             closeSettings();
         }
+        if (pullWindow.isOpen() && (!pullWindow.stillThere() || !menu.dimensionAllowed())) {
+            pullWindow.close();
+        }
         sendWindow.sync(leftPos, topPos);
         sendButton.setLatched(sendWindow.isOpen());
         if (picker != null) {
@@ -989,6 +998,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         if (filterWindow.isOpen()) {
             graphics.nextStratum();
             filterWindow.draw(graphics, realMouseX, realMouseY, a, width, height);
+        }
+        if (pullWindow.isOpen()) {
+            graphics.nextStratum();
+            pullWindow.draw(graphics, realMouseX, realMouseY, a);
         }
         if (craftWindow.isOpen()) {
             graphics.nextStratum();
@@ -1187,11 +1200,13 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         long missing = 0;
         long typesUsed = 0;
         long types = 0;
-        // The line shows fluid wafers only when the Deck holds nothing else.
+        // The line shows fluid wafers only when the Deck holds nothing else. Infinite wafers have no room and never count.
         boolean fluidLine = menu.view().slots().stream().noneMatch(s -> s.present() && !s.fluid())
-                && menu.view().slots().stream().anyMatch(DeckStorage.SlotStatus::fluid);
+                && menu.view().slots().stream().anyMatch(s -> s.fluid() && !s.infinite());
+        boolean onlyInfinite = menu.view().slots().stream().noneMatch(s -> s.present() && !s.infinite())
+                && menu.view().slots().stream().anyMatch(DeckStorage.SlotStatus::infinite);
         for (DeckStorage.SlotStatus slot : menu.view().slots()) {
-            if (slot.fluid() != fluidLine) {
+            if (slot.fluid() != fluidLine || slot.infinite()) {
                 continue;
             }
             used += slot.used();
@@ -1204,6 +1219,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             // A job's results are waiting for room: say so until they are delivered.
             Component banner = Component.translatable("screen.jasm.craft.banner_full");
             graphics.text(font, banner, mainX + 6, statusY, JasmGui.BAD, false);
+            return;
+        }
+        if (onlyInfinite) {
+            graphics.text(font, Component.translatable("screen.jasm.deck.usage_infinite"), mainX + 6, statusY, JasmGui.SUBTEXT, false);
             return;
         }
         // Items from missing mods still take up space; the usage turns red and each wafer's tooltip says how many.
@@ -1235,6 +1254,10 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             DeckStorage.SlotStatus status = menu.view().slots().get(hoveredSlot.index);
             if (menu.isOverflow(hoveredSlot.getContainerSlot())) {
                 lines.add(Component.translatable("screen.jasm.deck.overflow").withStyle(ChatFormatting.YELLOW));
+            }
+            // the infinite wafer's own lines say it all: no room, filters or backup
+            if (status.infinite()) {
+                return lines;
             }
             lines.add((status.fluid()
                     ? Component.translatable("screen.jasm.deck.wafer_used_fluid", FluidAmounts.buckets(status.used()), FluidAmounts.buckets(status.capacity()))
@@ -1314,6 +1337,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         }
         // The settings window takes every click that lands on it, before the grid or tabs underneath
         // (whichever tab is open), so nothing there is touched.
+        if (pullWindow.contains(event.x(), event.y())) {
+            return pullWindow.mouseClicked(event, doubleClick);
+        }
         if (inWindow(event.x(), event.y())) {
             return filterWindow.mouseClicked(event, doubleClick);
         }
@@ -1359,6 +1385,20 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         // Right-clicking a wafer (with nothing on the cursor) opens its settings, or switches them to that wafer; the
         // same wafer again closes them.
         Slot clickedSlot = slotAt(event.x(), event.y());
+        if (right && clickedSlot != null && clickedSlot.index < menu.waferSlots() && clickedSlot.hasItem() && menu.getCarried().isEmpty()
+                && clickedSlot.getItem().getItem() instanceof InfiniteWaferItem) {
+            // An infinite wafer has no filters: its own small window with the Pull all key.
+            if (pullWindow.selected() == clickedSlot.index) {
+                closeSettings();
+            } else {
+                closeSettings();
+                craftWindow.close();
+                ruleWindow.close();
+                jobsWindow.close();
+                pullWindow.open(clickedSlot.index, leftPos + mainX + 20, topPos + 40, width, height);
+            }
+            return true;
+        }
         if (right && clickedSlot != null && clickedSlot.index < menu.waferSlots() && clickedSlot.hasItem() && menu.getCarried().isEmpty()) {
             if (filterWindow.selected() == clickedSlot.index) {
                 closeSettings();
@@ -1433,6 +1473,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             return true;
         }
         if (filterWindow.isOpen() && filterWindow.mouseDragged(event, width, height)) return true;
+        if (pullWindow.mouseDragged(event, width, height)) return true;
         if (ruleWindow.isOpen() && ruleWindow.mouseDragged(event, width, height)) return true;
         if (draggingHandle) {
             scrollToMouse(event.y());
@@ -1450,6 +1491,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             return true;
         }
         if (filterWindow.isOpen() && filterWindow.mouseReleased(event)) return true;
+        if (pullWindow.mouseReleased()) return true;
         if (ruleWindow.mouseReleased()) return true;
         if (draggingHandle) {
             draggingHandle = false;
@@ -1471,6 +1513,9 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
         }
         if (craftWindow.contains(x, y)) {
             return craftWindow.mouseScrolled(scrollX, scrollY);
+        }
+        if (pullWindow.contains(x, y)) {
+            return true;
         }
         if (inWindow(x, y)) {
             return filterWindow.mouseScrolled(scrollY);
@@ -1520,6 +1565,7 @@ public class DeckScreen extends JasmScreen<DeckMenu> {
             return true;
         }
         if (filterWindow.isOpen() && filterWindow.keyPressed(event)) return true;
+        if (pullWindow.isOpen() && pullWindow.keyPressed(event)) return true;
         if (search.isFocused() && !event.isEscape()) {
             search.keyPressed(event);
             return true;

@@ -37,6 +37,8 @@ public final class DeckView {
     private long most;
     private int mostVersion;
     private Map<UUID, String> stalled = Map.of();
+    /** The last Pull all result of an infinite wafer, until its window closes. */
+    private DeckPayloads.@Nullable Pulled pulled;
     /** The last "Empty into other wafers" result, until the wafer window closes. */
     private DeckPayloads.@Nullable Emptied emptied;
     private DeckPayloads.@Nullable EmptyProgress emptying;
@@ -59,6 +61,14 @@ public final class DeckView {
             emptying = null;
         }
         return emptying;
+    }
+
+    public DeckPayloads.@Nullable Pulled pulled() {
+        return pulled;
+    }
+
+    public void setPulled(DeckPayloads.@Nullable Pulled pulled) {
+        this.pulled = pulled;
     }
 
     public DeckPayloads.@Nullable Emptied emptied() {

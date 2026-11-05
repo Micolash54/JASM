@@ -8,6 +8,7 @@ import dev.micolash.jasm.pool.NetworkPool;
 import dev.micolash.jasm.pool.PoolAccess;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -143,6 +144,8 @@ public final class DeckViewTracker {
                 if (t[1] > 0) sent.chest.put(key, t[1]);
             });
             Map<FluidResource, long[]> fluidTotals = totals(fluids, pool == null ? Map.of() : pool.fluidContents());
+            // an infinite wafer shows its fixed amount, with nothing counted from tanks
+            for (FluidResource key : InfiniteWaferItem.in(menu.deck())) fluidTotals.put(key, new long[]{InfiniteWaferItem.AMOUNT, 0});
             if (menu.isCrafting()) DeckBucket.forgetIfUnlisted(menu.deck(), fluidTotals, pool);
             sendFluids(player, menu.containerId, sent, fluidTotals);
             sendMaterials(player, menu.containerId, sent, pool == null ? Map.of() : pool.materialContents());

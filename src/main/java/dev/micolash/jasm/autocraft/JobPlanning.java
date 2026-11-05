@@ -19,6 +19,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.ArchiveRecord;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
@@ -354,9 +355,15 @@ final class JobPlanning {
         // commits at the end, so a missing ingredient leaves them as they were.
         List<Taken> taken = new ArrayList<>();
         Map<ItemResource, Long> fromChests = new LinkedHashMap<>();
+        // fluid an infinite wafer gives: it never runs out, so it is only written into the job once it starts
+        Map<FluidResource, Long> fromInfinite = new LinkedHashMap<>();
         try (Transaction tx = Transaction.openRoot()) {
             for (Map.Entry<GridKey, Long> need : preview.plan().taken().entrySet()) {
                 if (need.getKey() instanceof GridKey.Material) {
+                    continue;
+                }
+                if (need.getKey() instanceof GridKey.Fluid fluid && InfiniteWaferItem.covers(deck, fluid.resource())) {
+                    fromInfinite.merge(fluid.resource(), need.getValue(), Long::sum);
                     continue;
                 }
                 long left = need.getValue();
@@ -398,6 +405,7 @@ final class JobPlanning {
             putBack(store, t.key() instanceof GridKey.Fluid ? fluidRecord : record, t.key(), t.amount(), player);
         }
         fromChests.forEach((key, got) -> putBack(store, record, new GridKey.Item(key), got, player));
+        fromInfinite.forEach((key, got) -> putBack(store, fluidRecord, new GridKey.Fluid(key), got, player));
         UUID deckId = deck.get(JasmComponents.DECK_ID.get());
         if (deckId == null) {
             deckId = UUID.randomUUID();

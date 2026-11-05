@@ -3,6 +3,7 @@ package dev.micolash.jasm.deck;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferIdentity;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferMerge;
 import dev.micolash.jasm.wafer.WaferValidator;
@@ -169,7 +170,7 @@ public final class DeckWaferContainer implements Container {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return !isOverflow(slot) && stack.getItem() instanceof WaferItem;
+        return !isOverflow(slot) && InfiniteWaferItem.fitsWaferSlot(stack);
     }
 
     /** A slot's stack may have changed in place: save it onto the Deck now. */

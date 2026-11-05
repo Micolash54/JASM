@@ -13,6 +13,7 @@ import dev.micolash.jasm.registry.JasmMenus;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferHolderItem;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.WaferItem;
 import dev.micolash.jasm.wafer.WaferMerge;
 import java.util.ArrayList;
@@ -487,7 +488,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
             slot.setChanged();
             return ItemStack.EMPTY;
         }
-        if (!dimensionAllowed() && index >= waferSlots && !(index < waferSlots + 36 && stack.getItem() instanceof WaferItem)) return ItemStack.EMPTY;
+        if (!dimensionAllowed() && index >= waferSlots && !(index < waferSlots + 36 && InfiniteWaferItem.fitsWaferSlot(stack))) return ItemStack.EMPTY;
         if (index == resultSlot) {
             return craftIntoInventory(player, slot);
         }
@@ -504,7 +505,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
                 moveItemStackTo(stack, waferSlots, hotbar, false);
             }
             slot.setChanged();
-        } else if (stack.getItem() instanceof WaferItem) {
+        } else if (InfiniteWaferItem.fitsWaferSlot(stack)) {
             moveItemStackTo(stack, 0, usableWaferSlots(), false);
             slot.setChanged();
         } else if (player instanceof ServerPlayer serverPlayer) {
@@ -1011,7 +1012,7 @@ public class DeckMenu extends AbstractContainerMenu implements Notices.Board, Re
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return !wafers.isOverflow(getContainerSlot()) && stack.getItem() instanceof WaferItem;
+            return !wafers.isOverflow(getContainerSlot()) && InfiniteWaferItem.fitsWaferSlot(stack);
         }
 
         @Override

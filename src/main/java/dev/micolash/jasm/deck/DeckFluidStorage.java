@@ -10,6 +10,7 @@ import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferRecord;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import dev.micolash.jasm.wafer.InfiniteWaferItem;
 import dev.micolash.jasm.wafer.TypeRules;
 import dev.micolash.jasm.wafer.WaferEligibility;
 import dev.micolash.jasm.wafer.WaferItem;
@@ -28,6 +29,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * What a Deck does with the fluids on its fluid wafers: the same routing, charge and wafer checks as for items,
  * counted in millibuckets. An item wafer is never touched here, and a fluid wafer is never touched by the item paths.
+ *
+ * <p>An infinite wafer comes before everything for its own fluid: the Deck counts exactly its fixed amount, takes
+ * from it without end and deletes what is put in, at the usual charge. Normal wafers and tanks holding that fluid are
+ * left alone and hidden behind the fixed amount.
  */
 public final class DeckFluidStorage {
     /** One wafer slot as a place to put fluid. A blank fluid wafer is usable and gets set up on its first deposit. */
@@ -155,11 +160,18 @@ public final class DeckFluidStorage {
                 record.fluids().forEach((key, amount) -> total.merge(key, amount, Long::sum));
             }
         }
+        showInfinite(deck, total);
         return total;
+    }
+
+    /** Sets every fluid an infinite wafer covers to the fixed amount, whatever else holds it. */
+    static void showInfinite(ItemStack deck, Map<FluidResource, Long> totals) {
+        for (FluidResource key : InfiniteWaferItem.in(deck)) totals.put(key, InfiniteWaferItem.AMOUNT);
     }
 
     /** Millibuckets of {@code key} across the Deck's usable wafers (wafers only). Assumes the wafers were checked this tick. */
     public static long count(WaferStore store, ItemStack deck, FluidResource key) {
+        if (InfiniteWaferItem.covers(deck, key)) return InfiniteWaferItem.AMOUNT;
         long total = 0;
         for (WaferRecord record : DeckStorage.records(store, deck)) {
             if (record != null) {
@@ -171,6 +183,7 @@ public final class DeckFluidStorage {
 
     /** Wafers and the network's storage blocks added up. Assumes the wafers were checked this tick. */
     public static long count(WaferStore store, ItemStack deck, FluidResource key, ServerPlayer player) {
+        if (InfiniteWaferItem.covers(deck, key)) return InfiniteWaferItem.AMOUNT;
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         return count(store, deck, key) + (pool == null ? 0 : pool.countFluid(key));
     }
@@ -180,6 +193,7 @@ public final class DeckFluidStorage {
         Map<FluidResource, Long> total = contents(store, deck);
         NetworkPool pool = PoolAccess.forDeck(player, deck);
         if (pool != null) pool.fluidContents().forEach((key, amount) -> total.merge(key, amount, Long::sum));
+        showInfinite(deck, total);
         return total;
     }
 
@@ -196,6 +210,8 @@ public final class DeckFluidStorage {
         if (amount <= 0 || !WaferEligibility.checkFluid(key, player.level().registryAccess()).accepted()) {
             return 0;
         }
+        // an infinite wafer takes it all, to delete it
+        if (InfiniteWaferItem.covers(deck, key)) return amount;
         List<PoolStore> ports = ports(player, deck, checked);
         if (!ports.isEmpty()) return roomCombined(store, deck, key, amount, player, checked, ports, tx);
         return DepositRouter.planDeposit(views(store, deck, player, checked), key, amount).stream()
@@ -215,6 +231,10 @@ public final class DeckFluidStorage {
         amount = Math.min(amount, DeckStorage.affordableFluid(deck));
         if (amount <= 0) {
             return 0;
+        }
+        if (InfiniteWaferItem.covers(deck, key)) {
+            DeckStorage.pay(deck, FluidAmounts.shares(amount));
+            return amount;
         }
         List<PoolStore> ports = ports(player, deck, checked);
         if (!ports.isEmpty()) return depositCombined(store, deck, key, amount, player, checked, ports);
@@ -260,6 +280,8 @@ public final class DeckFluidStorage {
     /** As {@link #deposit}, with a Void row destroying what no wafer has room for. */
     public static DeckStorage.Deposit depositResult(WaferStore store, ItemStack deck, FluidResource key, long amount, ServerPlayer player,
             DeckStorage.Excess excess, DeckStorage.@Nullable Checked checked) {
+        // Deleted, not stored: undoing a move only takes back what was stored, so it never reaches into other wafers.
+        if (InfiniteWaferItem.covers(deck, key)) return new DeckStorage.Deposit(0, deposit(store, deck, key, amount, player, checked));
         long stored = deposit(store, deck, key, amount, player, checked);
         long gone = excess == DeckStorage.Excess.VOID ? voidLeft(store, deck, player, checked, key, amount - stored) : 0;
         return new DeckStorage.Deposit(stored, gone);
@@ -271,6 +293,12 @@ public final class DeckFluidStorage {
         if (!DeckStorage.checkDimension(deck, player, tell)) return 0;
         if (amount <= 0 || key.isEmpty()) {
             return 0;
+        }
+        if (InfiniteWaferItem.covers(deck, key)) {
+            if (!DeckStorage.canAfford(deck, player, tell)) return 0;
+            long taken = Math.min(amount, DeckStorage.affordableFluid(deck));
+            DeckStorage.pay(deck, FluidAmounts.shares(taken));
+            return taken;
         }
         List<PoolStore> ports = ports(player, deck, checked);
         if (!ports.isEmpty()) {
@@ -292,6 +320,38 @@ public final class DeckFluidStorage {
         }
         DeckStorage.pay(deck, FluidAmounts.shares(taken));
         return taken;
+    }
+
+    /** What a Pull all did: the millibuckets deleted, and whether the charge ran out before all of it was pulled. */
+    public record Pull(long amount, boolean outOfCharge) {}
+
+    /**
+     * Pull all: the infinite wafer in {@code slot} takes its fluid off the Deck's own fluid wafers and deletes it, at the
+     * normal charge for moving fluid. Short of charge, it pulls as many whole buckets as the charge pays for. Never
+     * touches the network's tanks; the wafers keep their settings and name. Returns null when {@code slot} holds no
+     * working infinite wafer.
+     */
+    public static @Nullable Pull pullIntoInfinite(WaferStore store, ItemStack deck, int slot, ServerPlayer player) {
+        DeckItem item = (DeckItem) deck.getItem();
+        if (slot < 0 || slot >= item.tier().slots() || !(DeckItem.wafers(deck).get(slot).getItem() instanceof InfiniteWaferItem infinite)) {
+            return null;
+        }
+        FluidResource key = infinite.resource();
+        DeckStorage.checkAll(store, deck, player);
+        List<WaferRecord> records = DeckStorage.records(store, deck);
+        long held = 0;
+        for (WaferRecord record : records) {
+            if (record != null && record.isFluid()) held += record.countFluid(key);
+        }
+        long affordable = DeckStorage.affordableFluid(deck);
+        long budget = held <= affordable ? held : affordable / FluidAmounts.PER_BUCKET * FluidAmounts.PER_BUCKET;
+        long pulled = 0;
+        for (WaferRecord record : records) {
+            long take = record == null || !record.isFluid() ? 0 : Math.min(record.countFluid(key), budget - pulled);
+            if (take > 0) pulled += store.extractFluid(record, key, take, false, player);
+        }
+        DeckStorage.pay(deck, FluidAmounts.shares(pulled));
+        return new Pull(pulled, pulled < held);
     }
 
     /** The given wafer slots as places to put fluid, for planners outside this class. */

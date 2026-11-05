@@ -224,6 +224,7 @@ These are your own, in `jasm-client.toml`. They don't change with the world.
 | Fold bay filters | `bayFilterCollapsed` | Folds the filter away on bay panels. |
 | Fold Access Port recipes | `portRecipesFolded` | Folds the recipe list away on Access Port screens. |
 | Fold Advanced Encoder ports | `encoderPortsFolded` | Folds the port list away on Advanced Encoder screens. |
+| Fold Rack Controller ports | `rackControllerPortsFolded` | Folds the port list away on Rack Controller screens. |
 | Rack Controller list height | `rackControllerSize` | Height of the Rack Controller's rack list. |
 
 **Sounds**

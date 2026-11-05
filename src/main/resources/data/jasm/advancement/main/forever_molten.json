@@ -1,0 +1,32 @@
+{
+  "parent": "jasm:main/bottomless_well",
+  "criteria": {
+    "forever_molten": {
+      "conditions": {
+        "items": [
+          {
+            "items": "jasm:infinite_lava_wafer"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "icon": {
+      "id": "jasm:infinite_lava_wafer"
+    },
+    "title": {
+      "translate": "advancements.jasm.forever_molten.title"
+    },
+    "description": {
+      "translate": "advancements.jasm.forever_molten.description"
+    },
+    "frame": "challenge"
+  },
+  "requirements": [
+    [
+      "forever_molten"
+    ]
+  ]
+}
