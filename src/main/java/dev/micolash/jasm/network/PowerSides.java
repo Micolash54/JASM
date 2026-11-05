@@ -13,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 public final class PowerSides {
     private final PowerReceiver[] receivers = new PowerReceiver[6];
     private final boolean[] jasm = new boolean[6];
+    private final @Nullable BlockEntity[] blocks = new BlockEntity[6];
     private boolean dirty = true;
 
     /** A neighbour changed: look again on the next tick. */
@@ -41,6 +42,7 @@ public final class PowerSides {
             int i = side.ordinal();
             receivers[i] = null;
             jasm[i] = false;
+            blocks[i] = null;
             BlockPos next = origin.relative(side);
             if (!level.isLoaded(next)) {
                 dirty = true;
@@ -48,6 +50,7 @@ public final class PowerSides {
             }
             BlockEntity entity = level.getBlockEntity(next);
             if (entity == null) continue;
+            blocks[i] = entity;
             receivers[i] = PowerReceiver.of(entity);
             jasm[i] = receivers[i] != null || entity instanceof NetworkPowerSource;
         }
@@ -60,5 +63,10 @@ public final class PowerSides {
 
     public boolean jasm(Direction side) {
         return jasm[side.ordinal()];
+    }
+
+    /** The block entity on that side when last looked, or null. */
+    public @Nullable BlockEntity block(Direction side) {
+        return blocks[side.ordinal()];
     }
 }

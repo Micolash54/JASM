@@ -158,6 +158,19 @@ public final class BatteryGroup {
     }
 
     /** The batteries of these blocks, each once. Removed blocks are left out. */
+    /** Like {@link #distinct(ServerLevel, Collection)}, with each block grouped in its own dimension. */
+    public static List<EnergyHandler> distinct(Collection<BatteryBlockEntity> blocks) {
+        List<EnergyHandler> found = new ArrayList<>();
+        Set<BatteryGroup> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (BatteryBlockEntity block : blocks) {
+            if (!block.isRemoved() && block.getLevel() instanceof ServerLevel level) {
+                BatteryGroup group = block.group(level);
+                if (seen.add(group)) found.add(group.energy);
+            }
+        }
+        return found;
+    }
+
     public static List<EnergyHandler> distinct(ServerLevel level, Collection<BatteryBlockEntity> blocks) {
         List<EnergyHandler> found = new ArrayList<>();
         Set<BatteryGroup> seen = Collections.newSetFromMap(new IdentityHashMap<>());

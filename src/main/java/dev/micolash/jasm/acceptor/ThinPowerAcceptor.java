@@ -8,6 +8,7 @@ import dev.micolash.jasm.network.NetworkPowerSource;
 import dev.micolash.jasm.network.Networks;
 import dev.micolash.jasm.network.PowerReceiver;
 import java.util.List;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -28,7 +29,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * The Power Acceptor in the thin port shape: it sits on one face of a cable, with its plate out and its neck on the cable,
  * and trades power between that cable's network and the block in front of it. It works like the full block (see
- * {@link AcceptorFlow}) but only on that one face.
+ * {@link AcceptorFlow}) but only on that one face. Out, it feeds a JASM block in front too, unless it is on the cable's
+ * network.
  */
 public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
     private final DataCableBlockEntity host;
@@ -37,6 +39,9 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
     private boolean dirty = true;
     /** Whether the block in front is an outside block, rather than one of JASM's. */
     private boolean frontOpen;
+    /** The JASM block in front, if it is one, and how network power reaches it. */
+    private @Nullable BlockEntity front;
+    private @Nullable PowerReceiver frontReceiver;
     private @Nullable PowerReceiver cable;
     private @Nullable CableNetwork poolNetwork;
     private @Nullable List<BatteryBlockEntity> pool;
@@ -126,19 +131,40 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
             }
             dirty = false;
             BlockPos front = here.relative(side);
+            ThinPowerAcceptor.this.front = null;
+            frontReceiver = null;
             if (!level.isLoaded(front)) {
                 frontOpen = false;
                 dirty = true;
                 return true;
             }
             BlockEntity entity = level.getBlockEntity(front);
-            frontOpen = !(entity instanceof NetworkPowerSource) && (entity == null || PowerReceiver.of(entity) == null);
+            PowerReceiver receiver = entity == null ? null : PowerReceiver.of(entity);
+            frontOpen = !(entity instanceof NetworkPowerSource) && receiver == null;
+            if (!frontOpen) {
+                ThinPowerAcceptor.this.front = entity;
+                frontReceiver = receiver;
+            }
             return true;
         }
 
         @Override
         public boolean open(Direction direction) {
             return direction == side && frontOpen;
+        }
+
+        /** The JASM block in front is fed unless it is on the cable's network, which is where the power comes from. */
+        @Override
+        public @Nullable EnergyHandler jasmTarget(ServerLevel level, Direction direction, Supplier<@Nullable EnergyHandler> faces) {
+            if (direction != side || frontOpen || front == null) {
+                return null;
+            }
+            batteries(level);
+            if (frontReceiver != null && !(front instanceof BatteryBlockEntity) && poolNetwork != null
+                    && Networks.at(level, front.getBlockPos()) == poolNetwork) {
+                return null;
+            }
+            return AcceptorFlow.jasmTarget(level, front, frontReceiver, faces);
         }
 
         @Override
@@ -156,7 +182,7 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
             if (pool == null || network != poolNetwork) {
                 poolNetwork = network;
                 pool = network == null ? List.of() : network.batteries();
-                generators = generatorCache.find(level, network == null ? List.of() : List.of(network));
+                generators = generatorCache.find(network == null ? List.of() : List.of(network));
             }
             return pool;
         }
@@ -165,7 +191,7 @@ public final class ThinPowerAcceptor implements ModeHolder, MenuProvider {
         public List<CombustionGeneratorBlockEntity> generators(ServerLevel level) {
             batteries(level);
             if (generatorCache.changed() || generators.stream().anyMatch(CombustionGeneratorBlockEntity::isRemoved)) {
-                generators = generatorCache.find(level, poolNetwork == null ? List.of() : List.of(poolNetwork));
+                generators = generatorCache.find(poolNetwork == null ? List.of() : List.of(poolNetwork));
             }
             return generators;
         }

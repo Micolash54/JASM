@@ -10,8 +10,12 @@ import dev.micolash.jasm.network.PowerSides;
 import dev.micolash.jasm.registry.JasmBlocks;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -33,7 +37,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The Power Acceptor block. It moves power between a JASM network and other mods' blocks on every side it has, as its mode
- * says (see {@link AcceptorFlow}). Out, Batteries come first, then combustion generators when the Batteries are empty.
+ * says (see {@link AcceptorFlow}). Out, Batteries come first, then combustion generators when the Batteries are empty. Out,
+ * it also feeds the JASM blocks it touches whose network it doesn't draw from.
  */
 public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowerSource, MenuProvider, ModeHolder {
     private final PowerSides sides = new PowerSides();
@@ -43,6 +48,9 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
     private final AcceptorGenerators generatorCache = new AcceptorGenerators();
     private List<CombustionGeneratorBlockEntity> generators = List.of();
     private boolean generatorsDirty = true;
+    /** The networks beside it it draws power from: those with a Battery or a generator. Null to work out again. */
+    private @Nullable Set<CableNetwork> drawn;
+    private long drawnChecked = Long.MIN_VALUE;
     private final AcceptorFlow flow = new AcceptorFlow(new Around());
 
     public PowerAcceptorBlockEntity(BlockPos pos, BlockState state) {
@@ -183,6 +191,7 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
             }
             pool = found;
             generatorsDirty = true;
+            drawn = null;
             return found;
         }
 
@@ -192,7 +201,7 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
             if ((level.getGameTime() + worldPosition.asLong()) % 20 == 0) generatorsDirty = true;
             if (generatorsDirty || generatorCache.changed() || generators.stream().anyMatch(CombustionGeneratorBlockEntity::isRemoved)) {
                 generatorsDirty = false;
-                var found = new LinkedHashSet<>(generatorCache.find(level, Arrays.asList(poolNetworks)));
+                var found = new LinkedHashSet<>(generatorCache.find(Arrays.asList(poolNetworks)));
                 for (Direction side : Direction.values()) {
                     BlockPos next = worldPosition.relative(side);
                     if (level.isLoaded(next) && level.getBlockEntity(next) instanceof CombustionGeneratorBlockEntity generator
@@ -201,6 +210,47 @@ public class PowerAcceptorBlockEntity extends BlockEntity implements NetworkPowe
                 generators = List.copyOf(found);
             }
             return generators;
+        }
+
+        /**
+         * A JASM block beside it is fed unless its network is one it draws from, so power never goes round in a loop. A
+         * Battery it touches is always one it empties.
+         */
+        @Override
+        public @Nullable EnergyHandler jasmTarget(ServerLevel level, Direction side, Supplier<@Nullable EnergyHandler> faces) {
+            BlockEntity block = sides.block(side);
+            PowerReceiver receiver = sides.receiver(side);
+            // Other power sources are never fed, and a Battery is weighed against the ones it empties.
+            if (receiver != null && !(block instanceof BatteryBlockEntity)) {
+                Set<CableNetwork> from = drawn(level);
+                CableNetwork network = poolNetworks[side.ordinal()];
+                if (network != null && from.contains(network)) {
+                    return null;
+                }
+            }
+            return AcceptorFlow.jasmTarget(level, block, receiver, faces);
+        }
+
+        /** Found again only when a network beside it is new, or a generator on one came or went. Checked once a tick. */
+        private Set<CableNetwork> drawn(ServerLevel level) {
+            long now = level.getGameTime();
+            if (drawn != null && now == drawnChecked) {
+                return drawn;
+            }
+            drawnChecked = now;
+            if (generatorCache.changed()) {
+                drawn = null;
+            }
+            // Keeps the networks beside it current; a new one clears what was found.
+            generators(level);
+            if (drawn == null) {
+                Set<CableNetwork> found = Collections.newSetFromMap(new IdentityHashMap<>());
+                for (CableNetwork network : poolNetworks) {
+                    if (network != null && (!network.allBatteries().isEmpty() || generatorCache.has(network))) found.add(network);
+                }
+                drawn = found;
+            }
+            return drawn;
         }
     }
 }

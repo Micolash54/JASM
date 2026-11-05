@@ -423,13 +423,13 @@ public final class CableNetwork {
     }
 
     /**
-     * The Battery blocks touching the network's cables, or the machines that carry their power, found with the machines.
-     * A port's face gives a battery nothing. A caller groups them in its own dimension, so a network standing in more than
-     * one gives none here.
+     * The Battery blocks touching the network's cables, or the machines that carry their power, found with the machines,
+     * in every dimension the network stands in. A port's face gives a battery nothing. A caller groups each in its own
+     * dimension ({@link BatteryGroup#distinct(java.util.Collection)}).
      */
     public List<BatteryBlockEntity> batteries() {
         pools();
-        return parts.size() == 1 ? main.view : List.of();
+        return main.view;
     }
 
     /**
@@ -438,8 +438,7 @@ public final class CableNetwork {
      */
     public List<BatteryBlockEntity> batteries(BlockEntity block) {
         Pool pool = poolOf(block);
-        if (pool == null) pool = main;
-        return parts.size() == 1 ? pool.view : List.of();
+        return pool == null ? main.view : pool.view;
     }
 
     /** The Battery blocks of every pool, in every dimension the network stands in, each once; each block knows its own. */

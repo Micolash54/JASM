@@ -31,22 +31,29 @@ final class AcceptorGenerators {
         return false;
     }
 
-    List<CombustionGeneratorBlockEntity> find(ServerLevel level, Collection<CableNetwork> networks) {
+    /** The generators on the cables of {@code networks}, in every dimension each one stands in. */
+    List<CombustionGeneratorBlockEntity> find(Collection<CableNetwork> networks) {
         known.keySet().retainAll(networks);
         Set<CombustionGeneratorBlockEntity> found = new LinkedHashSet<>();
         for (CableNetwork network : networks) {
             if (network == null) continue;
             Sources sources = known.get(network);
             if (sources == null) {
-                sources = new Sources(level, network);
+                sources = new Sources(network);
                 known.put(network, sources);
             }
-            found.addAll(sources.generators(level));
+            found.addAll(sources.generators());
         }
         return List.copyOf(found);
     }
 
-    private record Watch(BlockPos pos, BlockCapabilityCache<EnergyHandler, @Nullable Direction> capability) {}
+    /** Whether the last {@link #find} saw a generator on that network's cables. */
+    boolean has(CableNetwork network) {
+        Sources sources = known.get(network);
+        return sources != null && !sources.generators.isEmpty();
+    }
+
+    private record Watch(ServerLevel level, BlockPos pos, BlockCapabilityCache<EnergyHandler, @Nullable Direction> capability) {}
 
     /** Capabilities notify us when a source is placed, removed or replaced, even though it isn't a network member. */
     private final class Sources {
@@ -54,31 +61,34 @@ final class AcceptorGenerators {
         private List<CombustionGeneratorBlockEntity> generators = List.of();
         private boolean dirty = true;
 
-        Sources(ServerLevel level, CableNetwork network) {
-            Set<BlockPos> seen = new LinkedHashSet<>();
-            for (BlockPos pos : network.cables()) {
-                if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity cable)) continue;
-                for (Direction side : Direction.values()) {
-                    if (cable.port(side) != null || cable.acceptor(side) != null) continue;
-                    BlockPos next = pos.relative(side);
-                    if (seen.add(next)) {
-                        watches.add(new Watch(next, BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, next, null,
-                                () -> known.get(network) == this, () -> dirty = true)));
+        Sources(CableNetwork network) {
+            for (CableNetwork.Part part : network.parts()) {
+                ServerLevel level = part.level();
+                Set<BlockPos> seen = new LinkedHashSet<>();
+                for (BlockPos pos : part.cables()) {
+                    if (!level.isLoaded(pos) || !(level.getBlockEntity(pos) instanceof DataCableBlockEntity cable)) continue;
+                    for (Direction side : Direction.values()) {
+                        if (cable.port(side) != null || cable.acceptor(side) != null) continue;
+                        BlockPos next = pos.relative(side);
+                        if (seen.add(next)) {
+                            watches.add(new Watch(level, next, BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, next, null,
+                                    () -> known.get(network) == this, () -> dirty = true)));
+                        }
                     }
                 }
             }
         }
 
-        List<CombustionGeneratorBlockEntity> generators(ServerLevel level) {
+        List<CombustionGeneratorBlockEntity> generators() {
             for (CombustionGeneratorBlockEntity generator : generators) if (generator.isRemoved()) dirty = true;
             if (!dirty) return generators;
             dirty = false;
             List<CombustionGeneratorBlockEntity> found = new ArrayList<>();
             for (Watch watch : watches) {
-                if (!level.isLoaded(watch.pos())) continue;
+                if (!watch.level().isLoaded(watch.pos())) continue;
                 // Asking arms the invalidation listener; the entity type decides whether it is a generator.
                 watch.capability().getCapability();
-                if (level.getBlockEntity(watch.pos()) instanceof CombustionGeneratorBlockEntity generator && !generator.isRemoved()) {
+                if (watch.level().getBlockEntity(watch.pos()) instanceof CombustionGeneratorBlockEntity generator && !generator.isRemoved()) {
                     found.add(generator);
                 }
             }

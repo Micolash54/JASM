@@ -18,7 +18,8 @@ JASM blocks only take power from JASM generators, batteries and cables. The Powe
 Put it between the other mod's power and a [Data Cable](data-cables.md) or machine. Right-click it to pick what it does:
 
 * **Input only**: it accepts the FE other mods push into it and feeds the cables and machines it touches. It never pulls power out of anything, and only takes what the machines and Batteries on its network have room for. This is the default.
-* **Output only**: it gives power from Batteries first: Batteries it touches, and Batteries on its network. With no battery, or once all are empty, it draws from Combustion Generators touching it or the network's cables. It never takes the power inside machines.
+* **Output only**: it gives power from Batteries first: Batteries it touches, and Batteries on its network, in every dimension the network reaches. With no battery, or once all are empty, it draws from Combustion Generators touching it or the network's cables. It never takes the power inside machines.
+* In Output only, it feeds every block it touches that takes power, from other mods or JASM, except blocks on a network it draws power from. A Bay is fed through its Energy tab faces.
 
 Its screen shows the power going through it, in FE/t.
 

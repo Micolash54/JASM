@@ -3,16 +3,21 @@ package dev.micolash.jasm.acceptor;
 import dev.micolash.jasm.battery.BatteryBlockEntity;
 import dev.micolash.jasm.battery.BatteryGroup;
 import dev.micolash.jasm.generator.CombustionGeneratorBlockEntity;
+import dev.micolash.jasm.network.MachineBlockEntity;
+import dev.micolash.jasm.network.NetworkPowerSource;
+import dev.micolash.jasm.network.PowerReceiver;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
@@ -25,8 +30,10 @@ import org.jspecify.annotations.Nullable;
  * How a Power Acceptor moves power between a JASM network and other mods' blocks, one way only, as its mode says. In (the
  * default) it accepts the FE other mods' blocks push into it and hands it straight to the network, but only as much as the
  * network's machines and Batteries have room for; it never pulls power out of anything. Out, it gives the power stored in
- * Batteries first, then combustion generators once every battery is empty. It holds no power of its own and has no speed
- * limit. Other Acceptors and the power inside machines are never sources.
+ * Batteries first, then combustion generators once every battery is empty, in every dimension the network reaches. It
+ * gives to any block beside it that takes power: other mods' blocks, and JASM blocks it doesn't draw from (see
+ * {@link Site#jasmTarget}). It holds no power of its own and has no speed limit. Other Acceptors and the power inside
+ * machines are never sources.
  *
  * <p>The block and the thin acceptor on a cable share this. Each one says what it has around it through a {@link Site}.
  */
@@ -58,6 +65,27 @@ final class AcceptorFlow {
 
         /** Combustion generators only, never machines that happen to store FE. */
         List<CombustionGeneratorBlockEntity> generators(ServerLevel level);
+
+        /**
+         * What Out mode feeds the JASM block on that side through, or null: never a block on a network it draws power
+         * from, nor another power source. {@code faces} is what the block offers other mods on the touching face. Called
+         * every tick in Out mode, so it must be cheap when nothing changed.
+         */
+        @Nullable EnergyHandler jasmTarget(ServerLevel level, Direction side, Supplier<@Nullable EnergyHandler> faces);
+    }
+
+    /**
+     * How Out mode feeds a JASM block it may feed: through the faces it offers other mods when it has an Energy tab (the
+     * Bays, so a face set to None stays shut), else straight, as a network block is fed. A Battery is fed as its whole
+     * group; {@link #give} skips the groups it empties. Null for another power source.
+     */
+    static @Nullable EnergyHandler jasmTarget(ServerLevel level, @Nullable BlockEntity block, @Nullable PowerReceiver receiver,
+            Supplier<@Nullable EnergyHandler> faces) {
+        if (block == null || block.isRemoved()) return null;
+        if (block instanceof BatteryBlockEntity battery) return battery.group(level).energy();
+        if (block instanceof NetworkPowerSource || receiver == null) return null;
+        if (block instanceof MachineBlockEntity machine && machine.sides() != null && machine.sides().hasEnergy()) return faces.get();
+        return receiver;
     }
 
     private final Site site;
@@ -113,6 +141,7 @@ final class AcceptorFlow {
         this.mode = mode;
         moved = 0;
         flow = 0;
+        outsideStale = true;
         return true;
     }
 
@@ -141,7 +170,7 @@ final class AcceptorFlow {
     private void findOutsideBlocks(ServerLevel level) {
         outsideStale = false;
         for (Direction side : Direction.values()) {
-            outsideBlocks[side.ordinal()] = outside(level, side) == null ? null : level.getBlockState(site.pos().relative(side)).getBlock();
+            outsideBlocks[side.ordinal()] = target(level, side) == null ? null : level.getBlockState(site.pos().relative(side)).getBlock();
         }
     }
 
@@ -173,10 +202,19 @@ final class AcceptorFlow {
         }
     }
 
-    private @Nullable EnergyHandler outside(ServerLevel level, Direction side) {
-        if (!site.open(side) || !level.isLoaded(site.pos().relative(side))) {
+    /** What it gives to on that side in Out mode: an outside block, or a JASM block it may feed. */
+    private @Nullable EnergyHandler target(ServerLevel level, Direction side) {
+        if (!level.isLoaded(site.pos().relative(side))) {
             return null;
         }
+        if (site.open(side)) {
+            return faces(level, side);
+        }
+        return mode == AcceptorMode.OUTPUT ? site.jasmTarget(level, side, () -> faces(level, side)) : null;
+    }
+
+    /** What the block on that side offers other mods on the face touching this one. */
+    private @Nullable EnergyHandler faces(ServerLevel level, Direction side) {
         return neighbours
                 .computeIfAbsent(side, s -> BlockCapabilityCache.create(Capabilities.Energy.BLOCK, level, site.pos().relative(s), s.getOpposite()))
                 .getCapability();
@@ -204,11 +242,11 @@ final class AcceptorFlow {
         return room;
     }
 
-    /** Gives battery power to each outside block beside it that has room. The batteries are only looked at when one does. */
+    /** Gives battery power to each block beside it that takes power and has room. The batteries are only looked at when one does. */
     private void give(ServerLevel level) {
         List<EnergyHandler> batteries = null;
         for (Direction side : Direction.values()) {
-            EnergyHandler target = outside(level, side);
+            EnergyHandler target = target(level, side);
             if (target == null) {
                 continue;
             }
@@ -217,7 +255,11 @@ final class AcceptorFlow {
                 continue;
             }
             if (batteries == null) {
-                batteries = BatteryGroup.distinct(level, site.batteries(level));
+                batteries = BatteryGroup.distinct(site.batteries(level));
+            }
+            // A Battery it empties is never filled from itself.
+            if (batteries.contains(target)) {
+                continue;
             }
             int sent = give(target, room, batteries);
             // A partially charged battery still comes first; fallback starts only once all are empty.
