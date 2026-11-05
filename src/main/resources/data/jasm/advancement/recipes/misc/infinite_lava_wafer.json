@@ -7,11 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_infinite_water_wafer": {
+    "has_synapse_core": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:infinite_water_wafer"
+            "items": "jasm:synapse_core"
           }
         ]
       },
@@ -21,7 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_infinite_water_wafer"
+      "has_synapse_core"
     ]
   ],
   "rewards": {

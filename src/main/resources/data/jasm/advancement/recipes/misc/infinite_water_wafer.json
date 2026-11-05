@@ -7,21 +7,11 @@
       },
       "trigger": "minecraft:recipe_unlocked"
     },
-    "has_fluid_type_wafer_128": {
+    "has_synapse_core": {
       "conditions": {
         "items": [
           {
-            "items": "jasm:fluid_type_wafer_128"
-          }
-        ]
-      },
-      "trigger": "minecraft:inventory_changed"
-    },
-    "has_fluid_capacity_wafer_1m": {
-      "conditions": {
-        "items": [
-          {
-            "items": "jasm:fluid_capacity_wafer_1m"
+            "items": "jasm:synapse_core"
           }
         ]
       },
@@ -31,8 +21,7 @@
   "requirements": [
     [
       "has_the_recipe",
-      "has_fluid_type_wafer_128",
-      "has_fluid_capacity_wafer_1m"
+      "has_synapse_core"
     ]
   ],
   "rewards": {

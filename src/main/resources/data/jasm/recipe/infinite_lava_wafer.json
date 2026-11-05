@@ -1,22 +1,19 @@
 {
-  "type": "jasm:empty_wafers",
-  "recipe": {
-    "type": "minecraft:crafting_shaped",
-    "key": {
-      "N": "minecraft:nether_star",
-      "D": "jasm:dimension_upgrade",
-      "F": "jasm:fluid_capacity_wafer_1m",
-      "W": "jasm:infinite_water_wafer",
-      "B": "minecraft:netherite_block",
-      "S": "jasm:synapse_core"
-    },
-    "pattern": [
-      "NDN",
-      "FWF",
-      "BSB"
-    ],
-    "result": {
-      "id": "jasm:infinite_lava_wafer"
-    }
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "S": "jasm:synapse_core",
+    "D": "jasm:dimension_upgrade",
+    "L": "jasm:fluid_type_wafer_128",
+    "N": "minecraft:nether_star",
+    "F": "jasm:fluid_capacity_wafer_1m",
+    "A": "minecraft:lava_bucket"
+  },
+  "pattern": [
+    "SDS",
+    "LNF",
+    "SAS"
+  ],
+  "result": {
+    "id": "jasm:infinite_lava_wafer"
   }
 }

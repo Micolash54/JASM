@@ -53,8 +53,6 @@ Right-click an infinite wafer in the Deck's wafer panel to open its small window
 <br />
 ## Recipes
 
-Wafers used in these recipes must be empty.
-
 <Column>
   <Row>
     <RecipeFor id="infinite_water_wafer" />
