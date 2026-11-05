@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The little Bitling that lives around a Bitling Station. It is only a body: the station keeps its battery (the critter
- * item's charge), decides when it exists, and takes it back if it goes missing. It wanders, sprints, hops, looks around
+ * item's charge), decides when it exists, and takes it back if it goes missing. It wanders, sprints, looks around
  * and lies down, walks home when its battery runs low, sits on the pad to charge, and can be petted. Knocked out, it
  * vanishes and the station brings it back after a wait.
  */
@@ -42,6 +42,8 @@ public class StationBitling extends BitlingBody {
     private Mode mode = Mode.ROAM;
     private int stuckTicks;
     private @Nullable Vec3 lastPosition;
+    /** Ticks left of getting up from a nap before it sets off home. */
+    private int getUpTicks;
 
     public StationBitling(EntityType<? extends StationBitling> type, Level level) {
         super(type, level);
@@ -149,13 +151,18 @@ public class StationBitling extends BitlingBody {
         setAct(Act.RECHARGE);
         if (home.batteryFraction() >= 1 && !home.stopped()) {
             mode = Mode.ROAM;
-            setAct(Act.HOP);
-            actTicks = 14;
-            waitTicks = 10;
+            // It gets up off the pad before it carries on roaming.
+            setAct(Act.STAND);
+            waitTicks = GET_UP_TICKS;
         }
     }
 
     private void heading(ServerLevel level, BitlingStationBlockEntity home) {
+        if (getUpTicks > 0) {
+            getUpTicks--;
+            getNavigation().stop();
+            return;
+        }
         Vec3 pad = home.padCentre();
         double flat = Math.hypot(getX() - pad.x, getZ() - pad.z);
         if (flat < 0.5 && Math.abs(getY() - pad.y) < 1.2) {
@@ -207,6 +214,11 @@ public class StationBitling extends BitlingBody {
 
     private void roaming(ServerLevel level, BitlingStationBlockEntity home) {
         if (low(home)) {
+            if (act() == Act.REST) {
+                // Woken from a nap: it gets up before it sets off.
+                setAct(Act.STAND);
+                getUpTicks = GET_UP_TICKS;
+            }
             mode = Mode.HOME;
             stuckTicks = 0;
             actTicks = 0;
@@ -235,6 +247,7 @@ public class StationBitling extends BitlingBody {
                 mode = Mode.HOME;
                 stuckTicks = 0;
                 actTicks = 0;
+                getUpTicks = GET_UP_TICKS;
             }
         } else {
             setAct(Act.PETTED);

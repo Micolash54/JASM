@@ -59,6 +59,21 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
     private static final float LOOK_FADE = 6;
     /** The furthest the head ever turns from the body, real look and loop together. */
     private static final float HEAD_LIMIT = 50;
+    /** The one-off moves played on the way into and out of a nap, before the next loop takes over. */
+    private static final String LIE_DOWN = "lie_down";
+    private static final String GET_UP = "get_up";
+    /**
+     * The hop plays when a walking Bitling jumps up a step: from a quick squash as it is seen leaving the ground, the pose
+     * it falls in held until it is seen to land, then the landing until it walks on. Seconds into the hop loop of each, and
+     * how far up counts as off the ground, in blocks.
+     */
+    private static final String HOP = "hop";
+    private static final float HOP_TAKE_OFF = 0.08F;
+    private static final float HOP_FALLING = 0.42F;
+    private static final float HOP_WALKS_ON = 0.6F;
+    private static final float HOP_OFF_GROUND = 0.02F;
+    /** The walk gives way to the hop quickly, as the jump is short. */
+    private static final float HOP_BLEND_SECONDS = 0.1F;
     /** Where a held item sits from the right arm's joint, in model pixels, and how big it is drawn. */
     private static final float HAND_X = 0;
     private static final float HAND_Y = -5;
@@ -98,7 +113,8 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         Motion motion = motions.computeIfAbsent(bitling, b -> new Motion());
         float headYaw = Mth.wrapDegrees(Mth.rotLerp(partialTicks, bitling.yHeadRotO, bitling.yHeadRot) - state.bodyYaw);
         state.pose = motion.update(bitling.act(), (bitling.tickCount + partialTicks) / 20F, bitling.walkAnimation.position(partialTicks),
-                bitling.walkAnimation.speed(partialTicks), headYaw, bitling.getXRot(partialTicks), bitling.glancing());
+                bitling.walkAnimation.speed(partialTicks), headYaw, bitling.getXRot(partialTicks), bitling.glancing(), (float) state.y,
+                bitling.onGround());
         // It only ever holds something up to look at it or eat it, whichever loop stands in for that.
         Act act = bitling.act();
         if (act == Act.INSPECT || act == Act.EAT) {
@@ -114,14 +130,14 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             case STAND, LOOK -> new String[]{"idle"};
             case WALK -> new String[]{"walk", "working"};
             case SPRINT -> new String[]{"sprint", "walk", "working"};
-            case HOP -> new String[]{"hop", "idle"};
-            case REST -> new String[]{"lie_down", "napping"};
+            case HOP -> new String[]{"idle"};
+            case REST -> new String[]{"napping"};
             case TIRED -> new String[]{"tired_walk", "walk", "working"};
             case STARTLED -> new String[]{"startled", "idle"};
             case PETTED -> new String[]{"petted", "idle"};
             case RECHARGE -> new String[]{"recharging", "napping"};
             case INSPECT -> new String[]{"inspect", "idle"};
-            case NOD -> new String[]{"nod", "hop", "idle"};
+            case NOD -> new String[]{"nod", "idle"};
             case EAT -> new String[]{"eat", "idle"};
             case SHAKE -> new String[]{"head_shake", "startled", "idle"};
         };
@@ -136,6 +152,14 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             }
         }
         return names[names.length - 1];
+    }
+
+    private static boolean lying(@Nullable Act act) {
+        return act == Act.REST || act == Act.RECHARGE;
+    }
+
+    private static boolean striding(Act act) {
+        return act == Act.WALK || act == Act.SPRINT || act == Act.TIRED;
     }
 
     /** Where one Bitling's loops and stride are, kept from frame to frame. */
@@ -153,8 +177,22 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         /** How much the idle loop's head sweep has made way for a real look, from 0 to 1. */
         private float looking;
         private float lastTime = -1;
+        /** The act last frame, and a one-off move (lying down, getting up) playing before the act's own loop, if any. */
+        private @Nullable Act act;
+        private String move = "";
+        private float moveStart;
+        private float blendSeconds = BLEND_SECONDS;
+        /**
+         * A jump up a step: its height when last on the ground, when it was seen to leave the ground and to land (-1 till
+         * then), and its height last frame.
+         */
+        private float groundY;
+        private float tookOff = -1;
+        private float landed = -1;
+        private float lastY;
 
-        Map<String, float[]> update(Act now, float time, float walk, float speed, float headYaw, float headPitch, boolean glancing) {
+        Map<String, float[]> update(Act now, float time, float walk, float speed, float headYaw, float headPitch, boolean glancing,
+                float y, boolean onGround) {
             // The step cycle moves on with the ground covered, in longer strides the faster it goes.
             float moved = Float.isNaN(lastWalk) ? 0 : walk - lastWalk;
             lastWalk = walk;
@@ -162,8 +200,39 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
                 phase += moved / Mth.lerp(Mth.clamp((speed - WALK_PACE) / (SPRINT_PACE - WALK_PACE), 0, 1), WALK_CYCLE, SPRINT_CYCLE);
                 phase -= Mth.floor(phase);
             }
-            boolean striding = now == Act.WALK || now == Act.SPRINT || now == Act.TIRED;
-            String name = striding ? STRIDE : clipName(now);
+            boolean striding = striding(now);
+            if (now != act) {
+                // Lying down and getting up play in between. A Bitling that bolts off its nap just goes.
+                if (act != null && lying(now) && !lying(act)) {
+                    startMove(LIE_DOWN, time);
+                } else if (act != null && lying(act) && !lying(now) && !striding) {
+                    startMove(GET_UP, time);
+                } else if (striding || lying(now) != lying(act)) {
+                    move = "";
+                }
+                act = now;
+            }
+            if (!move.isEmpty() && time - moveStart >= length(move)) {
+                move = "";
+            }
+            // Walking, it jumps up a step: off the ground and going up. A step it walks up, or a drop, is no jump.
+            if (tookOff < 0) {
+                if (onGround) {
+                    groundY = y;
+                } else if (striding && y > groundY + HOP_OFF_GROUND) {
+                    tookOff = time;
+                    landed = -1;
+                }
+            } else if (landed < 0) {
+                if (onGround && y >= lastY) {
+                    landed = time;
+                }
+            } else if (hopTime(time) >= HOP_WALKS_ON) {
+                tookOff = -1;
+                groundY = y;
+            }
+            lastY = y;
+            String name = !move.isEmpty() ? move : tookOff >= 0 ? HOP : striding ? STRIDE : clipName(now);
             // A new loop starts from the beginning, easing out of the pose on screen. Two acts that share a loop, like
             // standing and looking around, just carry on with it.
             if (!name.equals(clip)) {
@@ -174,17 +243,22 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
                 }
                 clip = name;
                 clipStart = time;
+                blendSeconds = name.equals(HOP) ? HOP_BLEND_SECONDS : BLEND_SECONDS;
             }
             Map<String, float[]> pose;
-            if (striding) {
+            BitlingAnimations.Clip playing = animations.clip(clip);
+            float length = playing == null ? 0 : playing.length();
+            if (clip.equals(STRIDE)) {
                 pose = stride(speed);
+            } else if (clip.equals(HOP)) {
+                pose = animations.sample(playing, Math.min(hopTime(time), length));
+            } else if (clip.equals(move)) {
+                pose = animations.sample(playing, Math.min(time - clipStart, length));
             } else {
-                BitlingAnimations.Clip playing = animations.clip(clip);
-                float length = playing == null ? 0 : playing.length();
                 pose = animations.sample(playing, length <= 0 ? 0 : (time - clipStart) % length);
             }
             if (from != null || fromStride) {
-                float t = Mth.clamp((time - fromStart) / BLEND_SECONDS, 0, 1);
+                float t = Mth.clamp((time - fromStart) / blendSeconds, 0, 1);
                 pose = BitlingAnimations.mix(fromStride ? stride(speed) : from, pose, t * t * (3 - 2 * t));
                 if (t >= 1) {
                     from = null;
@@ -208,6 +282,25 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             h[4] = Mth.clamp(h[4] * (1 - looking) - headYaw, -HEAD_LIMIT, HEAD_LIMIT);
             turned.put("head", h);
             return turned;
+        }
+
+        /** Starts a one-off move, if there is one to play. */
+        private void startMove(String name, float time) {
+            move = animations.clip(name) == null ? "" : name;
+            moveStart = time;
+        }
+
+        private float length(String name) {
+            BitlingAnimations.Clip playing = animations.clip(name);
+            return playing == null ? 0 : playing.length();
+        }
+
+        /** How far into the hop loop to be: in the air till it lands, then landing. */
+        private float hopTime(float time) {
+            if (landed < 0) {
+                return Math.min(HOP_TAKE_OFF + time - tookOff, HOP_FALLING);
+            }
+            return HOP_FALLING + time - landed;
         }
 
         /**

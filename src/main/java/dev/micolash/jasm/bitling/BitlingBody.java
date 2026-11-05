@@ -35,6 +35,7 @@ public abstract class BitlingBody extends PathfinderMob {
         WALK,
         SPRINT,
         LOOK,
+        /** No longer chosen; kept so saved acts keep their numbers. */
         HOP,
         REST,
         TIRED,
@@ -82,8 +83,10 @@ public abstract class BitlingBody extends PathfinderMob {
     private static final int GLANCE_SEARCH_EVERY = 5;
     /** Walking, it only glances at a player this far either side of the way it is going. */
     private static final float GLANCE_WALKING_ANGLE = 90;
+    /** Ticks it takes to get up from lying down, before it walks off. */
+    protected static final int GET_UP_TICKS = 18;
 
-    /** Ticks left of a timed act (a hop, a rest, a startle). */
+    /** Ticks left of a timed act (a look round, a rest, a startle). */
     protected int actTicks;
     /** Ticks to stand still before choosing the next thing to do. */
     protected int waitTicks = 20;
@@ -359,7 +362,7 @@ public abstract class BitlingBody extends PathfinderMob {
     // --- roaming ---
 
     /**
-     * One tick of roaming its garden: walks, sprints, looks around, hops and lies down, and walks back in when pushed out.
+     * One tick of roaming its garden: walks, sprints, looks around and lies down, and walks back in when pushed out.
      * Returns false while it stands about waiting to choose what to do next.
      */
     protected boolean roam(ServerLevel level) {
@@ -413,9 +416,6 @@ public abstract class BitlingBody extends PathfinderMob {
             setAct(Act.LOOK);
             actTicks = 50 + random.nextInt(40);
         } else if (pick < 85) {
-            setAct(Act.HOP);
-            actTicks = 14;
-        } else {
             setAct(Act.REST);
             actTicks = 100 + random.nextInt(200);
         }
@@ -425,16 +425,13 @@ public abstract class BitlingBody extends PathfinderMob {
         return true;
     }
 
-    /** Having stopped, look around, hop, lie down or just stand for a moment. */
+    /** Having stopped, look around, lie down or just stand for a moment. */
     private void afterWalk() {
         int pick = random.nextInt(100);
         if (pick < 40) {
             setAct(Act.LOOK);
             actTicks = 50 + random.nextInt(40);
-        } else if (pick < 70) {
-            setAct(Act.HOP);
-            actTicks = 14;
-        } else if (pick < 85) {
+        } else if (pick < 55) {
             setAct(Act.REST);
             actTicks = 100 + random.nextInt(200);
         } else {
