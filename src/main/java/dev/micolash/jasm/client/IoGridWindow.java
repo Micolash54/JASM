@@ -40,8 +40,8 @@ import org.jspecify.annotations.Nullable;
  * A machine's I/O grid, in a window like the Deck Link one: opened from a side key, drawn above the screen and moved by
  * dragging any empty spot of it. Six face keys stand in a plus with the back in the bottom-right corner; each shows its
  * mode by colour and, on top, the item of the block next to that side, read from the world the player sees. A click
- * steps the side to the next mode. Machines with a tank get a key under the title that switches between the items'
- * faces and the fluids'; machines with an Auto Output switch get it on a row of its own at the bottom.
+ * steps the side to the next mode. Machines with a tank, or energy faces, get a key under the title that steps between
+ * the items' faces, the fluids' and the energy's; machines with an Auto Output switch get it on a row of its own at the bottom.
  */
 final class IoGridWindow {
     static final int WIDTH = 100;
@@ -68,7 +68,8 @@ final class IoGridWindow {
     private static final int[][] CELLS = {{1, 0}, {0, 1}, {1, 1}, {2, 1}, {1, 2}, {2, 2}};
 
     private final Font font;
-    private final boolean fluids;
+    /** The kinds of faces this machine has, in the order the key under the title steps through them. */
+    private final List<MachineSides.Kind> kinds;
     private final ToIntFunction<MachineSides.Kind> modes;
     private final IntConsumer press;
     private final Supplier<@Nullable BlockPos> at;
@@ -93,15 +94,22 @@ final class IoGridWindow {
      */
     IoGridWindow(Font font, boolean fluids, ToIntFunction<MachineSides.Kind> modes, IntConsumer press, Supplier<@Nullable BlockPos> at,
             @Nullable BooleanSupplier autoOutput) {
+        this(font, fluids ? List.of(MachineSides.Kind.ITEMS, MachineSides.Kind.FLUIDS) : List.of(MachineSides.Kind.ITEMS),
+                modes, press, at, autoOutput);
+    }
+
+    /** As above, for a machine with these kinds of faces. */
+    IoGridWindow(Font font, List<MachineSides.Kind> kinds, ToIntFunction<MachineSides.Kind> modes, IntConsumer press,
+            Supplier<@Nullable BlockPos> at, @Nullable BooleanSupplier autoOutput) {
         this.font = font;
-        this.fluids = fluids;
+        this.kinds = List.copyOf(kinds);
         this.modes = modes;
         this.press = press;
         this.at = at;
         this.autoOutput = autoOutput;
         Arrays.fill(icons, ItemStack.EMPTY);
         close = JasmButton.icon(() -> CLOSE, Component.translatable("screen.jasm.deck.settings.close"), b -> close(), 0, 0, 11, 11);
-        kindSwitch = fluids ? JasmButton.text(kindLabel(), b -> switchKind(), 0, 0, WIDTH - 16, SWITCH_HEIGHT) : null;
+        kindSwitch = this.kinds.size() > 1 ? JasmButton.text(kindLabel(), b -> switchKind(), 0, 0, WIDTH - 16, SWITCH_HEIGHT) : null;
     }
 
     /** The side key that opens and shuts the window; the screen adds it. */
@@ -113,15 +121,15 @@ final class IoGridWindow {
         return key;
     }
 
-    /** "< Items >": what is being set, and that a click swaps it. */
+    /** "< Items >": what is being set, and that a click moves on to the next. */
     private Component kindLabel() {
         return Component.literal("< ")
-                .append(Component.translatable(kind == MachineSides.Kind.ITEMS ? "screen.jasm.io.items" : "screen.jasm.io.fluids"))
+                .append(Component.translatable("screen.jasm.io." + kind.name().toLowerCase(Locale.ROOT)))
                 .append(" >");
     }
 
     private void switchKind() {
-        kind = kind == MachineSides.Kind.ITEMS ? MachineSides.Kind.FLUIDS : MachineSides.Kind.ITEMS;
+        kind = kinds.get((kinds.indexOf(kind) + 1) % kinds.size());
         if (kindSwitch != null) kindSwitch.setMessage(kindLabel());
     }
 
@@ -149,7 +157,7 @@ final class IoGridWindow {
     }
 
     private int gridY() {
-        return fluids ? SWITCH_Y + SWITCH_HEIGHT + 5 : 28;
+        return kindSwitch != null ? SWITCH_Y + SWITCH_HEIGHT + 5 : 28;
     }
 
     private int gridBottom() {

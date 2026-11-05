@@ -20,13 +20,18 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import java.util.List;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidUtil;
 import org.jspecify.annotations.Nullable;
 
-/** Places what its grid holds in front of it, as its owner would. */
+/** Places what its grid holds in front of it, throws it out, or right-clicks what is in front, as its owner would. */
 public class DeploymentBayBlockEntity extends BayBlockEntity {
+    /** In Interact mode, the grid slot whose stack is held for the click. */
+    public static final int HAND_SLOT = 0;
+    /** After a click that did nothing, how long it waits before trying again unless something wakes it: five seconds. */
+    private static final int INTERACT_RETRY_TICKS = 100;
     /**
      * Half the size of a dropped item, the gap it keeps from the bay's face, how far it may start either side of the
      * middle, and its push per tick: on a plain floor it slides to a stop in the middle of the front space.
@@ -37,6 +42,8 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
     private static final double THROW_SPEED = 0.14;
 
     private DeployMode mode = DeployMode.PLACE;
+    /** Interact mode: the game time before which a click that did nothing isn't tried again. Not saved. */
+    private long quietUntil;
 
     public DeploymentBayBlockEntity(BlockPos pos, BlockState state) {
         super(JasmBlocks.DEPLOYMENT_BAY_ENTITY.get(), pos, state);
@@ -49,6 +56,7 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
 
     @Override
     protected Plan plan(ServerLevel level, BlockPos front) {
+        if (mode == DeployMode.INTERACT) return planClick(level, front);
         boolean anyItem = false;
         boolean anyBlock = false;
         boolean refused = false;
@@ -79,6 +87,64 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         return Plan.work(JasmConfig.DEPLOYMENT_COST.getAsInt());
     }
 
+    /**
+     * Interact mode: work when something is in front to click on, the hand passes the filter and the other eight slots
+     * have room for what the click may give.
+     */
+    private Plan planClick(ServerLevel level, BlockPos front) {
+        ItemStack hand = items.get(HAND_SLOT);
+        if (!hand.isEmpty() && !passes(hand)) return Plan.idle(BayStatus.FILTERED);
+        if (level.getGameTime() < quietUntil || !BayInteraction.anythingInFront(level, front)) return Plan.idle(BayStatus.NOTHING_HAPPENED);
+        if (!roomForResults()) return Plan.idle(BayStatus.GRID_FULL);
+        if (!level.mayInteract(fakePlayer(level), front)) return Plan.idle(BayStatus.NOT_ALLOWED);
+        if (claimWaiting(level, front)) return Plan.idle(BayStatus.CLAIMED);
+        return Plan.work(JasmConfig.DEPLOYMENT_COST.getAsInt());
+    }
+
+    /** Whether any slot but the hand's has room left. */
+    private boolean roomForResults() {
+        for (int slot = 0; slot < GRID; slot++) {
+            if (slot == HAND_SLOT) continue;
+            ItemStack stack = items.get(slot);
+            if (stack.isEmpty() || stack.getCount() < stack.getMaxStackSize()) return true;
+        }
+        return false;
+    }
+
+    /**
+     * One right-click on the front with the hand slot's stack. What is left in hand goes back in that slot; whatever else
+     * the click gave goes into the other slots, and what doesn't fit is thrown out in front as in drop mode.
+     */
+    private BayStatus click(ServerLevel level, BlockPos front, int cost) {
+        BayInteraction.Outcome outcome = BayInteraction.click(this, level, front, items.get(HAND_SLOT));
+        if (outcome.status() != BayStatus.WORKING) {
+            if (outcome.status() == BayStatus.NOTHING_HAPPENED) quietUntil = level.getGameTime() + INTERACT_RETRY_TICKS;
+            return outcome.status();
+        }
+        items.set(HAND_SLOT, outcome.hand());
+        List<ItemStack> others = items.subList(HAND_SLOT + 1, GRID);
+        for (ItemStack result : outcome.results()) {
+            merge(others, result);
+            if (!result.isEmpty()) throwOut(level, result);
+        }
+        gridChanged();
+        pay(cost);
+        return BayStatus.WORKING;
+    }
+
+    /** Something changed that may give the bay work: a click that did nothing may be tried again at once. */
+    @Override
+    public void wake() {
+        super.wake();
+        quietUntil = 0;
+    }
+
+    /** In Interact mode the Bitling holds up what the click uses, nothing for an empty hand. */
+    @Override
+    protected ItemStack held() {
+        return mode == DeployMode.INTERACT ? items.get(HAND_SLOT) : super.held();
+    }
+
     /** A block the tank's fluid can go into without replacing it, such as a slab that gets waterlogged. */
     private boolean holdsFluid(ServerLevel level, BlockPos front, BlockState there) {
         return there.getBlock() instanceof LiquidBlockContainer container
@@ -90,6 +156,7 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         Plan plan = plan(level, front);
         if (plan.status() != BayStatus.WORKING) return plan.status();
         if (!canPay(plan.cost())) return BayStatus.NO_POWER;
+        if (mode == DeployMode.INTERACT) return click(level, front, plan.cost());
         if (mode == DeployMode.DROP) {
             for (int slot = 0; slot < GRID; slot++) {
                 ItemStack stack = items.get(slot);
@@ -227,10 +294,16 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         return mode;
     }
 
+    /** Steps to the next mode: place, drop, interact. */
     public void toggleMode() {
-        mode = mode.toggle();
-        setChanged();
-        wake();
+        setMode(mode.next());
+    }
+
+    public void setMode(DeployMode mode) {
+        if (this.mode == mode) return;
+        this.mode = mode;
+        // saves, wakes, and shows players what the Bitling holds up now
+        gridChanged();
     }
 
     @Override

@@ -27,6 +27,7 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 | Speed | 3 seconds, down to 0.2 seconds with 4 [Speed Upgrades](speed-upgrade.md) |
 | Breaking | 6 FE for each point of cost: 1, plus the block's hardness and drops, times enchantments |
 | Scooping | 50 FE a bucket |
+| Picking up | 20 FE per pickup action, up to 64 items from the ground |
 | Upgrades | five slots: up to four [Speed Upgrades](speed-upgrade.md) and one [Redstone Upgrade](redstone-upgrade.md) |
 | Holds | 10,000 FE and 16 buckets |
 
@@ -35,9 +36,9 @@ Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 ## Good to know
 
 * Its Input / Output key opens sides for items and fluids separately, each Output or closed. A side set to Output sends what it broke or scooped into whatever is there, and an [Input Port](item-ports.md), hopper or pipe can empty it there. Every side starts closed.
-* It runs on cable power and doesn't take up a place on the machine limit. Pipes and other mods' cables can't power it: put a [Power Interface](power-acceptor.md) against it.
-* Speed Upgrades raise the power per break or scoop as well as the speed. Four upgrades cost two and a half times the power for each action.
-* With a [Redstone Upgrade](redstone-upgrade.md) it can run only while powered or unpowered, or work once for each redstone pulse.
+* It runs on cable power and doesn't take up a place on the machine limit. It also takes power from any cable or pipe, other mods' too: the Energy tab of its Input / Output key sets which sides take it.
+* Speed Upgrades raise the power per break, scoop or pickup as well as the speed. Four upgrades cost two and a half times the power for each action.
+* With a [Redstone Upgrade](redstone-upgrade.md) it can run only while powered or unpowered, or work once for each redstone pulse. Picking up items counts as an action too.
 * You can add [filters](../mechanics/type-filters.md) to decide what it may or may not break. Works for items and fluids.
 * The small speaker key next to the ? key mutes or unmutes the laser sound of every Demolition Bay, in your game only.
 

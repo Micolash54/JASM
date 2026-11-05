@@ -8,14 +8,17 @@ import dev.micolash.jasm.bay.BayMenu;
 import dev.micolash.jasm.bay.BayRedstone;
 import dev.micolash.jasm.bay.BayStatus;
 import dev.micolash.jasm.bay.DemolitionBayBlockEntity;
+import dev.micolash.jasm.bay.DeploymentBayBlockEntity;
 import dev.micolash.jasm.bay.DeployMode;
 import dev.micolash.jasm.config.JasmClientConfig;
+import dev.micolash.jasm.network.MachineSides;
 import dev.micolash.jasm.storage.WaferSettings;
 import dev.micolash.jasm.transfer.TransferPortMenu;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.input.CharacterEvent;
@@ -34,9 +37,10 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A bay's panel: the power in the title row, the grid with the tank beside it, what the bay is doing and how often, Place /
- * Drop or the enchantments, the filter (which folds away), and the upgrade column past the right edge with the I/O grid's
- * key and the redstone key under it. The Demolition Bay's sound key sits beside the help key.
+ * A bay's panel: the power in the title row, the grid with the tank beside it, what the bay is doing and how often, the
+ * three mode keys (Place, Drop, Interact) or the enchantments, the filter (which folds away), and the upgrade column
+ * past the right edge with the I/O grid's key and the redstone key under it. The Demolition Bay's sound key sits beside
+ * the help key. In Interact mode the grid's first slot, the one held for the click, is lit.
  */
 public class BayScreen extends JasmScreen<BayMenu> {
     private static final int KEY_X = BayMenu.WIDTH;
@@ -46,7 +50,14 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private static final int TANK_HEIGHT = 54;
     private static final int SIDE_X = 94;
     private static final int SIDE_WIDTH = BayMenu.WIDTH - 8 - SIDE_X;
-    private static final int MODE_Y = 44;
+    /** The mode keys in one row, icons only, the chosen one with a green rim and a green bar under it. */
+    private static final int MODE_Y = 45;
+    private static final int MODE_WIDTH = 22;
+    private static final int MODE_HEIGHT = 20;
+    private static final int MODE_STEP = MODE_WIDTH + 2;
+    private static final int MODE_ICON = 12;
+    /** The lit hand slot in Interact mode: a lavender rim on its frame and a faint wash under the item. */
+    private static final int HAND_WASH = 0x33B4BEFE;
     private static final int ENCHANT_Y = 43;
     private static final int ENCHANT_HEIGHT = 29;
     // title row, same spot as the rack's
@@ -71,8 +82,7 @@ public class BayScreen extends JasmScreen<BayMenu> {
     private @Nullable JasmButton sound;
     private @Nullable IoGridWindow io;
     private boolean shownMuted;
-    private @Nullable JasmButton place;
-    private @Nullable JasmButton drop;
+    private final List<JasmButton> modes = new ArrayList<>();
     private @Nullable BayRedstone shownRedstone;
     private @Nullable ItemFilterEditor editor;
     private @Nullable JasmButton fold;
@@ -144,7 +154,10 @@ public class BayScreen extends JasmScreen<BayMenu> {
                     leftPos + BayMenu.WIDTH - 7 - HELP_ROOM - HELP_SIZE, topPos + titleLabelY - 3, HELP_SIZE, HELP_HEIGHT));
             soundTooltip();
         }
-        if (io == null) io = new IoGridWindow(font, true, menu::sides, this::click, menu::bayPos, null);
+        if (io == null) {
+            io = new IoGridWindow(font, List.of(MachineSides.Kind.ITEMS, MachineSides.Kind.FLUIDS, MachineSides.Kind.ENERGY),
+                    menu::sides, this::click, menu::bayPos, null);
+        }
         addRenderableWidget(io.key(leftPos + KEY_X, topPos + KEYS_Y, topPos));
         editor = null;
         if (!collapsed()) {
@@ -158,14 +171,19 @@ public class BayScreen extends JasmScreen<BayMenu> {
                 0, 0, FOLD_SIZE, FOLD_SIZE));
         fold.setTooltip(Tooltip.create(foldLabel));
         placeFold();
+        modes.clear();
         if (menu.kind() == BayKind.DEPLOYMENT) {
-            int half = SIDE_WIDTH / 2;
-            place = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.bay.mode.place"),
-                    b -> click(BayMenu.BUTTON_MODE), leftPos + SIDE_X, topPos + MODE_Y, half, 16));
-            drop = addRenderableWidget(JasmButton.text(Component.translatable("screen.jasm.bay.mode.drop"),
-                    b -> click(BayMenu.BUTTON_MODE), leftPos + SIDE_X + half, topPos + MODE_Y, SIDE_WIDTH - half, 16));
-            place.setTooltip(Tooltip.create(Component.translatable("screen.jasm.bay.mode.place_hint")));
-            drop.setTooltip(Tooltip.create(Component.translatable("screen.jasm.bay.mode.drop_hint")));
+            for (DeployMode mode : DeployMode.values()) {
+                String name = mode.getSerializedName();
+                Component label = Component.translatable("screen.jasm.bay.mode." + name);
+                JasmButton.Icon icon = new JasmButton.Icon(Jasm.id("icon/mode_" + name), MODE_ICON, MODE_ICON);
+                JasmButton key = addRenderableWidget(JasmButton.icon(() -> icon, label, b -> pickMode(mode),
+                        leftPos + modeX(mode), topPos + MODE_Y, MODE_WIDTH, MODE_HEIGHT));
+                key.setGreenRim();
+                key.setTooltip(Tooltip.create(label.copy().append("\n")
+                        .append(Component.translatable("screen.jasm.bay.mode." + name + "_hint").withStyle(ChatFormatting.GRAY))));
+                modes.add(key);
+            }
         }
         containerTick();
     }
@@ -198,6 +216,18 @@ public class BayScreen extends JasmScreen<BayMenu> {
                 Component.translatable("screen.jasm.bay.redstone." + menu.redstone().getSerializedName()));
     }
 
+    private static int modeX(DeployMode mode) {
+        return SIDE_X + mode.ordinal() * MODE_STEP;
+    }
+
+    private void pickMode(DeployMode mode) {
+        click(BayMenu.BUTTON_MODE_FIRST + mode.ordinal());
+    }
+
+    private boolean interactMode() {
+        return menu.kind() == BayKind.DEPLOYMENT && menu.mode() == DeployMode.INTERACT;
+    }
+
     private void click(int id) {
         if (minecraft != null && minecraft.gameMode != null) minecraft.gameMode.handleInventoryButtonClick(menu.containerId, id);
     }
@@ -228,11 +258,8 @@ public class BayScreen extends JasmScreen<BayMenu> {
                 soundTooltip();
             }
         }
-        if (place != null && drop != null) {
-            // The chosen mode can't be pressed; the other one switches to it.
-            place.setSelected(menu.mode() == DeployMode.PLACE);
-            drop.setSelected(menu.mode() == DeployMode.DROP);
-        }
+        // The chosen mode can't be pressed; the others switch to theirs.
+        for (int i = 0; i < modes.size(); i++) modes.get(i).setSelected(menu.mode().ordinal() == i);
     }
 
     @Override
@@ -240,7 +267,19 @@ public class BayScreen extends JasmScreen<BayMenu> {
         super.extractBackground(graphics, mouseX, mouseY, a);
         frame.draw(graphics, leftPos, topPos);
         for (Slot slot : menu.slots) JasmGui.slot(graphics, leftPos + slot.x, topPos + slot.y);
+        if (interactMode()) {
+            Slot hand = menu.slots.get(DeploymentBayBlockEntity.HAND_SLOT);
+            int x = leftPos + hand.x;
+            int y = topPos + hand.y;
+            graphics.fill(x, y, x + 16, y + 16, HAND_WASH);
+            JasmGui.rim(graphics, x - 1, y - 1, 18, 18, JasmGui.ACCENT);
+        }
         tank(graphics, leftPos + TANK_X, topPos + TANK_Y);
+        if (menu.kind() == BayKind.DEPLOYMENT) {
+            int x = leftPos + modeX(menu.mode()) + 4;
+            int y = topPos + MODE_Y + MODE_HEIGHT + 1;
+            graphics.fill(x, y, x + MODE_WIDTH - 8, y + 2, JasmGui.GOOD);
+        }
         if (menu.kind() == BayKind.DEMOLITION) {
             JasmGui.inset(graphics, leftPos + SIDE_X, topPos + ENCHANT_Y, SIDE_WIDTH, ENCHANT_HEIGHT);
         }
@@ -349,6 +388,8 @@ public class BayScreen extends JasmScreen<BayMenu> {
             if (!full.getString().equals(Component.translatable(menu.status().shortKey()).getString())) {
                 graphics.setTooltipForNextFrame(font, full, mouseX, mouseY);
             }
+        } else if (interactMode() && hoveredSlot != null && hoveredSlot.index == DeploymentBayBlockEntity.HAND_SLOT && !hoveredSlot.hasItem()) {
+            graphics.setTooltipForNextFrame(font, Component.translatable("screen.jasm.bay.hand_slot"), mouseX, mouseY);
         } else if (menu.kind() == BayKind.DEMOLITION && x >= SIDE_X && x < SIDE_X + SIDE_WIDTH && y >= ENCHANT_Y
                 && y < ENCHANT_Y + ENCHANT_HEIGHT) {
             List<Component> lines = enchantmentLines();

@@ -53,6 +53,8 @@ import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.energy.EnergyHandler;
+import net.neoforged.neoforge.transfer.energy.LimitingEnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidStacksResourceHandler;
 import net.neoforged.neoforge.transfer.item.ItemResource;
@@ -62,8 +64,9 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
 /**
- * What both bays share: a 3×3 grid, one tank, five upgrade slots, a power buffer fed by cables and JASM power sources,
- * and the work loop. Work comes in cycles; the action happens as a cycle ends, after looking at the front again.
+ * What both bays share: a 3×3 grid, one tank, five upgrade slots, a power buffer fed by cables and JASM power sources
+ * and, through its energy faces, by any other mod's cable, pipe or generator, and the work loop. Work comes in cycles;
+ * the action happens as a cycle ends, after looking at the front again.
  * A bay with nothing to do sleeps until a block update, a change in its slots or tank, or a redstone change wakes it.
  * Waits that no update announces (power, crowding, claims, an unloaded front) are looked at every half second. A spot
  * a claim mod refused isn't asked about again for a few seconds, so a bay facing a claim costs neither side much.
@@ -91,6 +94,11 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     private final RootCommitJournal transferJournal = new RootCommitJournal(this::gridChanged);
     /** The Deployment Bay only takes in and the Demolition Bay only gives out, so each offers just that or None. */
     private final MachineSides sides;
+    /**
+     * What other mods' cables, pipes and generators reach through an Input energy face: the bay's own buffer, in only.
+     * Power that comes in this way stays in this bay and is never passed on to the network.
+     */
+    private final EnergyHandler powerFromOutside;
     private final BayClock clock = new BayClock();
     private BayRedstone redstone = BayRedstone.IGNORE;
     /** What the bay may take (Demolition) or put out (Deployment). Empty lets everything through. */
@@ -130,9 +138,11 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         itemGates = new MachineSides.Gated<>(itemAutomation);
         fluidGates = new MachineSides.Gated<>(fluidAutomation);
         // A new Deployment Bay takes things in on every side but its front, where it places from.
-        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true,
+        // Power may come in on every side, the front too.
+        sides = new MachineSides(kind().takesIn() ? MachineSides.IN_ONLY : MachineSides.OUT_ONLY, true, true,
                 kind().takesIn() ? FaceMode.INPUT : FaceMode.NONE, false, this::sidesChanged);
         sides.preset(MachineFace.FRONT, FaceMode.NONE);
+        powerFromOutside = new LimitingEnergyHandler(energy, Integer.MAX_VALUE, 0);
     }
 
     public abstract BayKind kind();
@@ -146,12 +156,25 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     /** Every half second, even asleep. */
     protected void everyHalfSecond(ServerLevel level) {}
 
+    /** Each tick the bay sleeps: nothing is due and no update woke it. Must stay cheap. */
+    protected void asleep(ServerLevel level) {}
+
+    /**
+     * Bays are switched off, or the Redstone Upgrade holds this one back: a steady mode against the signal, or pulse
+     * mode, where only a pulse lets it work and every pulse wakes it anyway. Read live, not from the shown status.
+     */
+    protected boolean heldBack() {
+        if (!Feature.BAYS.on()) return true;
+        if (!hasRedstoneUpgrade()) return false;
+        return redstone == BayRedstone.PULSE || !redstone.allows(signal);
+    }
+
     public record Plan(BayStatus status, int cost, boolean scoop) {
         public static Plan work(int cost) {
             return new Plan(BayStatus.WORKING, Math.max(0, cost), false);
         }
 
-        /** Work on a fluid rather than a block: no cracks, a softer beam. */
+        /** Work on a fluid, or on items lying in front, rather than a block: no cracks, a softer beam. */
         public static Plan scoop(int cost) {
             return new Plan(BayStatus.WORKING, Math.max(0, cost), true);
         }
@@ -186,7 +209,10 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
                 return;
             }
         }
-        if (!wake && !(halfSecond && status.recheck())) return;
+        if (!wake && !(halfSecond && status.recheck())) {
+            asleep(level);
+            return;
+        }
         wake = false;
         tryStart(level);
     }
@@ -314,6 +340,12 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         return fluidGates;
     }
 
+    /** What other mods' power reaches through {@code side}: the buffer, in only, if that energy face is Input. */
+    public @Nullable EnergyHandler energyThrough(@Nullable Direction side) {
+        if (side == null) return null;
+        return sides.mode(MachineSides.Kind.ENERGY, MachineFace.of(frontSide(), side)).in() ? powerFromOutside : null;
+    }
+
     public BlockPos front() {
         return worldPosition.relative(facing());
     }
@@ -348,12 +380,17 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
     protected boolean clickAllowed(ServerLevel level, FakePlayer player, BlockPos pos, ItemStack held) {
         player.setItemInHand(InteractionHand.MAIN_HAND, held);
         try {
-            BlockHitResult aim = BayPlaceContext.aimAt(pos, facing());
-            PlayerInteractEvent.RightClickBlock event = CommonHooks.onRightClickBlock(player, InteractionHand.MAIN_HAND, pos, aim);
-            return remember(level, pos, !event.isCanceled() && event.getUseItem() != TriState.FALSE);
+            return clickAllowedNow(level, player, pos);
         } finally {
             player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         }
+    }
+
+    /** The same, with whatever the stand-in player holds right now. */
+    protected boolean clickAllowedNow(ServerLevel level, FakePlayer player, BlockPos pos) {
+        BlockHitResult aim = BayPlaceContext.aimAt(pos, facing());
+        PlayerInteractEvent.RightClickBlock event = CommonHooks.onRightClickBlock(player, InteractionHand.MAIN_HAND, pos, aim);
+        return remember(level, pos, !event.isCanceled() && event.getUseItem() != TriState.FALSE);
     }
 
     /**
@@ -365,7 +402,8 @@ public abstract class BayBlockEntity extends MachineBlockEntity {
         return remember(level, pos, !EventHooks.onBlockPlace(player, spot, facing()));
     }
 
-    private boolean remember(ServerLevel level, BlockPos pos, boolean allowed) {
+    /** Notes a refusal, so claim mods aren't asked about {@code pos} again for a while. Returns {@code allowed}. */
+    boolean remember(ServerLevel level, BlockPos pos, boolean allowed) {
         if (!allowed) {
             claimRefused = pos.immutable();
             claimRetryAt = level.getGameTime() + CLAIM_RETRY_TICKS;

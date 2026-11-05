@@ -28,7 +28,12 @@ public enum BayStatus {
      * A claim mod refused a fluid or an item use on the front. Looked at every half second, but the claim mod is only
      * asked again after a while.
      */
-    CLAIMED(true);
+    CLAIMED(true),
+    /**
+     * Interact mode: the right-click did nothing, or there is nothing in front. Looked at every half second, since a mob
+     * walking up or wool growing back announces nothing, but tried again only after a while.
+     */
+    NOTHING_HAPPENED(true);
 
     private final boolean recheck;
 

@@ -6,13 +6,18 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.util.StringRepresentable;
 
-/** Whether a Deployment Bay places what it holds or throws it out. */
+/**
+ * Whether a Deployment Bay places what it holds, throws it out, or right-clicks what is in front with the first grid
+ * slot's stack in hand.
+ */
 public enum DeployMode implements StringRepresentable {
     PLACE("place"),
-    DROP("drop");
+    DROP("drop"),
+    INTERACT("interact");
 
+    private static final DeployMode[] VALUES = values();
     public static final Codec<DeployMode> CODEC = StringRepresentable.fromEnum(DeployMode::values);
-    public static final StreamCodec<ByteBuf, DeployMode> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(i -> i == 1 ? DROP : PLACE, DeployMode::ordinal);
+    public static final StreamCodec<ByteBuf, DeployMode> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(DeployMode::byId, DeployMode::ordinal);
     private final String name;
 
     DeployMode(String name) {
@@ -24,7 +29,12 @@ public enum DeployMode implements StringRepresentable {
         return name;
     }
 
-    public DeployMode toggle() {
-        return this == PLACE ? DROP : PLACE;
+    public static DeployMode byId(int id) {
+        return id >= 0 && id < VALUES.length ? VALUES[id] : PLACE;
+    }
+
+    /** The next mode, in the order the panel shows them. */
+    public DeployMode next() {
+        return VALUES[(ordinal() + 1) % VALUES.length];
     }
 }

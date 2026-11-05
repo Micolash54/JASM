@@ -165,7 +165,8 @@ The three lists start with a lone Network Brain, then a tower of 1 floor, 2 floo
 | Tank buckets | `tankBuckets` | Buckets each bay's tank holds. |
 | Demolition cost/point (FE) | `demolitionFePerPoint` | FE the Demolition Bay uses for each point of a block's break cost. |
 | Demolition scoop cost (FE) | `demolitionScoopCost` | FE the Demolition Bay uses to scoop one bucket of fluid. |
-| Deployment cost (FE) | `deploymentCost` | FE the Deployment Bay uses for each block placed, fluid placed or stack thrown. |
+| Demolition pickup cost (FE) | `demolitionPickupCost` | FE the Demolition Bay uses per pickup action, up to 64 items from the ground. Speed Upgrades raise it, as for breaking. |
+| Deployment cost (FE) | `deploymentCost` | FE the Deployment Bay uses for each block placed, fluid placed, stack thrown or click. |
 | Drop entity limit | `dropEntityLimit` | The Deployment Bay's drop mode pauses while this many entities are near it. |
 | Drop entity radius | `dropEntityRadius` | How far, in blocks, the Deployment Bay's drop mode looks for those entities. |
 

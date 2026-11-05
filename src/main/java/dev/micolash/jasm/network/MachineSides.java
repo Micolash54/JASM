@@ -15,6 +15,8 @@ import org.jspecify.annotations.Nullable;
  * on machines with a tank, once for fluids. A newly placed machine starts every face at the mode it is given (Input on
  * the Workshop and Foundry and, apart from its front, the Deployment Bay; None on the Demolition Bay). The screen's face buttons step through the modes this machine offers.
  * Machines with an Auto Output switch only push their results out on their own while it is on; the bays always do.
+ * Machines that take power straight from other mods' cables (the bays) also have an energy face on each side, Input or
+ * None, Input on every side of a new one.
  */
 public final class MachineSides {
     /** The full cycle, in click order. */
@@ -26,13 +28,18 @@ public final class MachineSides {
     /** Menu button ids: one per face, the items' six first, then the fluids'. */
     public static final int BUTTON_FIRST = 100;
     private static final int FACES = MachineFace.values().length;
-    /** Menu button id of the Auto Output switch, just after the face buttons. */
+    /** Menu button id of the Auto Output switch, just after the items' and fluids' face buttons. */
     public static final int AUTO_OUTPUT_BUTTON = BUTTON_FIRST + 2 * FACES;
+    /** Menu button ids of the energy faces, after the Auto Output switch. */
+    private static final int ENERGY_BUTTON_FIRST = AUTO_OUTPUT_BUTTON + 1;
+    /** Where the energy faces sit in what players' games are told: one bit a face, set for Input, after items and fluids. */
+    private static final int ENERGY_SHIFT = 4 * FACES;
     private static final String AUTO_OUTPUT = "auto_output";
 
     public enum Kind {
         ITEMS("io_items"),
-        FLUIDS("io_fluids");
+        FLUIDS("io_fluids"),
+        ENERGY("io_energy");
 
         private final String key;
 
@@ -49,6 +56,7 @@ public final class MachineSides {
 
     private final List<FaceMode> offered;
     private final boolean fluids;
+    private final boolean energy;
     private final Listener changed;
     private final FaceMode[][] modes = new FaceMode[Kind.values().length][FACES];
     private final boolean switchable;
@@ -60,18 +68,41 @@ public final class MachineSides {
      * switch, off on a new machine. {@code changed} hears about every change a player makes.
      */
     public MachineSides(List<FaceMode> offered, boolean fluids, FaceMode start, boolean switchable, Listener changed) {
+        this(offered, fluids, false, start, switchable, changed);
+    }
+
+    /** As above; with {@code energy}, the machine also has energy faces, each Input or None, all Input to start with. */
+    public MachineSides(List<FaceMode> offered, boolean fluids, boolean energy, FaceMode start, boolean switchable, Listener changed) {
         this.offered = offered;
         this.fluids = fluids;
+        this.energy = energy;
         this.switchable = switchable;
         this.changed = changed;
         fill(offered.contains(start) ? start : FaceMode.NONE);
     }
 
-    /** Sets one face on a machine that is just being built, if offered, without telling anyone. */
+    /** The modes a face of this kind steps through. */
+    private List<FaceMode> offered(Kind kind) {
+        return kind == Kind.ENERGY ? IN_ONLY : offered;
+    }
+
+    /** Whether this machine has faces of that kind at all. */
+    public boolean has(Kind kind) {
+        return switch (kind) {
+            case ITEMS -> true;
+            case FLUIDS -> fluids;
+            case ENERGY -> energy;
+        };
+    }
+
+    /**
+     * Sets one item and fluid face on a machine that is just being built, if offered, without telling anyone. Energy
+     * faces stay as they start.
+     */
     public void preset(MachineFace face, FaceMode mode) {
         if (!offered.contains(mode)) return;
         for (Kind kind : Kind.values()) {
-            if (kind == Kind.FLUIDS && !fluids) continue;
+            if (kind == Kind.ENERGY || !has(kind)) continue;
             modes[kind.ordinal()][face.ordinal()] = mode;
         }
         refreshOut();
@@ -92,14 +123,24 @@ public final class MachineSides {
         changed.changed(false);
     }
 
-    /** Every face this machine has set to {@code mode}; fluid faces stay None on a machine without a tank. */
+    /**
+     * Every item and fluid face this machine has set to {@code mode}; fluid faces stay None on a machine without a tank.
+     * Energy faces are Input on a machine that has them.
+     */
     private void fill(FaceMode mode) {
-        for (Kind kind : Kind.values()) Arrays.fill(modes[kind.ordinal()], kind == Kind.FLUIDS && !fluids ? FaceMode.NONE : mode);
+        for (Kind kind : Kind.values()) {
+            FaceMode set = !has(kind) ? FaceMode.NONE : kind == Kind.ENERGY ? FaceMode.INPUT : mode;
+            Arrays.fill(modes[kind.ordinal()], set);
+        }
         refreshOut();
     }
 
     public boolean hasFluids() {
         return fluids;
+    }
+
+    public boolean hasEnergy() {
+        return energy;
     }
 
     public FaceMode mode(Kind kind, MachineFace face) {
@@ -108,7 +149,7 @@ public final class MachineSides {
 
     /** Sets a face, if this machine offers that mode there. */
     public void set(Kind kind, MachineFace face, FaceMode mode) {
-        if (!offered.contains(mode) || kind == Kind.FLUIDS && !fluids || mode(kind, face) == mode) return;
+        if (!offered(kind).contains(mode) || !has(kind) || mode(kind, face) == mode) return;
         modes[kind.ordinal()][face.ordinal()] = mode;
         refreshOut();
         changed.changed(true);
@@ -125,7 +166,7 @@ public final class MachineSides {
     }
 
     public static int button(Kind kind, MachineFace face) {
-        return BUTTON_FIRST + kind.ordinal() * FACES + face.ordinal();
+        return kind == Kind.ENERGY ? ENERGY_BUTTON_FIRST + face.ordinal() : BUTTON_FIRST + kind.ordinal() * FACES + face.ordinal();
     }
 
     /** A face button pressed in the screen: that face steps to the next mode. False if {@code id} isn't one of ours. */
@@ -135,13 +176,21 @@ public final class MachineSides {
             setAutoOutput(!autoOutput);
             return true;
         }
-        int index = id - BUTTON_FIRST;
-        if (index < 0 || index >= Kind.values().length * FACES) return false;
-        Kind kind = Kind.values()[index / FACES];
-        if (kind == Kind.FLUIDS && !fluids) return false;
+        Kind kind;
+        int index;
+        if (id >= ENERGY_BUTTON_FIRST && id < ENERGY_BUTTON_FIRST + FACES) {
+            kind = Kind.ENERGY;
+            index = id - ENERGY_BUTTON_FIRST;
+        } else {
+            index = id - BUTTON_FIRST;
+            if (index < 0 || index >= 2 * FACES) return false;
+            kind = Kind.values()[index / FACES];
+        }
+        if (!has(kind)) return false;
         MachineFace face = MachineFace.byId(index % FACES);
-        int at = offered.indexOf(mode(kind, face));
-        set(kind, face, offered.get((at + 1) % offered.size()));
+        List<FaceMode> steps = offered(kind);
+        int at = steps.indexOf(mode(kind, face));
+        set(kind, face, steps.get((at + 1) % steps.size()));
         return true;
     }
 
@@ -156,20 +205,30 @@ public final class MachineSides {
         return FaceMode.byId(packed >> face.ordinal() * 2 & 3);
     }
 
-    /** Every face, items in the low 12 bits and fluids above, as players' games are told it. */
+    /**
+     * Every face as players' games are told it: items in the low 12 bits, fluids in the next 12, then one bit an energy
+     * face, set for Input.
+     */
     public int synced() {
-        return packed(Kind.ITEMS) | (fluids ? packed(Kind.FLUIDS) << 2 * FACES : 0);
+        int synced = packed(Kind.ITEMS) | (fluids ? packed(Kind.FLUIDS) << 2 * FACES : 0);
+        if (energy) {
+            for (MachineFace face : MachineFace.values()) {
+                if (mode(Kind.ENERGY, face).in()) synced |= 1 << ENERGY_SHIFT + face.ordinal();
+            }
+        }
+        return synced;
     }
 
     /** Takes the faces the server sent, on a player's game. Whether any face changed. */
     public boolean applySynced(int synced) {
         boolean moved = false;
         for (Kind kind : Kind.values()) {
-            if (kind == Kind.FLUIDS && !fluids) continue;
+            if (!has(kind)) continue;
             int packed = synced >> kind.ordinal() * 2 * FACES;
             for (MachineFace face : MachineFace.values()) {
-                FaceMode mode = unpack(packed, face);
-                if (!offered.contains(mode)) mode = FaceMode.NONE;
+                FaceMode mode = kind != Kind.ENERGY ? unpack(packed, face)
+                        : (synced >> ENERGY_SHIFT + face.ordinal() & 1) != 0 ? FaceMode.INPUT : FaceMode.NONE;
+                if (!offered(kind).contains(mode)) mode = FaceMode.NONE;
                 moved |= modes[kind.ordinal()][face.ordinal()] != mode;
                 modes[kind.ordinal()][face.ordinal()] = mode;
             }
@@ -181,22 +240,25 @@ public final class MachineSides {
     public void save(ValueOutput output) {
         output.putInt(Kind.ITEMS.key, packed(Kind.ITEMS));
         if (fluids) output.putInt(Kind.FLUIDS.key, packed(Kind.FLUIDS));
+        if (energy) output.putInt(Kind.ENERGY.key, packed(Kind.ENERGY));
         if (switchable) output.putBoolean(AUTO_OUTPUT, autoOutput);
     }
 
     /**
      * A saved machine keeps the faces it saved. Machines saved before the grid existed saved none: every face stays at
      * None, as it was for them, whatever a new machine starts at. Machines saved before the Auto Output switch came load
-     * with it on, so they keep pushing as they did.
+     * with it on, so they keep pushing as they did. Machines saved before the energy faces came take power on every side.
      */
     public void load(ValueInput input) {
         fill(FaceMode.NONE);
         for (Kind kind : Kind.values()) {
-            if (kind == Kind.FLUIDS && !fluids) continue;
-            int packed = input.getIntOr(kind.key, 0);
+            if (!has(kind)) continue;
+            int packed = input.getIntOr(kind.key, kind == Kind.ENERGY ? -1 : 0);
+            // no energy faces saved: they stay Input, as fill left them
+            if (packed < 0) continue;
             for (MachineFace face : MachineFace.values()) {
                 FaceMode mode = unpack(packed, face);
-                modes[kind.ordinal()][face.ordinal()] = offered.contains(mode) ? mode : FaceMode.NONE;
+                modes[kind.ordinal()][face.ordinal()] = offered(kind).contains(mode) ? mode : FaceMode.NONE;
             }
         }
         if (switchable) autoOutput = input.getBooleanOr(AUTO_OUTPUT, true);

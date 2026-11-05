@@ -299,8 +299,12 @@ public final class JasmConfig {
             .comment("FE the Demolition Bay uses to scoop one bucket of fluid")
             .defineInRange("demolitionScoopCost", 50, 0, 1_000_000);
 
+    public static final ModConfigSpec.IntValue DEMOLITION_PICKUP_COST = BUILDER
+            .comment("FE the Demolition Bay uses per pickup action, up to 64 items from the ground, before Speed Upgrades")
+            .defineInRange("demolitionPickupCost", 20, 0, 1_000_000);
+
     public static final ModConfigSpec.IntValue DEPLOYMENT_COST = BUILDER
-            .comment("FE the Deployment Bay uses per block placed, fluid placed or stack thrown")
+            .comment("FE the Deployment Bay uses per block placed, fluid placed, stack thrown or click")
             .defineInRange("deploymentCost", 20, 0, 1_000_000);
 
     public static final ModConfigSpec.IntValue BAY_DROP_ENTITY_LIMIT = BUILDER

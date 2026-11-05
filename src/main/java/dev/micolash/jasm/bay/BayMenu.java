@@ -37,7 +37,10 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     // a short game window gets fewer
     public static final int FILTER_ROWS = 2;
     public static final int BUTTON_REDSTONE = 0;
+    /** Steps the Deployment Bay to its next mode. */
     public static final int BUTTON_MODE = 1;
+    /** Picks a Deployment Bay mode: this plus the mode's number. */
+    public static final int BUTTON_MODE_FIRST = 2;
 
     static final int DATA_STATUS = 0;
     static final int DATA_ENERGY_LOW = 1;
@@ -53,10 +56,12 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     static final int DATA_CYCLE = 11;
     static final int DATA_SIDES_ITEMS = 12;
     static final int DATA_SIDES_FLUIDS = 13;
-    static final int DATA_COUNT = 14;
+    static final int DATA_SIDES_ENERGY = 14;
+    static final int DATA_COUNT = 15;
 
     static final int FLAG_REDSTONE_UPGRADE = 1;
-    static final int FLAG_DROP = 2;
+    /** The Deployment Bay's mode sits in the two bits from this one. */
+    static final int MODE_SHIFT = 1;
     /** The redstone mode sits in the flags from this bit up. */
     static final int REDSTONE_SHIFT = 4;
 
@@ -142,11 +147,12 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
                     case DATA_TANK_LOW -> ContainerWords.low(tank);
                     case DATA_TANK_HIGH -> ContainerWords.high(tank);
                     case DATA_FLAGS -> (bay.hasRedstoneUpgrade() ? FLAG_REDSTONE_UPGRADE : 0)
-                            | (bay instanceof DeploymentBayBlockEntity deploy && deploy.mode() == DeployMode.DROP ? FLAG_DROP : 0)
+                            | (bay instanceof DeploymentBayBlockEntity deploy ? deploy.mode().ordinal() << MODE_SHIFT : 0)
                             | bay.redstone().ordinal() << REDSTONE_SHIFT;
                     case DATA_CYCLE -> bay.cycleTicks();
                     case DATA_SIDES_ITEMS -> bay.sides().packed(MachineSides.Kind.ITEMS);
                     case DATA_SIDES_FLUIDS -> bay.sides().packed(MachineSides.Kind.FLUIDS);
+                    case DATA_SIDES_ENERGY -> bay.sides().packed(MachineSides.Kind.ENERGY);
                     default -> 0;
                 };
             }
@@ -199,16 +205,20 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
     }
 
     public DeployMode mode() {
-        return (data.get(DATA_FLAGS) & FLAG_DROP) != 0 ? DeployMode.DROP : DeployMode.PLACE;
+        return DeployMode.byId(data.get(DATA_FLAGS) >> MODE_SHIFT & 3);
     }
 
     public BayRedstone redstone() {
         return BayRedstone.byId(data.get(DATA_FLAGS) >> REDSTONE_SHIFT);
     }
 
-    /** The I/O grid's faces for items or fluids, two bits each. */
+    /** The I/O grid's faces for items, fluids or energy, two bits each. */
     public int sides(MachineSides.Kind kind) {
-        return data.get(kind == MachineSides.Kind.ITEMS ? DATA_SIDES_ITEMS : DATA_SIDES_FLUIDS);
+        return data.get(switch (kind) {
+            case ITEMS -> DATA_SIDES_ITEMS;
+            case FLUIDS -> DATA_SIDES_FLUIDS;
+            case ENERGY -> DATA_SIDES_ENERGY;
+        });
     }
 
     public int cycleTicks() {
@@ -248,6 +258,11 @@ public class BayMenu extends AbstractContainerMenu implements MachineView {
         }
         if (id == BUTTON_MODE && bay instanceof DeploymentBayBlockEntity deploy) {
             deploy.toggleMode();
+            return true;
+        }
+        int picked = id - BUTTON_MODE_FIRST;
+        if (picked >= 0 && picked < DeployMode.values().length && bay instanceof DeploymentBayBlockEntity deploy) {
+            deploy.setMode(DeployMode.byId(picked));
             return true;
         }
         return bay.sides().click(id);

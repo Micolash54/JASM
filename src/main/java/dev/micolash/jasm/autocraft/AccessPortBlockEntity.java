@@ -476,7 +476,7 @@ public class AccessPortBlockEntity extends MachineBlockEntity implements Worldly
         var entity = level.getBlockEntity(targetPos);
         // Cables hold no power and power sources take none.
         if (level.getBlockState(targetPos).getBlock() instanceof DataCableBlock || entity instanceof NetworkPowerSource) return null;
-        // JASM machines and Archives show other mods no power input, so they are handed it directly. Another port holds
+        // JASM machines and Archives are handed it directly, past what they show other mods. Another port holds
         // no power, so ports never pass it to each other.
         if (entity instanceof MachineBlockEntity machine) return machine.energy();
         if (entity instanceof ArchiveBlockEntity archive) return archive.energy();

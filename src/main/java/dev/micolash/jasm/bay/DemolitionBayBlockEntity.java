@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
@@ -36,10 +37,15 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BucketPickup;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.gameevent.BlockPositionSource;
+import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.gameevent.GameEventListener;
+import net.minecraft.world.level.gameevent.PositionSource;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.util.FakePlayer;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
@@ -48,12 +54,20 @@ import net.neoforged.neoforge.transfer.transaction.Transaction;
 import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jspecify.annotations.Nullable;
 
-/** Breaks the block in front of it into its grid, as its owner would. */
-public class DemolitionBayBlockEntity extends BayBlockEntity {
+/**
+ * Breaks the block in front of it into its grid, as its owner would. Items lying in the front space come first: an
+ * action picks them up instead of breaking.
+ */
+public class DemolitionBayBlockEntity extends BayBlockEntity implements GameEventListener.Provider<GameEventListener> {
     /** The laser's shot. Only ever played in players' own games, so it isn't registered. */
     private static final SoundEvent LASER = SoundEvent.createVariableRangeEvent(Jasm.id("bay.laser"));
+    /** The most items one pickup action takes, across all the piles in front. */
+    public static final int PICKUP_LIMIT = 64;
 
     private ItemEnchantments enchantments = ItemEnchantments.EMPTY;
+    private final GameEventListener itemsLanding = new ItemsLanding();
+    /** When a sleeping bay next looks for items in front. Not saved: a loaded bay looks at once. */
+    private long nextLook;
 
     // Client side only.
     private @Nullable BlockPos cracking;
@@ -70,6 +84,7 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
 
     @Override
     protected Plan plan(ServerLevel level, BlockPos front) {
+        if (anythingToPickUp(level, front)) return Plan.scoop(JasmConfig.DEMOLITION_PICKUP_COST.getAsInt());
         BlockState state = level.getBlockState(front);
         FluidState fluid = level.getFluidState(front);
         if (scoopable(state, fluid)) {
@@ -93,6 +108,8 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
 
     @Override
     protected BayStatus act(ServerLevel level, BlockPos front) {
+        // One action does one thing: items lying in front are picked up, and the block waits for the next action.
+        if (anythingToPickUp(level, front)) return pickUp(level, front);
         BlockState state = level.getBlockState(front);
         FluidState fluid = level.getFluidState(front);
         if (scoopable(state, fluid) && passes(fluid.getType())) {
@@ -148,15 +165,96 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         }
     }
 
-    /** Items anywhere in the front space go in, as far as they fit, at no cost. */
-    @Override
-    protected void everyHalfSecond(ServerLevel level) {
-        BlockPos front = front();
-        if (allFull() || !level.isLoaded(front)) return;
+    /** Items in the front space the filter lets in and the grid has room for. Never looks while the grid is full. */
+    private boolean anythingToPickUp(ServerLevel level, BlockPos front) {
+        if (allFull()) return false;
         for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, new AABB(front), ItemEntity::isAlive)) {
-            // What the filter refuses stays on the ground.
-            if (passes(entity.getItem())) storeEntity(entity);
+            if (passes(entity.getItem()) && roomFor(entity.getItem())) return true;
         }
+        return false;
+    }
+
+    /**
+     * Takes up to {@link #PICKUP_LIMIT} items in all from the piles in front, different items too, as far as the grid
+     * has room, for the pickup cost once, raised by Speed Upgrades as breaking is. What the filter refuses, and what
+     * doesn't fit, stays on the ground.
+     */
+    private BayStatus pickUp(ServerLevel level, BlockPos front) {
+        int cost = JasmConfig.DEMOLITION_PICKUP_COST.getAsInt();
+        if (!canPay(cost)) return BayStatus.NO_POWER;
+        int left = PICKUP_LIMIT;
+        for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, new AABB(front), ItemEntity::isAlive)) {
+            if (left <= 0) break;
+            ItemStack lying = entity.getItem();
+            if (!passes(lying) || lying.is(JasmTags.DEMOLITION_BLACKLIST_ITEMS)) continue;
+            int stored = insertIntoGridPartly(lying.copyWithCount(Math.min(left, lying.getCount())));
+            if (stored <= 0) continue;
+            left -= stored;
+            if (stored >= lying.getCount()) {
+                entity.discard();
+            } else {
+                entity.setItem(lying.copyWithCount(lying.getCount() - stored));
+            }
+        }
+        if (left == PICKUP_LIMIT) return BayStatus.SLEEPING;
+        pay(cost);
+        return BayStatus.WORKING;
+    }
+
+    /**
+     * Items can float or slide in without landing or appearing there (a water stream, ice, a piston), and nothing tells
+     * the bay. So a sleeping bay looks at the front space once per action, and wakes if there is something to pick up.
+     * It doesn't look while redstone or the world's switch holds it back.
+     */
+    @Override
+    protected void asleep(ServerLevel level) {
+        long now = level.getGameTime();
+        if (now < nextLook) return;
+        nextLook = now + cycleTicks();
+        if (heldBack()) return;
+        BlockPos front = front();
+        if (level.isLoaded(front) && anythingToPickUp(level, front)) wake();
+    }
+
+    @Override
+    public GameEventListener getListener() {
+        return itemsLanding;
+    }
+
+    /**
+     * Hears an item land in the front space, so a sleeping bay looks again at once instead of at its next look. The game
+     * only tells listeners close to where the item landed, so this costs nothing while no items fall nearby.
+     */
+    private final class ItemsLanding implements GameEventListener {
+        private final PositionSource source = new BlockPositionSource(worldPosition);
+
+        @Override
+        public PositionSource getListenerSource() {
+            return source;
+        }
+
+        @Override
+        public int getListenerRadius() {
+            return 1;
+        }
+
+        @Override
+        public boolean handleGameEvent(ServerLevel level, Holder<GameEvent> event, GameEvent.Context context, Vec3 at) {
+            if (!event.is(GameEvent.HIT_GROUND) || !(context.sourceEntity() instanceof ItemEntity)) return false;
+            if (!BlockPos.containing(at).equals(front())) return false;
+            wake();
+            return true;
+        }
+    }
+
+    /** Whether any of this stack would go into the grid. */
+    private boolean roomFor(ItemStack stack) {
+        if (stack.is(JasmTags.DEMOLITION_BLACKLIST_ITEMS)) return false;
+        for (int slot = 0; slot < GRID; slot++) {
+            ItemStack held = items.get(slot);
+            if (held.isEmpty() || ItemStack.isSameItemSameComponents(held, stack) && held.getCount() < held.getMaxStackSize()) return true;
+        }
+        return false;
     }
 
     private boolean allFull() {
