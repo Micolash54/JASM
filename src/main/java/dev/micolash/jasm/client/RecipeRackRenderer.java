@@ -1,8 +1,10 @@
 package dev.micolash.jasm.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import dev.micolash.jasm.Jasm;
+import dev.micolash.jasm.autocraft.FluidMarkerItem;
 import dev.micolash.jasm.autocraft.RecipeRackBlock;
 import dev.micolash.jasm.autocraft.RecipeRackBlockEntity;
 import dev.micolash.jasm.config.JasmClientConfig;
@@ -14,6 +16,7 @@ import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockModelRenderState;
+import net.minecraft.client.renderer.block.FluidModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
@@ -21,8 +24,10 @@ import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
@@ -30,13 +35,15 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.client.model.standalone.StandaloneModelKey;
 import org.joml.Matrix3f;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Draws a card in every filled slot of a Recipe Rack, with what the card makes on its face, drawn like its inventory
- * icon and laid flat on the card, a block's 3D picture squashed to no depth. The card model sits in the top-left slot; slot
+ * icon and laid flat on the card, a block's 3D picture squashed to no depth. A fluid shows its still texture, tinted as in
+ * the world. The card model sits in the top-left slot; slot
  * 0 to 3 run left to right along the top row, 4 to 7 the row below, and so on, matching the rack's screen.
  *
  * <p>A rack the camera is behind draws nothing: its body hides the cards. Beside it, or past the player's rack icon
@@ -153,9 +160,19 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
 
     private void resolve(Icons icons, int slot, ItemStack makes, RecipeRackBlockEntity rack, int seed) {
         icons.shown &= ~(1 << slot);
+        icons.fluids[slot] = null;
         ItemStackRenderState item = icons.items[slot];
-        if (makes.isEmpty()) {
+        FluidResource fluid = FluidMarkerItem.fluidOf(makes);
+        if (makes.isEmpty() || fluid != null) {
             if (item != null) item.clear();
+            if (fluid != null) {
+                // a fluid has no item model: its still texture, tinted as in the world, like the fluid in a slot
+                FluidModel model = Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.getFluid().defaultFluidState());
+                var tint = model.fluidTintSource();
+                icons.fluids[slot] = model.stillMaterial().sprite();
+                icons.fluidColors[slot] = tint == null ? 0xFFFFFFFF : tint.colorAsStack(fluid.toStack(1)) | 0xFF000000;
+                icons.shown |= 1 << slot;
+            }
             return;
         }
         if (item == null) {
@@ -163,7 +180,7 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
             icons.items[slot] = item;
         }
         itemModelResolver.updateForTopItem(item, makes, ItemDisplayContext.GUI, rack.getLevel(), null, seed + slot);
-        // nothing to draw (a fluid or a material has no item model): the card shows plain
+        // nothing to draw (a material has no item model): the card shows plain
         if (item.isEmpty()) {
             return;
         }
@@ -214,6 +231,11 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
 
     /** What the card in {@code slot} makes, on its face, facing out of the front. */
     private void icon(Icons icons, int slot, PoseStack poseStack, SubmitNodeCollector collector, int light) {
+        TextureAtlasSprite fluid = icons.fluids[slot];
+        if (fluid != null) {
+            fluidIcon(fluid, icons.fluidColors[slot], slot, poseStack, collector, light);
+            return;
+        }
         ItemStackRenderState item = icons.items[slot];
         if (item == null) {
             return;
@@ -231,6 +253,26 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         poseStack.popPose();
     }
 
+    /** The fluid the card in {@code slot} makes: a square the size of an item's icon, on the icon plane, facing out of the front. */
+    private static void fluidIcon(TextureAtlasSprite sprite, int color, int slot, PoseStack poseStack, SubmitNodeCollector collector, int light) {
+        poseStack.pushPose();
+        poseStack.translate(RecipeRackBlock.slotX(slot) / 16, RecipeRackBlock.slotY(slot) / 16, -RecipeRackBlock.ICON_BACK / 16);
+        poseStack.mulPose(Axis.YP.rotationDegrees(180));
+        poseStack.scale(ICON_SCALE, ICON_SCALE, ICON_SCALE);
+        collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(sprite.atlasLocation()), (pose, buffer) -> {
+            vertex(pose, buffer, -0.5F, -0.5F, sprite.getU0(), sprite.getV1(), color, light);
+            vertex(pose, buffer, 0.5F, -0.5F, sprite.getU1(), sprite.getV1(), color, light);
+            vertex(pose, buffer, 0.5F, 0.5F, sprite.getU1(), sprite.getV0(), color, light);
+            vertex(pose, buffer, -0.5F, 0.5F, sprite.getU0(), sprite.getV0(), color, light);
+        });
+        poseStack.popPose();
+    }
+
+    private static void vertex(PoseStack.Pose pose, VertexConsumer buffer, float x, float y, float u, float v, int color, int light) {
+        buffer.addVertex(pose, x, y, 0).setColor(color).setUv(u, v).setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(light).setNormal(pose, 0, 0, 1);
+    }
+
     /** One rack's icons and bounds, kept on the rack between frames. A renderer made after a resource reload starts afresh. */
     private static final class Icons {
         final RecipeRackRenderer owner;
@@ -240,6 +282,10 @@ public class RecipeRackRenderer implements BlockEntityRenderer<RecipeRackBlockEn
         /** One bit per slot with an icon to draw. */
         int shown;
         final @Nullable ItemStackRenderState[] items = new ItemStackRenderState[RecipeRackBlockEntity.SLOTS];
+        /** The still texture of the fluid each card makes, or null where it makes no fluid. */
+        final @Nullable TextureAtlasSprite[] fluids = new TextureAtlasSprite[RecipeRackBlockEntity.SLOTS];
+        /** Each fluid's tint. */
+        final int[] fluidColors = new int[RecipeRackBlockEntity.SLOTS];
         /** Blocks per unit of each icon's depth: flat on the card. */
         final float[] depthScale = new float[RecipeRackBlockEntity.SLOTS];
         /** The back of each icon in its own space, laid on the icon plane. */
