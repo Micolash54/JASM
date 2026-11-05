@@ -5,144 +5,136 @@
   },
   "elements": [
     {
-      "name": "antenna",
-      "from": [
-        7.75,
-        15,
-        6.75
-      ],
-      "to": [
-        8.25,
-        16.75,
-        7.25
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            13,
-            10,
-            15,
-            12
-          ],
-          "texture": "#skin"
-        },
-        "south": {
-          "uv": [
-            13,
-            10,
-            15,
-            12
-          ],
-          "texture": "#skin"
-        },
-        "east": {
-          "uv": [
-            13,
-            10,
-            15,
-            12
-          ],
-          "texture": "#skin"
-        },
-        "west": {
-          "uv": [
-            13,
-            10,
-            15,
-            12
-          ],
-          "texture": "#skin"
-        },
-        "up": {
-          "uv": [
-            13,
-            10,
-            15,
-            12
-          ],
-          "texture": "#skin"
-        },
-        "down": {
-          "uv": [
-            13,
-            10,
-            15,
-            12
-          ],
-          "texture": "#skin"
-        }
-      },
-      "shade_direction_override": "up"
-    },
-    {
       "name": "antenna_ball",
       "from": [
-        7.25,
-        16.75,
-        6.25
+        7,
+        16.5,
+        6
       ],
       "to": [
-        8.75,
-        18.25,
-        7.75
+        9,
+        18.5,
+        8
       ],
+      "light_emission": 15,
+      "shade": false,
       "faces": {
         "north": {
           "uv": [
-            9,
-            12,
-            11,
-            14
-          ],
-          "texture": "#skin"
-        },
-        "south": {
-          "uv": [
-            9,
-            12,
-            11,
-            14
+            7.75,
+            11.5,
+            8.25,
+            12.5
           ],
           "texture": "#skin"
         },
         "east": {
           "uv": [
-            9,
-            12,
-            11,
-            14
+            7.25,
+            11.5,
+            7.75,
+            12.5
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            8.75,
+            11.5,
+            9.25,
+            12.5
           ],
           "texture": "#skin"
         },
         "west": {
           "uv": [
-            9,
-            12,
-            11,
-            14
+            8.25,
+            11.5,
+            8.75,
+            12.5
           ],
           "texture": "#skin"
         },
         "up": {
           "uv": [
-            13,
-            14,
-            15,
-            16
+            8.25,
+            11.5,
+            7.75,
+            10.5
           ],
           "texture": "#skin"
         },
         "down": {
           "uv": [
-            9,
-            12,
-            11,
-            14
+            8.75,
+            11.5,
+            8.25,
+            10.5
           ],
           "texture": "#skin"
         }
-      },
-      "shade_direction_override": "up"
+      }
+    },
+    {
+      "name": "antenna",
+      "from": [
+        7.5,
+        15,
+        6.5
+      ],
+      "to": [
+        8.5,
+        16.5,
+        7.5
+      ],
+      "shade_direction_override": "up",
+      "faces": {
+        "north": {
+          "uv": [
+            12,
+            11,
+            12.25,
+            11.75
+          ],
+          "texture": "#skin"
+        },
+        "east": {
+          "uv": [
+            11.75,
+            11,
+            12,
+            11.75
+          ],
+          "texture": "#skin"
+        },
+        "south": {
+          "uv": [
+            12.5,
+            11,
+            12.75,
+            11.75
+          ],
+          "texture": "#skin"
+        },
+        "west": {
+          "uv": [
+            12.25,
+            11,
+            12.5,
+            11.75
+          ],
+          "texture": "#skin"
+        },
+        "down": {
+          "uv": [
+            12.5,
+            11,
+            12.25,
+            10.5
+          ],
+          "texture": "#skin"
+        }
+      }
     }
   ]
 }

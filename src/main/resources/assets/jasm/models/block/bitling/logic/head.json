@@ -1,5 +1,5 @@
 {
-  "parent": "jasm:block/bitling/head",
+  "parent": "jasm:block/bitling/classic/head",
   "textures": {
     "skin": "jasm:block/bitling/logic",
     "particle": "jasm:block/bitling/logic"

@@ -804,6 +804,7 @@
   "config.jade.plugin_jasm.bay": "Bay details",
   "config.jade.plugin_jasm.crystal_foundry": "Crystal Foundry details",
   "config.jade.plugin_jasm.network_brain": "Network Brain details",
+  "config.jade.plugin_jasm.network_tether": "Network Tether details",
   "block.jasm.access_port": "Access Port",
   "block.jasm.full_input_port": "Input Port",
   "block.jasm.full_output_port": "Output Port",

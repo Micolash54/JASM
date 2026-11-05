@@ -1,5 +1,5 @@
 {
-  "parent": "jasm:block/bitling/antenna",
+  "parent": "jasm:block/bitling/classic/antenna",
   "textures": {
     "skin": "jasm:block/bitling/link",
     "particle": "jasm:block/bitling/link"

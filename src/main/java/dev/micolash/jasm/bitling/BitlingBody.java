@@ -13,6 +13,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.control.MoveControl;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -65,6 +66,15 @@ public abstract class BitlingBody extends PathfinderMob {
     private static final int HURT_RUNS = 3;
     private static final int RUN_LEAST = 4;
     private static final int RUN_MOST = 8;
+    /** How far the head turns from the body, up and down, and how quickly, in degrees and degrees a tick. */
+    private static final float HEAD_YAW_LIMIT = 45;
+    private static final float HEAD_PITCH_LIMIT = 25;
+    private static final float HEAD_STEP = 15;
+    private static final float PITCH_STEP = 6;
+    /** Standing, a head kept turned further than this for this many ticks brings the body round after it. */
+    private static final float BODY_FOLLOW_ANGLE = 35;
+    private static final int BODY_FOLLOW_DELAY = 8;
+    private static final float BODY_STEP = 8;
 
     /** Ticks left of a timed act (a hop, a rest, a startle). */
     protected int actTicks;
@@ -74,10 +84,22 @@ public abstract class BitlingBody extends PathfinderMob {
     protected int walkTicks;
     /** Sprints left of running away after being hurt. */
     protected int hurtRun;
+    /** The spot it is looking at while it looks around, ticks left before it picks another, and which side it was on. */
+    private @Nullable Vec3 lookSpot;
+    private int lookSpotTicks;
+    private float lookSide = 1;
+    /** Ticks its head has been turned far from the body, and whether the body is turning round after it. */
+    private int headTurnedTicks;
+    private boolean bodyFollowing;
 
     protected BitlingBody(EntityType<? extends BitlingBody> type, Level level) {
         super(type, level);
         this.moveControl = new TurningMoveControl(this);
+        // The head is steered in tickHeadTurn, after the Bitling has picked what to do this tick.
+        this.lookControl = new LookControl(this) {
+            @Override
+            public void tick() {}
+        };
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -143,11 +165,99 @@ public abstract class BitlingBody extends PathfinderMob {
         return false;
     }
 
-    /** The body always faces where the Bitling faces, so it never swivels round on the spot by itself. */
+    /**
+     * The body always faces where the Bitling faces. The head leads: it turns towards what the Bitling is looking at, as far
+     * as its neck allows, and a Bitling standing still turns its body after a head kept turned far for a moment. Players'
+     * games only follow along.
+     */
     @Override
     protected void tickHeadTurn(float yBodyRotT) {
+        if (level() instanceof ServerLevel level) {
+            steerHead(level);
+        }
         yBodyRot = getYRot();
-        yHeadRot = getYRot();
+    }
+
+    @Override
+    public int getMaxHeadYRot() {
+        return (int) HEAD_YAW_LIMIT;
+    }
+
+    @Override
+    public int getMaxHeadXRot() {
+        return (int) HEAD_PITCH_LIMIT;
+    }
+
+    private void steerHead(ServerLevel level) {
+        Act act = act();
+        boolean moving = act == Act.WALK || act == Act.SPRINT || act == Act.TIRED;
+        Vec3 target = moving ? pathAhead() : act == Act.LOOK ? lookAround(level) : null;
+        if (act != Act.LOOK) {
+            lookSpot = null;
+        }
+        float body = getYRot();
+        float wantYaw = body;
+        float wantPitch = 0;
+        if (target != null) {
+            double dx = target.x - getX();
+            double dy = target.y - getEyeY();
+            double dz = target.z - getZ();
+            double flat = Math.sqrt(dx * dx + dz * dz);
+            if (flat > 0.1) {
+                wantYaw = (float) (Mth.atan2(dz, dx) * Mth.RAD_TO_DEG) - 90;
+                wantPitch = Mth.clamp((float) -(Mth.atan2(dy, flat) * Mth.RAD_TO_DEG), -HEAD_PITCH_LIMIT, HEAD_PITCH_LIMIT);
+            }
+        }
+        // Standing still, the body comes round after a head turned far for a moment, until it faces what the head sees.
+        float off = Mth.wrapDegrees(wantYaw - body);
+        if (moving || Math.abs(off) < (bodyFollowing ? 5 : BODY_FOLLOW_ANGLE)) {
+            headTurnedTicks = 0;
+            bodyFollowing = false;
+        } else if (bodyFollowing || ++headTurnedTicks > BODY_FOLLOW_DELAY) {
+            bodyFollowing = true;
+            body += Mth.clamp(off, -BODY_STEP, BODY_STEP);
+            setYRot(body);
+        }
+        float head = Mth.approachDegrees(yHeadRot, wantYaw, HEAD_STEP);
+        yHeadRot = body + Mth.clamp(Mth.wrapDegrees(head - body), -HEAD_YAW_LIMIT, HEAD_YAW_LIMIT);
+        setXRot(Mth.approach(getXRot(), wantPitch, PITCH_STEP));
+    }
+
+    /** Where the head looks while walking: a little way along its path, so it turns into a bend before the body does. */
+    private @Nullable Vec3 pathAhead() {
+        Path path = getNavigation().getPath();
+        if (path == null || path.isDone()) {
+            return null;
+        }
+        int node = Math.min(path.getNextNodeIndex() + 2, path.getNodeCount() - 1);
+        BlockPos at = path.getNodePos(node);
+        return new Vec3(at.getX() + 0.5, at.getY() + getEyeHeight(), at.getZ() + 0.5);
+    }
+
+    /** Looking around: a spot on the ground nearby, now to one side, now the other, each held for a second or so. */
+    private @Nullable Vec3 lookAround(ServerLevel level) {
+        if (lookSpot != null && --lookSpotTicks > 0) {
+            return lookSpot;
+        }
+        // The next spot is on the other side of the last one.
+        lookSide = lookSpot == null ? (random.nextBoolean() ? 1 : -1) : -lookSide;
+        lookSpot = null;
+        for (int attempt = 0; attempt < 4 && lookSpot == null; attempt++) {
+            float yaw = getYRot() + lookSide * (25 + random.nextFloat() * 85);
+            double distance = 2.5 + random.nextDouble() * 3.5;
+            double x = getX() - Mth.sin(yaw * Mth.DEG_TO_RAD) * distance;
+            double z = getZ() + Mth.cos(yaw * Mth.DEG_TO_RAD) * distance;
+            BlockPos column = BlockPos.containing(x, getY(), z);
+            if (!level.isLoaded(column)) {
+                continue;
+            }
+            BlockPos ground = groundAt(level, column);
+            if (ground != null) {
+                lookSpot = new Vec3(x, ground.getY() + 0.2, z);
+            }
+        }
+        lookSpotTicks = 18 + random.nextInt(18);
+        return lookSpot;
     }
 
     /** Walks like any mob, but turns a little at a time, and turns on the spot before setting off another way. */
