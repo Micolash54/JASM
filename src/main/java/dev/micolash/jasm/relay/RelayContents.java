@@ -8,7 +8,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * What a mined Relay Chatterbox keeps inside its item: its frequency, its Link Byteling and its Dimension Upgrade. Only
+ * What a mined Relay Chatterbox keeps inside its item: its frequency, its operator and its Dimension Upgrade. Only
  * placing the block again gives them back: nothing reads the items out of the item.
  */
 public record RelayContents(int frequency, ItemStack operator, ItemStack upgrade) {

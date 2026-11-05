@@ -344,7 +344,7 @@ public final class RelayLinks {
     }
 
     /**
-     * Each running link pays for each of its two blocks once a tick, from their Link Bytelings, after topping them up
+     * Each running link pays for each of its two blocks once a tick, from their operators, after topping them up
      * from their blocks: each its own {@link #cost} while both have charge, one paying for both when the other is flat.
      * A battery short of its share gives what it has and the other pays the rest. An end whose battery runs flat or comes back is told to the
      * pairing afterwards, which stops the link once neither can run.

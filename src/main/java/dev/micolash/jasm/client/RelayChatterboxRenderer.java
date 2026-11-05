@@ -43,8 +43,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Draws what changes in the Relay Chatterbox's room: the status light and number on the front console, the
- * switchboard's lamps, and the Link Byteling at work. The operator plays one 30 second loop made in Blockbench, on the
- * same clock in every Chatterbox; with no Byteling inside, the stool stands empty, the lamps are dark, the data screen
+ * switchboard's lamps, and the operator at work. The operator plays one 30 second loop made in Blockbench, on the
+ * same clock in every Chatterbox; with no operator inside, the stool stands empty, the lamps are dark, the data screen
  * is black and the cord hangs still. The status light glows in the dark unless it is off. On the roof, the dish's yoke
  * turns on its base and the bowl tilts on the yoke, moved by {@link RelayDish}: pointing at the partner while linked,
  * straight up when the partner is in another dimension, searching while it waits, at rest with no frequency. The room

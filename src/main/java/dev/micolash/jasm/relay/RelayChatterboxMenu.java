@@ -21,7 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The Relay Chatterbox's panel: the frequency, the Link Byteling and Dimension Upgrade slots, where the pair stands,
+ * The Relay Chatterbox's panel: the frequency, the operator and Dimension Upgrade slots, where the pair stands,
  * and the player's inventory. Only players trusted on the network may open it or change anything; the server checks
  * that on every click and every frequency change.
  */
@@ -109,7 +109,7 @@ public class RelayChatterboxMenu extends AbstractContainerMenu implements Machin
         return index >= 0 && index < all.length ? all[index] : RelayStatus.NO_FREQUENCY;
     }
 
-    /** FE a tick this Chatterbox's Link Byteling is paying for the link right now. */
+    /** FE a tick this Chatterbox's operator is paying for the link right now. */
     public int powerUse() {
         return data.get(DATA_POWER);
     }
@@ -131,7 +131,7 @@ public class RelayChatterboxMenu extends AbstractContainerMenu implements Machin
         broadcastChanges();
     }
 
-    /** Shift-click: the relay's items go to the inventory; a Link Byteling or Dimension Upgrade goes to its slot. */
+    /** Shift-click: the relay's items go to the inventory; an operator or Dimension Upgrade goes to its slot. */
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         if (index < 0 || index >= slots.size()) return ItemStack.EMPTY;

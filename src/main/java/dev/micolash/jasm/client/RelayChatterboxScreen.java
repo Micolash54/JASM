@@ -17,12 +17,12 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
  * The Relay Chatterbox screen: the frequency with its - and + keys, a box to type one, and the Set and Clear keys; the
- * Link Byteling slot on the left, the Dimension Upgrade slot on the right; then what the operator says about the pair,
+ * operator slot on the left, the Dimension Upgrade slot on the right; then what the operator says about the pair,
  * in the Chip Workshop's speech bubble, its tail pointing up at the operator, coloured by how the pair stands; then the
- * inventory. With no Link Byteling seated there is no bubble. The server checks every change and quietly drops any it
+ * inventory. With no operator seated there is no bubble. The server checks every change and quietly drops any it
  * won't allow.
  *
- * <p>Layout, in GUI pixels: 176 wide, title on row 6 with the power the Link Byteling is paying right-aligned on it,
+ * <p>Layout, in GUI pixels: 176 wide, title on row 6 with the power the operator is paying right-aligned on it,
  * frequency keys 20 to 36, slots 44 to 60, bubble from 66 (its tail from 63), one or two lines wrapped to 154 pixels, so
  * at most 66 to 92; inventory label 96, inventory from 107. Every line the operator says fits two lines at that width.
  */

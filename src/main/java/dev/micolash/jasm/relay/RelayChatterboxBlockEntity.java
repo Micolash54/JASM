@@ -39,7 +39,7 @@ import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The lower half of a Relay Chatterbox: its frequency, its Link Byteling and its Dimension Upgrade, and its place in
+ * The lower half of a Relay Chatterbox: its frequency, its operator and its Dimension Upgrade, and its place in
  * the pairing. The upper half holds nothing. Mined, it keeps all three inside its item; with an item inside, it drops
  * itself however it is removed, once, like the Docking Station. Hoppers and pipes see no slots.
  */
@@ -80,9 +80,10 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         super(JasmBlocks.RELAY_CHATTERBOX_ENTITY.get(), pos, state, 0);
     }
 
-    /** The operator slot takes only a Link Byteling, the upgrade slot only a Dimension Upgrade. */
+    /** The operator slot takes a Link Nibbling or Link Byteling, the upgrade slot only a Dimension Upgrade. */
     public static boolean accepts(int slot, ItemStack stack) {
-        return slot == OPERATOR ? stack.is(JasmItems.bitling(BitlingKind.LINK, BitlingStage.BYTELING))
+        return slot == OPERATOR ? stack.getItem() instanceof BitlingItem critter && critter.kind() == BitlingKind.LINK
+                && critter.stage() != BitlingStage.BITLING
                 : slot == UPGRADE && stack.is(JasmItems.DIMENSION_UPGRADE.get());
     }
 
@@ -106,22 +107,22 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         return upgrade().is(JasmItems.DIMENSION_UPGRADE.get());
     }
 
-    /** A seated Link Byteling with any charge in its battery. */
+    /** A seated operator with any charge in its battery. */
     @Override
     public boolean canRun() {
         return charge() > 0;
     }
 
-    // --- the battery: the network tops up the Link Byteling, the Byteling pays for the link ---
+    // --- the battery: the network tops up the operator, the operator pays for the link ---
 
-    /** FE in the seated Link Byteling's battery, or 0 without one. */
+    /** FE in the seated operator's battery, or 0 without one. */
     @Override
     public int charge() {
         ItemStack operator = operator();
         return accepts(OPERATOR, operator) ? BitlingItem.energy(operator) : 0;
     }
 
-    /** Moves the power the block was given into the Link Byteling's battery, as the Chip Workshop charges its critter. */
+    /** Moves the power the block was given into the operator's battery, as the Chip Workshop charges its critter. */
     @Override
     public void topUp() {
         ItemStack operator = operator();
@@ -164,7 +165,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     }
 
     /**
-     * Lets in as much power as the Link Byteling's battery has room for, so charging is only as quick as the supply. Set
+     * Lets in as much power as the operator's battery has room for, so charging is only as quick as the supply. Set
      * after each tick, ready for what cables give before the next one.
      */
     private void sizeIntake() {
@@ -177,7 +178,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
     }
 
     /**
-     * Tops up the Link Byteling. While linked, the pairing does that itself, just before the pair pays, and tells
+     * Tops up the operator. While linked, the pairing does that itself, just before the pair pays, and tells
      * itself when a battery runs flat or comes back; otherwise a battery coming back is told here.
      */
     public static void serverTick(Level level, BlockPos pos, BlockState state, RelayChatterboxBlockEntity relay) {
@@ -291,7 +292,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
 
     // --- what players' games are told: the console light, the number, whether the operator sits, where the dish points ---
 
-    /** The front packed in one number: the light, whether a Link Byteling sits, and the frequency. */
+    /** The front packed in one number: the light, whether an operator sits, and the frequency. */
     private static int look(RelayStatus.Light light, int frequency, boolean seated) {
         return light.ordinal() | (seated ? 4 : 0) | (frequency + 1) << 3;
     }
@@ -363,7 +364,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
         return (shownLook >> 3) - 1;
     }
 
-    /** Whether a Link Byteling sits at the switchboard, as this player's game knows it. */
+    /** Whether an operator sits at the switchboard, as this player's game knows it. */
     public boolean shownSeated() {
         return (shownLook & 4) != 0;
     }
@@ -404,7 +405,7 @@ public class RelayChatterboxBlockEntity extends MachineBlockEntity implements Re
 
     // --- the machine ---
 
-    /** The block uses none itself: the Link Byteling's battery pays for the link. */
+    /** The block uses none itself: the operator's battery pays for the link. */
     @Override
     public int drainPerTick() {
         return 0;

@@ -51,7 +51,7 @@ The grown-up stages of a [Bitling](bitlings.md). Each one works the [Chip Worksh
 * Makes only its own type. A switch in the Workshop picks standard or Advanced chips.
 * Battery of 400,000 FE.
 * The only critter that can build a <ItemLink id="synapse_core" />.
-* A Link Byteling is the only critter that can work a <ItemLink id="relay_chatterbox" />.
+* A Link Byteling can work a <ItemLink id="relay_chatterbox" />, like a Link Nibbling.
 
 <br />
 <br />

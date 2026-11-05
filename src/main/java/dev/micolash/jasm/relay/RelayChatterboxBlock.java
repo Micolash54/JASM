@@ -150,7 +150,7 @@ public class RelayChatterboxBlock extends MachineBlock {
         return super.useWithoutItem(level.getBlockState(lower), level, lower, player, hitResult);
     }
 
-    /** The lower half tops up its Link Byteling; the upper half has nothing to do. */
+    /** The lower half tops up its operator; the upper half has nothing to do. */
     @Override
     public <T extends BlockEntity> @Nullable BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
         return level.isClientSide() || !isLower(state) ? null

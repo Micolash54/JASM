@@ -834,7 +834,7 @@
   "jei.jasm.info.stock_upgrade": "Goes into Output and Two-Way Ports. Lets the port keep a block stocked instead of filling its target to capacity.",
   "jei.jasm.info.power_upgrade": "Lets the port supplies FE from the network to the machine it faces.",
   "jei.jasm.info.dimension_upgrade": "Without it, a Deck and everything linked to it work only in the Overworld. Relay Chatterboxes also need it to work across dimensions.",
-  "jei.jasm.info.relay_chatterbox": "Two of these on the same frequency join their networks like a wireless cable. Each needs a Link Byteling in its Operator slot.",
+  "jei.jasm.info.relay_chatterbox": "Two of these on the same frequency join their networks like a wireless cable. Each needs a Link Nibbling or Link Byteling in its Operator slot.",
   "jei.jasm.info.network_tether": "Keeps every chunk its network touches loaded, both ends of a Relay Chatterbox link too, while a Nibbling or Byteling keeps watch in its Operator slot. The network charges the operator and the operator pays, a little more for each chunk held.",
   "tooltip.jasm.upgrade.shift": "%s to show compatible machines",
   "tooltip.jasm.upgrade.decks": "Decks",

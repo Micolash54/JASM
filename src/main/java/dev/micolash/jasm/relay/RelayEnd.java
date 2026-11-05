@@ -34,7 +34,7 @@ public interface RelayEnd {
     /** Whether a Dimension Upgrade sits in this end. One end having it lets a pair link across dimensions. */
     boolean hasDimensionUpgrade();
 
-    /** Whether this end can run the link right now: its Link Byteling has charge. Both must, to start a link. */
+    /** Whether this end can run the link right now: its operator has charge. Both must, to start a link. */
     boolean canRun();
 
     /** FE in this end's battery, which pays for the link. An end without a battery pays nothing. */
