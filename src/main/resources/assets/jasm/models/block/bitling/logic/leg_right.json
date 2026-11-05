@@ -1,7 +1,8 @@
 {
-  "parent": "jasm:block/bitling/classic/leg_right",
+  "parent": "jasm:block/bitling/leg_right",
   "textures": {
     "skin": "jasm:block/bitling/logic",
+    "screen": "jasm:block/bitling/logic_screen",
     "particle": "jasm:block/bitling/logic"
   }
 }
