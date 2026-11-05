@@ -18,9 +18,9 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.level.Level;
@@ -28,8 +28,8 @@ import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.jspecify.annotations.Nullable;
 
 // a slot asking for a plain item also takes it with extra data (crop stats on harvested seeds, say), like vanilla
-// crafting does, as far as ItemVariants allows, and a JASM block picked up with its saved data. only used when there's no
-// plain copy, and then the version there is most of
+// crafting does, as far as ItemVariants allows, and a JASM item carrying JASM's own data (charge, training, settings).
+// only used when there's no plain copy, and then the version there is most of
 public final class GridVariants {
     private GridVariants() {}
 
@@ -50,7 +50,7 @@ public final class GridVariants {
             ItemResource key = entry.getKey();
             if (entry.getValue() > bestCount && !key.isComponentsPatchEmpty() && plain.contains(key.getItem())
                     && !(key.getItem() instanceof WaferItem) && DeckMenu.allowedInGrid(key.toStack(1))
-                    && (ItemVariants.standsIn(ItemResource.of(key.getItem()), key) || pickedUpBlock(key)) && usable.test(key)) {
+                    && (ItemVariants.standsIn(ItemResource.of(key.getItem()), key) || jasmData(key)) && usable.test(key)) {
                 best = key;
                 bestCount = entry.getValue();
             }
@@ -59,21 +59,22 @@ public final class GridVariants {
     }
 
     /**
-     * A JASM block that was picked up with what it keeps on the item (charge, owner, name, settings). A fill may use it
-     * for a slot asking for that block, which the shared rule leaves out so automatic crafting never eats one. Anything
-     * else on it, enchantments or contents say, still keeps it out.
+     * A JASM item carrying only what JASM keeps on it (charge, training, owner, name, settings): a block picked up, a
+     * Bitling that has worked, a thin port taken off a cable. A fill may use it for a slot asking for that item, which the
+     * shared rule leaves out so automatic crafting never eats one. Anything else on it, enchantments or contents say,
+     * still keeps it out; an empty contents mark (thin ports carry one) holds nothing and doesn't.
      */
-    static boolean pickedUpBlock(ItemResource key) {
-        Item item = key.getItem();
-        Identifier id = BuiltInRegistries.ITEM.getKey(item);
-        if (!(item instanceof BlockItem) || !Jasm.MODID.equals(id.getNamespace())) {
+    static boolean jasmData(ItemResource key) {
+        Identifier id = BuiltInRegistries.ITEM.getKey(key.getItem());
+        if (!Jasm.MODID.equals(id.getNamespace())) {
             return false;
         }
         ItemStack rest = key.toStack(1);
         for (Map.Entry<DataComponentType<?>, Optional<?>> entry : key.getComponentsPatch().entrySet()) {
             DataComponentType<?> type = entry.getKey();
             Identifier typeId = BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type);
-            if (type == DataComponents.CUSTOM_NAME || typeId != null && Jasm.MODID.equals(typeId.getNamespace())) {
+            if (type == DataComponents.CUSTOM_NAME || typeId != null && Jasm.MODID.equals(typeId.getNamespace())
+                    || type == DataComponents.CONTAINER && ItemContainerContents.EMPTY.equals(entry.getValue().orElse(null))) {
                 rest.remove(type);
             }
         }
