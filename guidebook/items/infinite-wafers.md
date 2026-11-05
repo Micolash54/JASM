@@ -35,7 +35,7 @@ An Infinite Water Wafer or Infinite Lava Wafer goes in a [Deck](decks.md) like a
 * Buckets, tanks, ports, pipes and crafting jobs can all take from it.
 * Water or lava put into the Deck goes to its infinite wafer first and is deleted. This costs charge like any other move.
 * Water or lava already on other wafers, or in tanks lent by a [Storage Port](storage-port.md), stays where it is.
-* It has no filters and needs no Archive backup.
+* It has no filters.
 
 <br />
 <br />

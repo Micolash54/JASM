@@ -4,13 +4,8 @@ import dev.micolash.jasm.deck.DeckItem;
 import dev.micolash.jasm.deck.DeckWafers;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 
@@ -66,13 +61,5 @@ public class InfiniteWaferItem extends Item {
     /** Whether the Deck has an infinite wafer for exactly {@code key}. */
     public static boolean covers(ItemStack deck, FluidResource key) {
         return !key.isEmpty() && in(deck).contains(key);
-    }
-
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder,
-            TooltipFlag flag) {
-        builder.accept(Component.translatable("tooltip.jasm.infinite_wafer.amount", resource().getHoverName()).withStyle(ChatFormatting.GRAY));
-        builder.accept(Component.translatable("tooltip.jasm.infinite_wafer.deletes").withStyle(ChatFormatting.GRAY));
-        builder.accept(Component.translatable("tooltip.jasm.infinite_wafer.no_backup").withStyle(ChatFormatting.DARK_GRAY));
     }
 }
