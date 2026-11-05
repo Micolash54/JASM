@@ -18,7 +18,7 @@ item_ids:
 
 <BlockImage id="demolition_bay" scale="3.5" />
 
-A Demolition Bay breaks the block in front of it into its own grid, scoops up fluids and picks up items that land on its face.
+A Demolition Bay breaks the block in front of it into its own grid, scoops up fluids and picks up items lying in the space in front of it.
 
 Enchant it like a pickaxe for Fortune, Silk Touch and Efficiency.
 

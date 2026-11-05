@@ -13,7 +13,6 @@ import java.util.function.Supplier;
 import dev.micolash.jasm.wafer.FluidAmounts;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
@@ -149,11 +148,12 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
         }
     }
 
-    /** Items lying against the front face go in, as far as they fit, at no cost. */
+    /** Items anywhere in the front space go in, as far as they fit, at no cost. */
     @Override
     protected void everyHalfSecond(ServerLevel level) {
-        if (allFull() || !level.isLoaded(front())) return;
-        for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, faceBox(worldPosition, facing()), ItemEntity::isAlive)) {
+        BlockPos front = front();
+        if (allFull() || !level.isLoaded(front)) return;
+        for (ItemEntity entity : level.getEntitiesOfClass(ItemEntity.class, new AABB(front), ItemEntity::isAlive)) {
             // What the filter refuses stays on the ground.
             if (passes(entity.getItem())) storeEntity(entity);
         }
@@ -165,20 +165,6 @@ public class DemolitionBayBlockEntity extends BayBlockEntity {
             if (stack.getCount() < stack.getMaxStackSize()) return false;
         }
         return true;
-    }
-
-    /** A thin slice of the front space against the bay's face. */
-    static AABB faceBox(BlockPos pos, Direction facing) {
-        AABB box = new AABB(pos.relative(facing));
-        double depth = 0.25;
-        return switch (facing) {
-            case UP -> box.setMaxY(box.minY + depth);
-            case DOWN -> box.setMinY(box.maxY - depth);
-            case NORTH -> box.setMinZ(box.maxZ - depth);
-            case SOUTH -> box.setMaxZ(box.minZ + depth);
-            case WEST -> box.setMinX(box.maxX - depth);
-            case EAST -> box.setMaxX(box.minX + depth);
-        };
     }
 
     /**

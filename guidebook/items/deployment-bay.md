@@ -36,7 +36,7 @@ A Deployment Bay places blocks, seeds and fluids from its own grid and tank into
 * Pipes and other mods' cables can't power it: put a [Power Interface](power-acceptor.md) against it.
 * Speed Upgrades raise the power per placement or thrown stack as well as the speed. Four upgrades cost two and a half times the power for each action.
 * With a [Redstone Upgrade](redstone-upgrade.md) it can run only while powered or unpowered, or work once for each redstone pulse.
-* In drop mode items land just in front of the bay, or on top of or beside a solid block there. It pauses while 32 entities are near, so it can't flood a spot with items.
+* In drop mode items land in the middle of the space in front of the bay, or on top of or beside a solid block there. It pauses while 32 entities are near, so it can't flood a spot with items.
 * You can add [filters](../mechanics/type-filters.md) to decide what it may or may not place/drop. Works for items and fluids.
 
 Its opposite is the [Demolition Bay](demolition-bay.md).

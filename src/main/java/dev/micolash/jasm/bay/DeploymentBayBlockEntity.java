@@ -27,10 +27,14 @@ import org.jspecify.annotations.Nullable;
 
 /** Places what its grid holds in front of it, as its owner would. */
 public class DeploymentBayBlockEntity extends BayBlockEntity {
-    /** Half the size of a dropped item, the gap it keeps from the bay's face, and its push per tick. */
+    /**
+     * Half the size of a dropped item, the gap it keeps from the bay's face, how far it may start either side of the
+     * middle, and its push per tick: on a plain floor it slides to a stop in the middle of the front space.
+     */
     private static final double THROW_HALF = 0.125;
     private static final double THROW_GAP = 0.03;
-    private static final double THROW_SPEED = 0.10;
+    private static final double THROW_SPREAD = 0.1;
+    private static final double THROW_SPEED = 0.14;
 
     private DeployMode mode = DeployMode.PLACE;
 
@@ -152,9 +156,9 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
     }
 
     /**
-     * Drops the stack just outside the bay's face, at a random spot across it, drifting slowly straight out. When a
-     * full block fills the front space, it goes to the first open space beside that block instead, never back into the
-     * bay.
+     * Drops the stack just outside the bay's face, low down and near the middle across it, sliding straight out to the
+     * middle of the front space. When a full block fills the front space, it goes to the first open space beside that
+     * block instead, never back into the bay.
      */
     private void throwOut(ServerLevel level, ItemStack stack) {
         Direction out = facing();
@@ -170,9 +174,13 @@ public class DeploymentBayBlockEntity extends BayBlockEntity {
         double[] middle = new double[3];
         for (Direction.Axis axis : Direction.Axis.values()) {
             double spot;
-            if (axis != out.getAxis()) spot = THROW_HALF + random.nextDouble() * (1 - 2 * THROW_HALF);
-            else if (out.getAxisDirection() == Direction.AxisDirection.POSITIVE) spot = THROW_GAP + THROW_HALF;
-            else spot = 1 - THROW_GAP - THROW_HALF;
+            if (axis == out.getAxis()) {
+                spot = out.getAxisDirection() == Direction.AxisDirection.POSITIVE ? THROW_GAP + THROW_HALF : 1 - THROW_GAP - THROW_HALF;
+            } else if (axis == Direction.Axis.Y) {
+                spot = THROW_HALF;   // on the floor of the front space
+            } else {
+                spot = 0.5 + (random.nextDouble() * 2 - 1) * THROW_SPREAD;
+            }
             middle[axis.ordinal()] = spot;
         }
         spawnThrown(level, stack, out, front.getX() + middle[0], front.getY() + middle[1] - THROW_HALF, front.getZ() + middle[2]);
