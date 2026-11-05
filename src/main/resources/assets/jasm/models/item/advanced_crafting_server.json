@@ -11,7 +11,8 @@
     "side_lower": "jasm:block/advanced_crafting_server_side_lower",
     "side_upper": "jasm:block/advanced_crafting_server_side_upper",
     "back_lower": "jasm:block/advanced_crafting_server_back_lower",
-    "back_upper": "jasm:block/advanced_crafting_server_back_upper"
+    "back_upper": "jasm:block/advanced_crafting_server_back_upper",
+    "shell": "jasm:block/machine_shell"
   },
   "elements": [
     {
@@ -563,14 +564,14 @@
       ],
       "to": [
         16,
-        32,
+        31,
         16
       ],
       "faces": {
         "north": {
           "uv": [
             0,
-            0,
+            1,
             16,
             16
           ],
@@ -579,7 +580,7 @@
         "east": {
           "uv": [
             0,
-            0,
+            1,
             14,
             16
           ],
@@ -588,7 +589,7 @@
         "south": {
           "uv": [
             0,
-            0,
+            1,
             16,
             16
           ],
@@ -597,7 +598,7 @@
         "west": {
           "uv": [
             2,
-            0,
+            1,
             16,
             16
           ],
@@ -606,11 +607,11 @@
         "up": {
           "uv": [
             0,
-            2,
-            16,
-            16
+            4.5,
+            4,
+            8
           ],
-          "texture": "#casing"
+          "texture": "#shell"
         }
       }
     },
@@ -656,12 +657,12 @@
         },
         "up": {
           "uv": [
-            15,
-            0,
-            16,
-            2
+            3.75,
+            4,
+            4,
+            4.5
           ],
-          "texture": "#casing"
+          "texture": "#shell"
         }
       }
     },
@@ -708,11 +709,11 @@
         "up": {
           "uv": [
             0,
-            0,
-            1,
-            2
+            4,
+            0.25,
+            4.5
           ],
-          "texture": "#casing"
+          "texture": "#shell"
         }
       }
     },
@@ -738,14 +739,23 @@
           ],
           "texture": "#front_upper"
         },
+        "south": {
+          "uv": [
+            8.25,
+            8.25,
+            11.75,
+            9
+          ],
+          "texture": "#shell"
+        },
         "up": {
           "uv": [
-            1,
-            0,
-            15,
-            2
+            0.25,
+            4,
+            3.75,
+            4.5
           ],
-          "texture": "#casing"
+          "texture": "#shell"
         },
         "down": {
           "uv": [
@@ -947,6 +957,270 @@
             11
           ],
           "texture": "#screen"
+        }
+      }
+    },
+    {
+      "name": "rim_west",
+      "from": [
+        0,
+        31,
+        2
+      ],
+      "to": [
+        2,
+        32,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            8.25,
+            8.25,
+            11.75,
+            8.5
+          ],
+          "texture": "#shell"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            2,
+            1
+          ],
+          "texture": "#back_upper"
+        },
+        "west": {
+          "uv": [
+            2,
+            0,
+            16,
+            1
+          ],
+          "texture": "#side_upper"
+        },
+        "up": {
+          "uv": [
+            0,
+            4.5,
+            0.5,
+            8
+          ],
+          "texture": "#shell"
+        }
+      }
+    },
+    {
+      "name": "rim_east",
+      "from": [
+        14,
+        31,
+        2
+      ],
+      "to": [
+        16,
+        32,
+        16
+      ],
+      "faces": {
+        "east": {
+          "uv": [
+            0,
+            0,
+            14,
+            1
+          ],
+          "texture": "#side_upper"
+        },
+        "south": {
+          "uv": [
+            14,
+            0,
+            16,
+            1
+          ],
+          "texture": "#back_upper"
+        },
+        "west": {
+          "uv": [
+            8.25,
+            8.25,
+            11.75,
+            8.5
+          ],
+          "texture": "#shell"
+        },
+        "up": {
+          "uv": [
+            3.5,
+            4.5,
+            4,
+            8
+          ],
+          "texture": "#shell"
+        }
+      }
+    },
+    {
+      "name": "rim_back",
+      "from": [
+        2,
+        31,
+        14
+      ],
+      "to": [
+        14,
+        32,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.25,
+            8.25,
+            11.25,
+            8.5
+          ],
+          "texture": "#shell"
+        },
+        "south": {
+          "uv": [
+            2,
+            0,
+            14,
+            1
+          ],
+          "texture": "#back_upper"
+        },
+        "up": {
+          "uv": [
+            0.5,
+            7.5,
+            3.5,
+            8
+          ],
+          "texture": "#shell"
+        }
+      }
+    },
+    {
+      "name": "socket_top",
+      "from": [
+        6,
+        31,
+        6
+      ],
+      "to": [
+        10,
+        31.75,
+        10
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            11.75,
+            6.75,
+            12.75,
+            6.9375
+          ],
+          "texture": "#shell"
+        },
+        "east": {
+          "uv": [
+            11.75,
+            6.75,
+            12.75,
+            6.9375
+          ],
+          "texture": "#shell"
+        },
+        "south": {
+          "uv": [
+            11.75,
+            6.75,
+            12.75,
+            6.9375
+          ],
+          "texture": "#shell"
+        },
+        "west": {
+          "uv": [
+            11.75,
+            6.75,
+            12.75,
+            6.9375
+          ],
+          "texture": "#shell"
+        },
+        "up": {
+          "uv": [
+            1.5,
+            5.5,
+            2.5,
+            6.5
+          ],
+          "texture": "#shell"
+        }
+      }
+    },
+    {
+      "name": "lamp_top",
+      "from": [
+        7,
+        31,
+        7
+      ],
+      "to": [
+        9,
+        32,
+        9
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            11.75,
+            6,
+            12.25,
+            6.25
+          ],
+          "texture": "#shell"
+        },
+        "east": {
+          "uv": [
+            11.75,
+            6,
+            12.25,
+            6.25
+          ],
+          "texture": "#shell"
+        },
+        "south": {
+          "uv": [
+            11.75,
+            6,
+            12.25,
+            6.25
+          ],
+          "texture": "#shell"
+        },
+        "west": {
+          "uv": [
+            11.75,
+            6,
+            12.25,
+            6.25
+          ],
+          "texture": "#shell"
+        },
+        "up": {
+          "uv": [
+            1.75,
+            5.75,
+            2.25,
+            6.25
+          ],
+          "texture": "#shell"
         }
       }
     }
