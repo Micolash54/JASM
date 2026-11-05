@@ -28,6 +28,7 @@ import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.sprite.Material;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import org.jspecify.annotations.Nullable;
 
@@ -74,6 +75,21 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
     private static final float HOP_OFF_GROUND = 0.02F;
     /** The walk gives way to the hop quickly, as the jump is short. */
     private static final float HOP_BLEND_SECONDS = 0.1F;
+    /** Standing about: a calm loop, mostly still but for breathing, with now and then a fidget, in seconds apart. */
+    private static final String CALM = "calm";
+    private static final String[] FIDGETS = {"fidget_tilt", "fidget_antenna", "fidget_look_down"};
+    private static final float FIDGET_LEAST = 8;
+    private static final float FIDGET_MOST = 15;
+    /**
+     * Awake, it blinks at random, now and then twice: seconds apart, how long a blink takes, the gap from one to a second,
+     * how often there is a second, and how far the eyes close.
+     */
+    private static final float BLINK_LEAST = 2;
+    private static final float BLINK_MOST = 6;
+    private static final float BLINK_SECONDS = 0.16F;
+    private static final float BLINK_AGAIN = 0.24F;
+    private static final float BLINK_TWICE = 0.2F;
+    private static final float BLINK_SHUT = 0.12F;
     /** Where a held item sits from the right arm's joint, in model pixels, and how big it is drawn. */
     private static final float HAND_X = 0;
     private static final float HAND_Y = -5;
@@ -83,6 +99,7 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
     private final BitlingAnimations animations;
     private final ItemModelResolver itemModelResolver;
     private final Map<BitlingBody, Motion> motions = new WeakHashMap<>();
+    private final RandomSource random = RandomSource.create();
     /** Each part split into the faces that take the light around them and the faces that light themselves. */
     private final Map<BlockStateModelPart, @Nullable BlockStateModelPart[]> split = new WeakHashMap<>();
 
@@ -127,19 +144,19 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
     /** The loops to try for each thing the Bitling can be doing, best first. */
     private static String[] clipsFor(Act act) {
         return switch (act) {
-            case STAND, LOOK -> new String[]{"idle"};
+            case STAND, LOOK -> new String[]{CALM, "idle"};
             case WALK -> new String[]{"walk", "working"};
             case SPRINT -> new String[]{"sprint", "walk", "working"};
-            case HOP -> new String[]{"idle"};
+            case HOP -> new String[]{CALM, "idle"};
             case REST -> new String[]{"napping"};
             case TIRED -> new String[]{"tired_walk", "walk", "working"};
-            case STARTLED -> new String[]{"startled", "idle"};
-            case PETTED -> new String[]{"petted", "idle"};
+            case STARTLED -> new String[]{"startled", CALM, "idle"};
+            case PETTED -> new String[]{"petted", CALM, "idle"};
             case RECHARGE -> new String[]{"recharging", "napping"};
-            case INSPECT -> new String[]{"inspect", "idle"};
-            case NOD -> new String[]{"nod", "idle"};
-            case EAT -> new String[]{"eat", "idle"};
-            case SHAKE -> new String[]{"head_shake", "startled", "idle"};
+            case INSPECT -> new String[]{"inspect", CALM, "idle"};
+            case NOD -> new String[]{"nod", CALM, "idle"};
+            case EAT -> new String[]{"eat", CALM, "idle"};
+            case SHAKE -> new String[]{"head_shake", "startled", CALM, "idle"};
         };
     }
 
@@ -190,6 +207,14 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         private float tookOff = -1;
         private float landed = -1;
         private float lastY;
+        /** The fidget playing, if any, when it began, and when the next is due. */
+        private String fidget = "";
+        private float fidgetStart;
+        private float nextFidget = -1;
+        /** When the last blink began (-1 before the first), whether a second follows, and when the next is due. */
+        private float blinkStart = -1;
+        private boolean blinkTwice;
+        private float nextBlink = -1;
 
         Map<String, float[]> update(Act now, float time, float walk, float speed, float headYaw, float headPitch, boolean glancing,
                 float y, boolean onGround) {
@@ -265,7 +290,9 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
                     fromStride = false;
                 }
             }
+            pose = fidget(pose, now, time, glancing, Math.abs(headYaw) + Math.abs(headPitch) > 1);
             shown = pose;
+            pose = blink(pose, time);
 
             // The head turns where the Bitling really looks. While it looks around or at a player, the idle loop's own
             // sweep makes way, so the two never add up.
@@ -282,6 +309,79 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             h[4] = Mth.clamp(h[4] * (1 - looking) - headYaw, -HEAD_LIMIT, HEAD_LIMIT);
             turned.put("head", h);
             return turned;
+        }
+
+        /**
+         * Standing calmly with its head on nothing, it fidgets every so often. A fidget is played on top of the calm loop
+         * and gives way as the head turns to something, and the wait starts over whenever it isn't calm.
+         */
+        private Map<String, float[]> fidget(Map<String, float[]> pose, Act now, float time, boolean glancing, boolean headTurned) {
+            if (!clip.equals(CALM)) {
+                fidget = "";
+            }
+            if (fidget.isEmpty()) {
+                boolean calm = now == Act.STAND && clip.equals(CALM) && from == null && !glancing && !headTurned && looking < 0.01F;
+                if (!calm || nextFidget < 0) {
+                    nextFidget = time + Mth.nextFloat(random, FIDGET_LEAST, FIDGET_MOST);
+                }
+                if (!calm || time < nextFidget) {
+                    return pose;
+                }
+                fidget = FIDGETS[random.nextInt(FIDGETS.length)];
+                fidgetStart = time;
+            }
+            BitlingAnimations.Clip playing = animations.clip(fidget);
+            float t = time - fidgetStart;
+            if (playing == null || t >= playing.length()) {
+                fidget = "";
+                nextFidget = time + Mth.nextFloat(random, FIDGET_LEAST, FIDGET_MOST);
+                return pose;
+            }
+            Map<String, float[]> extra = animations.sample(playing, t);
+            Map<String, float[]> out = new LinkedHashMap<>(pose);
+            float weight = 1 - looking;
+            out.replaceAll((bone, v) -> {
+                float[] add = extra.get(bone);
+                if (add == null) {
+                    return v;
+                }
+                float[] sum = v.clone();
+                for (int i = 0; i < 6; i++) {
+                    sum[i] += add[i] * weight;
+                }
+                return sum;
+            });
+            return out;
+        }
+
+        /**
+         * Awake, its eyes squash shut for a blink every few seconds at random, now and then twice. Asleep, getting up or
+         * down, and in loops with eyes of their own, it leaves them be.
+         */
+        private Map<String, float[]> blink(Map<String, float[]> pose, float time) {
+            if (nextBlink < 0) {
+                nextBlink = time + Mth.nextFloat(random, BLINK_LEAST, BLINK_MOST);
+            }
+            if (time >= nextBlink) {
+                blinkStart = time;
+                blinkTwice = random.nextFloat() < BLINK_TWICE;
+                nextBlink = time + Mth.nextFloat(random, BLINK_LEAST, BLINK_MOST);
+            }
+            float t = time - blinkStart;
+            if (blinkTwice && t >= BLINK_AGAIN) {
+                t -= BLINK_AGAIN;
+            }
+            float[] eyes = pose.get("eyes");
+            boolean awake = clip.equals(CALM) || clip.equals(STRIDE) || clip.equals(HOP);
+            if (blinkStart < 0 || t >= BLINK_SECONDS || eyes == null || !awake) {
+                return pose;
+            }
+            float shut = 1 - Math.abs(t / BLINK_SECONDS * 2 - 1);
+            Map<String, float[]> out = new LinkedHashMap<>(pose);
+            float[] squashed = eyes.clone();
+            squashed[7] *= Mth.lerp(shut, 1, BLINK_SHUT);
+            out.put("eyes", squashed);
+            return out;
         }
 
         /** Starts a one-off move, if there is one to play. */
