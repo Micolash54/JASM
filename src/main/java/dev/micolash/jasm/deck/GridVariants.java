@@ -29,7 +29,8 @@ import org.jspecify.annotations.Nullable;
 
 // a slot asking for a plain item also takes it with extra data (crop stats on harvested seeds, say), like vanilla
 // crafting does, as far as ItemVariants allows, and a JASM item carrying JASM's own data (charge, training, settings).
-// only used when there's no plain copy, and then the version there is most of
+// only used when there's no plain copy, and then the version there is most of (a critter: the least trained, then the
+// least charged)
 public final class GridVariants {
     private GridVariants() {}
 
@@ -48,14 +49,22 @@ public final class GridVariants {
         long bestCount = 0;
         for (Map.Entry<ItemResource, Long> entry : present.entrySet()) {
             ItemResource key = entry.getKey();
-            if (entry.getValue() > bestCount && !key.isComponentsPatchEmpty() && plain.contains(key.getItem())
-                    && !(key.getItem() instanceof WaferItem) && DeckMenu.allowedInGrid(key.toStack(1))
+            if (entry.getValue() > 0 && (best == null || better(key, entry.getValue(), best, bestCount)) && !key.isComponentsPatchEmpty()
+                    && plain.contains(key.getItem()) && !(key.getItem() instanceof WaferItem) && DeckMenu.allowedInGrid(key.toStack(1))
                     && (ItemVariants.standsIn(ItemResource.of(key.getItem()), key) || jasmData(key)) && usable.test(key)) {
                 best = key;
                 bestCount = entry.getValue();
             }
         }
         return best;
+    }
+
+    // critters go least trained, then least charged, first; anything else the version there is most of
+    private static boolean better(ItemResource key, long count, ItemResource best, long bestCount) {
+        if (key.getItem() instanceof BitlingItem && best.getItem() instanceof BitlingItem) {
+            return BitlingItem.useOrder(key.toStack(1)) < BitlingItem.useOrder(best.toStack(1));
+        }
+        return count > bestCount;
     }
 
     /**

@@ -3,6 +3,7 @@ package dev.micolash.jasm.autocraft;
 import dev.micolash.jasm.core.Training;
 import dev.micolash.jasm.crafting.ItemVariants;
 import dev.micolash.jasm.crafting.RecipeChoices;
+import dev.micolash.jasm.crafting.UpgradeRecipe;
 import dev.micolash.jasm.registry.JasmComponents;
 import dev.micolash.jasm.storage.WaferStore;
 import dev.micolash.jasm.wafer.WaferEligibility;
@@ -241,6 +242,7 @@ public final class CardRecipes {
          * enchantments, name or other data, as long as the recipe still takes it there: the crystal that comes back bare
          * keeps serving, but a card with a regular crystal never takes a Master one. A slot holding a fully trained
          * critter takes any copy of it, whatever its charge or name; the recipe turns away the ones whose bar isn't full.
+         * So does a critter the recipe swaps to another type or grows from a Basic Bitling, as it keeps its charge.
          * A pinned slot never takes another item, whatever the recipe allows; copies of its own item follow the rules above.
          */
         public boolean accepts(ServerLevel level, int slot, ItemResource candidate) {
@@ -255,7 +257,7 @@ public final class CardRecipes {
             if (card.pinned(slot) && !stack.is(there.getItem())) {
                 return false;
             }
-            if (trainedCritter(slot) || convertedCritter(slot) || returnsSelf(level, slot)) {
+            if (trainedCritter(slot) || convertedCritter(slot) || upgradedCritter(slot) || returnsSelf(level, slot)) {
                 if (!stack.is(there.getItem())) {
                     return false;
                 }
@@ -288,6 +290,11 @@ public final class CardRecipes {
             return recipe instanceof ConvertRecipe && encoded.get(slot).getItem() instanceof BitlingItem;
         }
 
+        /** Whether the recipe grows the Basic Bitling in {@code slot} into a typed one, which keeps its charge. */
+        private boolean upgradedCritter(int slot) {
+            return recipe instanceof UpgradeRecipe && encoded.get(slot).getItem() instanceof BitlingItem;
+        }
+
         /**
          * Whether these nine inputs really make this card's output. A wafer made from used wafers carries a note of
          * which ones went in; that note isn't part of what the card makes.
@@ -299,7 +306,7 @@ public final class CardRecipes {
             }
             ItemStack made = recipe.assemble(input);
             made.remove(JasmComponents.WAFER_MERGE.get());
-            if (recipe instanceof EvolveRecipe || recipe instanceof ConvertRecipe) {
+            if (recipe instanceof EvolveRecipe || recipe instanceof ConvertRecipe || recipe instanceof UpgradeRecipe && output.getItem() instanceof BitlingItem) {
                 // the grown critter keeps the charge and name of the one that went in
                 return made.is(output.getItem()) && made.getCount() == output.getCount();
             }

@@ -5,6 +5,7 @@ import dev.micolash.jasm.core.GridKey;
 import dev.micolash.jasm.crafting.ItemVariants;
 import dev.micolash.jasm.network.CableNetwork;
 import dev.micolash.jasm.wafer.FluidAmounts;
+import dev.micolash.jasm.workshop.BitlingItem;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -107,10 +108,16 @@ public final class CardBook implements CraftPlanner.Book<GridKey> {
         return key instanceof GridKey.Fluid || key instanceof GridKey.Material ? (amount + FluidAmounts.PER_BUCKET - 1) / FluidAmounts.PER_BUCKET : amount;
     }
 
-    /** Items with no extra data are used before copies that carry some (seeds with crop stats). */
+    /**
+     * Items with no extra data are used before copies that carry some (seeds with crop stats). Critters with data go
+     * least trained, then least charged, first.
+     */
     @Override
-    public int rank(GridKey key) {
-        return key instanceof GridKey.Item item && !item.resource().isComponentsPatchEmpty() ? 1 : 0;
+    public long rank(GridKey key) {
+        if (!(key instanceof GridKey.Item item) || item.resource().isComponentsPatchEmpty()) {
+            return 0;
+        }
+        return item.resource().getItem() instanceof BitlingItem ? 1 + BitlingItem.useOrder(item.resource().toStack(1)) : 1;
     }
 
     /** Only items grow from copies of themselves: a job holds back no fluid or material as a seed. */

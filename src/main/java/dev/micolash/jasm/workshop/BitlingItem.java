@@ -86,6 +86,14 @@ public class BitlingItem extends Item {
         return stack.getOrDefault(JasmComponents.TRAINING.get(), 0);
     }
 
+    /**
+     * Which of several copies a fill or a job uses first, lowest first: the least trained, then the least charged, so the
+     * critters that have worked most stay put.
+     */
+    public static long useOrder(ItemStack stack) {
+        return ((long) Math.max(0, trained(stack)) << 31) + Math.max(0, energy(stack));
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> builder,
             TooltipFlag flag) {

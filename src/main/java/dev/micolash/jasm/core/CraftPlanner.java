@@ -68,7 +68,7 @@ public final class CraftPlanner<K> {
         }
 
         /** Among a slot's other items, a lower rank is taken first; the same rank goes most plentiful first. */
-        default int rank(K key) {
+        default long rank(K key) {
             return 0;
         }
     }
@@ -524,7 +524,7 @@ public final class CraftPlanner<K> {
      */
     private long useAvailable(List<K> options, long amount, long unit, Pattern<K> consumer) {
         List<K> byAmount = new ArrayList<>(options.subList(1, options.size()));
-        byAmount.sort(Comparator.comparingInt(book::rank).thenComparing(Comparator.comparingLong((K k) -> available(k)).reversed()));
+        byAmount.sort(Comparator.comparingLong(book::rank).thenComparing(Comparator.comparingLong((K k) -> available(k)).reversed()));
         byAmount.addFirst(options.getFirst());
         long lot = options.size() > 1 ? Math.max(1, unit) : 1;
         long got = 0;
