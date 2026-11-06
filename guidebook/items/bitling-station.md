@@ -16,7 +16,7 @@ item_ids:
   <Entity id="jasm:wild_bitling" data="{kind:1,stage:0}" x="1.7" z="0.5" rotationY="0" />
 </GameScene>
 
-Put a Bitling, Nibbling or Byteling in a Bitling Station and a little living copy pops out. It walks, sprints, hops, looks about and lies down for a rest. Right-click it to pet it.
+Put a Bitling, Nibbling or Byteling in a Bitling Station and a little living copy pops out. It walks, sprints, looks about and lies down for a rest. Right-click it to pet it.
 
 <br />
 <br />

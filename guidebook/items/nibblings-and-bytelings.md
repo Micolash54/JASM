@@ -43,6 +43,7 @@ The grown-up stages of a [Bitling](bitlings.md). Each one works the [Chip Worksh
 * Makes only its own chip type, and Advanced chips more often.
 * Battery of 200,000 FE.
 * Needs 300 chips of [training](../mechanics/training-bitlings.md) to grow up.
+* A Link Nibbling can work a <ItemLink id="relay_chatterbox" />.
 
 <br />
 <br />
