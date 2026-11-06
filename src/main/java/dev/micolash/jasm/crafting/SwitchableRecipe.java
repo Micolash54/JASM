@@ -10,15 +10,21 @@ import java.util.List;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.PlacementInfo;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.display.RecipeDisplay;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 
 /**
  * A crafting recipe that only works while its feature is on in this world. It wraps any other crafting recipe and
@@ -85,9 +91,10 @@ public final class SwitchableRecipe implements CraftingRecipe {
         return inner.category();
     }
 
+    /** The real ingredients even while off: the game would drop a recipe it can't place, with a warning at every load. */
     @Override
     public PlacementInfo placementInfo() {
-        return feature.on() ? inner.placementInfo() : PlacementInfo.NOT_PLACEABLE;
+        return inner.placementInfo();
     }
 
     @Override
@@ -98,6 +105,28 @@ public final class SwitchableRecipe implements CraftingRecipe {
     @Override
     public boolean isSpecial() {
         return inner.isSpecial();
+    }
+
+    /**
+     * The game builds the recipe book's lists before it reads the world's settings, so they start out following each
+     * switch's default. Once the settings are in, and before anyone joins, this builds them again if a switched recipe
+     * is listed the wrong way. A world on the defaults costs one look per switched recipe.
+     */
+    public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        MinecraftServer server = event.getServer();
+        RecipeManager recipes = server.getRecipeManager();
+        for (RecipeHolder<CraftingRecipe> holder : recipes.recipeMap().byType(RecipeType.CRAFTING)) {
+            if (holder.value() instanceof SwitchableRecipe recipe && recipe.feature.on() != listed(recipes, holder.id())) {
+                recipes.finalizeRecipeLoading(server.getWorldData().enabledFeatures());
+                return;
+            }
+        }
+    }
+
+    private static boolean listed(RecipeManager recipes, ResourceKey<Recipe<?>> id) {
+        boolean[] listed = {false};
+        recipes.listDisplaysForRecipe(id, entry -> listed[0] = true);
+        return listed[0];
     }
 
     @Override
