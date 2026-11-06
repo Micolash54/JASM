@@ -1,5 +1,6 @@
 package dev.micolash.jasm.client;
 
+import com.google.common.collect.MapMaker;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import dev.micolash.jasm.bitling.BitlingBody;
@@ -95,10 +96,16 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
     private static final float HAND_Y = -5;
     private static final float HAND_Z = -2;
     private static final float HELD_SCALE = 0.35F;
+    /** Seconds its clock may seem to slip back (a tick it skipped) before its loops start afresh. */
+    private static final float CLOCK_SLACK = 1;
 
     private final BitlingAnimations animations;
     private final ItemModelResolver itemModelResolver;
-    private final Map<BitlingBody, Motion> motions = new WeakHashMap<>();
+    /**
+     * Kept per Bitling object, not per entity id: a Bitling that walks out of sight and back in comes back as a new object
+     * with the same id and its clock at zero, and must not pick up the old one's loops.
+     */
+    private final Map<BitlingBody, Motion> motions = new MapMaker().weakKeys().makeMap();
     private final RandomSource random = RandomSource.create();
     /** Each part split into the faces that take the light around them and the faces that light themselves. */
     private final Map<BlockStateModelPart, @Nullable BlockStateModelPart[]> split = new WeakHashMap<>();
@@ -127,9 +134,15 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             state.held.clear();
             return;
         }
-        Motion motion = motions.computeIfAbsent(bitling, b -> new Motion());
+        float time = (bitling.tickCount + partialTicks) / 20F;
+        Motion motion = motions.get(bitling);
+        // Its clock only runs forward. One that went back belongs to an earlier life, so its loops start afresh.
+        if (motion == null || motion.behind(time)) {
+            motion = new Motion();
+            motions.put(bitling, motion);
+        }
         float headYaw = Mth.wrapDegrees(Mth.rotLerp(partialTicks, bitling.yHeadRotO, bitling.yHeadRot) - state.bodyYaw);
-        state.pose = motion.update(bitling.act(), (bitling.tickCount + partialTicks) / 20F, bitling.walkAnimation.position(partialTicks),
+        state.pose = motion.update(bitling.act(), time, bitling.walkAnimation.position(partialTicks),
                 bitling.walkAnimation.speed(partialTicks), headYaw, bitling.getXRot(partialTicks), bitling.glancing(), (float) state.y,
                 bitling.onGround());
         // It only ever holds something up to look at it or eat it, whichever loop stands in for that.
@@ -215,6 +228,11 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
         private float blinkStart = -1;
         private boolean blinkTwice;
         private float nextBlink = -1;
+
+        /** True if {@code time} is well before the last frame drawn. */
+        boolean behind(float time) {
+            return lastTime >= 0 && time < lastTime - CLOCK_SLACK;
+        }
 
         Map<String, float[]> update(Act now, float time, float walk, float speed, float headYaw, float headPitch, boolean glancing,
                 float y, boolean onGround) {
@@ -373,7 +391,7 @@ public class BitlingBodyRenderer extends EntityRenderer<BitlingBody, BitlingBody
             }
             float[] eyes = pose.get("eyes");
             boolean awake = clip.equals(CALM) || clip.equals(STRIDE) || clip.equals(HOP);
-            if (blinkStart < 0 || t >= BLINK_SECONDS || eyes == null || !awake) {
+            if (blinkStart < 0 || t < 0 || t >= BLINK_SECONDS || eyes == null || !awake) {
                 return pose;
             }
             float shut = 1 - Math.abs(t / BLINK_SECONDS * 2 - 1);
